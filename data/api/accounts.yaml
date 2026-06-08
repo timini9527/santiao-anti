@@ -1,0 +1,21 @@
+
+test_account:
+  #  测试账号 1
+  - user_id:  "USER_001"
+    verify_type:  0 # 验证类型：0-正常正常 1-原设备扫描验证；2-短信验证；3-问题验证
+    verify_value: "" # 验证值
+    device_type:  "app" # 设备类型：web，app 默认为app
+    username:  "008638100000116" #账号
+    password:  "1bc54d638e652d9186c029e7d63a271b" #密码，md5密文
+    device_id:  "JUZDAMBX-JIYTOQ27-GE3TGNJV-GMYTCMZT-GIYDCX2T-JFDVKQKU-IFGEWXZT-FYYS4NA"
+    device:  ""  #设备信息，base64格式的数据
+
+  #  测试账号 2
+  - user_id:  "USER_002"
+    verify_type:  0 # 验证类型：0-正常正常 1-原设备扫描验证；2-短信验证；3-问题验证
+    verify_value: "" # 验证值
+    device_type:  "app" # 设备类型：web，app 默认为app
+    username:  "008638100000117" # 账号
+    password:  "ff1608b2acc6f03e3ed8c3a18e3d1cb9" # 密码，md5密文
+    device_id:  "JUZDAMBX-JIYTOQ27-GE3TGNJV-GMYTCMZT-GIYDCX2T-JFDVKQKU-IFGEWXZT-FYYS4NA"
+    device:  ""  #设备信息，base64格式的数据

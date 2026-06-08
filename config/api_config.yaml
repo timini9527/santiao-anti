@@ -1,0 +1,74 @@
+
+# ==========================================
+# 全局默认配置
+# ==========================================
+# 当前运行的环境: dev, test, uat, prod
+current_env: 'test'
+
+
+
+# 所有环境通用的配置 (Common Settings)
+common :
+  project_name : 'api'
+  timeout : 10  # 默认请求超时时间 (秒)
+  verify : false # 是否校验 HTTPS 证书 (测试环境通常关掉)
+
+
+   # 公共请求头 (所有接口默认携带)
+  headers :
+    app_id: "qiyunxin"
+    version: "10.0.6"
+    IMEI: "NFHVGIBR-HAXDILRR-L4YTONJW-HA4DSNJX-G43TQMS7-KNEUOVKB-KRAUYS27-GEXDALRQ"
+    package: "com.santiaotalk.im"
+    Content-Type:  "application/json;charset=UTF-8"
+    Accept: "application/json"
+    User-Agent: "AutoTest/1.0 (Python-Requests)"
+    Authorization: ""
+    open_id: ""
+
+
+# ==========================================
+# 多环境差异化配置
+# ==========================================
+envs:
+  # 1. 开发环境
+  dev:
+    base_url: "http://192.168.1.50:8080"
+    db_info:
+      host: "192.168.1.50"
+      port: 3306
+      user: "dev_user"
+      # password: 建议从环境变量读取，不直接写在这里
+    test_account:
+      mobile: "13800000001"
+      otp: "1111"  # 开发环境万能验证码
+
+  # 2. 测试环境 (QA)
+  test:
+    base_url: "http://192.168.1.148"
+    db_info:
+      host: "db-test.im-app.com"
+      port: 3306
+      user: "qa_ro_user" # 只读账号
+    #  测试账号
+    test_account:
+#      mobile: "13900000002"
+#      otp: "8888"
+
+  # 3. 预发布/验收环境 (UAT)
+  uat:
+    base_url: "https://api-uat.im-app.com"
+    timeout: 15 # UAT 环境可能较慢，覆盖公共配置
+    verify_ssl: true # UAT 需要开启证书校验
+    test_account:
+      mobile: "13900000003"
+      # UAT 无法使用万能验证码，可能需要预埋数据
+
+  # 4. 生产环境 (Prod) - 仅做监控或只读检查
+  prod:
+    base_url: "https://api.im-app.com"
+    verify_ssl: true
+
+
+
+

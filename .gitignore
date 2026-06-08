@@ -1,0 +1,44 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Pytest and cache
+.pytest_cache/
+.pytest/
+.cache/
+
+# Environments and Secrets
+.env
+.venv
+venv/
+ENV/
+env/
+
+# IDEs and Editors
+.vscode/
+.idea/
+.continue/
+.cursor/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Testing reports and logs
+logs/
+reports/
+screenshots/
+allure-results/
+allure-report/
+collected_tests.json
+pytest_error.txt
+locator_analysis_report.md
+
+# Build and package output
+build/
+dist/
+*.spec
+santiao-anti.zip

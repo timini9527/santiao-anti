@@ -1,0 +1,238 @@
+#  移动端登录自动化测试用例数据
+test_cases:
+  # --- 正常场景 ---
+  - id: TC_001
+    desc: "正常登录-合法账号"
+    username: "12345678"
+    password: "CorrectPassword123"
+    check_agreement: true
+    expected_toast: ""
+    target_page: "HomePage"
+
+  - id: TC_002
+    desc: "正常登录-合法手机号"
+    username: "13800138000"
+    password: "Password123"
+    check_agreement: true
+    expected_toast: ""
+    target_page: "HomePage"
+
+  # --- 异常及逻辑校验 ---
+  - id: TC_003
+    desc: "异常-密码错误"
+    username: "12345678"
+    password: "WrongPassword"
+    check_agreement: true
+    expected_toast: "密码错误"
+    target_page: "LoginPage"
+
+  - id: TC_004
+    desc: "异常-账号不存在"
+    username: "9999999999"
+    password: "AnyPassword"
+    check_agreement: true
+    expected_toast: "账号不存在"
+    target_page: "LoginPage"
+
+  - id: TC_005
+    desc: "逻辑-未勾选同意协议"
+    username: "12345678"
+    password: "CorrectPassword123"
+    check_agreement: false
+    expected_toast: "请勾选同意协议"
+    target_page: "LoginPage"
+
+  - id: TC_006
+    desc: "边界-账号为空"
+    username: ""
+    password: "Password123"
+    check_agreement: true
+    expected_toast: "请输入账号码" # 按钮可能置灰无法点击
+    target_page: "LoginPage"
+
+  - id: TC_007
+    desc: "边界-密码为空"
+    username: "12345678"
+    password: ""
+    check_agreement: true
+    expected_toast: "请输入密码"
+    target_page: "LoginPage"
+
+  - id: TC_008
+    desc: "边界-账号密码均为空"
+    username: ""
+    password: ""
+    check_agreement: true
+    expected_toast: "请输入账号"
+    target_page: "LoginPage"
+
+  # --- 格式校验 ---
+  - id: TC_009
+    desc: "格式-账号过短(小于5位)"
+    username: "1234"
+    password: "Password123"
+    check_agreement: true
+    expected_toast: "账号格式不正确"
+    target_page: "LoginPage"
+
+  - id: TC_010
+    desc: "格式-账号包含字母"
+    username: "abc12345"
+    password: "Password123"
+    check_agreement: true
+    expected_toast: "账号格式错误"
+    target_page: "LoginPage"
+
+  - id: TC_011
+    desc: "格式-账号包含特殊符号"
+    username: "123@456"
+    password: "Password123"
+    check_agreement: true
+    expected_toast: "账号格式错误"
+    target_page: "LoginPage"
+
+  - id: TC_012
+    desc: "格式-密码包含中文"
+    username: "12345678"
+    password: "密码123"
+    check_agreement: true
+    expected_toast: "密码错误"
+    target_page: "LoginPage"
+
+  # --- 交互校验 ---
+  - id: TC_013
+    desc: "交互-清除账号功能"
+    username: "12345678"
+    password: ""
+    action: "click_clear_btn"
+    expected_result: "input_should_be_empty"
+    target_page: "LoginPage"
+
+  - id: TC_014
+    desc: "交互-密码明文暗文切换"
+    username: "12345678"
+    password: "Password123"
+    action: "click_eye_icon"
+    expected_result: "password_visible"
+    target_page: "LoginPage"
+
+  # --- 安全与风控 ---
+  - id: TC_015
+    desc: "安全-频繁登录尝试"
+    username: "12345678"
+    password: "WrongPassword"
+    repeat_times: 10
+    expected_toast: "验证码验证"
+    target_page: "CaptchaPage"
+
+  - id: TC_016
+    desc: "安全-异地登录校验"
+    username: "12345678"
+    password: "CorrectPassword123"
+    env: "New_Device"
+    expected_toast: "设备锁验证"
+    target_page: "SecurityPage"
+
+  # --- 网络环境 ---
+  - id: TC_017
+    desc: "网络-断网尝试登录"
+    network: "OFF"
+    username: "12345678"
+    password: "CorrectPassword123"
+    expected_toast: "网络无法连接"
+    target_page: "LoginPage"
+
+  - id: TC_018
+    desc: "网络-弱网超时"
+    network: "2G_Poor"
+    username: "12345678"
+    password: "CorrectPassword123"
+    expected_toast: "网络超时"
+    target_page: "LoginPage"
+
+  # --- 边界延伸 ---
+  - id: TC_019
+    desc: "边界-账号首位为0"
+    username: "0123456"
+    password: "Password123"
+    check_agreement: true
+    expected_toast: "账号错误"
+    target_page: "LoginPage"
+
+  - id: TC_020
+    desc: "边界-密码超长(>32位)"
+    username: "12345678"
+    password: "a" * 33
+    check_agreement: true
+    expected_toast: "密码输入超限"
+    target_page: "LoginPage"
+
+  - id: TC_021
+    desc: "边界-密码为1位"
+    username: "12345678"
+    password: "1"
+    check_agreement: true
+    expected_toast: "密码错误"
+    target_page: "LoginPage"
+
+  # --- 其它入口 ---
+  - id: TC_022
+    desc: "跳转-点击找回密码"
+    action: "click_forget_pwd"
+    expected_url: "aq.qq.com"
+    target_page: "Webview"
+
+  - id: TC_023
+    desc: "跳转-点击新用户注册"
+    action: "click_register"
+    expected_page: "RegisterPage"
+    target_page: "RegisterPage"
+
+  - id: TC_024
+    desc: "跳转-点击隐私政策连接"
+    action: "click_privacy_link"
+    expected_page: "PrivacyDetail"
+    target_page: "Webview"
+
+  # --- 状态校验 ---
+  - id: TC_025
+    desc: "状态-冻结账号登录"
+    username: "frozen_account_id"
+    password: "CorrectPassword"
+    expected_toast: "该账号已被冻结"
+    target_page: "SecurityPage"
+
+  - id: TC_026
+    desc: "状态-回收账号登录"
+    username: "recycled_id"
+    password: "CorrectPassword"
+    expected_toast: "账号不存在"
+    target_page: "LoginPage"
+
+  # --- 系统兼容性相关 ---
+  - id: TC_027
+    desc: "中断-登录中途切换后台"
+    action: "login_then_pause"
+    username: "12345678"
+    password: "CorrectPassword"
+    expected_result: "继续登录或保持页面"
+    priority: "P2"
+
+  - id: TC_028
+    desc: "中断-系统权限弹窗拦截"
+    action: "handle_permission"
+    expected_result: "登录页显示正常"
+    priority: "P2"
+
+  - id: TC_029
+    desc: "输入-空格处理"
+    username: " 12345678 "
+    password: "Password123"
+    expected_result: "自动去空格并登录成功"
+    target_page: "HomePage"
+
+  - id: TC_030
+    desc: "UI-键盘弹出遮挡校验"
+    action: "open_keyboard"
+    expected_result: "登录按钮可见"
+    priority: "P3"

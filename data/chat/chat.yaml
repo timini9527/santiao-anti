@@ -1,0 +1,329 @@
+
+# ==========================================
+# Test Data
+# ==========================================
+#test_data:
+#  target_user: "0223OiOoio"
+#  messages:
+#    text_01: "Hello, Android Auto!"
+#    text_02: "自动化测试消息_UniqueId_12345"
+
+test_suite_info:
+  module: "Chat_Message_Send"
+  version: "2.0"
+  author: "CS"
+  send_user: "测试0221"
+  receiver: "测试0225"
+
+test_data:
+  # ----------------------------------------
+  # 1. 文本消息 (Text Message)
+  # ----------------------------------------
+  text_message:
+    - case_id: "MSG_TXT_001"
+      title: "私聊群聊发送普通纯文本"
+      priority: "P0"
+      tags: ["smoke", "text"]
+      context:
+        chat_type: "private and group"
+        target_user: "friend_01"
+      data:
+        msg_type: "text"
+        payload: "你好，这是一条自动化测试消息。"
+      expected:
+        ui_state: "sent_success" # 发送成功状态图标
+        expected_payload: "你好，这是一条自动化测试消息。"
+        db_save: true
+        toast: null
+
+    - case_id: "MSG_TXT_002"
+      title: "私聊群聊发送普通纯文本"
+      priority: "P0"
+      tags: ["smoke", "text"]
+      context:
+        chat_type: "private and group"
+        target_user: "friend_01"
+      data:
+        msg_type: "text"
+        payload: '{{"open_id": "huMKHqQJy6siVmc6cJfBj9JCLlQhgVXm", "Content-Type": "multipart/form-data", "imei": "NBQXE3LP-NZ4V6MJX-GY4DQMBY-G42DONZR-GVPVGQKO-KREUCT2U-IFGEWXZR-GAXDCLRR", "package": "com.santiaohms.im", "app_id": "qiyunxin", "version": "", "Authorization": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcHBfaWQiOiJxaXl1bnhpbiIsImV4cCI6MTc3Mjk2MTM3NiwiaWF0IjoxNzcwMzY4Nzc2LCJyX2lkIjoiNDU1YzBhMmU5ZTQwNGZlYWFkYTFiZmZkZWZlMTRhNWQiLCJzY29wZSI6IiIsInN1YiI6Imh1TUtIcVFKeTZzaVZtYzZjSmZCajlKQ0xsUWhnVlhtIn0.khUt}'
+      expected:
+        ui_state: "sent_success" # 发送成功状态图标
+        expected_payload: '{{"open_id": "huMKHqQJy6siVmc6cJfBj9JCLlQhgVXm", "Content-Type": "multipart/form-data", "imei": "NBQXE3LP-NZ4V6MJX-GY4DQMBY-G42DONZR-GVPVGQKO-KREUCT2U-IFGEWXZR-GAXDCLRR", "package": "com.santiaohms.im", "app_id": "qiyunxin", "version": "", "Authorization": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcHBfaWQiOiJxaXl1bnhpbiIsImV4cCI6MTc3Mjk2MTM3NiwiaWF0IjoxNzcwMzY4Nzc2LCJyX2lkIjoiNDU1YzBhMmU5ZTQwNGZlYWFkYTFiZmZkZWZlMTRhNWQiLCJzY29wZSI6IiIsInN1YiI6Imh1TUtIcVFKeTZzaVZtYzZjSmZCajlKQ0xsUWhnVlhtIn0.khUt}'
+        db_save: true
+        toast: null
+
+    - case_id: "MSG_TXT_003"
+      title: "私聊群聊发送包含 Emoji 和特殊符号的文本"
+      priority: "P1"
+      tags: ["compatibility", "text"]
+      context:
+        chat_type: "private and group"
+        target_group: "group_01"
+      data:
+        msg_type: "text"
+        payload: "Testing 🚀 with Emoji & Symbols: @#￥%……&*（）"
+      expected:
+        ui_state: "sent_success"
+        expected_payload: "Testing 🚀 with Emoji & Symbols: @#￥%……&*（）"
+
+    - case_id: "MSG_TXT_004"
+      title: "私聊群聊发送包含 Emoji 和特殊符号的文本"
+      priority: "P1"
+      tags: ["compatibility", "text"]
+      context:
+        chat_type: "private and group"
+        target_group: "group_01"
+      data:
+        msg_type: "text"
+        payload: "Testing 🚀 with Emoji & Symbols: @#￥%……&*（）qwertyuuioplkjhgfdsazxcvbnmm请问如果魄力和发撒下次吧把你们来了就会出现然而我问题哦漂亮美女谢谢咋滴放寒假了了几个llllllllmnbfdrfccvvv来了😇🙃🙃☺☺🙂😗😝😜😜😜😝😝🤨🤨🧐⊙﹏⊙(ーー;)ゞ◎Д◎ヾミ●﹏☉ミ⊙△⊙（／．＼）（ΩДΩ）(ノдヽ)🇪🇹🇮🇪🇦🇩🇦🇹🇦🇹🇦🇬🇦🇴🇦🇴🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🏳🏴🏴🏴‍☠️🇦🇱🇺🇳🚩🇩🇿🇦🇫🇦🇿🕓🕓🕘🕙🕙™️©️®️👁️‍🗨️📶📶🈁🔣😇🏍🚍🚍🚔😅🥹🥹😆😅😂🙁🙁☹️😟"
+      expected:
+        ui_state: "sent_success"
+        expected_payload: "Testing 🚀 with Emoji & Symbols: @#￥%……&*（）qwertyuuioplkjhgfdsazxcvbnmm请问如果魄力和发撒下次吧把你们来了就会出现然而我问题哦漂亮美女谢谢咋滴放寒假了了几个llllllllmnbfdrfccvvv来了😇🙃🙃☺☺🙂😗😝😜😜😜😝😝🤨🤨🧐⊙﹏⊙(ーー;)ゞ◎Д◎ヾミ●﹏☉ミ⊙△⊙（／．＼）（ΩДΩ）(ノдヽ)🇪🇹🇮🇪🇦🇩🇦🇹🇦🇹🇦🇬🇦🇴🇦🇴🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🏳🏴🏴🏴‍☠️🇦🇱🇺🇳🚩🇩🇿🇦🇫🇦🇿🕓🕓🕘🕙🕙™️©️®️👁️‍🗨️📶📶🈁🔣😇🏍🚍🚍🚔😅🥹🥹😆😅😂🙁🙁☹️😟"
+
+    - case_id: "MSG_TXT_005"
+      title: "发送识别为 URL 的文本"
+      priority: "P1"
+      context:
+        chat_type: "private and group"
+      data:
+        msg_type: "text"
+        payload: "https://www.google.com"
+      expected:
+        ui_state: "sent_success"
+        expected_payload: "https://www.google.com"
+        hyperlink_active: true # 验证是否渲染为超链接
+
+    - case_id: "MSG_TXT_006"
+      title: "发送识别为 URL 的文本"
+      priority: "P1"
+      context:
+        chat_type: "private and group"
+      data:
+        msg_type: "text"
+        payload: "https://www.pgyer.com/app/installSuccess/d61f51b2f2c62954232387f090bdbb49.json5?time=1770167497593&lang=cn&finalCode=727839494478&timeSign=796f6f677367656c65687875&installToken=C%2FmtmMEfC%2BkSlmJYwunMDOZzWsTFV5LxEh4tXv50nWEUatD0U23iJhIap2DcOxDN"
+      expected:
+        ui_state: "sent_success"
+        expected_payload: "https://www.pgyer.com/app/installSuccess/d61f51b2f2c62954232387f090bdbb49.json5?time=1770167497593&lang=cn&finalCode=727839494478&timeSign=796f6f677367656c65687875&installToken=C%2FmtmMEfC%2BkSlmJYwunMDOZzWsTFV5LxEh4tXv50nWEUatD0U23iJhIap2DcOxDN"
+        hyperlink_active: true # 验证是否渲染为超链接
+
+#    - case_id: "MSG_TXT_007"
+#      title: "发送超长文本 (边界值)"
+#      priority: "P2"
+#      tags: ["boundary"]
+#      context:
+#        chat_type: "private and group"
+#      data:
+#        msg_type: "text"
+#        # 假设最大长度为 5000，构造 5000 字
+#        generate_method: "random_string"
+#        length: 5000
+#      expected:
+#        ui_state: "sent_success"
+#        truncation: false
+
+  # ----------------------------------------
+  # 2. 图片消息 (Image Message)
+  # ----------------------------------------
+  image_message:
+    - case_id: "MSG_IMG_001"
+      title: "从相册发送 JPG 图片 (原图)"
+      priority: "P0"
+      tags: ["media", "smoke"]
+      context:
+        chat_type: "private"
+      data:
+        msg_type: "image"
+        source: "gallery"
+        file_name: "test_img_1080p.jpg"
+        is_original: true # 勾选原图
+      expected:
+        ui_state: "sent_success"
+        preview_load: true
+
+    - case_id: "MSG_IMG_002"
+      title: "发送 GIF 动图"
+      priority: "P2"
+      context:
+        chat_type: "group"
+      data:
+        msg_type: "image"
+        source: "gallery"
+        file_name: "funny_cat.gif"
+      expected:
+        ui_state: "sent_success"
+        animation_play: true # 验证是否自动播放
+
+  # ----------------------------------------
+  # 3. 表情消息 (Emoji Message)
+  # ----------------------------------------
+  emoji_message:
+    - case_id: "MSG_EMO_001"
+      title: "发送 1个 Emoji"
+      priority: "P0"
+      tags: ["media", "smoke"]
+      context:
+        chat_type: "private"
+      data:
+        msg_type: "emoji"
+        payload: "😃"
+      expected:
+        ui_state: "sent_success"
+        expected_payload: "😃"
+
+  # ----------------------------------------
+  # 3. 语音消息 (Voice Message)
+  # ----------------------------------------
+  voices_message:
+    - case_id: "MSG_VOC_001"
+      title: "发送正常语音 (10s)"
+      priority: "P0"
+      context:
+        chat_type: "private"
+      data:
+        msg_type: "voice"
+        action: "hold_to_talk"
+        duration: 10
+      expected:
+        ui_state: "sent_success"
+        voice_length_display: "10\""
+
+    - case_id: "MSG_VOC_002"
+      title: "语音录制时间过短 (<1s)"
+      priority: "P2"
+      context:
+        chat_type: "private"
+      data:
+        msg_type: "voice"
+        action: "hold_to_talk"
+        duration: 0.5
+      expected:
+        ui_state: "cancelled" # 不发送
+        toast: "说话时间太短"
+
+  # ----------------------------------------
+  # 4. 视频消息 (Video Message)
+  # ----------------------------------------
+  video_message:
+    - case_id: "MSG_VID_001"
+      title: "发送本地视频文件"
+      priority: "P1"
+      context:
+        chat_type: "group"
+      data:
+        msg_type: "video"
+        file_name: "demo_video_15s.mp4"
+        file_size: "5MB"
+      expected:
+        ui_state: "sent_success"
+        thumbnail_visible: true
+
+  # ----------------------------------------
+  # 5. 文件消息 (File Message)
+  # ----------------------------------------
+  file_message:
+    - case_id: "MSG_FILE_001"
+      title: "发送 PDF 文档"
+      priority: "P1"
+      context:
+        chat_type: "private"
+      data:
+        msg_type: "file"
+        file_name: "requirements_v1.0.pdf"
+        file_extension: "pdf"
+      expected:
+        ui_state: "sent_success"
+        icon_type: "pdf_icon"
+
+  # ----------------------------------------
+  # 6. 群聊特有功能 (Group Specific)
+  # ----------------------------------------
+  group_specific:
+    - case_id: "MSG_GRP_001"
+      title: "群聊 @单个成员"
+      priority: "P0"
+      context:
+        chat_type: "group"
+        target_group: "group_QA"
+      data:
+        msg_type: "text"
+        payload: "@User_B 请确认 bug"
+        mention_list: ["User_B_ID"]
+      expected:
+        ui_state: "sent_success"
+        highlight_mention: true
+
+    - case_id: "MSG_GRP_002"
+      title: "群聊 @所有人 (管理员权限)"
+      priority: "P1"
+      context:
+        chat_type: "group"
+        user_role: "admin"
+      data:
+        msg_type: "text"
+        payload: "@All 本周发布计划"
+        mention_type: "all"
+      expected:
+        ui_state: "sent_success"
+
+  # ----------------------------------------
+  # 7. 交互式消息 (Interaction)
+  # ----------------------------------------
+  interaction:
+    - case_id: "MSG_RPL_001"
+      title: "引用/回复某条消息"
+      priority: "P1"
+      context:
+        chat_type: "private"
+      data:
+        msg_type: "reply"
+        target_msg_id: "prev_msg_001" # 引用的消息ID
+        payload: "收到，明白。"
+      expected:
+        ui_state: "sent_success"
+        quote_area_visible: true # 验证引用区域显示
+
+    - case_id: "MSG_LOC_001"
+      title: "发送地理位置"
+      priority: "P2"
+      context:
+        chat_type: "private"
+      data:
+        msg_type: "location"
+        coordinates: [39.90, 116.40]
+        address: "Beijing, China"
+      expected:
+        ui_state: "sent_success"
+        map_preview: true
+
+  # ----------------------------------------
+  # 8. 异常与网络场景 (Abnormal/Network)
+  # ----------------------------------------
+  network:
+    - case_id: "MSG_ERR_001"
+      title: "断网状态下发送消息"
+      priority: "P1"
+      tags: ["negative", "network"]
+      context:
+        chat_type: "private"
+        network_condition: "offline"
+      data:
+        msg_type: "text"
+        payload: "Offline msg"
+      expected:
+        ui_state: "sending_fail" # 红叹号或转圈超时
+        allow_retry: true
+
+    - case_id: "MSG_ERR_002"
+      title: "发送空消息 (纯空格)"
+      priority: "P2"
+      tags: ["boundary"]
+      context:
+        chat_type: "private"
+      data:
+        msg_type: "text"
+        payload: "   "
+      expected:
+        action_result: "send_button_disabled" # 按钮不可点，或发送无效
+
+
+

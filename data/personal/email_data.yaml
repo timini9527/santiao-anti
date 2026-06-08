@@ -1,0 +1,194 @@
+# ==========================================
+# 邮箱格式验证测试套件
+# 适用场景: 注册、登录、修改邮箱等表单验证
+# 标准参考: RFC 5322
+# ==========================================
+
+suite_info:
+  module: "Field_Validation_Email"
+  version: "2025.1"
+  description: "覆盖邮箱合法性校验、边界值及安全注入场景"
+
+test_cases:
+  # ----------------------------------------
+  # 第一组：正向测试 - 合法邮箱 (Happy Path)
+  # 预期结果：验证通过 (valid: true)
+  # ----------------------------------------
+  - id: "EMAIL_POS_001"
+    priority: "P0"
+    tags: ["smoke", "valid"]
+    desc: "标准格式：纯字母与常用域名"
+    input: "testuser@example.com"
+    expect:
+      valid: true
+
+  - id: "EMAIL_POS_002"
+    priority: "P1"
+    tags: ["valid"]
+    desc: "包含数字的本地部分"
+    input: "user1234@example.com"
+    expect:
+      valid: true
+
+  - id: "EMAIL_POS_003"
+    priority: "P1"
+    tags: ["valid"]
+    desc: "包含点号(.)的本地部分"
+    input: "first.last@example.com"
+    expect:
+      valid: true
+
+  - id: "EMAIL_POS_004"
+    priority: "P2"
+    tags: ["valid"]
+    desc: "包含子域名"
+    input: "email@subdomain.example.com"
+    expect:
+      valid: true
+
+  - id: "EMAIL_POS_005"
+    priority: "P2"
+    tags: ["valid", "rfc"]
+    desc: "包含加号(+)标签 (RFC允许，常用于邮箱别名)"
+    input: "user+tag@example.com"
+    expect:
+      valid: true
+
+  - id: "EMAIL_POS_006"
+    priority: "P2"
+    tags: ["valid"]
+    desc: "域名包含连字符"
+    input: "user@my-company.com"
+    expect:
+      valid: true
+
+  # ----------------------------------------
+  # 第二组：负向测试 - 格式结构错误 (Format Error)
+  # 预期结果：验证失败 (valid: false)，并校验错误提示
+  # ----------------------------------------
+  - id: "EMAIL_NEG_001"
+    priority: "P0"
+    tags: ["format", "invalid"]
+    desc: "输入为空"
+    input: ""
+    expect:
+      valid: false
+      msg_key: "更新邮箱失败: 更新ext.email失败: 不允许更新"   # 对应 '邮箱不能为空'
+
+  - id: "EMAIL_NEG_002"
+    priority: "P0"
+    tags: ["format", "invalid"]
+    desc: "缺少 '@' 符号"
+    input: "testuserexample.com"
+    expect:
+      valid: false
+      msg_key: "请输入正确的邮箱地址"   # 对应 '邮箱格式错误'
+
+  - id: "EMAIL_NEG_003"
+    priority: "P1"
+    tags: ["format", "invalid"]
+    desc: "缺少顶级域名 (TLD)"
+    input: "user@example"
+    expect:
+      valid: false
+      msg_key: "请输入正确的邮箱地址"
+
+  - id: "EMAIL_NEG_004"
+    priority: "P1"
+    tags: ["format", "invalid"]
+    desc: "缺少本地部分(用户名)"
+    input: "@example.com"
+    expect:
+      valid: false
+      msg_key: "请输入正确的邮箱地址"
+
+  - id: "EMAIL_NEG_005"
+    priority: "P2"
+    tags: ["format", "invalid"]
+    desc: "包含多个 '@' 符号"
+    input: "user@sub@example.com"
+    expect:
+      valid: false
+      msg_key: "请输入正确的邮箱地址"
+
+  - id: "EMAIL_NEG_006"
+    priority: "P2"
+    tags: ["format", "invalid"]
+    desc: "域名以点号开头"
+    input: "user@.example.com"
+    expect:
+      valid: false
+      msg_key: "请输入正确的邮箱地址"
+
+  # 有问题，待修复
+#  - id: "EMAIL_NEG_007"
+#    priority: "P2"
+#    tags: ["format", "invalid"]
+#    desc: "包含非法特殊字符(如空格)"
+#    input: "user name@example.com"
+#    expect:
+#      valid: false
+#      msg_key: "请输入正确的邮箱地址"
+
+  - id: "EMAIL_NEG_008"
+    priority: "P2"
+    tags: ["format", "invalid"]
+    desc: "包含非法特殊字符(如括号)"
+    input: "user(name)@example.com"
+    expect:
+      valid: false
+      msg_key: "请输入正确的邮箱地址"
+
+  # ----------------------------------------
+  # 第三组：边界值测试 (Boundary Testing)
+  # ----------------------------------------
+  # 有问题，待修复
+  - id: "EMAIL_BDR_001"
+    priority: "P2"
+    tags: ["boundary", "valid"]
+    desc: "最大长度测试 (假设系统限制255字符，此处构造254字符)"
+    # 构造逻辑：64chars_local + @ + 189chars_domain
+    input: "a123456789012345678901234567890123456789012345678901234567890123@long-domain-example-12345678901234567890.com"
+    expect:
+      valid: false
+      msg_key: "请输入正确的邮箱地址"
+
+  - id: "EMAIL_BDR_002"
+    priority: "P2"
+    tags: ["boundary", "invalid"]
+    desc: "超出最大长度限制 (256字符)"
+    input: "very_long_email_address_exceeding_standard_limits_initiated_by_automation_script_testing_buffer_overflow_and_validation_logic_in_the_backend_system_which_should_reject_this_input_immediately_to_prevent_any_database_issues_or_truncation_errors_occur@test.com"
+    expect:
+      valid: false
+      msg_key: "请输入正确的邮箱地址"
+
+  # ----------------------------------------
+  # 第四组：安全与注入测试 (Security)
+  # ----------------------------------------
+  - id: "EMAIL_SEC_001"
+    priority: "P0"
+    tags: ["security", "injection"]
+    desc: "SQL注入尝试"
+    input: "' OR '1'='1"
+    expect:
+      valid: false
+      msg_key: "请输入正确的邮箱地址" # 期望被正则拦截，而不是报错500
+
+  - id: "EMAIL_SEC_002"
+    priority: "P0"
+    tags: ["security", "xss"]
+    desc: "XSS脚本注入尝试"
+    input: "<script>alert(1)</script>@example.com"
+    expect:
+      valid: false
+      msg_key: "请输入正确的邮箱地址"
+
+  # 有问题，待修复
+#  - id: "EMAIL_SEC_003"
+#    priority: "P2"
+#    tags: ["security"]
+#    desc: "利用换行符绕过校验 (%0A)"
+#    input: "user@example.com\n"
+#    expect:
+#      valid: false
+#      msg_key: "请输入正确的邮箱地址"

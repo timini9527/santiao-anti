@@ -1,0 +1,35 @@
+# ============================================================
+# 全局用例重跑策略配置
+# 说明：本配置文件定义了 pytest-rerunfailures 的全局行为。
+#       pytest.ini 中的 --reruns / --only-rerun 负责触发重跑，
+#       本配置通过 conftest.py 的 Hook 提供增强控制（日志、上限、Allure 标记）。
+# ============================================================
+
+rerun:
+  # --- 基本参数 ---
+  max_reruns: 2               # 单条用例最大重跑次数（与 pytest.ini 中 --reruns 保持一致）
+  reruns_delay: 5             # 每次重跑前的等待时间（秒），让设备状态恢复
+  session_max_reruns: 20      # 单次测试会话中允许的重跑总次数上限（防止整体雪崩）
+
+  # --- 触发重跑的异常白名单 ---
+  # 仅当失败原因匹配以下异常时才进行重跑；
+  # 如果是 AssertionError（逻辑 Bug）等不在白名单内的异常，直接判定失败，不浪费时间。
+  only_rerun_exceptions:
+    - "selenium.common.exceptions.NoSuchElementException"          # 元素未找到（页面加载延迟）
+    - "selenium.common.exceptions.StaleElementReferenceException"  # 元素过期引用（DOM 刷新）
+    - "selenium.common.exceptions.TimeoutException"                # 显式等待超时
+    - "selenium.common.exceptions.WebDriverException"              # 驱动级通信异常
+    - "urllib3.exceptions.ReadTimeoutError"                         # HTTP 通信读取超时
+    - "urllib3.exceptions.MaxRetryError"                            # HTTP 连接重试耗尽
+    - "appium.webdriver.common.exceptions.WebDriverException"      # Appium 驱动异常
+
+  # --- 不触发重跑的异常黑名单（即使匹配白名单也会被拦截） ---
+  # 这些异常代表确定性 Bug，重跑毫无意义
+  never_rerun_exceptions:
+    - "AssertionError"        # 断言失败 = 业务逻辑 Bug
+    - "pytest.fail"           # 手动标记失败
+    - "KeyboardInterrupt"     # 人工中断
+
+  # --- 日志与报告 ---
+  log_rerun: true             # 是否在日志中记录每次重跑的详情
+  allure_label: true          # 是否在 Allure 报告中为重跑用例添加 @flaky 标签

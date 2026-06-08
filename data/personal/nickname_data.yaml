@@ -1,0 +1,80 @@
+# ==========================================
+# 昵称格式验证测试套件
+# 适用场景: 昵称修改表单验证
+# ==========================================
+
+suite_info:
+  module: "Field_Validation_Nickname"
+  version: "2025.1"
+  description: "昵称校验场景"
+
+# 昵称修改测试数据
+test_cases:
+  # 成功用例
+  - id: "NICKNAME_POS_001"
+    priority: "P0"
+    tags: ["smoke", "valid"]
+    input_val: "A"
+    expected:
+      valid: true
+    msg: ""
+    desc: "1个字符A"
+
+  - id: "NICKNAME_POS_002"
+    priority: "P0"
+    tags: ["smoke", "valid"]
+    input_val: "啊"
+    expected:
+      valid: true
+    msg: ""
+    desc: "1个中文字"
+
+  - id: "NICKNAME_POS_003"
+    priority: "P0"
+    tags: ["smoke", "valid"]
+    input_val: "1234567890"
+    expected:
+      valid: true
+    msg: ""
+    desc: "10个纯数字"
+
+  - id: "NICKNAME_POS_004"
+    priority: "P0"
+    tags: ["smoke", "valid"]
+    input_val: "E!😊#12345"
+    expected:
+      valid: true
+    msg: ""
+    desc: "10个混合字符"
+
+  - id: "NICKNAME_POS_007"
+    priority: "P0"
+    tags: [ "boundary", "max_length" ]
+    input_val: "12345a$！*01"
+    expected:
+      valid: true
+      expected_val: "12345a$！*0" # 期望最终保存的 10 个字符
+    msg: ""
+    desc: "输入11个字符，验证输入框最大长度为10，超过部分不允许输入"
+
+  # 失败用例
+  - id: "NICKNAME_POS_005"
+    priority: "P0"
+    tags: ["format", "valid"]
+    input_val: ""
+    expected:
+      valid: false
+    msg: "昵称不能为空"
+    desc: "不输入数据"
+
+  - id: "NICKNAME_POS_006"
+    priority: "P0"
+    tags: ["format", "valid"]
+    input_val: "        "
+    expected:
+      valid: false
+    msg: "昵称不能为空"
+    desc: "输入10个以内空格"
+
+
+

@@ -1,0 +1,99 @@
+# 表情包发送核心业务测试用例
+# 设计理念：数据驱动测试 (DDT)，将测试逻辑与测试数据完全解耦
+# 参数说明：
+#   - pkg_index:   表情包在输入面板的索引定位（从 1 开始计数，-1 代表最后一个）。可为单整数，或列表传递多个并发。
+#   - strategy:    发送策略 ("first" / "sequential" / "random" / "absolute_last" / "spam")
+#   - count:       发送表情的数量（仅涉及多次发送的策略生效）
+#   - network:     网络状态注入 ("normal" 正常 / "offline" 完全断网等)
+#   - post_action: 后置行为断言及链路清理 ("none" 无操作 / "revoke" 撤回消息 / "verify_fail" 验证失败图标等)
+#   - desc:        用例详情描述，会直接注入到 Allure 报告中作为标题
+
+send_emoji_package:
+  # ==========================================
+  # 1. 基础功能与UI边界测试 (正常网络, 无特殊后置动作)
+  # ==========================================
+  - desc: "发送首个表情包的首个表情贴图"
+    pkg_index: 1
+    strategy: "first"
+    count: 1
+    network: "normal"
+    post_action: "none"
+
+  - desc: "在首个表情包中随机抽取并发送 2 个贴图"
+    pkg_index: 1
+    strategy: "random"
+    count: 2
+    network: "normal"
+    post_action: "none"
+
+  - desc: "验证面板自动向下滑动：发送首个表情包的最后一个贴图"
+    pkg_index: 1
+    strategy: "absolute_last"
+    count: 1
+    network: "normal"
+    post_action: "none"
+
+  - desc: "在第二个表情包中连续发送前 3 个贴图"
+    pkg_index: 2
+    strategy: "sequential"
+    count: 3
+    network: "normal"
+    post_action: "none"
+
+  - desc: "在第三个表情包中连续发送前 3 个贴图"
+    pkg_index: 3
+    strategy: "sequential"
+    count: 3
+    network: "normal"
+    post_action: "none"
+
+  - desc: "跨包发送测试：在第1、2、3个表情包中分别连续发送前 3 个贴图"
+    pkg_index: [1, 2, 3] # 支持传入列表以实现跨包的复杂场景
+    strategy: "sequential"
+    count: 3
+    network: "normal"
+    post_action: "none"
+
+  - desc: "验证底栏 Tab 自动左滑：在最后一个表情包发送首个贴图"
+    pkg_index: -1
+    strategy: "first"
+    count: 1
+    network: "normal"
+    post_action: "none"
+
+  # ==========================================
+  # 2. 极限点击与并发防抖测试 (高负载场景)
+  # ==========================================
+  - desc: "并发抗压测试 (中低负载)：极速连击同一个表情 10 次，验证消息队列与气泡顺序"
+    pkg_index: 1
+    strategy: "spam"
+    count: 10
+    network: "normal"
+    post_action: "none"
+
+  - desc: "并发抗压测试 (超高负载)：极速连击同一个表情 100 次，验证端侧防抖或系统是否 Crash"
+    pkg_index: 2
+    strategy: "spam"
+    count: 100
+    network: "normal"
+    post_action: "none"
+
+  # ==========================================
+  # 3. 核心业务联动 (消息流转与清理回收验证)
+  # ==========================================
+  # - desc: "核心链路联动：发送贴图后，长按撤回该表情包消息以验证状态变更"
+  #   pkg_index: 1
+  #   strategy: "random"
+  #   count: 1
+  #   network: "normal"
+  #   post_action: "revoke"
+
+  # ==========================================
+  # 4. 异常状态注入 (弱网或离线操作拦截验证)
+  # ==========================================
+  # - desc: "网络异常注入：断网状态下发送表情包贴图，验证拦截失败的红色感叹号渲染"
+  #   pkg_index: 1
+  #   strategy: "first"
+  #   count: 1
+  #   network: "offline"
+  #   post_action: "verify_fail"

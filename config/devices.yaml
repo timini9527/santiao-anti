@@ -1,0 +1,59 @@
+# devices.yaml
+server:
+  host: "127.0.0.1"
+  port: 4723
+
+app:
+  # --- 基础引擎与应用配置 ---
+  "appium:automationName": "UiAutomator2"
+  "appium:appPackage": "com.santiaotalk.im"
+  "appium:appActivity": "com.vvchat.vcapp.activity.MainActivity"
+  # --- 稳定性与超时控制（已修正单位和合理值） ---
+  "appium:uiautomator2ServerLaunchTimeout": 30000  # 【毫秒】等待UIA2服务启动（原6000太短，改为30000防报错）
+  "appium:adbExecTimeout": 20000                   # 【毫秒】ADB执行超时时间（原6000极易导致adb卡死，改为20000）
+  "appium:newCommandTimeout": 120                  # 【秒】！新命令超时时间（原6000是100分钟，现改为120秒防资源死锁）
+  "appium:ignoreHiddenApiPolicyError": true        # 【关键】忽略修改隐藏 API 策略时的权限错误 (解决 Security exception)
+  # --- 状态与权限管理 ---
+  "appium:noSign": true                            # 跳过 APK 重签名 (true: 跳过, false: 不跳过)
+  "appium:noReset": true                           # 保持应用状态 (true: 保持, false: appium:)
+  "appium:forceAppLaunch": true
+  "appium:autoGrantPermissions": true              # 自动授予应用所需权限 (true: 自动, false: 手动)
+  "appium:dontStopAppOnReset": false               # 热启动模式 (true: 不停止 App, false: 强杀并重启)
+  # --- 启动提速与运行优化 ---
+  "appium:skipServerInstallation": false            # 跳过服务安装 (true: 跳过, false: 安装)
+  "appium:skipDeviceInitialization": true          # 跳过设备初始化 (true: 跳过, false: 初始化)
+  "appium:disableWindowAnimation": true            # 禁用系统动画 (true: 禁用, false: 启用)
+  "appium:appWaitForLaunch": false                 # 是否等待应用启动完成 (true: 等待, false: 不等待)
+  # --- Intent 显式启动配置（针对部分国产定制系统的限制） ---
+  "appium:intentAction": "android.intent.action.MAIN"
+  "appium:intentCategory": "android.intent.category.LAUNCHER"
+  # --- DOM 树与 UI 检索优化（IM 核心提速） ---
+  "appium:ignoreUnimportantViews": false           # 忽略无关视图以优化 DOM 树 (true: 忽略, false: 不忽略)
+  "appium:waitForIdleTimeout": 0                  # 核心：不要等UI空闲，直接找元素！无视 IM 后台心跳包
+
+devices:
+  sender:
+    platformName: "Android"
+    # platformVersion: "10.0"
+    # udid: "AKC0218511000031"
+    # udid: "daccd58aaff4"
+    # platformVersion: "12.0"
+    udid: "emulator-5554"  # 模拟器
+    deviceName: "SenderPhone"
+    systemPort: 8200         # 关键！Android UIA2 通信端口，必须唯一
+    appiumServerUrl: "http://127.0.0.1:4723"
+    # appiumServerUrl: "http://127.0.0.1:4723/wd/hub"
+    # wdaLocalPort: 8100     # 如果是 iOS，需要配置这个
+
+
+  receiver:
+    platformName: "Android"
+#    platformVersion: "11.0"
+#    udid: "dfa6dc15"      # 通过 adb devices 获取
+    platformVersion: "12.0"
+    udid: "emulator-5556"  # 模拟器
+    deviceName: "ReceiverPhone"
+    systemPort: 8201         # 关键！必须与 Sender 不同
+    appiumServerUrl: "http://127.0.0.1:4724/wd/hub" # 建议启动两个Appium服务避免拥堵
+    # wdaLocalPort: 8101     # iOS 必须不同
+

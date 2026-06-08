@@ -1,0 +1,42 @@
+from appium.webdriver.common.appiumby import AppiumBy
+from locators.common.common_locator import CommonLocator
+from locators.chat.chat_setting_locator import ChatSettingLocator
+
+
+class GroupSettingLocator(ChatSettingLocator):
+    """群聊设置/群管理页面定位器"""
+
+    PACKAGE_ID = CommonLocator.PACKAGE_ID
+
+    # 成员区域
+    FRIEND_HEADER = (AppiumBy.ID, f"{PACKAGE_ID}/friend_header")                                        # 群成员头像
+    FRIEND_NAME = (AppiumBy.ID, f"{PACKAGE_ID}/friend_name")                                            # 群成员名称
+    
+    # 基础信息设置项
+    SETTING_CHAT_GROUP_CODE = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_groupCode")                     # 群聊二维码
+    SETTING_CHAT_GROUP_ANNOUNCEMENT = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_groupAnnouncement")     # 群公告
+    SETTING_CHAT_GROUP_REMARKS = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_groupRemarks")               # 群备注
+    SETTING_CHAT_GROUP_MANAGER = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_groupManager")               # 群管理
+    SETTING_CHAT_GROUP_HEADER = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_groupHeader")                 # 群头像
+    SETTING_CHAT_GROUP_NAME = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_groupName")                     # 群聊名称
+    SETTING_SEARCH_GROUPCHATMESSAGE = (AppiumBy.ID, f"{PACKAGE_ID}/setting_search_groupChatMessage")    # 查找聊天记录
+    
+    # 其他设置项
+    SETTING_CHAT_DND = ChatSettingLocator.SETTING_CHAT_REMIND                                           # 免打扰
+    SETTING_CHAT_SETTOP = ChatSettingLocator.SETTING_TOP_CHAT                                           # 置顶聊天
+    SETTING_CHAT_PWD = ChatSettingLocator.SETTING_CHAT_PWD                                              # 聊天密码
+    SETTING_CHAT_NAME_FORME = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_name_forMe")                    # 设置群聊名称(针对自己)
+    SETTING_CHAT_SHOW_MEMBER_NAME = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_showMemberName")          # 显示群成员名称
+
+    
+    # 底部危险操作
+    SETTING_CLEAR_GROUPCHATMESSAGE = (AppiumBy.ID, f"{PACKAGE_ID}/setting_clear_groupChatMessage")      # 清空聊天记录
+    SETTING_GROUP_DELETE_AND_OUT = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_groupDeleteAndOut")        # 删除并退出
+    SETTING_GROUP_DISMISS = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_groupDismiss")                    # 解散群聊
+
+    # 通用弹窗
+    TV_CONFIRM = CommonLocator.TEXT_CONFIRM_BTN                                                          # 确认按钮
+    TV_CANCEL = CommonLocator.TEXT_CANCEL_BTN                                                            # 取消按钮 
+
+
+

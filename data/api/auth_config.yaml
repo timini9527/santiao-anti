@@ -1,0 +1,13 @@
+project_name: api
+timeout: 10
+verify: false
+headers:
+  app_id: qiyunxin
+  version: 10.0.6
+  IMEI: NFHVGIBR-HAXDILRR-L4YTONJW-HA4DSNJX-G43TQMS7-KNEUOVKB-KRAUYS27-GEXDALRQ
+  package: com.santiaotalk.im
+  Content-Type: application/json;charset=UTF-8
+  Accept: application/json
+  User-Agent: AutoTest/1.0 (Python-Requests)
+  Authorization: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcHBfaWQiOiJxaXl1bnhpbiIsImRldmljZV90eXBlIjoiIiwiZXhwIjoxNzcwNzk1MDc4LCJpYXQiOjE3NjgyMDI0NzgsInJfaWQiOiI2ZTc3MTA4OGM1Mzk0OWY4YmViYjhjOTA1MWU1NjJiZCIsInNjb3BlIjoiIiwic2VlZCI6IjlkNWIyMTFkZDU1NzQ3MmM5ZGM1MmFkYTRkMjViNzY2Iiwic3ViIjoiVlNudjJKZlpZQUlua0U1SnJDbnl2OTZVRnJUMlVhTk4ifQ.EtlRVn2N7i2R3yyvjWW2t38-vDAQEM48PwdX-dS8kI-0U71n7xXL-H5veNNmaLPhkDNi5bMk8eEbNBW0-dluI3ZVmno9uJyb22LGtmlw8kLi4WabG4GOv7-63sjuiEcZkrPLM8VHpZDHmgwp-89wQYnAP8ULbBOBwRCFHUr2v5Q
+  open_id: VSnv2JfZYAInkE5JrCnyv96UFrT2UaNN

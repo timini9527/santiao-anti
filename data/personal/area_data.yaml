@@ -1,0 +1,49 @@
+# 地区一二级选择
+area_selection_test_data:
+  # 测试用例1：正常选择省份和城市
+  - case_name: "正常选择省份和城市"
+    province: "广东省"
+    city: "深圳市"
+    expected_result: "广东省深圳市"
+  
+  # 测试用例2：选择省份后取消城市选择
+  - case_name: "选择省份后取消城市选择"
+    province: "北京市"
+    city: null
+    expected_result: "请选择城市"
+  
+  # 测试用例3：只选择省份不选择城市（如果业务逻辑允许）
+  - case_name: "只选择省份不选择城市"
+    province: "上海市"
+    city: ""
+    expected_result: "请选择城市"
+  
+  # 测试用例4：选择特殊地区（如直辖市）
+  - case_name: "选择直辖市"
+    province: "重庆市"
+    city: "重庆市"
+    expected_result: "重庆市重庆市" # 或根据实际业务逻辑调整
+  
+  # 测试用例5：选择港澳台地区
+  - case_name: "选择港澳台地区"
+    province: "香港特别行政区"
+    city: "香港岛"
+    expected_result: "香港特别行政区香港岛"
+  
+  # 测试用例6：边界情况 - 空值
+  - case_name: "空值测试"
+    province: null
+    city: null
+    expected_result: "请选择省份"
+  
+  # 测试用例7：边界情况 - 特殊字符
+  - case_name: "特殊字符测试"
+    province: "测试省@"
+    city: "测试市#"
+    expected_result: "输入无效，请重新选择"
+  
+  # 测试用例8：省份城市不匹配
+  - case_name: "省份城市不匹配"
+    province: "广东省"
+    city: "北京市"
+    expected_result: "城市与所选省份不匹配"

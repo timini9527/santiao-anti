@@ -1,0 +1,194 @@
+# 验证码登录模块测试用例数据
+# 设计原则：数据驱动测试 (DDT)
+# 覆盖维度：成功路径 / 协议约束 / 账号异常 / 验证码异常 / 格式边界 / 安全防护
+# 执行顺序建议：按 id 顺序执行
+# 关于 trigger_verify: 当输入的账号长度 >= 6 时，系统会验证手机号，否则将被早期拦截
+# expected_agreement_title: 未勾选协议时，期望弹出的协议内容标题
+# expected_send_toast: 点击获取验证码后，预期的 Toast 提示（如 "验证码已发送" 或 "该手机号未注册"）
+
+verification_cases:
+
+  # ==========================================
+  # V1. 成功登录场景
+  # ==========================================
+  - id: V1_TC01
+    desc: "合法手机号 + 正确验证码 + 勾选协议 → 登录成功"
+    account: "17708384000"
+    verify_code: "1234" 
+    check_agreement: true
+    trigger_verify: true
+    expected_send_toast: "验证码已发送"
+    expected_status: "success"
+    expected_toast: ""
+    priority: P0
+
+  # ==========================================
+  # V2. 协议约束场景
+  # ==========================================
+  - id: V2_TC01
+    desc: "未勾选用户协议 → 弹出隐私协议提示框拦截流程"
+    account: "17708384120"
+    verify_code: "1234"
+    check_agreement: false
+    trigger_verify: true
+    popup_action: "" # 不处理，仅验证弹窗弹出
+    expected_agreement_title: "用户协议及隐私政策"
+    expected_status: "fail"
+    expected_toast: ""
+    priority: P0
+
+  - id: V2_TC02
+    desc: "未勾选协议弹窗后点击「同意」→ 继续发验证码流程"
+    account: "17708384120"
+    verify_code: "1234"
+    check_agreement: false
+    trigger_verify: true
+    popup_action: "agree"
+    expected_agreement_title: "用户协议及隐私政策"
+    expected_send_toast: "验证码已发送"
+    expected_status: "success"
+    expected_toast: ""
+    priority: P0
+
+  - id: V2_TC03
+    desc: "未勾选协议弹窗后点击「拒绝」→ 拦截发验证码"
+    account: "17708384120"
+    verify_code: "1234"
+    check_agreement: false
+    trigger_verify: true
+    popup_action: "reject"
+    expected_agreement_title: "用户协议及隐私政策"
+    expected_status: "fail"
+    expected_toast: ""
+    priority: P1
+
+  # ==========================================
+  # V3. 账号异常场景 (仅展示精简后的代表)
+  # ==========================================
+  - id: V3_TC01
+    desc: "手机号为空 → 拦截点击验证码按钮 (位数<6, 不触发校验)"
+    account: ""
+    verify_code: "1234"
+    check_agreement: true
+    trigger_verify: false
+    expected_status: "fail"
+    expected_toast: "请输入手机号"
+    priority: P0
+
+  # 短信验证登录及注册，暂时不测 TODO：
+  # - id: V3_TC02
+  #   desc: "手机号不存在（未注册）→ 拦截或进入注册指引 (位数>=6, 触发校验)"
+  #   account: "13900000000"
+  #   verify_code: "1234"
+  #   check_agreement: true
+  #   trigger_verify: true
+  #   expected_send_toast: "验证码已发送"
+  #   expected_status: "fail"
+  #   expected_toast: ""
+  #   priority: P0
+  
+  - id: V3_TC03
+    desc: "手机号长度不足（如 10 位）→ 触发校验后报错"
+    account: "1770838421" 
+    verify_code: "1234"
+    check_agreement: true
+    trigger_verify: true
+    expected_send_toast: "手机号不合法，请更换手机号！"
+    expected_status: "fail"
+    expected_toast: ""
+    priority: P1
+  
+  - id: V3_TC04
+    desc: "手机号长度超限（如 12 位）→ 截断末尾或提示异常"
+    account: "177083841201" 
+    verify_code: "1234"
+    check_agreement: true
+    trigger_verify: true
+    expected_send_toast: "验证码已发送" 
+    expected_status: "success" 
+    expected_toast: ""
+    priority: P1
+
+  - id: V3_TC05
+    desc: "手机号包含非数字字符 → 触发校验后报错"
+    account: "177AAAA110"
+    verify_code: "1234"
+    check_agreement: true
+    trigger_verify: true
+    expected_send_toast: "手机号不合法，请更换手机号！"
+    expected_status: "fail"
+    expected_toast: ""
+    priority: P2
+
+  - id: V3_TC06
+    desc: "手机号位数小于6位 → 不触发手机号验证直接拦截"
+    account: "17708"
+    verify_code: "1234"
+    check_agreement: true
+    trigger_verify: false
+    expected_status: "fail"
+    expected_toast: "请输入正确手机号" 
+    priority: P1
+
+
+  # ==========================================
+  # V4. 验证码验证异常场景
+  # ==========================================
+  - id: V4_TC01
+    desc: "验证码为空 → 无法提交表单"
+    account: "17708384120"
+    verify_code: ""
+    check_agreement: true
+    trigger_verify: true
+    expected_send_toast: "验证码已发送"
+    expected_status: "fail"
+    expected_toast: "验证码已发送"  
+    priority: P0
+
+  - id: V4_TC02
+    desc: "输入错误的验证码 → 后端强拒绝"
+    account: "17708384120"
+    verify_code: "1111"
+    check_agreement: true
+    trigger_verify: true
+    expected_send_toast: "验证码已发送"
+    expected_status: "fail"
+    expected_toast: "验证码错误！" 
+    priority: P0
+    
+  - id: V4_TC03
+    desc: "输入过期的验证码 → 后端强拒绝"
+    account: "17708384123"
+    verify_code: "1234"
+    check_agreement: true
+    trigger_verify: true
+    expected_send_toast: "验证码已发送"
+    expected_status: "fail"
+    expected_toast: "验证码错误！" 
+    priority: P1
+
+
+  # ==========================================
+  # V6. 安全与注入防护场景
+  # ==========================================
+  - id: V6_TC01
+    desc: "手机号输入 SQL 注入相关字符串"
+    account: "' OR '1'='1"
+    verify_code: "1234"
+    check_agreement: true
+    trigger_verify: true
+    expected_send_toast: "手机号不合法，请更换手机号！"
+    expected_status: "fail"
+    expected_toast: ""
+    priority: P2
+
+  - id: V6_TC02
+    desc: "手机号输入 XSS 跨站脚本"
+    account: "<script>alert(1)</script>"
+    verify_code: "1234"
+    check_agreement: true
+    trigger_verify: true
+    expected_send_toast: "手机号不合法，请更换手机号！"
+    expected_status: "fail"
+    expected_toast: ""
+    priority: P2
