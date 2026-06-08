@@ -5,7 +5,7 @@ from pages.main.main_page import MainPage
 from pages.chat.chat_list_page import ChatListPage
 from pages.collection.collection_page import CollectionPage
 from core.logger_utils import logger
-from pages.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
+from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
 import time
 
 

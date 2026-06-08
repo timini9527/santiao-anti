@@ -9,7 +9,7 @@ from pages.groups.group_setting_page import GroupSettingPage
 from pages.chat.chat_page import ChatPage
 from pages.chat.chat_list_page import ChatListPage
 from pages.common.contact_select_page import ContactSelectPage
-from pages.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2
+from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2
 
 @allure.epic("IM核心功能测试")
 @allure.feature("群聊模块-群管理")

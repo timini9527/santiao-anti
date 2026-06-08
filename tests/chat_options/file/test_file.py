@@ -6,7 +6,7 @@ from pages.main.main_page import MainPage
 from pages.chat.chat_list_page import ChatListPage 
 from pages.chat.chat_page import ChatPage
 from pages.chat_options.file.chat_file_page import ChatFilePage
-from pages.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
+from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
 
 @allure.epic("IM核心功能测试")
 @allure.feature("聊天面板-文件")

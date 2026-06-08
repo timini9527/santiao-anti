@@ -13,7 +13,7 @@ from pages.chat.chat_page import ChatPage
 @dataclass
 class MessageStrategy:
     type_name: str                  # 消息类型名称
-    expected_menus: List[str]       # 长按时预期弹出的菜单项
+    expected_menus: List[str]       # 长按时制造数据并弹出菜单项的预期选项
     prepare_action_name: str        # 造数据对应的方法名
 
 class MessageTypeStrategy:
@@ -32,10 +32,6 @@ class MessageTypeStrategy:
     @classmethod
     def get_strategy(cls, msg_type: str) -> MessageStrategy:
         for attr_name, strategy in cls.__dict__.items():
-            # 1. isinstance(strategy, MessageStrategy): 
-            #    过滤掉类中的内置属性（如 __doc__, __module__ 等）和方法，只查找我们定义的 MessageStrategy 实例
-            # 2. strategy.type_name == msg_type.lower(): 
-            #    将传入的字符串转为小写进行比对，实现大小写不敏感的匹配（例如传 "TEXT" 或 "text" 都能匹配到）
             if isinstance(strategy, MessageStrategy) and strategy.type_name == msg_type.lower():
                 return strategy
         raise ValueError(f"❌ 不支持的消息策略类型: {msg_type}")
@@ -50,37 +46,14 @@ class ChatMessageBuilder(ChatPage):
     """
     
     def build_message(self, strategy_name: str, **kwargs):
-        """
-        根据策略名称，自动分发执行对应的发送逻辑。
-        
-        核心机制说明：
-        1. 先通过 MessageTypeStrategy.get_strategy() 拿到策略对象（如 TEXT 策略）
-        2. 策略对象中包含一个字符串属性 prepare_action_name（如 "_prepare_text_msg"）
-        3. 通过 Python 内置的 getattr() 反射机制，将这个字符串"变"成当前类中真正可调用的方法
-        4. 最后执行该方法，完成消息的发送
-
-        举例：
-            strategy_name = "text"
-            → strategy.prepare_action_name = "_prepare_text_msg"
-            → getattr(self, "_prepare_text_msg") → 返回 self._prepare_text_msg 方法对象
-            → handler(**kwargs) 等价于 self._prepare_text_msg(**kwargs)
-
-        这样做的好处是：新增消息类型时，只需在 MessageTypeStrategy 中添加一条配置，
-        并在本类中实现对应的 _prepare_xxx_msg 方法即可，无需修改 build_message 本身。
-        """
-        # 1. 根据传入的类型名（如 "text"、"image"），从策略枚举中获取完整的策略配置
         strategy = MessageTypeStrategy.get_strategy(strategy_name)
         
         logger.info(f"🧪 [Setup] - DataBuilder 正在准备测试数据，类型: {strategy.type_name}")
         
-        # 2. 反射获取方法：将策略中配置的方法名字符串（如 "_prepare_text_msg"）
-        #    动态解析为本类中实际存在的方法对象。如果找不到则返回 None。
         handler = getattr(self, strategy.prepare_action_name, None)
         if not handler:
             raise NotImplementedError(f"❌ 未找到对应的构造方法: {strategy.prepare_action_name}")
         
-        # 3. 执行该方法，**kwargs 会透传给具体的 _prepare_xxx_msg，
-        #    使调用方可以灵活定制参数（如 content、hold_time、contact_name 等）
         handler(**kwargs)
         time.sleep(0.5)
 
@@ -185,12 +158,6 @@ class ChatMessageBuilder(ChatPage):
 
     # 统一消息特征值提取方法，将分散的提取逻辑集中起来，方便维护和扩展
     def get_message_feature(self, msg_type: str, expect_missing: bool = False, index: int = -1) -> dict:
-        """
-        根据策略名称统一提取当前消息的 UI 特征值，并封装为字典返回。
-        :param msg_type: 消息类型 ("text", "image", "file" 等)
-        :param expect_missing: 断言元素消失时设为 True，防止抛出 NoSuchElementException
-        :param index: 消息下标（默认提取最后一条 -1）
-        """
         logger.info(f"🔎 正在提取 {msg_type} 消息的 UI 特征 (index={index})")
         
         if msg_type == "package":
@@ -219,7 +186,6 @@ class ChatMessageBuilder(ChatPage):
         elif m_type == "file":
             return {
                 "文件名": self.get_chat_file_name(index=index, expect_missing=expect_missing),
-                # "文件大小": self.get_chat_file_size(index=index, expect_missing=expect_missing),
                 "文件状态": self.get_chat_file_status(index=index, expect_missing=expect_missing)
             }
         
@@ -254,14 +220,3 @@ class MenuActionConfig:
     @classmethod
     def get_strategy(cls, menu_name: str) -> MenuActionStrategy:
         return cls.STRATEGIES.get(menu_name)
-
-
-
-
-
-
-
-
-
-
-

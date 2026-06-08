@@ -88,7 +88,7 @@ class ChatLongPressPage(ChatPage):
         """
         logger.info(f"🖱️ [Action] - 正在校验 【{msg_type}】 消息的长按菜单项 (身份: {'管理员' if is_admin else '普通成员'})")
         
-        from pages.chat.chat_message_strategy import MessageTypeStrategy
+        from strategy.chat.chat_message_strategy import MessageTypeStrategy
         strategy = MessageTypeStrategy.get_strategy(msg_type)
         expected_items = strategy.expected_menus
         missing_in_xml = []
@@ -180,7 +180,7 @@ class ChatLongPressPage(ChatPage):
         配置驱动：由 MenuActionConfig 策略控制具体的执行方法和断言逻辑。
         :param msg_type: 消息类型 0: 文本/群聊/文件/视频/语音等 1: 图片
         """
-        from pages.chat.chat_message_strategy import MenuActionConfig
+        from strategy.chat.chat_message_strategy import MenuActionConfig
         
         config = MenuActionConfig.get_strategy(menu_name)
         if not config:

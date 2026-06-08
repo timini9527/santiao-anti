@@ -9,7 +9,7 @@ from pages.common.contact_select_page import ContactSelectPage
 from pages.chat_options.contact.chat_contact_card_page import ChatContactCardPage
 from pages.personal.contact_detail_page import ContactDetailPage
 from pages.common.session_select_page import SessionSelectPage
-from pages.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
+from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
 
 @allure.epic("IM核心功能测试")
 @allure.feature("聊天面板-名片")

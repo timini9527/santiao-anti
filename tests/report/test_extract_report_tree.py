@@ -9,7 +9,7 @@ from pages.chat.chat_list_page import ChatListPage
 from pages.chat.chat_setting_page import ChatSettingPage
 from pages.report.report_page import ReportPage
 from locators.report.report_locator import ReportLocator
-from pages.chat.chat_strategy import PRIVATE_USER1
+from strategy.chat.chat_strategy import PRIVATE_USER1
 from core.logger_utils import logger
 
 @allure.epic("IM核心功能测试")

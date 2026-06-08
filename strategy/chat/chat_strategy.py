@@ -194,17 +194,6 @@ class FileTestScenario:
     file_type: str              # 文件类型 (word, excel, pdf, txt, image, video)
     expect_send_success: bool   # 期望是否发送成功
     preview_locator: Optional[tuple] = None # 预览打开后，用于断言预览成功的核心定位器
-    
-# --- 定义具体的测试数据 ---
-# 注意前提条件：使用 adb push 命令提前把这些文件塞到手机的特定目录下
-# FILE_TEST_SCENARIOS = [
-#     FileTestScenario("发送PDF并预览", "sample_test.pdf", "pdf", True, 
-#                      preview_locator=(AppiumBy.ID, "com.santiaotalk.im:id/pdf_reader_view")),
-#     FileTestScenario("发送Word并预览", "sample_doc.docx", "word", True, 
-#                      preview_locator=(AppiumBy.ID, "com.santiaotalk.im:id/office_webview")),
-#     FileTestScenario("发送TXT并预览", "sample_text.txt", "txt", True,
-#                      preview_locator=(AppiumBy.ID, "com.santiaotalk.im:id/txt_content_view")),
-# ]
 
 # 8. 会话内容显示策略
 @dataclass
@@ -234,12 +223,3 @@ CHAT_CONTENT_SCENARIOS = [
     ChatContentStrategy("表情消息展示", "[动画表情]", "send_emoji_message"),
     ChatContentStrategy("链接分享展示", "[链接分享]", "send_link_message"),
 ]
-
-
-
-
-
-
-
-
-

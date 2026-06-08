@@ -7,8 +7,8 @@ from pages.chat.chat_list_page import ChatListPage
 from pages.chat.chat_page import ChatPage
 from pages.chat.chat_long_press_page import ChatLongPressPage
 from core.logger_utils import logger
-from pages.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
-from pages.chat.chat_message_strategy import MessageTypeStrategy, ChatMessageBuilder
+from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
+from strategy.chat.chat_message_strategy import MessageTypeStrategy, ChatMessageBuilder
 from locators.chat.chat_locator import ChatLocator
 from pages.home.side_slip_page import SideSlipPage
 from pages.home.home_page import HomePage

@@ -11,7 +11,7 @@ from pages.home.home_page import HomePage
 import pytest_check as check
 from core.logger_utils import logger
 from pages.chat.chat_setting_page import ChatSettingPage
-from pages.chat.chat_strategy import (
+from strategy.chat.chat_strategy import (
     PRIVATE_USER1, 
     PRIVATE_USER2, 
     PRIVATE_DISABLE1, 

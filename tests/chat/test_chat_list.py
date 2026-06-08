@@ -8,7 +8,7 @@ from pages.chat.chat_list_page import ChatListPage
 from pages.chat.chat_setting_page import ChatSettingPage
 from pages.home.home_page import HomePage
 from pages.main.main_page import MainPage
-from pages.chat.chat_strategy import (
+from strategy.chat.chat_strategy import (
     PRIVATE_USER1,
     PRIVATE_USER2,
     PRIVATE_DISABLE1,

@@ -7,7 +7,7 @@ from pages.chat.chat_setting_page import ChatSettingPage
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.chat.chat_long_press_page import ChatLongPressPage
-from pages.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY, PRIVATE_USER2, GROUP_STRATEGY2
+from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY, PRIVATE_USER2, GROUP_STRATEGY2
 
 
 @allure.epic("IM核心功能测试")

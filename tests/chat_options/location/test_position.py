@@ -6,7 +6,7 @@ from pages.chat.chat_page import ChatPage
 from pages.main.main_page import MainPage
 from pages.chat_options.location.chat_position_page import ChatPositionPage
 from core.logger_utils import logger
-from pages.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
+from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
 
 
 @allure.epic("IM核心功能测试")

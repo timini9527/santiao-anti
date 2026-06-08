@@ -7,7 +7,7 @@ from pages.chat.chat_page import ChatPage
 from pages.chat_options.images.chat_image_page import ChatImagePage
 from pages.main.main_page import MainPage
 from core.logger_utils import logger
-from pages.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
+from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
 from pages.chat_options.images.image_strategy import (
     SELECT_MODES, SEND_OPTIONS,
     ImageSelectMode, ImageSendOption, BATCH_IMAGE_SCENARIOS, BatchImageScenario
