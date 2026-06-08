@@ -1,11 +1,8 @@
 import pytest
-import pytest
 import allure
 import pytest_check as check
 from pages.login.login_page import LoginPage
 from core.logger_utils import logger
-from utils.file_reader.data_loader import load_yaml_data
-from dataclasses import dataclass
 from utils.cv_recognition.ocr_utils import OcrUtils
 
 
@@ -30,10 +27,10 @@ class TestOneLogin:
 
         # 智能页面路由 (Smart Routing)
         if not is_lo_test:
-            if not TestLogin._has_entered_phone_login:
+            if not TestOneLogin._has_entered_phone_login:
                 logger.info("🚀 首次进入手机号表单，执行点击操作。")
                 self.loginPage.click_phone_login_button()
-                TestLogin._has_entered_phone_login = True # 上锁
+                TestOneLogin._has_entered_phone_login = True # 上锁
             else:
                 logger.debug("⚡ 检测到已经处于手机号表单页，跳过点击，直接开始测试。")
         else:

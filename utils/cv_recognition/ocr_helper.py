@@ -15,9 +15,10 @@ class OCRHelper:
     _instance = None
     _ocr = None
 
-    copy = f'D:\projects\shantiao\data\images\copy.png'
-    collection = f'D:\projects\shantiao\data\images\collection.png'
-    long_press = f'D:\projects\shantiao\data\images\long_press.png'
+    _BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    copy = os.path.join(_BASE_DIR, 'data', 'images', 'copy.png')
+    collection = os.path.join(_BASE_DIR, 'data', 'images', 'collection.png')
+    long_press = os.path.join(_BASE_DIR, 'data', 'images', 'long_press.png')
 
     # cnocr 识别
     def __new__(cls):

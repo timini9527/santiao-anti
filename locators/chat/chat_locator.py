@@ -320,13 +320,9 @@ class ChatLocator:
     @classmethod
     def get_sent_text_message_locator(cls, sent_type: str = "sender"):
         if sent_type == "sender":
-            # sent_type = cls.SENT_HEAD_ID
             poist_type = 'following-sibling'
         else:
-            # sent_type = cls.RECEIVED_HEAD_ID
             poist_type = 'preceding-sibling'
-        # //*[@resource-id="com.santiaotalk.im:id/message_layout" and following-sibling::*[@resource-id="com.santiaotalk.im:id/iv_avatar"]]
-        # //*[@resource-id="com.santiaotalk.im:id/text_message_view"]/android.widget.TextView[@text="123"]
         return (AppiumBy.XPATH,  f'//*[@resource-id="{cls.MESSAGE_LAYOUT_ID}" and {poist_type}::*[@resource-id="{cls.AVATAR_ID}"]]'
                                  f'//*[@resource-id="{cls.TEXT_MESSAGE_VIEW_ID}"]/android.widget.TextView')
         

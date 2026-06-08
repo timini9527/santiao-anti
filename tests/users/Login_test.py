@@ -10,7 +10,7 @@ from utils.file_reader.data_loader import load_yaml_data
 
 #   读取YAML文件
 def get_test_data():
-    data = load_yaml_data('login_data.yaml')
+    data = load_yaml_data('logins/login_data.yaml')
     return data['login_test_cases']
 
 

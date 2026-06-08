@@ -441,7 +441,7 @@ class ChatPage(BasePage):
     def verify_message_content_by_input(self, message: str) -> str:
         """通过输入内容查找气泡中的消息内容并验证"""
         # locator = ChatLocator.get_specific_message_locator("sender", message) # UI 变化前
-        locator = ChatLocator.get_sent_text_message_locator() # UI 变化后
+        locator = ChatLocator.get_sent_text_message_locator()
         bubble_elems = self.find_elements(locator, condition='visibility', timeout=3)
         if not bubble_elems or len(bubble_elems) == 0:
             logger.error("没有找到已发送的消息元素")

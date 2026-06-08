@@ -30,7 +30,7 @@ class TestOther:
             # 这里甚至可以加一个截图操作，记录 Teardown 失败的现场
 
     @allure.story("昵称")
-    @pytest.mark.parametrize("case_data", load_yaml_data("data/personal/nickname_data.yaml")['test_cases'])
+    @pytest.mark.parametrize("case_data", load_yaml_data("personal/nickname_data.yaml")['test_cases'])
     def test_change_nickname(self, case_data):
         # 1. 提取基础数据
         case_id = case_data['id']
@@ -208,7 +208,7 @@ class TestOther:
             assert current_sex == pre_sex, f"点击取消后性别被意外篡改！原性别: {pre_sex}, 现性别: {current_sex}"
 
     @allure.story("修改邮箱")
-    @pytest.mark.parametrize("case_data", load_yaml_data("data/personal/email_data.yaml")["test_cases"])
+    @pytest.mark.parametrize("case_data", load_yaml_data("personal/email_data.yaml")["test_cases"])
     def test_email(self, case_data):
         # 1. 解析测试数据 (解决 KeyError)
         case_id = case_data['id']
@@ -253,7 +253,7 @@ class TestOther:
     # 需要改善
     @allure.step("地区")
     @pytest.mark.skip("待完善")
-    @pytest.mark.parametrize("area_cases", load_csv_data('data/personal/area_data.csv'))
+    @pytest.mark.parametrize("area_cases", load_csv_data('personal/area_data.csv'))
     def test_area(self, area_cases):
         logger.info(f"🚀 邮箱测试用例：{area_cases['id']} - {area_cases['expected']}")
         self.otherPage.click_location()
