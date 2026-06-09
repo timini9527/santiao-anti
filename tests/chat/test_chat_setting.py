@@ -53,16 +53,17 @@ class TestChatSetting:
 
 
     @allure.story("单聊设置 - 聊天密码开关")
-    @pytest.mark.parametrize("chat_strategy", [PRIVATE_USER1])
+    @pytest.mark.parametrize("chat_strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=["单聊-聊天密码开关", "群聊-聊天密码开关"])
     def test_chat_password_switch(self, chat_strategy):
         """切换聊天密码开关并校验状态"""
-        allure.dynamic.title("聊天密码开关")
+        allure.dynamic.title(f"{chat_strategy.name} - 聊天密码开关")
 
-        with allure.step("1、进入单聊并打开设置"):
+        is_single = "群" not in chat_strategy.name
+
+        with allure.step(f"1、进入 {'单聊' if is_single else '群聊'} 并打开设置"):
             self._enter_setting(chat_strategy.name)
 
-        
-        with allure.step("2、获取聊天密码开关状态，如果已开启，跳过测试"):
+        with allure.step(f"2、获取 {'单聊' if is_single else '群聊'} 聊天密码开关状态，如果已开启，跳过测试"):
             init_status = self.chatSettingPage.get_switch_chat_pwd_status()
             if str(init_status).lower() == 'true':
                 self.chatSettingPage.click_switch_chat_pwd()
@@ -91,14 +92,14 @@ class TestChatSetting:
             check.equal(self.chatSettingPage.get_switch_chat_pwd_status(), init_status, "❌ 聊天密码状态未能成功恢复")
 
     @allure.story("单聊设置 - 截屏通知开关")
-    @pytest.mark.parametrize("chat_strategy", [PRIVATE_USER1])
+    @pytest.mark.parametrize("chat_strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=["单聊-截屏通知", "群聊-截屏通知"])
     def test_screenshot_notification_switch(self, chat_strategy):
         """切换截屏通知开关并校验状态"""
-        allure.dynamic.title("截屏通知开关")
-        
-        with allure.step("1、进入单聊并打开设置"):
-            self._enter_setting(chat_strategy.name)
+        allure.dynamic.title(f"{chat_strategy.name} - 截屏通知开关")
+        is_single = "群" not in chat_strategy.name
 
+        with allure.step(f"1、进入 {'单聊' if is_single else '群聊'} 并打开设置"):
+            self._enter_setting(chat_strategy.name)
         
         with allure.step("2、获取截屏通知开关状态，并确保其为开启状态"):
             init_status = self.chatSettingPage.get_switch_screenshot_status()
@@ -106,7 +107,6 @@ class TestChatSetting:
                 self.chatSettingPage.click_switch_screenshot()
             self.chatSettingPage.click_iv_back_button()
 
- 
         with allure.step("3、进行截屏操作"):
             has_notice = self.chatListPage.trigger_system_screenshot()
             check.is_true(has_notice, "❌ 未能在指定时间内捕获到截屏通知")
@@ -124,12 +124,13 @@ class TestChatSetting:
 
 
     @allure.story("单聊设置 - 撤回通知开关")
-    @pytest.mark.parametrize("chat_strategy", [PRIVATE_USER1])
+    @pytest.mark.parametrize("chat_strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=["单聊-撤回通知", "群聊-撤回通知"])
     def test_recall_notification_switch(self, chat_strategy):
         """切换撤回通知开关并校验状态"""
-        allure.dynamic.title("撤回通知开关")
+        allure.dynamic.title(f"{chat_strategy.name} - 撤回通知开关")
+        is_single = "群" not in chat_strategy.name
 
-        with allure.step("1、进入特定好友的单聊会话"):
+        with allure.step(f"1、进入 {'单聊' if is_single else '群聊'} 会话"):
             self.chatListPage.enter_chat(chat_strategy.name)
         
         with allure.step("1.5、发送一条消息，用于后续验证撤回功能"):
@@ -146,7 +147,6 @@ class TestChatSetting:
             if str(init_status).lower() != 'true':
                 self.chatSettingPage.click_switch_recall()
             self.chatSettingPage.click_iv_back_button()
-
 
         with allure.step("3、对最后一条消息长按，点击【撤回】按钮"):
             self.longPressPage.long_press_last_message()
@@ -169,6 +169,7 @@ class TestChatSetting:
     @pytest.mark.parametrize("chat_strategy", [PRIVATE_USER2])
     def test_clear_chat_records(self, chat_strategy):
         """点击清空聊天记录"""
+        allure.dynamic.title(f"{chat_strategy.name} - 清空聊天记录")
         
         with allure.step("1、进入特定好友的单聊会话"):
             self.chatListPage.enter_chat(chat_strategy.name)

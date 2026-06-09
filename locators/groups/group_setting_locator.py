@@ -26,7 +26,13 @@ class GroupSettingLocator(ChatSettingLocator):
     SETTING_CHAT_SETTOP = ChatSettingLocator.SETTING_TOP_CHAT                                           # 置顶聊天
     SETTING_CHAT_PWD = ChatSettingLocator.SETTING_CHAT_PWD                                              # 聊天密码
     SETTING_CHAT_NAME_FORME = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_name_forMe")                    # 设置群聊名称(针对自己)
-    SETTING_CHAT_SHOW_MEMBER_NAME = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_showMemberName")          # 显示群成员名称
+    SETTING_CHAT_SHOW_MEMBER_NAME = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_showMemberName")          # 显示群成员昵称
+    
+    # 精确的 Switch 开关定位器
+    SETTING_CHAT_DND_SWITCH = (AppiumBy.XPATH, "//*[contains(@resource-id, 'setting_chat_dnd')]//*[contains(@resource-id, 'switch_btn')]")
+    SETTING_CHAT_SETTOP_SWITCH = (AppiumBy.XPATH, "//*[contains(@resource-id, 'setting_chat_setTop')]//*[contains(@resource-id, 'switch_btn')]")
+    SETTING_CHAT_PWD_SWITCH = (AppiumBy.XPATH, "//*[contains(@resource-id, 'setting_chat_pwd')]//*[contains(@resource-id, 'switch_btn')]")
+    SETTING_CHAT_SHOW_MEMBER_NAME_SWITCH = (AppiumBy.XPATH, "//*[contains(@resource-id, 'setting_chat_showMemberName')]//*[contains(@resource-id, 'switch_btn')]")
 
     
     # 底部危险操作
