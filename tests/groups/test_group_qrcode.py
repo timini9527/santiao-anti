@@ -90,6 +90,7 @@ class TestGroupQrCode:
             
             possible_minutes = [minute, (minute - 1) % 60, (minute + 1) % 60]
             
+            # 兼容带前导0与不带前导0的小时格式 (例如 "20:38" 或 "09:30" / "9:30")，并结合分钟误差范围进行匹配
             time_matched = False
             for p_m in possible_minutes:
                 pattern1 = f"{hour:02d}:{p_m:02d}"
