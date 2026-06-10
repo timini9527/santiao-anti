@@ -181,4 +181,14 @@ class TestGroupQrCode:
             validity_text_new = self.groupQrCodePage.get_validity_text()
             self._verify_validity_text(validity_type=validity_type, validity_text=validity_text_new)
 
+        # 恢复环境：如果当前修改的值不是默认的 7d，则将其重置为默认的 7d，防止影响后续测试用例的初始状态校验
+        if validity_type != '7d':
+            with allure.step("5. 恢复环境：将有效期重新选择为默认的 7天"):
+                self.groupQrCodePage.click_change_date_row()
+                self.groupQrCodePage.select_validity_option('7d')
+                
+                # 验证是否成功恢复为 7d
+                validity_text_final = self.groupQrCodePage.get_validity_text()
+                self._verify_validity_text(validity_type='7d', validity_text=validity_text_final)
+
 
