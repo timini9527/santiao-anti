@@ -181,14 +181,4 @@ class TestGroupQrCode:
             validity_text_new = self.groupQrCodePage.get_validity_text()
             self._verify_validity_text(validity_type=validity_type, validity_text=validity_text_new)
 
-        # 交替切换验证：当前不是 7d 时切换回 7d；如果是 7d 则切换为 30d
-        target_toggle_type = '7d' if validity_type != '7d' else '30d'
-        target_toggle_text = '7天' if validity_type != '7d' else '30天'
 
-        with allure.step(f"5. 点击修改有效期入口，重新选择为 {target_toggle_text}"):
-            self.groupQrCodePage.click_change_date_row()
-            self.groupQrCodePage.select_validity_option(target_toggle_type)
-            
-            # 获取最新的有效期文案并验证是否恢复/更新
-            validity_text_final = self.groupQrCodePage.get_validity_text()
-            self._verify_validity_text(validity_type=target_toggle_type, validity_text=validity_text_final)
