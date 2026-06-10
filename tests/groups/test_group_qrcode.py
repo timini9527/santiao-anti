@@ -55,7 +55,7 @@ class TestGroupQrCode:
             self.groupCreatePage.wait_banner_message_disappear()
             self.chatPage.wait_for_chat_page_load()
 
-    def _verify_validity_text(self, validity_text: str, validity_type: str):
+    def _verify_validity_text(self, validity_type: str, validity_text: str):
         """验证二维码有效期文本是否符合预期"""
         logger.info(f"🔍 验证有效期文本: '{validity_text}', 预期类型: '{validity_type}'")
         if validity_type == 'forever':
@@ -78,20 +78,32 @@ class TestGroupQrCode:
         else:
             raise ValueError(f"未知有效期类型: {validity_type}")
 
-        m = expire_time.strftime("%m")
-        d = expire_time.strftime("%d")
-        h = expire_time.strftime("%H")
-        minute_val = int(expire_time.strftime("%M"))
-
-        # 允许分钟有一分钟左右的执行延迟差
-        possible_minutes = [f"{minute_val:02d}", f"{(minute_val - 1) % 60:02d}", f"{(minute_val + 1) % 60:02d}"]
-
-        check.is_in(m, validity_text, f"❌ 月份 '{m}' 不在有效期文案中")
-        check.is_in(d, validity_text, f"❌ 日期 '{d}' 不在有效期文案中")
-        check.is_in(h, validity_text, f"❌ 小时 '{h}' 不在有效期文案中")
+        # 月份和日期在 App 界面上是没有前导 0 的，例如 "6月10日"
+        expected_month_day = f"{expire_time.month}月{expire_time.day}日"
+        # 兼容 "6月17日前" 这种没有 "日" 字的格式 (即只有 "6月17日前")
+        expected_month_day_alt = f"{expire_time.month}月{expire_time.day}日前"
         
-        minute_matched = any(p_m in validity_text for p_m in possible_minutes)
-        check.is_true(minute_matched, f"❌ 分钟 '{minute_val:02d}' 不在有效期文案中，实际文案: '{validity_text}'")
+        month_day_matched = (expected_month_day in validity_text) or (expected_month_day_alt in validity_text)
+        check.is_true(month_day_matched, f"❌ 月份和日期 '{expire_time.month}月{expire_time.day}日' 不在有效期文案 '{validity_text}' 中")
+
+        # 仅当有效期是分/小时级别时，界面上才会展示具体的时分 (比如 "20:38前")
+        if validity_type in ['30m', '2h', '24h']:
+            hour = expire_time.hour
+            minute = expire_time.minute
+            
+            # 计算可能的分钟（包含前后 1 分钟误差）
+            possible_minutes = [minute, (minute - 1) % 60, (minute + 1) % 60]
+            
+            # 兼容带前导0和不带前导0的小时格式 (例如 "20:38" 或 "09:30" / "9:30")
+            time_matched = False
+            for p_m in possible_minutes:
+                pattern1 = f"{hour:02d}:{p_m:02d}"
+                pattern2 = f"{hour}:{p_m:02d}"
+                if pattern1 in validity_text or pattern2 in validity_text:
+                    time_matched = True
+                    break
+            
+            check.is_true(time_matched, f"❌ 时间 '{hour:02d}:{minute:02d}' 不在有效期文案 '{validity_text}' 中")
 
     @allure.story("群二维码功能")
     @allure.title("保存与分享群二维码功能")
@@ -163,7 +175,7 @@ class TestGroupQrCode:
 
         with allure.step("3. 获取更改前的二维码有效期截止文案（默认为 7 天）"):
             initial_validity_text = self.groupQrCodePage.get_validity_text()
-            self._verify_validity_text(initial_validity_text, '7d')
+            self._verify_validity_text(validity_type='7d', validity_text=initial_validity_text)
 
         with allure.step(f"4. 点击修改有效期入口，选择 {validity_text}"):
             self.groupQrCodePage.click_change_date_row()
@@ -171,7 +183,7 @@ class TestGroupQrCode:
             
             # 获取最新的有效期文案并验证
             validity_text_new = self.groupQrCodePage.get_validity_text()
-            self._verify_validity_text(validity_text_new, validity_type)
+            self._verify_validity_text(validity_type=validity_type, validity_text=validity_text_new)
 
         # 交替切换验证：当前不是 7d 时切换回 7d；如果是 7d 则切换为 30d
         target_toggle_type = '7d' if validity_type != '7d' else '30d'
@@ -183,4 +195,4 @@ class TestGroupQrCode:
             
             # 获取最新的有效期文案并验证是否恢复/更新
             validity_text_final = self.groupQrCodePage.get_validity_text()
-            self._verify_validity_text(validity_text_final, target_toggle_type)
+            self._verify_validity_text(validity_type=target_toggle_type, validity_text=validity_text_final)
