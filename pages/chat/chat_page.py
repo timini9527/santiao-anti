@@ -1,3 +1,4 @@
+import re
 import time
 import allure
 from typing import Optional, Literal
@@ -61,6 +62,15 @@ class ChatPage(BasePage):
         name = self.get_attribute(ChatLocator.TOP_USER_NAME_XPATH, 'text')
         logger.info(f"🚀[Action-chat] - chat 获取顶部聊天对象昵称: {name}")
         return name
+
+    # 获取群聊名称并去掉括号及内容
+    def get_group_name(self) -> str:
+        """获取群聊名称并去掉 (x) 字符，如 'aaa(5)' -> 'aaa'"""
+        group_name = self.get_top_name()
+        # 使用 r"\s*\(\d+\)" 正则匹配 0 个或多个空格 + 左括号 + 1 个或多个数字 + 右括号
+        cleaned_name = re.sub(r"\s*\(\d+\)", "", group_name)
+        logger.info(f"🚀[Action-chat] - chat 获取群聊名称并过滤括号: '{group_name}' -> '{cleaned_name}'")
+        return cleaned_name 
     
     # 获取toast
     def get_toast_text(self) -> str:
@@ -159,7 +169,9 @@ class ChatPage(BasePage):
     # 获取当前聊天页面的消息总数
     def get_total_message_count(self) -> int:
         """获取当前聊天页面的消息总数"""
-        return len(self.get_message_layout_items())
+        count = len(self.get_message_layout_items())
+        logger.info(f"🚀[Action-chat] - chat 获取聊天页面消息总数: {count}")
+        return count
     
     # 获取屏幕消息发送失败的状态数量
     def get_message_send_fail_status_list(self) -> list:
@@ -210,17 +222,32 @@ class ChatPage(BasePage):
     # 获取发送方聊天行容器
     def get_sent_message_row_item(self) -> list:
         """获取发送方聊天行容器"""
-        return self.find_elements(ChatLocator.SENT_MESSAGE_ROW_ITEM, timeout=3)
+        items = self.find_elements(ChatLocator.SENT_MESSAGE_ROW_ITEM, timeout=3)
+        if not items:
+            logger.warning(f"🚀[Action-chat] - chat 未检测到发送方聊天行容器")
+            return []
+        logger.info(f"🚀[Action-chat] - chat 获取发送方聊天行容器数量: {len(items)}")
+        return items
     
     # 获取发送方聊天内容容器
     def get_sent_message_content_item(self) -> list:
         """获取发送方聊天内容容器"""
-        return self.find_elements(ChatLocator.SENT_MESSAGE_CONTENT_ITEM, timeout=3)
+        items = self.find_elements(ChatLocator.SENT_MESSAGE_CONTENT_ITEM, timeout=3)
+        if not items:
+            logger.warning(f"🚀[Action-chat] - chat 未检测到发送方聊天内容容器")
+            return []
+        logger.info(f"🚀[Action-chat] - chat 获取发送方聊天内容容器数量: {len(items)}")
+        return items
         
     # 获取接收方聊天内容容器
     def get_received_message_content_item(self) -> list:
         """获取接收方聊天内容容器"""
-        return self.find_elements(ChatLocator.RECEIVED_MESSAGE_CONTENT_ITEM, timeout=3)
+        items = self.find_elements(ChatLocator.RECEIVED_MESSAGE_CONTENT_ITEM, timeout=3)
+        if not items:
+            logger.warning(f"🚀[Action-chat] - chat 未检测到接收方聊天内容容器")
+            return []
+        logger.info(f"🚀[Action-chat] - chat 获取接收方聊天内容容器数量: {len(items)}")
+        return items
 
     # 统一消息元素获取器：获取当前可见的各类消息 WebElement 列表
     def get_message_elements(self, msg_type: Literal['text', 'image', 'videoDuration', 'videoPlay', 'locTitle', 'locSubTitle', 'card', 'card_detail', 'fileName', 'fileSize', 'fileStatus', 'history'], 
@@ -402,7 +429,6 @@ class ChatPage(BasePage):
         return status
     
 
-
     # 获取最后一条消息是否包含合法的视频特征
     def get_last_message_video_status(self) -> bool:
         """
@@ -520,6 +546,20 @@ class ChatPage(BasePage):
         logger.info(f"📊 [Content] 所有图片 hash 值: {image_hashes}")    
         return image_hashes
 
+    # 获取倒数第n条图片消息并点击
+    def click_image_message_by_index(self, index: int = -1, expect_missing: bool = False):
+        """获取倒数第n条图片消息并点击"""
+        image_elements = self.get_message_elements(msg_type="image", side='sent', expect_missing=expect_missing)
+        if not image_elements or len(image_elements) == 0:
+            logger.error("🚀[Action-chat] - chat 没有找到已发送的图片")
+            raise NoSuchElementException("🚀[Action-chat] - chat 没有找到已发送的图片")
+        if index >= len(image_elements) or index < -len(image_elements):
+            logger.error("🚀[Action-chat] - chat 图片索引超出范围")
+            raise IndexError("🚀[Action-chat] - chat 图片索引超出范围")
+        image_elements[index].click()
+        logger.info(f"🚀[Action-chat] - chat 点击图片: {index}，等待消息详情页面加载...")
+
+    
     # 获取聊天页面中指定 index 的视频时长
     def get_chat_video_duration(self, index: int = -1, expect_missing: bool = False) -> str:
         """获取聊天页面中指定 index 的视频时长"""
@@ -552,6 +592,7 @@ class ChatPage(BasePage):
         logger.info(f"📊 [Content] 所有视频时长: {video_durations}")    
         return video_durations
     
+
     # 获取聊天页面中所有文件的名称
     def get_chat_all_file_name(self) -> list:
         """获取聊天页面中所有文件的名称"""

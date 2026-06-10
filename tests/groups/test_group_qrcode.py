@@ -8,8 +8,9 @@ from pages.groups.group_create_page import GroupCreatePage
 from pages.groups.group_setting_page import GroupSettingPage
 from pages.groups.group_qrcode_page import GroupQrCodePage
 from pages.chat.chat_page import ChatPage
+from pages.chat.chat_list_page import ChatListPage
 from pages.common.contact_select_page import ContactSelectPage
-from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2
+from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, GROUP_STRATEGY
 
 @allure.epic("IM核心功能测试")
 @allure.feature("群聊模块-群二维码")
@@ -25,6 +26,7 @@ class TestGroupQrCode:
         self.groupSettingPage = GroupSettingPage(driver_sender)
         self.groupQrCodePage = GroupQrCodePage(driver_sender)
         self.chatPage = ChatPage(driver_sender)
+        self.chatListPage = ChatListPage(driver_sender)
         self.contactSelectPage = ContactSelectPage(driver_sender)
         
         yield
@@ -34,6 +36,10 @@ class TestGroupQrCode:
             self.mainPage.go_to_main_page()
         except Exception as e:
             logger.error(f"Teardown 失败，未能返回首页: {e}")
+
+    def _enter_group(self):
+        """进入群聊"""
+        self.chatListPage.enter_chat(GROUP_STRATEGY.name)
 
     def _create_temp_group(self, friend_list):
         """内部辅助方法：快速创建一个用于测试的临时群聊"""
@@ -53,28 +59,41 @@ class TestGroupQrCode:
     @allure.title("保存与分享群二维码功能校验")
     def test_group_qrcode_save_and_share(self):
         """测试群二维码的保存和分享交互"""
-        friend_list = [PRIVATE_USER1.name, PRIVATE_USER2.name]
-        self._create_temp_group(friend_list)
+        # friend_list = [PRIVATE_USER1.name, PRIVATE_USER2.name]
+        # self._create_temp_group(friend_list)
 
-        with allure.step("1. 进入群设置，并点击群二维码"):
+        with allure.step("1. 进入临时群"):
+            self._enter_group()
+            group_name = self.chatPage.get_group_name()
+
+        with allure.step("2. 进入群设置，并点击群二维码"):
             self.chatPage.click_more_button()
             self.groupSettingPage.wait_for_setting_page_load()
             self.groupSettingPage.click_group_qr_code()
             self.groupQrCodePage.wait_for_qrcode_page_load()
 
-        with allure.step("2. 测试保存群二维码到本地"):
+        with allure.step("3. 测试保存群二维码到本地"):
             self.groupQrCodePage.click_save_qrcode()
             toast = self.groupQrCodePage.get_toast()
-            check.is_in("保存成功", toast, "❌ 保存二维码的提示信息有误")
+            check.is_in("已保存到相册", toast, "❌ 保存二维码的提示信息有误")
+            group_name_after_share = self.groupQrCodePage.get_group_name()
+            check.is_in(group_name, group_name_after_share, "❌ 分享群二维码后，群名称不一致")
 
-        with allure.step("3. 测试分享群二维码功能"):
+        with allure.step("4. 测试分享群二维码功能"):
             self.groupQrCodePage.click_share_qrcode()
-            # 分享动作通常会拉起底部弹层或好友列表页面，在这里验证是否触发成功（可通过检测特定分享组件或点击返回取消）
-            # 简单验证后返回
-            try:
-                self.groupQrCodePage.click_back_button()  # 关闭分享界面或返回二维码页面
-            except Exception:
-                pass
+            self.contactSelectPage.click_contact_by_name(name=GROUP_STRATEGY.name, select_type='share')
+            self.contactSelectPage.click_action_button()
+            toast = self.groupQrCodePage.get_toast(expected_toast="发送成功")
+            check.is_in("发送成功", toast, "❌ 分享二维码的提示信息有误")
+        
+        with allure.step("5. 回到消息列表进入群聊"):
+            self.mainPage.go_to_main_page()
+            self._enter_group()
+        
+        with allure.step("6. 校验群聊消息列表最后一条消息"):
+            self.chatPage.click_image_message_by_index()
+            image_data = self.groupQrCodePage.get_image_data()
+            check.is_in(group_name, image_data, "❌ 群聊消息列表最后一条消息不是邀请二维码")
 
 
     @allure.story("群二维码功能")

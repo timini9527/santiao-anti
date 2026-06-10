@@ -89,3 +89,11 @@ class GroupQrCodePage(BasePage):
         """点击返回按钮"""
         self.click(GroupQrCodeLocator.BACK_BTN)
         logger.info("🔙 [Action] GroupQrCodePage - 点击返回")
+
+    # 获取图片中的数据
+    def get_image_data(self) -> list[str]:
+        from utils.cv_recognition.ocr_utils import OcrUtils
+        ocr_util = OcrUtils(self.driver)
+        img_data = ocr_util.get_all_text(image_name="group_qrcode.png")
+        logger.info(f"📖 [Action] GroupQrCodePage - 获取图片中的数据: '{img_data}'")
+        return img_data

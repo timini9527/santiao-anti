@@ -1,4 +1,4 @@
-import os
+﻿import os
 import re
 import time
 from typing import Union, List
@@ -312,9 +312,9 @@ class BasePage:
         locator = CommonLocator.TOAST_MSG
         logger.info(f"⏳ 开始监听提示框 (期望值: '{expected_toast}', 超时: {timeout}s)")
         
+        # 1. 优先通道：XML 定位器快速轮询探测
         end_time = time.time() + timeout
         while time.time() < end_time:
-            # 1. 优先通道：XML 定位器快速探测
             try:
                 element = WebDriverWait(self.driver, 0.4, 0.05).until(
                     EC.presence_of_element_located(locator)
@@ -339,19 +339,21 @@ class BasePage:
                         return toast_text
             except Exception:
                 pass
-            
-            # 2. 兜底通道：OCR 屏幕图像文字扫描
-            if expected_toast:
-                try:
-                    ocr = OcrUtils(self.driver)
-                    ocr_list = ocr.get_all_text()
-                    ocr_text_blob = "".join(ocr_list)
-                    if expected_toast in ocr_text_blob:
-                        logger.info(f"🎯 basePage-get_toast OCR 成功匹配到屏幕提示文字: '{expected_toast}'")
-                        return expected_toast
-                except Exception as e:
-                    logger.debug(f"OCR 提示框扫描异常: {e}")
             time.sleep(0.05)
+            
+        # 2. 兜底通道：当 XML 快速轮询结束后，如果指定了 expected_toast 且未能在 XML 中捕获，才执行一次 OCR 降级扫描
+        if expected_toast:
+            logger.info("⏳ XML 快速探测结束，未匹配到目标，开始执行 OCR 兜底扫描...")
+            try:
+                ocr = OcrUtils(self.driver)
+                ocr_list = ocr.get_all_text()
+                # 优化点：避免全局文本无间隔拼接引发误判，改为遍历每一行进行匹配
+                if any(expected_toast in text for text in ocr_list):
+                    logger.info(f"🎯 basePage-get_toast OCR 成功匹配到屏幕提示文字: '{expected_toast}'")
+                    return expected_toast
+            except Exception as e:
+                logger.debug(f"OCR 提示框扫描异常: {e}")
+                
         logger.warning(f"⏱️ basePage-get_toast 未能捕获到预期【{expected_toast}】的提示框 (XML和OCR通道均未命中)")
         return ""
 
