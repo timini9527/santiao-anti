@@ -78,23 +78,18 @@ class TestGroupQrCode:
         else:
             raise ValueError(f"未知有效期类型: {validity_type}")
 
-        # 月份和日期在 App 界面上是没有前导 0 的，例如 "6月10日"
         expected_month_day = f"{expire_time.month}月{expire_time.day}日"
-        # 兼容 "6月17日前" 这种没有 "日" 字的格式 (即只有 "6月17日前")
         expected_month_day_alt = f"{expire_time.month}月{expire_time.day}日前"
         
         month_day_matched = (expected_month_day in validity_text) or (expected_month_day_alt in validity_text)
         check.is_true(month_day_matched, f"❌ 月份和日期 '{expire_time.month}月{expire_time.day}日' 不在有效期文案 '{validity_text}' 中")
 
-        # 仅当有效期是分/小时级别时，界面上才会展示具体的时分 (比如 "20:38前")
         if validity_type in ['30m', '2h', '24h']:
             hour = expire_time.hour
             minute = expire_time.minute
             
-            # 计算可能的分钟（包含前后 1 分钟误差）
             possible_minutes = [minute, (minute - 1) % 60, (minute + 1) % 60]
             
-            # 兼容带前导0和不带前导0的小时格式 (例如 "20:38" 或 "09:30" / "9:30")
             time_matched = False
             for p_m in possible_minutes:
                 pattern1 = f"{hour:02d}:{p_m:02d}"
