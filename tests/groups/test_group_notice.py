@@ -29,11 +29,16 @@ class TestGroupNotice:
         
         yield
         
-        # 测试结束后返回首页
         try:
             self.mainPage.go_to_main_page()
         except Exception as e:
             logger.error(f"Teardown 失败，未能返回首页: {e}")
+
+    
+    def _enter_group(self):
+        """进入群聊"""
+        self.chatListPage.enter_chat(GROUP_STRATEGY.name)
+        self.chatPage.wait_for_chat_page_load()
 
     def _create_temp_group(self, friend_list):
         """内部辅助方法：快速创建一个用于测试的临时群聊"""
@@ -48,13 +53,18 @@ class TestGroupNotice:
             # 等待进群横幅消失，保证页面稳定
             self.groupCreatePage.wait_banner_message_disappear()
             self.chatPage.wait_for_chat_page_load()
+    
 
     @allure.story("群公告功能")
     @allure.title("发布新群公告 - 正常发布流程")
     def test_publish_group_notice_success(self):
         """发布新群公告并校验"""
-        friend_list = [PRIVATE_USER1.name, PRIVATE_USER2.name]
-        self._create_temp_group(friend_list)
+        # with allure.step("-> [前置准备] 创建临时群"):
+        #     friend_list = [PRIVATE_USER1.name, PRIVATE_USER2.name]
+        #     self._create_temp_group(friend_list)
+
+        with allure.step("-> [前置准备] 进入群聊"):
+            self._enter_group()
 
         with allure.step("1. 进入群设置并点击群公告"):
             self.chatPage.click_more_button()

@@ -59,6 +59,20 @@ class TestGroupQrCode:
         """进入群聊"""
         self.chatListPage.enter_chat(GROUP_STRATEGY.name)
 
+    def _create_temp_group(self, friend_list):
+        """内部辅助方法：快速创建一个用于测试的临时群聊"""
+        with allure.step("-> [前置准备] 在首页发起群聊创建临时群"):
+            self.homePage.click_add_button()
+            self.homePage.click_start_group_chat()
+            self.contactSelectPage.wait_for_contact_and_group_select_page_load()
+            for contact in friend_list:
+                self.contactSelectPage.click_contact_by_name(contact)
+            self.contactSelectPage.click_action_button()
+            
+            # 等待进群横幅消失，保证页面稳定
+            self.groupCreatePage.wait_banner_message_disappear()
+            self.chatPage.wait_for_chat_page_load()
+
     def _ensure_on_qrcode_page(self):
         """确保当前处于群二维码页面，如不在则重新导航进入"""
         try:
@@ -74,20 +88,6 @@ class TestGroupQrCode:
         self.groupSettingPage.wait_for_setting_page_load()
         self.groupSettingPage.click_group_qr_code()
         self.groupQrCodePage.wait_for_qrcode_page_load()
-
-    def _create_temp_group(self, friend_list):
-        """内部辅助方法：快速创建一个用于测试的临时群聊"""
-        with allure.step("-> [前置准备] 在首页发起群聊创建临时群"):
-            self.homePage.click_add_button()
-            self.homePage.click_start_group_chat()
-            self.contactSelectPage.wait_for_contact_and_group_select_page_load()
-            for contact in friend_list:
-                self.contactSelectPage.click_contact_by_name(contact)
-            self.contactSelectPage.click_action_button()
-            
-            # 等待进群横幅消失，保证页面稳定
-            self.groupCreatePage.wait_banner_message_disappear()
-            self.chatPage.wait_for_chat_page_load()
 
     def _verify_validity_text(self, validity_type: str, validity_text: str):
         """验证二维码有效期文本是否符合预期"""
@@ -160,6 +160,8 @@ class TestGroupQrCode:
             self.groupQrCodePage.click_save_qrcode()
             toast = self.groupQrCodePage.get_toast()
             check.is_in("已保存到相册", toast, "❌ 保存二维码的提示信息有误")
+            group_name_after_share = self.groupQrCodePage.get_group_name()
+            check.is_in(group_name, group_name_after_share, "❌ 分享群二维码后，群名称不一致")
 
         with allure.step("5. 测试分享群二维码功能"):
             self.groupQrCodePage.click_share_qrcode()
@@ -210,3 +212,33 @@ class TestGroupQrCode:
             
             validity_text_new = self.groupQrCodePage.get_validity_text()
             self._verify_validity_text(validity_type=validity_type, validity_text=validity_text_new)
+
+    @allure.story("群二维码功能")
+    @allure.title("识别过期群二维码失效提示校验")
+    @allure.severity("Critical")
+    @pytest.mark.skip(reason="等待后端接口")
+    def test_expired_qrcode_tips(self):
+        with allure.step("1. 生成并分享一个 30分钟 有效期的群二维码"):
+            self._enter_group()
+            self.chatPage.click_more_button()
+            self.groupSettingPage.click_group_qr_code()
+            self.groupQrCodePage.click_change_date_row()
+            self.groupQrCodePage.select_validity_option("30m")
+            # 记录下二维码的唯一标识 (可以通过 OCR 提取或者从页面元素/API 获取)
+            qrcode_text = self.groupQrCodePage.get_validity_text() 
+            
+        with allure.step("2. 后台篡改数据：将该二维码在数据库中设为过期"):
+            # 调用后台测试工具类或数据库连接工具，将该群二维码有效期修改为 1分钟前
+            # 例如：db_helper.set_qrcode_expired(group_id)
+            pass
+
+        with allure.step("3. 在聊天界面长按识别该二维码"):
+            # 返回聊天界面，长按群邀请消息中的二维码
+            # click_image_message_by_index() 之后进行长按识别
+            # assert toast/弹窗文案为 "该二维码已失效"
+            pass
+
+
+
+
+
