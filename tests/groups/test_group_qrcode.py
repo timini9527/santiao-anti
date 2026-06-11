@@ -19,8 +19,8 @@ class TestGroupQrCode:
     """群二维码保存、分享与有效期修改测试"""
 
     @pytest.fixture(autouse=True)
-    def setup_class(self, driver_sender):
-        """初始化页面对象"""
+    def setup_method(self, driver_sender):
+        """初始化页面对象并在用例结束时自动返回首页"""
         self.mainPage = MainPage(driver_sender)
         self.homePage = HomePage(driver_sender)
         self.groupCreatePage = GroupCreatePage(driver_sender)
@@ -37,9 +37,43 @@ class TestGroupQrCode:
         except Exception as e:
             logger.error(f"Teardown 失败，未能返回首页: {e}")
 
+    @pytest.fixture
+    def restore_qrcode_validity(self):
+        """环境强隔离清理：确保不论用例是否执行失败，最终都能将有效期恢复为默认的 7d"""
+        yield
+        try:
+            self._ensure_on_qrcode_page()
+            current_validity = self.groupQrCodePage.get_validity_text()
+            
+            # 判断当前文案是否是 7d，如果不符合则将其重置为 7d
+            try:
+                self._verify_validity_text(validity_type='7d', validity_text=current_validity)
+            except AssertionError:
+                self.groupQrCodePage.click_change_date_row()
+                self.groupQrCodePage.select_validity_option('7d')
+                logger.info("🧹 [Cleanup] 成功将群二维码有效期恢复为默认的 7天")
+        except Exception as e:
+            logger.warning(f"⚠️ [Cleanup] 恢复群二维码有效期环境失败: {e}")
+
     def _enter_group(self):
         """进入群聊"""
         self.chatListPage.enter_chat(GROUP_STRATEGY.name)
+
+    def _ensure_on_qrcode_page(self):
+        """确保当前处于群二维码页面，如不在则重新导航进入"""
+        try:
+            if self.groupQrCodePage.wait_for_qrcode_page_load(timeout=2):
+                return
+        except Exception:
+            pass
+
+        logger.info("🔄 [Cleanup] 当前不在群二维码页面，正在重新导航进入...")
+        self.mainPage.go_to_main_page()
+        self._enter_group()
+        self.chatPage.click_more_button()
+        self.groupSettingPage.wait_for_setting_page_load()
+        self.groupSettingPage.click_group_qr_code()
+        self.groupQrCodePage.wait_for_qrcode_page_load()
 
     def _create_temp_group(self, friend_list):
         """内部辅助方法：快速创建一个用于测试的临时群聊"""
@@ -90,7 +124,7 @@ class TestGroupQrCode:
             
             possible_minutes = [minute, (minute - 1) % 60, (minute + 1) % 60]
             
-            # 兼容带前导0与不带前导0的小时格式 (例如 "20:38" 或 "09:30" / "9:30")
+            # 兼容带前导0与不带前导0的小时格式 (例如 "20:38" 或 "09:30" / "9:30")，并结合分钟误差范围进行匹配
             time_matched = False
             for p_m in possible_minutes:
                 pattern1 = f"{hour:02d}:{p_m:02d}"
@@ -105,9 +139,6 @@ class TestGroupQrCode:
     @allure.title("保存与分享群二维码功能")
     @allure.severity("Normal")
     def test_group_qrcode_save_and_share(self):
-        # friend_list = [PRIVATE_USER1.name, PRIVATE_USER2.name]
-        # self._create_temp_group(friend_list)
-
         with allure.step("1. 进入临时群"):
             self._enter_group()
             group_name = self.chatPage.get_group_name()
@@ -118,29 +149,33 @@ class TestGroupQrCode:
             self.groupSettingPage.click_group_qr_code()
             self.groupQrCodePage.wait_for_qrcode_page_load()
 
-        with allure.step("3. 测试保存群二维码到本地"):
+        with allure.step("3. 校验群二维码页面基础元素渲染是否正确"):
+            check.is_true(self.groupQrCodePage.is_qr_card_layout_visible(), "❌ 二维码卡片布局不可见")
+            check.is_true(self.groupQrCodePage.is_group_header_visible(), "❌ 群头像未显示")
+            check.is_true(self.groupQrCodePage.is_group_code_visible(), "❌ 二维码图片未渲染")
+            group_name_on_card = self.groupQrCodePage.get_group_name()
+            check.equal(group_name_on_card, group_name, "❌ 二维码卡片上显示的群名称与当前群聊不一致")
+
+        with allure.step("4. 测试保存群二维码到本地"):
             self.groupQrCodePage.click_save_qrcode()
             toast = self.groupQrCodePage.get_toast()
             check.is_in("已保存到相册", toast, "❌ 保存二维码的提示信息有误")
-            group_name_after_share = self.groupQrCodePage.get_group_name()
-            check.is_in(group_name, group_name_after_share, "❌ 分享群二维码后，群名称不一致")
 
-        with allure.step("4. 测试分享群二维码功能"):
+        with allure.step("5. 测试分享群二维码功能"):
             self.groupQrCodePage.click_share_qrcode()
             self.contactSelectPage.click_contact_by_name(name=GROUP_STRATEGY.name, select_type='share')
             self.contactSelectPage.click_action_button()
             toast = self.groupQrCodePage.get_toast(expected_toast="发送成功")
             check.is_in("发送成功", toast, "❌ 分享二维码的提示信息有误")
         
-        with allure.step("5. 回到消息列表进入群聊"):
+        with allure.step("6. 回到消息列表进入群聊"):
             self.mainPage.go_to_main_page()
             self._enter_group()
         
-        with allure.step("6. 校验群聊消息列表最后一条消息"):
+        with allure.step("7. 校验群聊消息列表最后一条消息"):
             self.chatPage.click_image_message_by_index()
             image_data = self.groupQrCodePage.get_image_data()
             check.is_in(group_name, image_data, "❌ 群聊消息列表最后一条消息不是邀请二维码")
-
 
     @allure.story("群二维码功能")
     @allure.title("更改群二维码有效期功能")
@@ -154,14 +189,10 @@ class TestGroupQrCode:
         ('90d', '90天'),
         ('forever', '永久')
     ], ids=["30分钟", "2小时", "24小时", "7天", "30天", "90天", "永久"])
-    def test_group_qrcode_change_validity(self, validity_type, validity_text):
+    def test_group_qrcode_change_validity(self, restore_qrcode_validity, validity_type, validity_text):
         """测试更改群二维码有效截止日期"""
-        # friend_list = [PRIVATE_USER1.name, PRIVATE_USER2.name]
-        # self._create_temp_group(friend_list)
-
         with allure.step("1. 进入临时群"):
             self._enter_group()
-            group_name = self.chatPage.get_group_name()
 
         with allure.step("2. 进入群设置，并点击群二维码"):
             self.chatPage.click_more_button()
@@ -179,13 +210,3 @@ class TestGroupQrCode:
             
             validity_text_new = self.groupQrCodePage.get_validity_text()
             self._verify_validity_text(validity_type=validity_type, validity_text=validity_text_new)
-
-        if validity_type != '7d':
-            with allure.step("5. 恢复环境：将有效期重新选择为默认的 7天"):
-                self.groupQrCodePage.click_change_date_row()
-                self.groupQrCodePage.select_validity_option('7d')
-                
-                validity_text_final = self.groupQrCodePage.get_validity_text()
-                self._verify_validity_text(validity_type='7d', validity_text=validity_text_final)
-
-
