@@ -41,7 +41,7 @@ class GroupQrCodeLocator:
             "7d": "7天内",
             "30d": "30天内",
             "90d": "90天内",
-            "forever": "永久",
+            "forever": "永久有效",
         }
         str_value = mapping.get(value)
         if str_value is None:
