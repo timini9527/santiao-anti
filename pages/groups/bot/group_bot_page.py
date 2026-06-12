@@ -7,52 +7,55 @@ from locators.groups.bot.group_bot_locator import GroupBotLocator
 
 
 class GroupBotPage(BasePage):
-    """群助手页面操作类，涵盖禁发关键词、发言管理、自动清理、入群验证等功能域"""
+    """群助手页面操作类，涵盖禁发关键词、发言管理、自动清理、入群验证、入群欢迎语、定时消息、自动清理群成员等功能域"""
 
     # ==========================
     # 页面进入与基本导航
     # ==========================
-    def enter_group_bot(self) -> bool:
+
+    # 从群详情/群管理页进入群助手页面
+    def wait_for_group_bot_page_load(self, timeout=10) -> bool:
         """从群详情/群管理页进入群助手页面"""
-        logger.info("⏳ [Action-GroupBotPage] 正在点击进入【群助手】")
-        self.click(GroupBotLocator.GROUP_BOT_ENTRY)
-        # 等待页面加载
-        time.sleep(1)
+        bot_list = self.find_elements(GroupBotLocator.GROUP_BOT_RECYCLER_VIEW, timeout=timeout)
+        if not bot_list:
+            logger.error(f"❌ [Action-GroupBotPage] 未找到群助手功能页面,等待超时 {timeout} 秒")
+            raise Exception("未找到群助手功能页面")
+        logger.info(f"✅ [Action-GroupBotPage] 成功进入【群助手功能页面】,共找到 {len(bot_list)} 个群助手功能")
         return True
 
+    # 进入【禁发关键词检测】设置页面
     def enter_keyword_block(self):
         """进入【禁发关键词检测】设置页面"""
         logger.info("⏳ [Action-GroupBotPage] 进入【禁发关键词检测】设置页")
         self.click(GroupBotLocator.KEYWORD_BLOCK_ENTRY)
         time.sleep(1)
 
+    # 进入【发言管理】设置页面
     def enter_speech_manage(self):
         """进入【发言管理】设置页面"""
         logger.info("⏳ [Action-GroupBotPage] 进入【发言管理】设置页")
         self.click(GroupBotLocator.SPEECH_MANAGE_ENTRY)
         time.sleep(1)
 
+    # 进入【自动清理成员】设置页面
     def enter_auto_clean(self):
         """进入【自动清理成员】页面"""
         logger.info("⏳ [Action-GroupBotPage] 进入【自动清理成员】页")
         self.click(GroupBotLocator.AUTO_CLEAN_ENTRY)
         time.sleep(1)
 
+    # 进入【入群验证】设置页面
     def enter_join_verify(self):
         """进入【入群验证】设置页面"""
         logger.info("⏳ [Action-GroupBotPage] 进入【入群验证】设置页")
         self.click(GroupBotLocator.JOIN_VERIFY_ENTRY)
         time.sleep(1)
 
-    def go_back(self):
-        """点击返回按钮"""
-        logger.info("⏳ [Action-GroupBotPage] 点击返回")
-        self.click(GroupBotLocator.IV_BACK)
-        time.sleep(0.5)
-
     # ==========================
     # 通用开关与保存/确认操作
     # ==========================
+    
+    # 获取当前页面主功能的 Switch 开关状态
     def get_switch_state(self) -> bool:
         """获取当前页面主功能的 Switch 开关状态"""
         checked = self.get_attribute(GroupBotLocator.SWITCH_BTN, "checked")
@@ -60,6 +63,7 @@ class GroupBotPage(BasePage):
         logger.info(f"⚙️ [Action-GroupBotPage] 获取 Switch 开关状态: {state}")
         return state
 
+    # 切换主功能 Switch 开关状态
     def toggle_switch(self, enable: bool):
         """切换主功能 Switch 开关状态"""
         current_state = self.get_switch_state()
@@ -70,18 +74,21 @@ class GroupBotPage(BasePage):
         else:
             logger.info(f"⚙️ [Action-GroupBotPage] 开关状态已为 {enable}，无需切换")
 
+    # 点击右上角保存
     def click_save(self):
         """点击右上角保存"""
         logger.info("⚙️ [Action-GroupBotPage] 点击【保存】")
         self.click(GroupBotLocator.SAVE_BTN)
         time.sleep(1)
 
+    # 点击弹窗确认按钮
     def click_confirm(self):
         """点击弹窗确认按钮"""
         logger.info("⚙️ [Action-GroupBotPage] 点击弹窗【确认】")
         self.click(GroupBotLocator.CONFIRM_BTN)
         time.sleep(1)
 
+    # 点击弹窗取消按钮
     def click_cancel(self):
         """点击弹窗取消按钮"""
         logger.info("⚙️ [Action-GroupBotPage] 点击弹窗【取消】")
@@ -91,12 +98,15 @@ class GroupBotPage(BasePage):
     # ==========================
     # 禁发关键词检测页面细化操作
     # ==========================
+
+    # 点击关键词行进入关键词列表配置页
     def click_keyword_row(self):
         """点击关键词行进入关键词列表配置页"""
         logger.info("⚙️ [Action-GroupBotPage] 点击进入【关键词】配置列表")
         self.click(GroupBotLocator.KEYWORD_ROW)
         time.sleep(1)
 
+    # 清空并设置新的关键词列表
     def set_keywords(self, keywords: list[str]):
         """清空并设置新的关键词列表"""
         logger.info(f"⚙️ [Action-GroupBotPage] 准备配置关键词列表: {keywords}")
@@ -137,6 +147,7 @@ class GroupBotPage(BasePage):
         # 3. 点击保存
         self.click_save()
 
+    # 选择处置规则: 警告、禁言、移除群聊、仅撤回、自动拦截
     def select_action_rule(self, rule_name: str):
         """选择处置规则: 警告、禁言、移除群聊、仅撤回、自动拦截"""
         logger.info(f"⚙️ [Action-GroupBotPage] 选择处置规则: {rule_name}")
@@ -154,6 +165,7 @@ class GroupBotPage(BasePage):
             raise ValueError(f"不支持的处置规则: {rule_name}")
         time.sleep(0.5)
 
+    # 如果选择了禁言，设置禁言时长
     def select_mute_duration(self, duration: str):
         """如果选择了禁言，设置禁言时长 (例如 '10分钟', '30分钟', '永久禁言')"""
         logger.info(f"⚙️ [Action-GroupBotPage] 正在设置禁言时长为: {duration}")
@@ -163,12 +175,14 @@ class GroupBotPage(BasePage):
         self.click(duration_option)
         time.sleep(0.5)
 
+    # 点击警告语行进入警告语列表页
     def click_warning_msg_row(self):
         """点击警告语行进入警告语列表页"""
         logger.info("⚙️ [Action-GroupBotPage] 点击进入【警告语】配置列表")
         self.click(GroupBotLocator.WARNING_MSG_ROW)
         time.sleep(1)
 
+    # 在列表中选择一条警告语（通过模糊文本匹配）
     def select_warning_msg(self, msg_pattern: str):
         """在列表中选择一条警告语（通过模糊文本匹配）"""
         logger.info(f"⚙️ [Action-GroupBotPage] 选择包含特定文案的警告语: {msg_pattern}")
@@ -179,6 +193,7 @@ class GroupBotPage(BasePage):
         self.click(GroupBotLocator.SAVE_BTN)
         time.sleep(1)
 
+    # 添加自定义警告语
     def add_custom_warning_msg(self, content: str):
         """添加自定义警告语"""
         logger.info(f"⚙️ [Action-GroupBotPage] 正在添加自定义警告语: {content}")
@@ -195,6 +210,8 @@ class GroupBotPage(BasePage):
     # ==========================
     # 发言管理页面细化操作
     # ==========================
+
+    # 对指定的限制类型或传播限制进行勾选/取消勾选
     def toggle_limit_item(self, item_name: str, enable: bool):
         """对指定的限制类型或传播限制进行勾选/取消勾选"""
         logger.info(f"⚙️ [Action-GroupBotPage] 设置限制项【{item_name}】状态为: {enable}")
@@ -217,7 +234,6 @@ class GroupBotPage(BasePage):
         locator = locators_map[item_name]
         
         # 获取其勾选状态，通常 checked 属性在对应元素或者其父布局上
-        # 如果是 CheckBox 元素本身：
         is_checked = self.get_attribute(locator, "checked")
         state = str(is_checked).lower() == 'true'
         
@@ -230,12 +246,15 @@ class GroupBotPage(BasePage):
     # ==========================
     # 自动清理成员页面细化操作
     # ==========================
+
+    # 进入清理规则设置页面
     def enter_clean_rules(self):
         """进入清理规则设置页面"""
         logger.info("⚙️ [Action-GroupBotPage] 点击进入【清理规则设置】")
         self.click(GroupBotLocator.CLEAN_RULES_ENTRY)
         time.sleep(1)
 
+    # 配置清理条件
     def toggle_clean_condition(self, cond_name: str, enable: bool):
         """配置清理条件"""
         logger.info(f"⚙️ [Action-GroupBotPage] 设置清理条件【{cond_name}】状态为: {enable}")
@@ -256,6 +275,7 @@ class GroupBotPage(BasePage):
             self.click(locator)
             time.sleep(0.5)
 
+    # 配置保护规则
     def toggle_protect_rule(self, prot_name: str, enable: bool):
         """配置保护规则"""
         logger.info(f"⚙️ [Action-GroupBotPage] 设置保护规则【{prot_name}】状态为: {enable}")
@@ -274,6 +294,7 @@ class GroupBotPage(BasePage):
             self.click(locator)
             time.sleep(0.5)
 
+    # 选择清理模式: 手动确认、自动清理
     def select_clean_mode(self, mode_name: str):
         """选择清理模式: 手动确认、自动清理"""
         logger.info(f"⚙️ [Action-GroupBotPage] 选择清理模式为: {mode_name}")
@@ -285,12 +306,14 @@ class GroupBotPage(BasePage):
             raise ValueError(f"不支持的清理模式: {mode_name}")
         time.sleep(0.5)
 
+    # 点击完成按钮
     def click_finish(self):
         """点击右上角/底部的完成按钮"""
         logger.info("⚙️ [Action-GroupBotPage] 点击【完成】以保存清理规则")
         self.click(GroupBotLocator.FINISH_BTN)
         time.sleep(1)
 
+    # 在任务记录/通知中确认清理名单
     def confirm_clean_task(self):
         """在任务记录/通知中确认清理名单"""
         logger.info("⚙️ [Action-GroupBotPage] 点击【确认名单】")
@@ -299,6 +322,7 @@ class GroupBotPage(BasePage):
         self.click_confirm()
         time.sleep(1)
 
+    # 放弃本次清理
     def cancel_clean_task(self):
         """放弃本次清理"""
         logger.info("⚙️ [Action-GroupBotPage] 点击【放弃本次清理】")
@@ -310,6 +334,8 @@ class GroupBotPage(BasePage):
     # ==========================
     # 入群验证页面细化操作
     # ==========================
+
+    # 一键配置入群验证规则
     def configure_join_verify(self, action_type: str = "仅移出群组", verify_time: str = "5min"):
         """一键配置入群验证规则"""
         logger.info(f"⚙️ [Action-GroupBotPage] 配置入群验证: 方式=点验, 时间={verify_time}, 处理={action_type}")
@@ -336,6 +362,7 @@ class GroupBotPage(BasePage):
         self.click(GroupBotLocator.VERIFY_SCOPE_ALL)
         time.sleep(0.5)
 
+    # 新成员待验证态点击去验证按钮
     def go_verify(self):
         """新成员待验证态点击去验证按钮"""
         logger.info("⚙️ [Action-GroupBotPage] 点击【去验证】")
@@ -345,12 +372,15 @@ class GroupBotPage(BasePage):
     # ==========================
     # 5. 进群欢迎语页面操作
     # ==========================
+
+    # 进入【进群欢迎语】设置页
     def enter_welcome(self):
-        """进入【进群欢迎】设置页"""
-        logger.info("⏳ [Action-GroupBotPage] 进入【进群欢迎】设置页")
+        """进入【进群欢迎语】设置页"""
+        logger.info("⏳ [Action-GroupBotPage] 进入【进群欢迎语】设置页")
         self.click(GroupBotLocator.WELCOME_ENTRY)
         time.sleep(1)
 
+    # 配置并完成进群欢迎语
     def configure_welcome(self, content: str):
         """配置并完成进群欢迎语"""
         logger.info(f"⚙️ [Action-GroupBotPage] 配置进群欢迎语: {content}")
@@ -385,12 +415,15 @@ class GroupBotPage(BasePage):
     # ==========================
     # 6. 定时消息页面操作
     # ==========================
+
+    # 进入【定时消息】页
     def enter_timed_msg(self):
         """进入【定时消息】页"""
         logger.info("⏳ [Action-GroupBotPage] 进入【定时消息】页")
         self.click(GroupBotLocator.TIMED_MSG_ENTRY)
         time.sleep(1)
 
+    # 添加定时消息
     def add_timed_msg(self, content: str):
         """添加定时消息"""
         logger.info(f"⚙️ [Action-GroupBotPage] 准备添加定时消息: {content}")
@@ -415,6 +448,7 @@ class GroupBotPage(BasePage):
         self.click_confirm()  # 二次确认
         time.sleep(1)
 
+    # 根据内容模糊匹配删除定时消息任务
     def delete_timed_msg(self, content_pattern: str):
         """根据内容模糊匹配删除定时消息任务"""
         logger.info(f"⚙️ [Action-GroupBotPage] 准备删除定时消息，内容匹配: {content_pattern}")
@@ -433,4 +467,3 @@ class GroupBotPage(BasePage):
             logger.info("⚙️ [Action-GroupBotPage] 成功删除定时消息")
         except Exception as e:
             logger.warning(f"⚠️ [Action-GroupBotPage] 删除定时消息异常: {e}")
-

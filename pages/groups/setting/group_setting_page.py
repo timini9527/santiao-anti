@@ -36,15 +36,15 @@ class GroupSettingPage(BasePage):
         logger.info(f"✅ [Action-groupSettingPage] 群聊设置页 - 获取群成员头像成功，共 {len(elements)} 个")
         return elements
 
-    # 点击群成员头像
+    # 点击群成员头像（默认为群助手/群主）
     def click_friend_header(self):
-        """点击群成员头像"""
+        """点击群成员头像（默认为群助手/群主）"""
         self.click(GroupSettingLocator.FRIEND_HEADER)
         logger.info("⚙️ [Action-groupSettingPage] 群聊设置页 - 点击【群成员头像】")
 
-    # 点击群成员名称
+    # 点击群成员名称（默认为群助手/群主）
     def click_friend_name(self):
-        """点击群成员名称"""
+        """点击群成员名称（默认为群助手/群主）"""
         self.click(GroupSettingLocator.FRIEND_NAME)
         logger.info("⚙️ [Action-groupSettingPage] 群聊设置页 - 点击【群成员名称】")
 

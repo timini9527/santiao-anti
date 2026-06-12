@@ -20,22 +20,22 @@ class TestGroupBotKeyword:
 
     @pytest.fixture(autouse=True)
     def setup_method(self, driver_sender, driver_receiver):
-        """初始化发送方和接收方的页面对象"""
-        self.main_sender = MainPage(driver_sender)
-        self.home_sender = HomePage(driver_sender)
-        self.chat_list_sender = ChatListPage(driver_sender)
-        self.chat_sender = ChatPage(driver_sender)
-        self.group_setting_sender = GroupSettingPage(driver_sender)
-        self.group_bot_sender = GroupBotPage(driver_sender)
+        """初始化发送方 and 接收方的页面对象"""
+        self.mainS = MainPage(driver_sender)
+        self.homeS = HomePage(driver_sender)
+        self.chatListS = ChatListPage(driver_sender)
+        self.chatS = ChatPage(driver_sender)
+        self.settingS = GroupSettingPage(driver_sender)
+        self.botS = GroupBotPage(driver_sender)
 
-        self.main_receiver = MainPage(driver_receiver)
-        self.home_receiver = HomePage(driver_receiver)
-        self.chat_list_receiver = ChatListPage(driver_receiver)
-        self.chat_receiver = ChatPage(driver_receiver)
+        self.mainR = MainPage(driver_receiver)
+        self.homeR = HomePage(driver_receiver)
+        self.chatListR = ChatListPage(driver_receiver)
+        self.chatR = ChatPage(driver_receiver)
 
         # 确保双端都处于聊天列表主页
-        self.main_sender.go_to_main_page()
-        self.main_receiver.go_to_main_page()
+        self.mainS.go_to_main_page()
+        self.mainR.go_to_main_page()
         yield
 
     @pytest.fixture
@@ -44,19 +44,19 @@ class TestGroupBotKeyword:
         yield
         logger.info("🧹 [Cleanup] 开始清理群助手禁发关键词设置...")
         try:
-            self.main_sender.go_to_main_page()
-            self.chat_list_sender.enter_chat(GROUP_STRATEGY.name)
-            self.chat_sender.wait_for_chat_page_load()
-            self.chat_sender.click_more_button()
-            self.group_setting_sender.wait_for_setting_page_load()
-            self.group_setting_sender.click_group_manager()
+            self.mainS.go_to_main_page()
+            self.chatListS.enter_chat(GROUP_STRATEGY.name)
+            self.chatS.wait_for_chat_page_load()
+            self.chatS.click_more_button()
+            self.settingS.wait_for_setting_page_load()
+            self.settingS.click_group_manager()
             
-            self.group_bot_sender.enter_group_bot()
-            self.group_bot_sender.enter_keyword_block()
+            self.botS.enter_group_bot()
+            self.botS.enter_keyword_block()
             
             # 关闭开关并保存
-            self.group_bot_sender.toggle_switch(enable=False)
-            self.group_bot_sender.click_save()
+            self.botS.toggle_switch(enable=False)
+            self.botS.click_save()
             logger.info("🧹 [Cleanup] 成功关闭群助手禁发关键词设置")
         except Exception as e:
             logger.warning(f"⚠️ [Cleanup] 清理禁发关键词设置时发生异常: {e}")
@@ -68,49 +68,48 @@ class TestGroupBotKeyword:
         """群普通成员发送包含违规词的消息，消息被撤回且群助手发送警告消息"""
         
         with allure.step("1. 发送方(群主/管理员)进入群助手，配置违规关键词并设置处置方式为【警告】"):
-            self.chat_list_sender.enter_chat(GROUP_STRATEGY.name)
-            self.chat_sender.wait_for_chat_page_load()
-            self.chat_sender.click_more_button()
-            self.group_setting_sender.wait_for_setting_page_load()
-            self.group_setting_sender.click_group_manager()
-            
-            self.group_bot_sender.enter_group_bot()
-            self.group_bot_sender.enter_keyword_block()
+            self.chatListS.enter_chat(GROUP_STRATEGY.name)
+            self.chatS.wait_for_chat_page_load()
+            self.chatS.click_more_button()
+            self.settingS.wait_for_setting_page_load()
+            self.settingS.click_friend_header()
+            self.botS.wait_for_group_bot_page_load()
+            self.botS.enter_keyword_block()
             
             # 开启开关
-            self.group_bot_sender.toggle_switch(enable=True)
+            self.botS.toggle_switch(enable=True)
             
             # 配置关键词
-            self.group_bot_sender.click_keyword_row()
-            self.group_bot_sender.set_keywords(["打折", "发票"])
+            self.botS.click_keyword_row()
+            self.botS.set_keywords(["打折", "发票"])
             
             # 选择警告
-            self.group_bot_sender.select_action_rule("警告")
-            self.group_bot_sender.click_save()
+            self.botS.select_action_rule("警告")
+            self.botS.click_save()
             
             # 返回聊天界面
-            self.group_bot_sender.go_back()  # 从群助手返回群管理
-            self.group_bot_sender.go_back()  # 从群管理返回群设置
-            self.group_bot_sender.go_back()  # 返回群聊页面
+            self.botS.go_back()  # 从群助手返回群管理
+            self.botS.go_back()  # 从群管理返回群设置
+            self.botS.go_back()  # 返回群聊页面
 
         with allure.step("2. 接收方(普通群成员)进入相同群聊并发送命中关键词的消息"):
-            self.chat_list_receiver.enter_chat(GROUP_STRATEGY.name)
-            self.chat_receiver.wait_for_chat_page_load()
-            self.chat_receiver.send_message("大家想要低价打折商品吗")
+            self.chatListR.enter_chat(GROUP_STRATEGY.name)
+            self.chatR.wait_for_chat_page_load()
+            self.chatR.send_message("大家想要低价打折商品吗")
 
         with allure.step("3. 校验消息是否被撤回/拦截，并检查群内是否收到群助手的@警告消息"):
-            time.sleep(3)  # 等待机器人处理和撤回
+            time.sleep(3)  # 等待机器人处理 and 撤回
             
             # 接收端检查最后一条消息是否为群助手的警告消息
             # 默认警告文本：“您发送的信息已被撤回 🌟请勿发送与本群无关的内容”
             try:
-                last_msg = self.chat_receiver.find_message_content(index=-1, side='received')
+                last_msg = self.chatR.find_message_content(index=-1, side='received')
                 logger.info(f"🔍 接收方最后收到的消息内容: {last_msg}")
                 check.is_true("撤回" in last_msg or "无关" in last_msg, f"❌ 未收到群助手的警告消息: {last_msg}")
             except Exception as e:
                 logger.warning(f"⚠️ 获取接收方消息时发生错误或未找到: {e}")
                 # 尝试用发送端检查
-                last_msg_sender = self.chat_sender.find_message_content(index=-1, side='received')
+                last_msg_sender = self.chatS.find_message_content(index=-1, side='received')
                 logger.info(f"🔍 发送方(群主)最后收到的消息内容: {last_msg_sender}")
                 check.is_true("撤回" in last_msg_sender or "无关" in last_msg_sender, "❌ 群主未看到群助手的警告消息")
 
@@ -120,31 +119,31 @@ class TestGroupBotKeyword:
         """群助手禁发关键词功能关闭时，发送关键词消息正常显示且不触发拦截"""
         
         with allure.step("1. 发送方进入群助手，关闭禁发关键词检测功能并保存"):
-            self.chat_list_sender.enter_chat(GROUP_STRATEGY.name)
-            self.chat_sender.wait_for_chat_page_load()
-            self.chat_sender.click_more_button()
-            self.group_setting_sender.wait_for_setting_page_load()
-            self.group_setting_sender.click_group_manager()
+            self.chatListS.enter_chat(GROUP_STRATEGY.name)
+            self.chatS.wait_for_chat_page_load()
+            self.chatS.click_more_button()
+            self.settingS.wait_for_setting_page_load()
+            self.settingS.click_group_manager()
             
-            self.group_bot_sender.enter_group_bot()
-            self.group_bot_sender.enter_keyword_block()
+            self.botS.enter_group_bot()
+            self.botS.enter_keyword_block()
             
-            self.group_bot_sender.toggle_switch(enable=False)
-            self.group_bot_sender.click_save()
+            self.botS.toggle_switch(enable=False)
+            self.botS.click_save()
             
-            self.group_bot_sender.go_back()
-            self.group_bot_sender.go_back()
-            self.group_bot_sender.go_back()
+            self.botS.go_back()
+            self.botS.go_back()
+            self.botS.go_back()
 
         with allure.step("2. 接收方发送包含关键词的消息"):
-            self.chat_list_receiver.enter_chat(GROUP_STRATEGY.name)
-            self.chat_receiver.wait_for_chat_page_load()
+            self.chatListR.enter_chat(GROUP_STRATEGY.name)
+            self.chatR.wait_for_chat_page_load()
             
             test_msg = "正常咨询打折相关事宜"
-            self.chat_receiver.send_message(test_msg)
+            self.chatR.send_message(test_msg)
 
         with allure.step("3. 发送方和接收方验证该消息正常显示，未被撤回"):
             time.sleep(2)
             # 接收方校验最后一条发送的消息是否还在
-            actual_msg = self.chat_receiver.find_message_content(index=-1, side='sent')
+            actual_msg = self.chatR.find_message_content(index=-1, side='sent')
             check.equal(actual_msg, test_msg, "❌ 消息被撤回或内容不符")
