@@ -12,21 +12,44 @@ class DriverFactory:
         """
         工厂方法：根据 device_key ('sender' 或 'receiver') 创建驱动
         """
-        # 1. 加载所有配置
-        data = load_yaml_data("devices.yaml")
+        # 1. 获取当前运行环境 (从 api_config.yaml 读取，支持环境变量覆盖)
+        env = os.environ.get("TEST_ENV")
+        if not env:
+            try:
+                api_config = load_yaml_data("api_config.yaml")
+                env = api_config.get("current_env", "dev")
+            except Exception as e:
+                logger.warning(f"⚠️ [DriverFactory] 无法读取 api_config.yaml，默认使用 dev 环境: {e}")
+                env = "dev"
+        
+        logger.info(f"⚙️ [DriverFactory] 当前测试环境: {env}")
 
-        # 2. 获取公共 App 配置
-        common_caps = data.get('app', {})
-        # logger.info(f"公共 App 配置: {common_caps}")
+        # 2. 尝试读取环境专属的配置文件 (如 devices_dev.yaml)，如果不存在则使用默认的 devices.yaml
+        device_file = f"devices_{env}.yaml"
+        from utils.file_reader.data_loader import find_file
+        
+        if find_file(device_file):
+            logger.info(f"📂 [DriverFactory] 发现环境专属设备配置文件: {device_file}")
+            data = load_yaml_data(device_file)
+            devices_section = data.get('devices', {})
+            # 兼容嵌套环境和直接平铺设备的情况
+            if env in devices_section:
+                device_config = devices_section.get(env, {}).get(device_key)
+            else:
+                device_config = devices_section.get(device_key)
+        else:
+            logger.info("📂 [DriverFactory] 读取通用 devices.yaml 配置文件")
+            data = load_yaml_data("devices.yaml")
+            devices_section = data.get('devices', {})
+            device_config = devices_section.get(env, {}).get(device_key)
 
-        # 3. 获取指定设备的配置
-        device_config = data.get('devices', {}).get(device_key)
-        # logger.info(f"设备 {device_key} 配置: {device_config}")
         if not device_config:
-            raise ValueError(f"在 devices.yaml 中找不到设备: {device_key}")
+            raise ValueError(f"❌ 在设备配置文件中找不到环境 '{env}' 下的设备: {device_key}")
+
+        # 3. 获取公共 App 配置
+        common_caps = data.get('app', {})
 
         # 4. 合并 Capability (深拷贝防止污染)
-        # 优先级：设备配置 > 公共配置
         desired_caps = copy.deepcopy(common_caps)
         desired_caps.update(device_config)
         
