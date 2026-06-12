@@ -339,3 +339,96 @@ class GroupBotPage(BasePage):
         logger.info("⚙️ [Action-GroupBotPage] 点击【去验证】")
         self.click(GroupBotLocator.GO_VERIFY_BTN)
         time.sleep(2)
+
+    # ==========================
+    # 5. 进群欢迎语页面操作
+    # ==========================
+    def enter_welcome(self):
+        """进入【进群欢迎】设置页"""
+        logger.info("⏳ [Action-GroupBotPage] 进入【进群欢迎】设置页")
+        self.click(GroupBotLocator.WELCOME_ENTRY)
+        time.sleep(1)
+
+    def configure_welcome(self, content: str):
+        """配置并完成进群欢迎语"""
+        logger.info(f"⚙️ [Action-GroupBotPage] 配置进群欢迎语: {content}")
+        
+        # 尝试点击“添加欢迎语”或“修改欢迎语”
+        try:
+            add_btn = self.find_elements(GroupBotLocator.WELCOME_ADD_BTN, timeout=2)
+            if add_btn:
+                logger.info("⚙️ [Action-GroupBotPage] 点击【添加欢迎语】")
+                self.click(add_btn[0])
+                time.sleep(1)
+            else:
+                edit_btn = self.find_elements(GroupBotLocator.WELCOME_EDIT_BTN, timeout=2)
+                if edit_btn:
+                    logger.info("⚙️ [Action-GroupBotPage] 点击【修改欢迎语】")
+                    self.click(edit_btn[0])
+                    time.sleep(1)
+        except Exception as e:
+            logger.warning(f"⚠️ [Action-GroupBotPage] 查找添加/修改按钮异常: {e}")
+
+        # 清空并输入欢迎语内容
+        input_field = self.find_element(GroupBotLocator.WELCOME_INPUT)
+        input_field.clear()
+        if content:
+            input_field.send_keys(content)
+            time.sleep(0.5)
+
+        # 点击完成保存
+        self.click(GroupBotLocator.WELCOME_FINISH_BTN)
+        time.sleep(1.5)
+
+    # ==========================
+    # 6. 定时消息页面操作
+    # ==========================
+    def enter_timed_msg(self):
+        """进入【定时消息】页"""
+        logger.info("⏳ [Action-GroupBotPage] 进入【定时消息】页")
+        self.click(GroupBotLocator.TIMED_MSG_ENTRY)
+        time.sleep(1)
+
+    def add_timed_msg(self, content: str):
+        """添加定时消息"""
+        logger.info(f"⚙️ [Action-GroupBotPage] 准备添加定时消息: {content}")
+        self.click(GroupBotLocator.ADD_TIMED_MSG_BTN)
+        time.sleep(1)
+
+        # 输入文本
+        input_field = self.find_element(GroupBotLocator.TIMED_MSG_INPUT)
+        input_field.clear()
+        input_field.send_keys(content)
+        time.sleep(0.5)
+
+        # 设置时间
+        self.click(GroupBotLocator.TIMED_MSG_TIME_ROW)
+        time.sleep(1)
+        self.click_confirm()  # 时间确认弹窗
+        time.sleep(0.5)
+
+        # 确认添加
+        self.click(GroupBotLocator.TIMED_MSG_CONFIRM_BTN)
+        time.sleep(0.5)
+        self.click_confirm()  # 二次确认
+        time.sleep(1)
+
+    def delete_timed_msg(self, content_pattern: str):
+        """根据内容模糊匹配删除定时消息任务"""
+        logger.info(f"⚙️ [Action-GroupBotPage] 准备删除定时消息，内容匹配: {content_pattern}")
+        # 点击指定条目的修改按钮进入编辑页
+        # 定位特定内容的条目下的“修改”按钮
+        modify_btn_loc = (AppiumBy.ANDROID_UIAUTOMATOR, 
+                          f'newUiSelector().textContains("{content_pattern}").fromParent(newUiSelector().text("修改"))')
+        try:
+            self.click(modify_btn_loc)
+            time.sleep(1)
+            # 点击删除
+            self.click(GroupBotLocator.TIMED_MSG_DELETE_BTN)
+            time.sleep(0.5)
+            self.click_confirm()
+            time.sleep(1)
+            logger.info("⚙️ [Action-GroupBotPage] 成功删除定时消息")
+        except Exception as e:
+            logger.warning(f"⚠️ [Action-GroupBotPage] 删除定时消息异常: {e}")
+

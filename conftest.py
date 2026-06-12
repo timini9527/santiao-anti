@@ -74,7 +74,7 @@ ALLURE_LABEL = _rerun_cfg.get("allure_label", True)
 # Session 级重跑计数器
 _session_rerun_count = 0
 
-
+#TODO：失败自动重跑截图功能待验证
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_makereport(item, call):
     """

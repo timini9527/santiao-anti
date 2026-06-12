@@ -13,6 +13,8 @@ class GroupBotLocator:
     SPEECH_MANAGE_ENTRY = (AppiumBy.ANDROID_UIAUTOMATOR, 'newUiSelector().text("发言管理")')
     JOIN_VERIFY_ENTRY = (AppiumBy.ANDROID_UIAUTOMATOR, 'newUiSelector().text("入群验证")')
     AUTO_CLEAN_ENTRY = (AppiumBy.ANDROID_UIAUTOMATOR, 'newUiSelector().text("自动清理成员")')
+    WELCOME_ENTRY = (AppiumBy.ANDROID_UIAUTOMATOR, 'newUiSelector().text("进群欢迎")')
+    TIMED_MSG_ENTRY = (AppiumBy.ANDROID_UIAUTOMATOR, 'newUiSelector().text("定时消息")')
     
     # 共同/主页面元素
     SWITCH_BTN = (AppiumBy.CLASS_NAME, 'android.widget.Switch')
@@ -86,3 +88,19 @@ class GroupBotLocator:
     
     # 待验证端元素
     GO_VERIFY_BTN = (AppiumBy.ANDROID_UIAUTOMATOR, 'newUiSelector().text("去验证")')
+
+    # 5. 进群欢迎语页面元素
+    WELCOME_ADD_BTN = (AppiumBy.ANDROID_UIAUTOMATOR, 'newUiSelector().text("添加欢迎语")')
+    WELCOME_EDIT_BTN = (AppiumBy.ANDROID_UIAUTOMATOR, 'newUiSelector().text("修改欢迎语")')
+    WELCOME_INPUT = (AppiumBy.CLASS_NAME, 'android.widget.EditText')
+    WELCOME_FINISH_BTN = (AppiumBy.ANDROID_UIAUTOMATOR, 'newUiSelector().text("完成")')
+
+    # 6. 定时消息页面元素
+    ADD_TIMED_MSG_BTN = (AppiumBy.ANDROID_UIAUTOMATOR, 'newUiSelector().text("添加定时消息")')
+    TIMED_MSG_INPUT = (AppiumBy.CLASS_NAME, 'android.widget.EditText')
+    TIMED_MSG_TIME_ROW = (AppiumBy.ANDROID_UIAUTOMATOR, 'newUiSelector().text("设置时间")')
+    TIMED_MSG_IMAGE_BTN = (AppiumBy.ANDROID_UIAUTOMATOR, 'newUiSelector().text("添加图片")')
+    TIMED_MSG_CONFIRM_BTN = (AppiumBy.ANDROID_UIAUTOMATOR, 'newUiSelector().text("确认添加")')
+    TIMED_MSG_SAVE_BTN = (AppiumBy.ANDROID_UIAUTOMATOR, 'newUiSelector().text("保存")')
+    TIMED_MSG_EDIT_BTN = (AppiumBy.ANDROID_UIAUTOMATOR, 'newUiSelector().text("修改")')
+    TIMED_MSG_DELETE_BTN = (AppiumBy.ANDROID_UIAUTOMATOR, 'newUiSelector().text("删除")')
