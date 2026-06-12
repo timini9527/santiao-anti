@@ -125,11 +125,25 @@ def prepare_api_token():
     # assert success, "API 账号登录失败"
     pass
 
+def pytest_addoption(parser):
+    """添加命令行参数，支持运行测试时动态指定测试环境 (例如: pytest --env test)"""
+    parser.addoption(
+        "--env",
+        action="store",
+        default=None,
+        help="指定测试运行环境 (dev, test, uat, prod 等)"
+    )
+
+@pytest.fixture(scope="session")
+def env(request):
+    """从命令行选项 --env 中获取当前运行的测试环境"""
+    return request.config.getoption("--env")
+
 # --- Driver Fixtures ---
 @pytest.fixture(scope="session")
-def driver_sender():
+def driver_sender(env):
     """ 启动发送方设备 (Session 级别，整个测试过程只启动一次) """
-    driver = DriverFactory.get_driver('sender')
+    driver = DriverFactory.get_driver('sender', env=env)
     # MainPage(driver).wait_for_main_page_load()
     time.sleep(5)
     yield driver
@@ -140,9 +154,9 @@ def driver_sender():
         driver.quit()
 
 @pytest.fixture(scope="session")
-def driver_receiver():
+def driver_receiver(env):
     """ 启动接收方设备 """
-    driver = DriverFactory.get_driver('receiver')
+    driver = DriverFactory.get_driver('receiver', env=env)
     yield driver
     print("\n[Teardown] 关闭接收方驱动")
     if os.environ.get("DEBUG_MODE") == "1":
