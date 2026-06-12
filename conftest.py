@@ -9,6 +9,36 @@ from pages.main.main_page import MainPage
 
 logger = logging.getLogger(__name__)
 
+
+def _get_default_env() -> str:
+    """从 config/api_config.yaml 中读取默认的运行环境，保持配置的一致性"""
+    try:
+        config_path = os.path.join(os.path.dirname(__file__), "config", "api_config.yaml")
+        with open(config_path, "r", encoding="utf-8") as f:
+            raw_data = yaml.safe_load(f)
+            return raw_data.get("current_env", "dev")
+    except Exception:
+        return "dev"
+
+
+def pytest_addoption(parser):
+    """注册命令行参数 --env，允许动态指定执行环境 (如 dev, test, uat)"""
+    parser.addoption(
+        "--env",
+        action="store",
+        default=_get_default_env(),
+        help="运行环境可选值: dev, test, uat (默认读取 api_config.yaml 中的配置)"
+    )
+
+
+def pytest_configure(config):
+    """在测试启动时，将命令行传入的环境同步到系统环境变量 ENV，确保全局统一"""
+    env = config.getoption("--env")
+    if env:
+        os.environ["ENV"] = env
+        os.environ["TEST_ENV"] = env
+        logger.info(f"🌐 [pytest_configure] 全局测试环境已设定为: {env}")
+
 # ============================================================
 # 全局重跑控制器
 # 说明：基于 config/rerun.yaml 提供 Session 级重跑上限熔断、
@@ -125,25 +155,11 @@ def prepare_api_token():
     # assert success, "API 账号登录失败"
     pass
 
-def pytest_addoption(parser):
-    """添加命令行参数，支持运行测试时动态指定测试环境 (例如: pytest --env test)"""
-    parser.addoption(
-        "--env",
-        action="store",
-        default=None,
-        help="指定测试运行环境 (dev, test, uat, prod 等)"
-    )
-
-@pytest.fixture(scope="session")
-def env(request):
-    """从命令行选项 --env 中获取当前运行的测试环境"""
-    return request.config.getoption("--env")
-
 # --- Driver Fixtures ---
 @pytest.fixture(scope="session")
-def driver_sender(env):
+def driver_sender():
     """ 启动发送方设备 (Session 级别，整个测试过程只启动一次) """
-    driver = DriverFactory.get_driver('sender', env=env)
+    driver = DriverFactory.get_driver('sender')
     # MainPage(driver).wait_for_main_page_load()
     time.sleep(5)
     yield driver
@@ -154,9 +170,9 @@ def driver_sender(env):
         driver.quit()
 
 @pytest.fixture(scope="session")
-def driver_receiver(env):
+def driver_receiver():
     """ 启动接收方设备 """
-    driver = DriverFactory.get_driver('receiver', env=env)
+    driver = DriverFactory.get_driver('receiver')
     yield driver
     print("\n[Teardown] 关闭接收方驱动")
     if os.environ.get("DEBUG_MODE") == "1":

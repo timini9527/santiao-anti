@@ -8,40 +8,31 @@ from utils.file_reader.data_loader import load_yaml_data
 
 class DriverFactory:
     @staticmethod
-    def get_driver(device_key: str, env: str = None):
+    def get_driver(device_key: str):
         """
         工厂方法：根据 device_key ('sender' 或 'receiver') 创建驱动
         """
         # 1. 加载所有配置
         data = load_yaml_data("devices.yaml")
 
-        # 2. 确定运行环境：优先使用传入的 env，其次环境变量 ENV 或 TEST_ENV，再其次读取 api_config.yaml 的 current_env 配置，最后默认为 'dev'
-        if not env:
-            env = os.environ.get("ENV") or os.environ.get("TEST_ENV")
-        if not env:
-            try:
-                from core.config_loader import config
-                env = config.get('env_name')
-            except Exception:
-                pass
-        if not env:
-            env = "dev"
-        env = env.lower()
-        logger.info(f"[DriverFactory] 选定环境: '{env}'")
+        # 2. 识别当前测试环境，优先级：环境变量 ENV > 环境变量 TEST_ENV > 默认 'dev'
+        env = os.getenv("ENV") or os.getenv("TEST_ENV") or "dev"
+        logger.info(f"[DriverFactory] 正在加载环境 [{env}] 下的设备配置...")
 
         # 3. 获取公共 App 配置
         common_caps = data.get('app', {})
 
-        # 4. 获取指定环境下设备的配置
+        # 4. 获取当前环境下的所有设备配置
         env_devices = data.get('devices', {}).get(env)
         if not env_devices:
-            raise ValueError(f"在 devices.yaml 的 devices 下找不到环境: {env}")
-        
+            raise ValueError(f"在 devices.yaml 中找不到环境 [{env}] 的配置")
+
+        # 5. 获取指定设备的配置
         device_config = env_devices.get(device_key)
         if not device_config:
-            raise ValueError(f"在 devices.yaml 的 devices -> {env} 下找不到设备: {device_key}")
+            raise ValueError(f"在 devices.yaml 的 [{env}] 环境下找不到设备: {device_key}")
 
-        # 5. 合并 Capability (深拷贝防止污染)
+        # 6. 合并 Capability (深拷贝防止污染)
         # 优先级：设备配置 > 公共配置
         desired_caps = copy.deepcopy(common_caps)
         desired_caps.update(device_config)
