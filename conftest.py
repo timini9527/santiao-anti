@@ -11,9 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 def _get_default_env() -> str:
-    """从 config/api_config.yaml 中读取默认的运行环境，保持配置的一致性"""
+    """从 config/devices.yaml 中读取默认的运行环境，保持配置的一致性"""
     try:
-        config_path = os.path.join(os.path.dirname(__file__), "config", "api_config.yaml")
+        config_path = os.path.join(os.path.dirname(__file__), "config", "devices.yaml")
         with open(config_path, "r", encoding="utf-8") as f:
             raw_data = yaml.safe_load(f)
             return raw_data.get("current_env", "dev")
@@ -22,12 +22,12 @@ def _get_default_env() -> str:
 
 
 def pytest_addoption(parser):
-    """注册命令行参数 --env，允许动态指定执行环境 (如 dev, test, uat)"""
+    """注册命令行参数 --env，允许动态指定执行环境 (如 dev, test)"""
     parser.addoption(
         "--env",
         action="store",
         default=_get_default_env(),
-        help="运行环境可选值: dev, test, uat (默认读取 api_config.yaml 中的配置)"
+        help="运行环境可选值: dev, test (默认读取 devices.yaml 中的配置)"
     )
 
 
@@ -38,6 +38,7 @@ def pytest_configure(config):
         os.environ["ENV"] = env
         os.environ["TEST_ENV"] = env
         logger.info(f"🌐 [pytest_configure] 全局测试环境已设定为: {env}")
+
 
 # ============================================================
 # 全局重跑控制器

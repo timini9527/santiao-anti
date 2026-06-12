@@ -1,4 +1,7 @@
 # devices.yaml
+# current_env: "dev"  # 当前执行环境：dev 或 test
+current_env: "test" 
+
 server:
   host: "127.0.0.1"
   port: 4723
