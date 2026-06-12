@@ -89,6 +89,21 @@ def pytest_runtest_makereport(item, call):
     if report.when != "call":
         return
 
+    # 失败时自动截图并保存到 Allure 报告
+    if report.failed:
+        for driver_name in ["driver_sender", "driver_receiver", "driver"]:
+            if driver_name in item.funcargs:
+                try:
+                    driver = item.funcargs[driver_name]
+                    allure.attach(
+                        driver.get_screenshot_as_png(),
+                        name=f"失败现场截图 ({driver_name})",
+                        attachment_type=allure.attachment_type.PNG
+                    )
+                    logger.info(f"📸 自动捕获失败截图: {driver_name}")
+                except Exception as e:
+                    logger.warning(f"⚠️ 捕获失败截图 {driver_name} 失败: {e}")
+
     # ---- 重跑检测 ----
     # pytest-rerunfailures 会在 item 上挂载 execution_count 属性
     exec_count = getattr(item, "execution_count", 0)

@@ -3,7 +3,8 @@
 # 全局默认配置
 # ==========================================
 # 当前运行的环境: dev, test, uat, prod
-current_env: 'test'
+current_env: 'dev'
+# current_env: 'test'
 
 
 
