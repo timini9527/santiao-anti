@@ -2,7 +2,7 @@ import pytest
 import allure
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
-from pages.groups.group_create_page import GroupCreatePage
+from pages.groups.create.group_create_page import GroupCreatePage
 from pages.chat.chat_page import ChatPage
 from pages.chat.chat_list_page import ChatListPage
 from pages.common.session_select_page import SessionSelectPage

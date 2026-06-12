@@ -6,15 +6,19 @@ class GroupBotLocator:
     PACKAGE_ID = CommonLocator.PACKAGE_ID
 
     # 群详情/群管理中的入口
-    GROUP_BOT_ENTRY = (AppiumBy.ANDROID_UIAUTOMATOR, 'newUiSelector().text("群助手")')
+    GROUP_BOT_ENTRY = (AppiumBy.ANDROID_UIAUTOMATOR, f'newUiSelector().resourceId("{PACKAGE_ID}:id/tv_title").text("群助手")')
     
+    # 群助手页面
+    GROUP_BOT_RECYCLER_VIEW = (AppiumBy.ID, f'{PACKAGE_ID}:id/recycler') 
+    
+
     # 群助手功能列表入口
-    KEYWORD_BLOCK_ENTRY = (AppiumBy.ANDROID_UIAUTOMATOR, 'newUiSelector().text("禁发关键词检测")')
-    SPEECH_MANAGE_ENTRY = (AppiumBy.ANDROID_UIAUTOMATOR, 'newUiSelector().text("发言管理")')
-    JOIN_VERIFY_ENTRY = (AppiumBy.ANDROID_UIAUTOMATOR, 'newUiSelector().text("入群验证")')
-    AUTO_CLEAN_ENTRY = (AppiumBy.ANDROID_UIAUTOMATOR, 'newUiSelector().text("自动清理成员")')
-    WELCOME_ENTRY = (AppiumBy.ANDROID_UIAUTOMATOR, 'newUiSelector().text("进群欢迎")')
-    TIMED_MSG_ENTRY = (AppiumBy.ANDROID_UIAUTOMATOR, 'newUiSelector().text("定时消息")')
+    KEYWORD_BLOCK_ENTRY = (AppiumBy.ANDROID_UIAUTOMATOR, f'newUiSelector().resourceId("{PACKAGE_ID}:id/tv_title").text("禁止发送关键词")')
+    SPEECH_MANAGE_ENTRY = (AppiumBy.ANDROID_UIAUTOMATOR, f'newUiSelector().resourceId("{PACKAGE_ID}:id/tv_title").text("发言管理")')
+    JOIN_VERIFY_ENTRY = (AppiumBy.ANDROID_UIAUTOMATOR, f'newUiSelector().resourceId("{PACKAGE_ID}:id/tv_title").text("进群验证")')
+    AUTO_CLEAN_ENTRY = (AppiumBy.ANDROID_UIAUTOMATOR, f'newUiSelector().resourceId("{PACKAGE_ID}:id/tv_title").text("自动清理成员")')
+    WELCOME_ENTRY = (AppiumBy.ANDROID_UIAUTOMATOR, f'newUiSelector().resourceId("{PACKAGE_ID}:id/tv_title").text("进群欢迎语")')
+    TIMED_MSG_ENTRY = (AppiumBy.ANDROID_UIAUTOMATOR, f'newUiSelector().resourceId("{PACKAGE_ID}:id/tv_title").text("定时消息")')
     
     # 共同/主页面元素
     SWITCH_BTN = (AppiumBy.CLASS_NAME, 'android.widget.Switch')

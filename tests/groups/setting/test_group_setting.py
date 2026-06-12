@@ -4,8 +4,8 @@ import pytest_check as check
 from core.logger_utils import logger
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
-from pages.groups.group_create_page import GroupCreatePage
-from pages.groups.group_setting_page import GroupSettingPage
+from pages.groups.create.group_create_page import GroupCreatePage
+from pages.groups.setting.group_setting_page import GroupSettingPage
 from pages.chat.chat_page import ChatPage
 from pages.chat.chat_list_page import ChatListPage
 from pages.common.contact_select_page import ContactSelectPage

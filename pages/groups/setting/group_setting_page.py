@@ -2,7 +2,8 @@ import time
 from core.logger_utils import logger
 from common.base_page import BasePage
 from appium.webdriver.webelement import WebElement
-from locators.groups.group_setting_locator import GroupSettingLocator
+from appium.webdriver.common.appiumby import AppiumBy
+from locators.groups.setting.group_setting_locator import GroupSettingLocator
 from locators.common.common_locator import CommonLocator
 
 class GroupSettingPage(BasePage):

@@ -4,8 +4,8 @@ import pytest_check as check
 from core.logger_utils import logger
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
-from pages.groups.group_setting_page import GroupSettingPage
-from pages.groups.group_bot_page import GroupBotPage
+from pages.groups.setting.group_setting_page import GroupSettingPage
+from pages.groups.bot.group_bot_page import GroupBotPage
 from pages.chat.chat_page import ChatPage
 from pages.chat.chat_list_page import ChatListPage
 from strategy.chat.chat_strategy import GROUP_STRATEGY
@@ -73,6 +73,6 @@ class TestGroupBotWelcome:
         with allure.step("3. 校验状态刷新，群助手管理页展示【修改欢迎语】"):
             # 返回群助手管理页后，验证状态已更新
             # 由于 configure_welcome 保存后会自动返回上一级，我们在当前页判断
-            from locators.groups.group_bot_locator import GroupBotLocator
+            from locators.groups.bot.group_bot_locator import GroupBotLocator
             edit_btn_visible = len(self.group_bot_sender.find_elements(GroupBotLocator.WELCOME_EDIT_BTN, timeout=5))
             check.is_true(edit_btn_visible > 0, "❌ 保存欢迎语后，入口状态未更新为“修改欢迎语”")

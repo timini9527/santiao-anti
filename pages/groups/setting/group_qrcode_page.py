@@ -1,6 +1,6 @@
 from common.base_page import BasePage
 from core.logger_utils import logger
-from locators.groups.group_qrcode_locator import GroupQrCodeLocator
+from locators.groups.setting.group_qrcode_locator import GroupQrCodeLocator
 
 class GroupQrCodePage(BasePage):
     """群二维码子页面操作类"""

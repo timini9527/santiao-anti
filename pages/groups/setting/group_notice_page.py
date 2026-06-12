@@ -1,6 +1,6 @@
 from common.base_page import BasePage
 from core.logger_utils import logger
-from locators.groups.group_notice_locator import GroupNoticeLocator
+from locators.groups.setting.group_notice_locator import GroupNoticeLocator
 
 class GroupNoticePage(BasePage):
     """群公告子页面操作类"""

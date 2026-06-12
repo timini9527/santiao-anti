@@ -1,8 +1,10 @@
 import time
 from core.logger_utils import logger
 from common.base_page import BasePage
-from locators.groups.group_bot_locator import GroupBotLocator
 from appium.webdriver.common.appiumby import AppiumBy
+from locators.groups.bot.group_bot_locator import GroupBotLocator
+
+
 
 class GroupBotPage(BasePage):
     """群助手页面操作类，涵盖禁发关键词、发言管理、自动清理、入群验证等功能域"""
