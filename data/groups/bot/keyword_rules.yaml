@@ -1,0 +1,109 @@
+test_suite_info:
+  module: "Group_Bot_Keyword_Rules - 关键词合规与拦截规则"
+  version: "1.0"
+  author: "Auto"
+
+test_data:
+  # ----------------------------------------
+  # 1. 关键词合规与拦截规则 (Keyword Validation)
+  # ----------------------------------------
+  keyword_validation:
+    - case_id: "KEYWORD_RULE_001"
+      title: "纯中文合规"
+      priority: "P0"
+      tags: ["smoke", "keyword"]
+      data:
+        keyword: "你好"
+      expected:
+        action: "success"
+        expected_text: "你好"
+
+    - case_id: "KEYWORD_RULE_002"
+      title: "纯英文合规"
+      priority: "P0"
+      tags: ["smoke", "keyword"]
+      data:
+        keyword: "hello"
+      expected:
+        action: "success"
+        expected_text: "hello"
+
+    - case_id: "KEYWORD_RULE_003"
+      title: "纯数字合规"
+      priority: "P0"
+      tags: ["smoke", "keyword"]
+      data:
+        keyword: "123456"
+      expected:
+        action: "success"
+        expected_text: "123456"
+
+    - case_id: "KEYWORD_RULE_004"
+      title: "中英数混合合规"
+      priority: "P0"
+      tags: ["smoke", "keyword"]
+      data:
+        keyword: "中英mix123"
+      expected:
+        action: "success"
+        expected_text: "中英mix123"
+
+    - case_id: "KEYWORD_RULE_005"
+      title: "包含普通空格"
+      priority: "P0"
+      tags: ["smoke", "keyword"]
+      data:
+        keyword: "hello 123"
+      expected:
+        action: "success"
+        expected_text: "hello 123"
+
+    - case_id: "KEYWORD_RULE_006"
+      title: "刚好10个中文字符"
+      priority: "P0"
+      tags: ["boundary", "keyword"]
+      data:
+        keyword: "一二三四五六七八九十"
+      expected:
+        action: "success"
+        expected_text: "一二三四五六七八九十"
+
+    - case_id: "KEYWORD_RULE_007"
+      title: "超过10字自动截断"
+      priority: "P1"
+      tags: ["boundary", "keyword"]
+      data:
+        keyword: "超过十个字的超长违规词"
+      expected:
+        action: "truncate"
+        expected_text: "超过十个字的超长违规"
+
+    - case_id: "KEYWORD_RULE_008"
+      title: "不支持邮箱格式"
+      priority: "P1"
+      tags: ["invalid", "keyword"]
+      data:
+        keyword: "test@abc.com"
+      expected:
+        action: "toast_or_clear"
+        expected_text: ""
+
+    - case_id: "KEYWORD_RULE_009"
+      title: "不支持包含特殊符号"
+      priority: "P1"
+      tags: ["invalid", "keyword"]
+      data:
+        keyword: "abc#$"
+      expected:
+        action: "toast_or_clear"
+        expected_text: ""
+
+    - case_id: "KEYWORD_RULE_010"
+      title: "不支持纯特殊符号"
+      priority: "P1"
+      tags: ["invalid", "keyword"]
+      data:
+        keyword: "!@#"
+      expected:
+        action: "toast_or_clear"
+        expected_text: ""

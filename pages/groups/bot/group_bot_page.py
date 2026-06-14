@@ -355,11 +355,21 @@ class GroupBotPage(BasePage):
         """关键词-点击编辑按钮"""
         self.click(GroupBotLocator.TV_EDIT)
         logger.info("⚙️ [Action-GroupBotPage] 点击【编辑】按钮")
+
+    # 关键词-编辑框输入警告语获取
+    def get_warning_msg_input_element(self) -> WebElement | None:
+        """关键词-获取警告语输入框元素"""
+        element = self.find_element(GroupBotLocator.ET_WARNING_MSG)
+        if not element:
+            logger.warning("⚙️ [Action-GroupBotPage] 未获取到警告语输入框元素")
+            return None
+        logger.info("⚙️ [Action-GroupBotPage] 已获取警告语输入框元素")
+        return element
     
     # 关键词-编辑框输入警告语
     def set_custom_warning_msg_input(self, msg: str):
         """关键词-编辑框输入警告语"""
-        element = self.find_element(GroupBotLocator.ET_WARNING_MSG)
+        element = self.get_warning_msg_input_element()
         element.clear()
         element.send_keys(msg)
         logger.info(f"⚙️ [Action-GroupBotPage] 输入自定义警告语: {msg}")
@@ -397,51 +407,37 @@ class GroupBotPage(BasePage):
                 logger.info("⚙️ [Action-GroupBotPage] 已添加的自定义警告语数量达到预期。")
                 break
             
-            if self.is_element_exist(GroupBotLocator.ET_WARNING_MSG, timeout=1):
+            if self.get_warning_msg_input_element():
                 logger.info("⚙️ [Action-GroupBotPage] 确认后仍在编辑页面，保存可能被拦截，终止剩余添加。")
                 break
             
             self.click_warning_msg_setting()
             self.wait_warning_msg_panel()
-        
         time.sleep(1)
     
+    # 关键词-删除警告语
+    def delete_warning_msg(self):
+        """关键词-删除警告语"""
 
-    # 如果选择了禁言，设置禁言时长
+        self.click_custom_warning_msg_edit_btn()
+        element = self.get_warning_msg_input_element()
+        element.clear()
+        logger.info("⚙️ [Action-GroupBotPage] 已删除警告语")
+
+
+
+    # 关键词-设置禁言时长
     def select_mute_duration(self, duration: str):
-        """如果选择了禁言，设置禁言时长 (例如 '10分钟', '30分钟', '永久禁言')"""
+        """关键词-设置禁言时长"""
         logger.info(f"⚙️ [Action-GroupBotPage] 正在设置禁言时长为: {duration}")
         self.click(GroupBotLocator.MUTE_DURATION_ROW)
         duration_option = (AppiumBy.ANDROID_UIAUTOMATOR, f'new UiSelector().text("{duration}")')
         self.click(duration_option)
 
-    # 点击警告语行进入警告语列表页
-    def click_warning_msg_row(self):
-        """点击警告语行进入警告语列表页"""
-        logger.info("⚙️ [Action-GroupBotPage] 点击进入【警告语】配置列表")
-        self.click(GroupBotLocator.WARNING_MSG_ROW)
 
-    # 在列表中选择一条警告语（通过模糊文本匹配）
-    def select_warning_msg(self, msg_pattern: str):
-        """在列表中选择一条警告语（通过模糊文本匹配）"""
-        logger.info(f"⚙️ [Action-GroupBotPage] 选择包含特定文案的警告语: {msg_pattern}")
-        target_locator = (AppiumBy.ANDROID_UIAUTOMATOR, f'new UiSelector().textContains("{msg_pattern}")')
-        self.click(target_locator)
-        # 点击确定保存回显
-        self.click_save()
-
-    # 添加自定义警告语
-    def add_custom_warning_msg(self, content: str):
-        """添加自定义警告语"""
-        logger.info(f"⚙️ [Action-GroupBotPage] 正在添加自定义警告语: {content}")
-        self.click(GroupBotLocator.ADD_WARNING_MSG_BTN)
-        edit_field = self.find_element(GroupBotLocator.ET_WARNING_MSG)
-        edit_field.send_keys(content)
-        self.click(GroupBotLocator.BTN_CONFIRM)
-
-    # ==========================
+    # =====================================================================
     # 发言管理页面细化操作
-    # ==========================
+    # =====================================================================
 
     # 对指定的限制类型或传播限制进行勾选/取消勾选
     def toggle_limit_item(self, item_name: str, enable: bool):
@@ -474,9 +470,9 @@ class GroupBotPage(BasePage):
         else:
             logger.info(f"⚙️ [Action-GroupBotPage] 限制项【{item_name}】状态已为 {enable}，无需点击")
 
-    # ==========================
+    # =====================================================================
     # 自动清理成员页面细化操作
-    # ==========================
+    # =====================================================================
 
     # 进入清理规则设置页面
     def enter_clean_rules(self):
@@ -553,9 +549,9 @@ class GroupBotPage(BasePage):
         self.click(GroupBotLocator.CANCEL_CLEAN_TASK)
         self.click_confirm()
 
-    # ==========================
+    # =====================================================================
     # 入群验证页面细化操作
-    # ==========================
+    # =====================================================================
 
     # 一键配置入群验证规则
     def configure_join_verify(self, action_type: str = "仅移出群组", verify_time: str = "5min"):
@@ -623,9 +619,9 @@ class GroupBotPage(BasePage):
         # 点击完成保存
         self.click(GroupBotLocator.WELCOME_FINISH_BTN)
 
-    # ==========================
-    # 6. 定时消息页面操作
-    # ==========================
+    # =====================================================================
+    # 定时消息页面操作
+    # =====================================================================
 
     # 进入【定时消息】页
     def enter_timed_msg(self):

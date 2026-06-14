@@ -393,15 +393,12 @@ class TestGroupBotKeyword:
             current_count = self.botS.get_warning_msg_count()
             if action == "delete_custom":
                 if current_count < 2:
-                    # 如果当前只有默认的一条，则先添加一条用于测试删除
                     self.botS.set_custom_warning_msg(["准备删除的临时测试警告语"])
-                    # 如果面板被关闭，重新打开
                     if not self.botS.wait_warning_msg_panel(timeout=2):
                         self.botS.click_warning_msg_setting()
                         self.botS.wait_warning_msg_panel()
                     current_count = self.botS.get_warning_msg_count()
             elif action == "delete_last_one":
-                # 测试兜底限制前，确保列表当前仅剩 1 条，多余的先干掉
                 if current_count > 1:
                     delete_icons = self.botS.get_keyword_delete_icon_list()
                     for _ in range(current_count - 1):
@@ -414,43 +411,25 @@ class TestGroupBotKeyword:
                     current_count = self.botS.get_warning_msg_count()
 
         with allure.step(f"3. 触发删除动作: target_index={target_index}"):
-            delete_icons = self.botS.get_keyword_delete_icon_list()
-            
-            # 判断是否有删除按钮
-            if not delete_icons or len(delete_icons) <= target_index:
-                if action == "delete_last_one":
-                    check.is_true(True, "最后一条警告语没有显示删除按钮，符合不可删除的预期")
-                    return
-                else:
-                    pytest.fail(f"找不到索引为 {target_index} 的删除按钮，当前界面只有 {len(delete_icons)} 个")
-            
-            # 获取删除前的所有文本
             warning_texts = self.botS.get_all_warning_msg_texts()
             target_text = warning_texts[target_index] if len(warning_texts) > target_index else None
-            
-            # 点击对应的删除图标
-            delete_icons[target_index].click()
+            self.botS.delete_warning_msg()
 
         with allure.step(f"4. 执行操作: {is_confirm} 并校验结果"):
             if action == "delete_last_one":
-                # 有的 App 删除最后一条也会先弹确认框，有的直接弹 Toast。兼容处理：
-                if self.botS.get_confirm_dialog():
-                    self.botS.click_keyword_delete_confirm_btn()
-                
+                self.botS.click_custom_warning_msg_confirm_btn()
                 warning_toast = self.botS.get_toast()
-                # 根据实际情况模糊匹配
                 check.is_true(any(k in warning_toast for k in ["保留一个", "至少保留", "最少", "不能删除", "至少一条"]), f"未触发最后一条拦截 Toast，实际获取到的为: {warning_toast}")
                 check.equal(self.botS.get_warning_msg_count(), 1, "触发兜底拦截后，最后一条警告语数量不应改变")
             else:
-                check.is_true(self.botS.get_confirm_dialog(), "点击删除后未弹出二次确认弹窗")
                 if not is_confirm:
-                    self.botS.click_keyword_delete_cancel_btn()
+                    self.botS.click_custom_warning_msg_cancel_btn()
                     time.sleep(0.5)
                     check.equal(self.botS.get_warning_msg_count(), current_count, "取消删除后，警告语数量不应改变")
                     current_texts = self.botS.get_all_warning_msg_texts()
                     check.equal(current_texts, warning_texts, "取消删除后，警告语内容不应改变")
                 else:
-                    self.botS.click_keyword_delete_confirm_btn()
+                    self.botS.click_custom_warning_msg_confirm_btn()
                     time.sleep(0.5)
                     check.equal(self.botS.get_warning_msg_count(), current_count - 1, "确认删除后，警告语数量没有减少")
                     current_texts = self.botS.get_all_warning_msg_texts()
