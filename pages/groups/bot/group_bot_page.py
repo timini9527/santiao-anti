@@ -1,9 +1,9 @@
-import time
 from core.logger_utils import logger
 from common.base_page import BasePage
 from appium.webdriver.common.appiumby import AppiumBy
+from selenium.webdriver.remote.webelement import WebElement
 from locators.groups.bot.group_bot_locator import GroupBotLocator
-
+import time
 
 
 class GroupBotPage(BasePage):
@@ -26,35 +26,30 @@ class GroupBotPage(BasePage):
     # 进入【禁发关键词检测】设置页面
     def enter_keyword_block(self):
         """进入【禁发关键词检测】设置页面"""
-        logger.info("⏳ [Action-GroupBotPage] 进入【禁发关键词检测】设置页")
         self.click(GroupBotLocator.KEYWORD_BLOCK_ENTRY)
-        time.sleep(1)
+        logger.info("⏳ [Action-GroupBotPage] 进入【禁发关键词检测】设置页")
 
     # 进入【发言管理】设置页面
     def enter_speech_manage(self):
         """进入【发言管理】设置页面"""
-        logger.info("⏳ [Action-GroupBotPage] 进入【发言管理】设置页")
         self.click(GroupBotLocator.SPEECH_MANAGE_ENTRY)
-        time.sleep(1)
+        logger.info("⏳ [Action-GroupBotPage] 进入【发言管理】设置页")
 
     # 进入【自动清理成员】设置页面
     def enter_auto_clean(self):
         """进入【自动清理成员】页面"""
-        logger.info("⏳ [Action-GroupBotPage] 进入【自动清理成员】页")
         self.click(GroupBotLocator.AUTO_CLEAN_ENTRY)
-        time.sleep(1)
+        logger.info("⏳ [Action-GroupBotPage] 进入【自动清理成员】页")
 
     # 进入【入群验证】设置页面
     def enter_join_verify(self):
         """进入【入群验证】设置页面"""
-        logger.info("⏳ [Action-GroupBotPage] 进入【入群验证】设置页")
         self.click(GroupBotLocator.JOIN_VERIFY_ENTRY)
-        time.sleep(1)
+        logger.info("⏳ [Action-GroupBotPage] 进入【入群验证】设置页")
 
     # ==========================
     # 通用开关与保存/确认操作
     # ==========================
-    
     # 获取当前页面主功能的 Switch 开关状态
     def get_switch_state(self) -> bool:
         """获取当前页面主功能的 Switch 开关状态"""
@@ -68,144 +63,381 @@ class GroupBotPage(BasePage):
         """切换主功能 Switch 开关状态"""
         current_state = self.get_switch_state()
         if current_state != enable:
-            logger.info(f"⚙️ [Action-GroupBotPage] 切换 Switch 开关状态 -> {enable}")
             self.click(GroupBotLocator.SWITCH_BTN)
-            time.sleep(1)
+            logger.info(f"⚙️ [Action-GroupBotPage] 切换 Switch 开关状态 -> {enable}")
         else:
             logger.info(f"⚙️ [Action-GroupBotPage] 开关状态已为 {enable}，无需切换")
+    
+    # 点击左上角返回图标
+    def click_back(self):
+        """点击左上角返回图标"""
+        self.click(GroupBotLocator.IV_BACK)
+        logger.info("⚙️ [Action-GroupBotPage] 点击【返回】")
 
     # 点击右上角保存
     def click_save(self):
         """点击右上角保存"""
-        logger.info("⚙️ [Action-GroupBotPage] 点击【保存】")
         self.click(GroupBotLocator.SAVE_BTN)
-        time.sleep(1)
+        logger.info("⚙️ [Action-GroupBotPage] 点击【保存】")
 
     # 点击弹窗确认按钮
     def click_confirm(self):
         """点击弹窗确认按钮"""
         logger.info("⚙️ [Action-GroupBotPage] 点击弹窗【确认】")
         self.click(GroupBotLocator.CONFIRM_BTN)
-        time.sleep(1)
 
     # 点击弹窗取消按钮
     def click_cancel(self):
         """点击弹窗取消按钮"""
         logger.info("⚙️ [Action-GroupBotPage] 点击弹窗【取消】")
         self.click(GroupBotLocator.CANCEL_BTN)
-        time.sleep(0.5)
+
 
     # ==========================
     # 禁发关键词检测页面细化操作
     # ==========================
-
-    # 点击关键词行进入关键词列表配置页
+    # 关键词-点击关键词行进入关键词列表配置页
     def click_keyword_row(self):
-        """点击关键词行进入关键词列表配置页"""
+        """关键词-点击关键词行进入关键词列表配置页"""
+        self.click(GroupBotLocator.KEYWORD_ENTRY)
         logger.info("⚙️ [Action-GroupBotPage] 点击进入【关键词】配置列表")
-        self.click(GroupBotLocator.KEYWORD_ROW)
-        time.sleep(1)
+    
+    # 关键词-获取关键词列表配置状态
+    def get_keyword_summary(self) -> str:
+        """关键词-获取关键词列表配置状态"""
+        text = self.get_attribute(GroupBotLocator.KEYWORD_SUMMARY, 'text')
+        logger.info(f"⚙️ [Action-GroupBotPage] 获取关键词配置状态: {text}")
+        return text
 
-    # 清空并设置新的关键词列表
-    def set_keywords(self, keywords: list[str]):
-        """清空并设置新的关键词列表"""
+    # 关键词-获取当前关键词输入框的元素
+    def get_keyword_input_element(self) -> WebElement:
+        """关键词-获取当前关键词输入框的元素"""
+        element = self.find_element(GroupBotLocator.ET_KEYWORD_INPUT, timeout=2)
+        if not element:
+            raise Exception("未找到关键词输入框")   
+        logger.info(f"⚙️ [Action-GroupBotPage] 获取关键词输入框: {element}")
+        return element
+    
+    # 关键词-清空关键词输入框
+    def clear_keyword_input(self):
+        """关键词-清空关键词输入框"""
+        logger.info("⚙️ [Action-GroupBotPage] 清空关键词输入框")
+        self.get_keyword_input_element().clear()
+
+    # 关键词-点击新增关键词按钮
+    def click_keyword_add_btn(self):
+        """关键词-点击新增关键词按钮"""
+        logger.info("⚙️ [Action-GroupBotPage] 点击【新增】关键词")
+        self.click(GroupBotLocator.ADD_KEYWORD_BTN)
+
+    # 关键词-获取关键词输入框中的文本
+    def get_keyword_input_text(self) -> str:
+        """关键词-获取关键词输入框中的文本"""
+        element = self.get_keyword_input_element()
+        text = element.get_attribute("text")
+        logger.info(f"⚙️ [Action-GroupBotPage] 获取关键词输入框中文本: {text}")
+        return text
+
+    # 关键词-向关键词输入框填入文本
+    def input_keyword(self, text: str):
+        """关键词-向关键词输入框填入文本"""
+        element = self.get_keyword_input_element()
+        logger.info(f"⚙️ [Action-GroupBotPage] 向关键词输入框填入文本: {text}")
+        element.clear()
+        element.send_keys(text)
+    
+    # 关键词-获取所有关键词所在的行（包含删除图标）的WebElement列表
+    def get_keyword_row_element(self) -> list[WebElement]:
+        """关键词-获取所有关键词所在的行（包含删除图标）的WebElement列表"""
+        tv_keyword_list = self.find_elements(GroupBotLocator.TV_KEYWORD_NUMBER, timeout=2)
+        if not tv_keyword_list:
+            logger.warning("⚙️ [Action-GroupBotPage] 未找到关键词")
+            return []
+            
+        logger.info(f"⚙️ [Action-GroupBotPage] 获取所有关键词所在行元素: {len(tv_keyword_list)}个")
+        return tv_keyword_list
+    
+    # 关键词-获取所有关键词所在的行（包含删除图标）的数量
+    def get_keyword_row_count(self) -> int:
+        """关键词-获取所有关键词所在的行（包含删除图标）的数量"""
+        return len(self.get_keyword_row_element())
+
+    # 关键词-保存关键词配置
+    def save_keywords_config(self):
+        """关键词-保存关键词配置"""
+        logger.info("⚙️ [Action-GroupBotPage] 保存非空关键词配置")
+        self.click(GroupBotLocator.TV_SAVE)
+
+    # 关键词-获取删除图标元素
+    def get_keyword_delete_icon_list(self) -> list[WebElement]:
+        """关键词-获取关键词删除图标元素列表"""
+        icons = self.find_elements(GroupBotLocator.DELETE_KEYWORD_ICON, timeout=2)
+        if not icons:
+            logger.warning("⚙️ [Action-GroupBotPage] 未找到删除图标")
+        logger.info(f"⚙️ [Action-GroupBotPage] 获取删除图标列表: {len(icons)}个")
+        return icons
+    
+    # 关键词-获取二次确认框中
+    def get_confirm_dialog(self) -> bool:
+        """关键词-获取二次确认框中的元素"""
+        dialog = self.find_element(GroupBotLocator.MESSAGE_BOX, timeout=5)
+        if not dialog:
+            logger.warning("⚙️ [Action-GroupBotPage] 未找到二次确认框")
+            return False
+        logger.info(f"⚙️ [Action-GroupBotPage] 获取二次确认框")
+        return True
+
+    # 关键词-点击删除关键词二次确认框中的确认按钮
+    def click_keyword_delete_confirm_btn(self):
+        """关键词-点击删除关键词二次确认框中的【确认】按钮"""
+        self.click(GroupBotLocator.POSITIVE_BUTTON)
+        logger.info("⚙️ [Action-GroupBotPage] 点击【确认】删除关键词")
+    
+    # 关键词-点击删除关键词二次确认框中的取消按钮
+    def click_keyword_delete_cancel_btn(self):
+        """关键词-点击删除关键词二次确认框中的【取消】按钮"""
+        self.click(GroupBotLocator.NEGATIVE_BUTTON)
+        logger.info("⚙️ [Action-GroupBotPage] 点击【取消】删除关键词")
+
+    # 关键词-清空已配置的关键词
+    def clear_all_keywords(self, count: int = None):
+        """清空已配置的关键词，恢复到默认空状态。如果指定了 count，则只删除对应数量的关键词"""
+        msg = "全部" if count is None else f"{count} 个"
+        logger.info(f"⚙️ [Action-GroupBotPage] 开始动态删除关键词，目标数量: {msg}")
+        
+        deleted = 0
+        while self.is_element_exist(GroupBotLocator.DELETE_KEYWORD_ICON, timeout=1):
+            if count is not None and deleted >= count:
+                logger.info(f"⚙️ [Action-GroupBotPage] 已达到指定删除数量 {count}，停止删除")
+                break
+                
+            logger.info(f"⚙️ [Action-GroupBotPage] 动态获取删除图标并点击删除 (已删 {deleted} 个)")
+            self.click(GroupBotLocator.DELETE_KEYWORD_ICON)
+            self.click_keyword_delete_confirm_btn()
+            deleted += 1
+            
+        self.save_keywords_config()
+
+    # 关键词-设置新的关键词列表
+    def set_keywords(self, keywords: list[str]) -> int:
+        """关键词-设置新的关键词列表"""
         logger.info(f"⚙️ [Action-GroupBotPage] 准备配置关键词列表: {keywords}")
         
-        # 1. 尝试清空已有的输入框
-        # 不断查找删除图标并点击，直到只剩一个或清空
-        while True:
-            try:
-                delete_icons = self.find_elements(GroupBotLocator.DELETE_KEYWORD_ICON, timeout=1)
-                if not delete_icons:
-                    break
-                logger.info("⚙️ [Action-GroupBotPage] 发现已有关键词，进行删除操作")
-                self.click(delete_icons[0])
-                self.click_confirm()
-                time.sleep(0.5)
-            except Exception:
-                break
+        if len(keywords) == 0:
+            self.click_keyword_add_btn()
+            logger.info("⚙️ [Action-GroupBotPage] 关键词列表为空，无法配置")
+            return 0
+        
+        element = self.get_keyword_input_element()
+        count = 0
+        for kw in keywords:
+            logger.info(f"⚙️ [Action-GroupBotPage] 输入关键词: {kw}")
+            element.clear()
+            element.send_keys(kw)
+            self.click_keyword_add_btn()
+            count += 1
+        return count
 
-        # 2. 逐一输入新的关键词
-        for i, kw in enumerate(keywords):
-            edit_fields = self.find_elements(GroupBotLocator.EDIT_TEXT, timeout=2)
-            if not edit_fields:
-                logger.error("❌ [Action-GroupBotPage] 未找到关键词输入框")
-                raise Exception("未找到关键词输入框")
-            
-            # 始终在最后一个输入框输入
-            last_field = edit_fields[-1]
-            last_field.clear()
-            last_field.send_keys(kw)
-            logger.info(f"⚙️ [Action-GroupBotPage] 在第 {len(edit_fields)} 个输入框中输入关键词: {kw}")
-            
-            # 如果不是最后一个关键词，点击新增
-            if i < len(keywords) - 1:
-                logger.info("⚙️ [Action-GroupBotPage] 点击右上角【新增】关键词输入框")
-                self.click(GroupBotLocator.ADD_KEYWORD_BTN)
-                time.sleep(0.5)
-
-        # 3. 点击保存
-        self.click_save()
-
-    # 选择处置规则: 警告、禁言、移除群聊、仅撤回、自动拦截
+    # 关键词-选择处置规则: 警告、禁言、移除群聊、仅撤回
     def select_action_rule(self, rule_name: str):
-        """选择处置规则: 警告、禁言、移除群聊、仅撤回、自动拦截"""
-        logger.info(f"⚙️ [Action-GroupBotPage] 选择处置规则: {rule_name}")
-        if rule_name == "警告":
-            self.click(GroupBotLocator.RULE_WARN)
-        elif rule_name == "禁言":
-            self.click(GroupBotLocator.RULE_MUTE)
-        elif rule_name == "移除群聊":
-            self.click(GroupBotLocator.RULE_KICK)
-        elif rule_name == "仅撤回":
-            self.click(GroupBotLocator.RULE_REVOKE)
-        elif rule_name == "自动拦截":
-            self.click(GroupBotLocator.RULE_BLOCK)
+        """关键词-选择处置规则: 警告、禁言、移除群聊、仅撤回"""
+        action_rule_list = {
+            "仅撤回": GroupBotLocator.RULE_REVOKE,
+            "警告": GroupBotLocator.RULE_WARN,
+            "禁言": GroupBotLocator.RULE_MUTE,
+            "移除群聊": GroupBotLocator.RULE_KICK,
+        }
+        if rule_name in action_rule_list:
+            self.click(action_rule_list[rule_name])
+            logger.info(f"⚙️ [Action-GroupBotPage] 选择处置规则: {rule_name}")
         else:
+            logger.warning(f"不支持的处置规则: {rule_name}")
             raise ValueError(f"不支持的处置规则: {rule_name}")
-        time.sleep(0.5)
+
+    # 关键词-获取警告语文本
+    def get_warning_msg_text(self) -> str | None:
+        """关键词-获取警告语文本"""
+        warning_msg = self.get_attribute(GroupBotLocator.TV_CONTENT, "text")
+        if not warning_msg:
+            logger.warning("⚙️ [Action-GroupBotPage] 未获取到警告语文本")
+            return None
+        logger.info(f"⚙️ [Action-GroupBotPage] 获取警告语文本: {warning_msg}")
+        return warning_msg
+    
+    # 关键词-点击警告语设置进入警告语页面
+    def click_warning_msg_setting(self):
+        """关键词-点击警告语设置进入警告语页面"""
+        is_exist = self.find_element(GroupBotLocator.TV_CONTENT, timeout=2)
+        if not is_exist:
+            self.select_action_rule(rule_name="警告")
+        self.click(GroupBotLocator.TV_CONTENT)
+        logger.info("⚙️ [Action-GroupBotPage] 点击进入【警告语】配置列表")
+
+    # 关键词-等待警告语面板加载
+    def wait_warning_msg_panel(self, timeout: int = 10) -> WebElement | None:
+        """关键词-等待警告语面板加载,并返回面板元素"""
+        element = self.find_element(GroupBotLocator.DESIGN_BOTTOM_SHEET, timeout=timeout)
+        if not element:
+            logger.warning(f"⚙️ [Action-GroupBotPage] 警告语面板在 {timeout}s 内未加载")
+            return None
+        logger.info("⚙️ [Action-GroupBotPage] 警告语面板已加载")
+        return element
+    
+    # 关键词-获取当前可见的警告语元素
+    def get_visible_warning_msg_elements(self, timeout: int = 2) -> list[WebElement]:
+        """关键词-获取当前可见的警告语所在行元素"""
+        elements = self.find_elements(GroupBotLocator.TV_CONTENT, timeout=timeout)
+        if not elements:
+            logger.warning(f"⚙️ [Action-GroupBotPage] 当前屏幕未找到警告语元素 (timeout: {timeout}s)")
+            return []
+        return elements
+
+    # 关键词-滑动并获取所有警告语文案（去重）
+    def get_all_warning_msg_texts(self, swipe_max: int = 5) -> list[str]:
+        """关键词-滑动面板获取所有警告语的文本，并自动去重"""
+        msg_texts = []
+        seen_texts = set()
+        consecutive_no_new_count = 0 
+        
+        elem = self.wait_warning_msg_panel()
+        if not elem:
+            logger.warning("⚙️ [Action-GroupBotPage] 警告语面板未加载")
+            return msg_texts
+            
+        panel_rect = elem.rect
+        
+        while swipe_max > 0:
+            current_elements = self.get_visible_warning_msg_elements(timeout=2)
+            if not current_elements:
+                logger.warning("⚙️ [Action-GroupBotPage] 当前屏幕未找到警告语元素")
+                break
+                
+            new_found_in_this_swipe = False
+            for el in current_elements:
+                try:
+                    raw_text = el.text
+                    if raw_text:
+                        clean_text = self.clean_ui_text(raw_text.strip())
+                        if clean_text and clean_text not in seen_texts:
+                            seen_texts.add(clean_text)
+                            msg_texts.append(clean_text)
+                            new_found_in_this_swipe = True
+                except Exception as e:
+                    logger.warning(f"⚠️ [Action-GroupBotPage] 获取文本异常(元素可能已失效): {e}")
+            
+            if not new_found_in_this_swipe:
+                consecutive_no_new_count += 1
+                if consecutive_no_new_count >= 2:
+                    logger.info("⚙️ [Action-GroupBotPage] 连续滑动未发现新数据，已到达底部")
+                    break
+            else:
+                consecutive_no_new_count = 0
+                
+            self.swipe_to_distance(slid_type="up", rect=panel_rect, duration=100)
+            swipe_max -= 1
+            
+        logger.info(f"⚙️ [Action-GroupBotPage] 警告语收集完毕，共获取 {len(msg_texts)} 条去重数据: {msg_texts}")
+        return msg_texts
+
+    # 关键词-获取警告语数量
+    def get_warning_msg_count(self) -> int:
+        """关键词-获取警告语数量"""
+        return len(self.get_all_warning_msg_texts())
+    
+    # 关键词-点击自定义按钮
+    def click_custom_warning_msg_btn(self):
+        """关键词-点击自定义按钮"""
+        self.click(GroupBotLocator.TV_CUSTOM)
+        logger.info("⚙️ [Action-GroupBotPage] 点击进入【自定义警告语】配置页面")
+    
+    # 关键词-点击编辑按钮
+    def click_custom_warning_msg_edit_btn(self):
+        """关键词-点击编辑按钮"""
+        self.click(GroupBotLocator.TV_EDIT)
+        logger.info("⚙️ [Action-GroupBotPage] 点击【编辑】按钮")
+    
+    # 关键词-编辑框输入警告语
+    def set_custom_warning_msg_input(self, msg: str):
+        """关键词-编辑框输入警告语"""
+        element = self.find_element(GroupBotLocator.ET_WARNING_MSG)
+        element.clear()
+        element.send_keys(msg)
+        logger.info(f"⚙️ [Action-GroupBotPage] 输入自定义警告语: {msg}")
+    
+    # 关键词-点击确认按钮
+    def click_custom_warning_msg_confirm_btn(self):
+        """关键词-点击确认按钮"""
+        self.click(GroupBotLocator.BTN_CONFIRM)
+        logger.info("⚙️ [Action-GroupBotPage] 点击确认按钮")
+    
+    # 关键词-点击取消按钮
+    def click_custom_warning_msg_cancel_btn(self):
+        """关键词-点击取消按钮"""
+        self.click(GroupBotLocator.BTN_CANCEL)
+        logger.info("⚙️ [Action-GroupBotPage] 点击取消按钮")
+    
+    # 关键词-设置自定义警告语
+    def set_custom_warning_msg(self, msgs: list[str]):
+        """关键词-设置自定义警告语"""
+
+        if msgs is None:
+            self.click_custom_warning_msg_btn()
+            self.click_custom_warning_msg_confirm_btn()
+            logger.info("⚙️ [Action-GroupBotPage] 空文本警告语测试：未输入任何文本直接确认")
+            return
+
+        count = 0
+        for msg in msgs:
+            self.click_custom_warning_msg_btn()
+            self.set_custom_warning_msg_input(msg)
+            self.click_custom_warning_msg_confirm_btn()
+            count += 1
+            
+            if count == len(msgs):
+                logger.info("⚙️ [Action-GroupBotPage] 已添加的自定义警告语数量达到预期。")
+                break
+            
+            if self.is_element_exist(GroupBotLocator.ET_WARNING_MSG, timeout=1):
+                logger.info("⚙️ [Action-GroupBotPage] 确认后仍在编辑页面，保存可能被拦截，终止剩余添加。")
+                break
+            
+            self.click_warning_msg_setting()
+            self.wait_warning_msg_panel()
+        
+        time.sleep(1)
+    
 
     # 如果选择了禁言，设置禁言时长
     def select_mute_duration(self, duration: str):
         """如果选择了禁言，设置禁言时长 (例如 '10分钟', '30分钟', '永久禁言')"""
         logger.info(f"⚙️ [Action-GroupBotPage] 正在设置禁言时长为: {duration}")
         self.click(GroupBotLocator.MUTE_DURATION_ROW)
-        time.sleep(1)
-        duration_option = (AppiumBy.ANDROID_UIAUTOMATOR, f'newUiSelector().text("{duration}")')
+        duration_option = (AppiumBy.ANDROID_UIAUTOMATOR, f'new UiSelector().text("{duration}")')
         self.click(duration_option)
-        time.sleep(0.5)
 
     # 点击警告语行进入警告语列表页
     def click_warning_msg_row(self):
         """点击警告语行进入警告语列表页"""
         logger.info("⚙️ [Action-GroupBotPage] 点击进入【警告语】配置列表")
         self.click(GroupBotLocator.WARNING_MSG_ROW)
-        time.sleep(1)
 
     # 在列表中选择一条警告语（通过模糊文本匹配）
     def select_warning_msg(self, msg_pattern: str):
         """在列表中选择一条警告语（通过模糊文本匹配）"""
         logger.info(f"⚙️ [Action-GroupBotPage] 选择包含特定文案的警告语: {msg_pattern}")
-        target_locator = (AppiumBy.ANDROID_UIAUTOMATOR, f'newUiSelector().textContains("{msg_pattern}")')
+        target_locator = (AppiumBy.ANDROID_UIAUTOMATOR, f'new UiSelector().textContains("{msg_pattern}")')
         self.click(target_locator)
-        time.sleep(0.5)
         # 点击确定保存回显
-        self.click(GroupBotLocator.SAVE_BTN)
-        time.sleep(1)
+        self.click_save()
 
     # 添加自定义警告语
     def add_custom_warning_msg(self, content: str):
         """添加自定义警告语"""
         logger.info(f"⚙️ [Action-GroupBotPage] 正在添加自定义警告语: {content}")
         self.click(GroupBotLocator.ADD_WARNING_MSG_BTN)
-        time.sleep(1)
-        edit_fields = self.find_elements(GroupBotLocator.EDIT_TEXT, timeout=2)
-        if edit_fields:
-            edit_fields[0].send_keys(content)
-            self.click_save()
-            time.sleep(1)
-        else:
-            logger.error("❌ [Action-GroupBotPage] 添加自定义警告语时未找到输入框")
+        edit_field = self.find_element(GroupBotLocator.ET_WARNING_MSG)
+        edit_field.send_keys(content)
+        self.click(GroupBotLocator.BTN_CONFIRM)
 
     # ==========================
     # 发言管理页面细化操作
@@ -239,7 +471,6 @@ class GroupBotPage(BasePage):
         
         if state != enable:
             self.click(locator)
-            time.sleep(0.5)
         else:
             logger.info(f"⚙️ [Action-GroupBotPage] 限制项【{item_name}】状态已为 {enable}，无需点击")
 
@@ -252,7 +483,6 @@ class GroupBotPage(BasePage):
         """进入清理规则设置页面"""
         logger.info("⚙️ [Action-GroupBotPage] 点击进入【清理规则设置】")
         self.click(GroupBotLocator.CLEAN_RULES_ENTRY)
-        time.sleep(1)
 
     # 配置清理条件
     def toggle_clean_condition(self, cond_name: str, enable: bool):
@@ -273,7 +503,6 @@ class GroupBotPage(BasePage):
         
         if state != enable:
             self.click(locator)
-            time.sleep(0.5)
 
     # 配置保护规则
     def toggle_protect_rule(self, prot_name: str, enable: bool):
@@ -292,7 +521,6 @@ class GroupBotPage(BasePage):
         
         if state != enable:
             self.click(locator)
-            time.sleep(0.5)
 
     # 选择清理模式: 手动确认、自动清理
     def select_clean_mode(self, mode_name: str):
@@ -304,32 +532,26 @@ class GroupBotPage(BasePage):
             self.click(GroupBotLocator.MODE_AUTO)
         else:
             raise ValueError(f"不支持的清理模式: {mode_name}")
-        time.sleep(0.5)
 
     # 点击完成按钮
     def click_finish(self):
         """点击右上角/底部的完成按钮"""
         logger.info("⚙️ [Action-GroupBotPage] 点击【完成】以保存清理规则")
         self.click(GroupBotLocator.FINISH_BTN)
-        time.sleep(1)
 
     # 在任务记录/通知中确认清理名单
     def confirm_clean_task(self):
         """在任务记录/通知中确认清理名单"""
         logger.info("⚙️ [Action-GroupBotPage] 点击【确认名单】")
         self.click(GroupBotLocator.CONFIRM_CLEAN_LIST)
-        time.sleep(0.5)
         self.click_confirm()
-        time.sleep(1)
 
     # 放弃本次清理
     def cancel_clean_task(self):
         """放弃本次清理"""
         logger.info("⚙️ [Action-GroupBotPage] 点击【放弃本次清理】")
         self.click(GroupBotLocator.CANCEL_CLEAN_TASK)
-        time.sleep(0.5)
         self.click_confirm()
-        time.sleep(1)
 
     # ==========================
     # 入群验证页面细化操作
@@ -342,32 +564,26 @@ class GroupBotPage(BasePage):
         
         # 1. 选择验证方式为点验
         self.click(GroupBotLocator.VERIFY_MODE_CLICK)
-        time.sleep(0.5)
         
         # 2. 设置验证时间
         self.click(GroupBotLocator.VERIFY_TIME_ROW)
-        time.sleep(1)
-        time_option = (AppiumBy.ANDROID_UIAUTOMATOR, f'newUiSelector().text("{verify_time}")')
+        time_option = (AppiumBy.ANDROID_UIAUTOMATOR, f'new UiSelector().text("{verify_time}")')
         self.click(time_option)
-        time.sleep(0.5)
         
         # 3. 设置处理方式
         if action_type == "仅移出群组":
             self.click(GroupBotLocator.VERIFY_ACTION_KICK)
         elif action_type == "移除并拉黑":
             self.click(GroupBotLocator.VERIFY_ACTION_BLOCK)
-        time.sleep(0.5)
         
         # 4. 默认验证所有新成员
         self.click(GroupBotLocator.VERIFY_SCOPE_ALL)
-        time.sleep(0.5)
 
     # 新成员待验证态点击去验证按钮
     def go_verify(self):
         """新成员待验证态点击去验证按钮"""
         logger.info("⚙️ [Action-GroupBotPage] 点击【去验证】")
         self.click(GroupBotLocator.GO_VERIFY_BTN)
-        time.sleep(2)
 
     # ==========================
     # 5. 进群欢迎语页面操作
@@ -378,7 +594,6 @@ class GroupBotPage(BasePage):
         """进入【进群欢迎语】设置页"""
         logger.info("⏳ [Action-GroupBotPage] 进入【进群欢迎语】设置页")
         self.click(GroupBotLocator.WELCOME_ENTRY)
-        time.sleep(1)
 
     # 配置并完成进群欢迎语
     def configure_welcome(self, content: str):
@@ -391,13 +606,11 @@ class GroupBotPage(BasePage):
             if add_btn:
                 logger.info("⚙️ [Action-GroupBotPage] 点击【添加欢迎语】")
                 self.click(add_btn[0])
-                time.sleep(1)
             else:
                 edit_btn = self.find_elements(GroupBotLocator.WELCOME_EDIT_BTN, timeout=2)
                 if edit_btn:
                     logger.info("⚙️ [Action-GroupBotPage] 点击【修改欢迎语】")
                     self.click(edit_btn[0])
-                    time.sleep(1)
         except Exception as e:
             logger.warning(f"⚠️ [Action-GroupBotPage] 查找添加/修改按钮异常: {e}")
 
@@ -406,11 +619,9 @@ class GroupBotPage(BasePage):
         input_field.clear()
         if content:
             input_field.send_keys(content)
-            time.sleep(0.5)
 
         # 点击完成保存
         self.click(GroupBotLocator.WELCOME_FINISH_BTN)
-        time.sleep(1.5)
 
     # ==========================
     # 6. 定时消息页面操作
@@ -421,32 +632,25 @@ class GroupBotPage(BasePage):
         """进入【定时消息】页"""
         logger.info("⏳ [Action-GroupBotPage] 进入【定时消息】页")
         self.click(GroupBotLocator.TIMED_MSG_ENTRY)
-        time.sleep(1)
 
     # 添加定时消息
     def add_timed_msg(self, content: str):
         """添加定时消息"""
         logger.info(f"⚙️ [Action-GroupBotPage] 准备添加定时消息: {content}")
         self.click(GroupBotLocator.ADD_TIMED_MSG_BTN)
-        time.sleep(1)
 
         # 输入文本
         input_field = self.find_element(GroupBotLocator.TIMED_MSG_INPUT)
         input_field.clear()
         input_field.send_keys(content)
-        time.sleep(0.5)
 
         # 设置时间
         self.click(GroupBotLocator.TIMED_MSG_TIME_ROW)
-        time.sleep(1)
         self.click_confirm()  # 时间确认弹窗
-        time.sleep(0.5)
 
         # 确认添加
         self.click(GroupBotLocator.TIMED_MSG_CONFIRM_BTN)
-        time.sleep(0.5)
         self.click_confirm()  # 二次确认
-        time.sleep(1)
 
     # 根据内容模糊匹配删除定时消息任务
     def delete_timed_msg(self, content_pattern: str):
@@ -455,15 +659,12 @@ class GroupBotPage(BasePage):
         # 点击指定条目的修改按钮进入编辑页
         # 定位特定内容的条目下的“修改”按钮
         modify_btn_loc = (AppiumBy.ANDROID_UIAUTOMATOR, 
-                          f'newUiSelector().textContains("{content_pattern}").fromParent(newUiSelector().text("修改"))')
+                          f'new UiSelector().textContains("{content_pattern}").fromParent(new UiSelector().text("修改"))')
         try:
             self.click(modify_btn_loc)
-            time.sleep(1)
             # 点击删除
             self.click(GroupBotLocator.TIMED_MSG_DELETE_BTN)
-            time.sleep(0.5)
             self.click_confirm()
-            time.sleep(1)
             logger.info("⚙️ [Action-GroupBotPage] 成功删除定时消息")
         except Exception as e:
             logger.warning(f"⚠️ [Action-GroupBotPage] 删除定时消息异常: {e}")

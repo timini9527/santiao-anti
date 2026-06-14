@@ -217,8 +217,8 @@ class BasePage:
         :param locator: 元素定位
         :param timeout: 超时时间
         :param condition: 验证条件 (visibility-可见, presence-存在DOM中)
-        :param raise_exception: 是否在查找不到元素时抛出异常
-        :param expect_missing: 是否期望元素不存在（用于断言）
+        :param raise_exception: （无实际作用）由于被 check_element_status 装饰，默认不抛异常
+        :param expect_missing: （无实际作用）探测方法默认不作断言
         :return: True(存在) / False(不存在)
         """
         logger.info(f"🔎 探查元素状态: {locator} (模式: {condition}, 超时: {timeout}s)")
@@ -624,7 +624,7 @@ class BasePage:
             return True, ""
 
     @allure.step("执行滑动操作")
-    def swipe(self, start_x: int, start_y: int, end_x: int, end_y: int, duration: int = 1000):
+    def swipe(self, start_x: int, start_y: int, end_x: int, end_y: int, duration: int = 500):
         """
         核心滑动执行器 (W3C 标准)
         :param duration: 滑动持续时间，默认1000毫秒
@@ -636,7 +636,7 @@ class BasePage:
             # 3. 构建动作序列 移动 -> 按下 -> 暂停 -> 移动 -> 松开
             touch_input.create_pointer_move(x=start_x, y=start_y, duration=0, origin="viewport")
             touch_input.create_pointer_down(button=0)
-            touch_input.create_pause(0.5) 
+            touch_input.create_pause(duration/1000) 
             touch_input.create_pointer_move(x=end_x, y=end_y, duration=duration, origin="viewport")
             touch_input.create_pause(0.1) # 强制加速度归零防止列表抛滑(Fling)
             touch_input.create_pointer_up(button=0)
