@@ -184,7 +184,7 @@ class GroupBotPage(BasePage):
         if not dialog:
             logger.warning("⚙️ [Action-GroupBotPage] 未找到二次确认框")
             return False
-        logger.info(f"⚙️ [Action-GroupBotPage] 获取二次确认框")
+        logger.info("⚙️ [Action-GroupBotPage] 获取二次确认框")
         return True
 
     # 关键词-点击删除关键词二次确认框中的确认按钮
@@ -291,7 +291,16 @@ class GroupBotPage(BasePage):
             logger.warning(f"⚙️ [Action-GroupBotPage] 当前屏幕未找到警告语元素 (timeout: {timeout}s)")
             return []
         return elements
-
+    
+    # 关键词-获取当前页面的警告语文案
+    def get_current_page_warning_msg_texts(self, timeout: int = 2) -> list[str]:
+        """关键词-获取当前页面的警告语文案"""
+        elements = self.get_visible_warning_msg_elements(timeout=timeout)
+        if not elements:
+            logger.warning("⚙️ [Action-GroupBotPage] 当前屏幕未找到警告语元素")
+            return []
+        return [el.text for el in elements]
+    
     # 关键词-滑动并获取所有警告语文案（去重）
     def get_all_warning_msg_texts(self, swipe_max: int = 5) -> list[str]:
         """关键词-滑动面板获取所有警告语的文本，并自动去重"""
@@ -416,15 +425,38 @@ class GroupBotPage(BasePage):
         time.sleep(1)
     
     # 关键词-删除警告语
-    def delete_warning_msg(self):
+    def delete_warning_msg(self, index: int = 1):
         """关键词-删除警告语"""
-
+        elements = self.get_visible_warning_msg_elements()
+        elements[index].click()
         self.click_custom_warning_msg_edit_btn()
         element = self.get_warning_msg_input_element()
-        element.clear()
+        if index == 0:
+            element.click()
+            # 模拟 Ctrl+A 全选并按 Backspace 删除，确保全部删除
+            try:
+                self.driver.press_keycode(29, 28672)  # KEYCODE_A + META_CTRL_ON
+                time.sleep(0.2)
+                self.driver.press_keycode(67)         # KEYCODE_DEL
+            except Exception as e:
+                logger.warning(f"⚠️ [Action-GroupBotPage] 快捷键删除失败，尝试循环退格键: {e}")
+                text_len = len(element.text) if element.text else 100
+                for _ in range(text_len + 10):
+                    self.driver.press_keycode(67)
+        else:
+            element.clear()
         logger.info("⚙️ [Action-GroupBotPage] 已删除警告语")
 
+    # 关键词-警告语列表向下滑动
+    def scroll_warning_msg_list_down(self):
+        """关键词-警告语列表向下滑动"""
+        elem = self.wait_warning_msg_panel()
+        if not elem:
+            logger.warning("⚙️ [Action-GroupBotPage] 警告语面板未加载")
+            return
 
+        self.swipe_to_distance(slid_type="down", rect=elem.rect, duration=100)
+        logger.info("⚙️ [Action-GroupBotPage] 警告语列表向下滑动")
 
     # 关键词-设置禁言时长
     def select_mute_duration(self, duration: str):

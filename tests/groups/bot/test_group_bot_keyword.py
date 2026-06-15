@@ -274,7 +274,6 @@ class TestGroupBotKeyword:
     @pytest.mark.usefixtures("cleanup_keyword_settings")
     def test_group_bot_keyword_warning_flow(self, driver_receiver):
         """群普通成员发送包含违规词的消息，消息被撤回且群助手发送警告消息"""
-        mainR = MainPage(driver_receiver)
         chatListR = ChatListPage(driver_receiver)
         chatR = ChatPage(driver_receiver)
         
@@ -385,7 +384,7 @@ class TestGroupBotKeyword:
 
         with allure.step("1. 发送方进入群助手，进入警告语设置面板"):
             self._enter_keyword_config_page()
-            before_warning_msg_text = self.botS.get_warning_msg_text()
+            self.botS.get_warning_msg_text()
             self.botS.click_warning_msg_setting()
             self.botS.wait_warning_msg_panel()
             
@@ -409,13 +408,17 @@ class TestGroupBotKeyword:
                             time.sleep(1)
                             delete_icons = self.botS.get_keyword_delete_icon_list()
                     current_count = self.botS.get_warning_msg_count()
+        
+        with allure.step("3. 向下滑动"):
+            if current_count > 5:
+                self.botS.scroll_warning_msg_list_down()
 
-        with allure.step(f"3. 触发删除动作: target_index={target_index}"):
-            warning_texts = self.botS.get_all_warning_msg_texts()
+        with allure.step(f"4. 触发删除动作: target_index={target_index}"):
+            warning_texts = self.botS.get_current_page_warning_msg_texts()
             target_text = warning_texts[target_index] if len(warning_texts) > target_index else None
-            self.botS.delete_warning_msg()
+            self.botS.delete_warning_msg(index=target_index)
 
-        with allure.step(f"4. 执行操作: {is_confirm} 并校验结果"):
+        with allure.step(f"5. 执行操作: {is_confirm} 并校验结果"):
             if action == "delete_last_one":
                 self.botS.click_custom_warning_msg_confirm_btn()
                 warning_toast = self.botS.get_toast()
@@ -424,14 +427,16 @@ class TestGroupBotKeyword:
             else:
                 if not is_confirm:
                     self.botS.click_custom_warning_msg_cancel_btn()
-                    time.sleep(0.5)
-                    check.equal(self.botS.get_warning_msg_count(), current_count, "取消删除后，警告语数量不应改变")
+                    self.botS.click_warning_msg_setting()
+                    self.botS.wait_warning_msg_panel()
                     current_texts = self.botS.get_all_warning_msg_texts()
+                    check.equal(len(current_texts), current_count, "取消删除后，警告语数量不应改变")
                     check.equal(current_texts, warning_texts, "取消删除后，警告语内容不应改变")
                 else:
                     self.botS.click_custom_warning_msg_confirm_btn()
-                    time.sleep(0.5)
-                    check.equal(self.botS.get_warning_msg_count(), current_count - 1, "确认删除后，警告语数量没有减少")
+                    self.botS.click_warning_msg_setting()
+                    self.botS.wait_warning_msg_panel()
                     current_texts = self.botS.get_all_warning_msg_texts()
+                    check.equal(len(current_texts), current_count - 1, "确认删除后，警告语数量没有减少")
                     if target_text:
                         check.is_false(target_text in current_texts, f"确认删除后，被删警告语 {target_text} 仍然存在于列表中")

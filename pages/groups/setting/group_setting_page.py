@@ -9,11 +9,12 @@ from locators.common.common_locator import CommonLocator
 class GroupSettingPage(BasePage):
     """群聊设置（群信息/群管理）页面操作类"""
 
-    # 等待群聊setting页面加载
+    # 等待群聊 setting 页面加载
     def wait_for_setting_page_load(self, timeout=10) -> bool:
-        """等待发起群聊setting页面加载"""
+        """等待发起群聊 setting 页面加载"""
         res = self.get_attribute(GroupSettingLocator.TOP_TV_TITLE, "text") == "群详情"
-        logger.info(f"⏳ [Action-groupSettingPage] GroupSettingPage 发起群聊setting页 - 页面加载{'成功' if res else '超时'}")
+        logger.info(f"⏳ [Action-groupSettingPage] 群聊 setting 页 - 页面加载{'成功' if res else '超时'}")
+        time.sleep(0.5)
         return res
 
     # 点击返回
