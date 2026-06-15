@@ -102,6 +102,23 @@ class ChatPage(BasePage):
         input_container = self.find_element(ChatLocator.CHAT_INPUT)
         logger.info(f"🚀[Action-chat] - chat 获取聊天页面底部 chat_input 输入框容器: {input_container}")
         return input_container
+
+    # 输入框是否被禁用（禁言场景）
+    def is_input_disabled(self) -> bool:
+        """判断底部文本输入框是否被禁用（被群助手禁言时输入框不可编辑）。
+
+        被禁言时输入框元素的 enabled 属性为 false；若输入框元素直接消失，
+        同样视为不可用，返回 True。
+        """
+        element = self.find_element(ChatLocator.TEXT_INPUT, timeout=3)
+        if not element:
+            logger.info("🚀[Action-chat] - 未找到文本输入框，视为输入框被禁用")
+            return True
+        enabled = element.get_attribute("enabled")
+        disabled = str(enabled).lower() == "false"
+        logger.info(f"🚀[Action-chat] - 输入框 enabled={enabled}, 是否被禁用: {disabled}")
+        return disabled
+
     
     # 点击底部语音按钮
     def click_voice_button(self):
