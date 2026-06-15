@@ -416,9 +416,9 @@ class GroupBotPage(BasePage):
                 logger.info("⚙️ [Action-GroupBotPage] 已添加的自定义警告语数量达到预期。")
                 break
             
-            if self.get_warning_msg_input_element():
-                logger.info("⚙️ [Action-GroupBotPage] 确认后仍在编辑页面，保存可能被拦截，终止剩余添加。")
-                break
+            # if self.get_warning_msg_input_element():
+            #     logger.info("⚙️ [Action-GroupBotPage] 确认后仍在编辑页面，保存可能被拦截，终止剩余添加。")
+            #     break
             
             self.click_warning_msg_setting()
             self.wait_warning_msg_panel()
@@ -428,24 +428,34 @@ class GroupBotPage(BasePage):
     def delete_warning_msg(self, index: int = 1):
         """关键词-删除警告语"""
         elements = self.get_visible_warning_msg_elements()
-        elements[index].click()
-        self.click_custom_warning_msg_edit_btn()
-        element = self.get_warning_msg_input_element()
-        if index == 0:
-            element.click()
-            # 模拟 Ctrl+A 全选并按 Backspace 删除，确保全部删除
-            try:
-                self.driver.press_keycode(29, 28672)  # KEYCODE_A + META_CTRL_ON
-                time.sleep(0.2)
-                self.driver.press_keycode(67)         # KEYCODE_DEL
-            except Exception as e:
-                logger.warning(f"⚠️ [Action-GroupBotPage] 快捷键删除失败，尝试循环退格键: {e}")
-                text_len = len(element.text) if element.text else 100
-                for _ in range(text_len + 10):
-                    self.driver.press_keycode(67)
+        
+        if index == 0 and len(elements) > 1:
+            logger.info("⚙️ [Action-GroupBotPage] index 为 0 且当前有多条警告语，开始自动清理多余项...")
+            while len(elements) > 1:
+                elements[0].click()
+                self.click_custom_warning_msg_edit_btn()
+                edit_element = self.get_warning_msg_input_element()
+                if edit_element:
+                    edit_element.clear()
+                    self.click_custom_warning_msg_confirm_btn()
+                    time.sleep(0.5)
+                    self.click_warning_msg_setting()
+                    self.wait_warning_msg_panel()
+                else:
+                    logger.warning("⚙️ [Action-GroupBotPage] 未找到编辑框，中止多余项清理")
+                    break
+                elements = self.get_visible_warning_msg_elements()
+            logger.info("⚙️ [Action-GroupBotPage] 多余警告语清理完毕")
+
+        if 0 <= index < len(elements):
+            elements[index].click()
+            self.click_custom_warning_msg_edit_btn()
+            edit_element = self.get_warning_msg_input_element()
+            if edit_element:
+                edit_element.clear()
+            logger.info(f"⚙️ [Action-GroupBotPage] 已点击并清空索引为 {index} 的警告语，等待用例后续操作")
         else:
-            element.clear()
-        logger.info("⚙️ [Action-GroupBotPage] 已删除警告语")
+            logger.error(f"❌ [Action-GroupBotPage] 索引 {index} 超出警告语列表范围 (总长: {len(elements)})")
 
     # 关键词-警告语列表向下滑动
     def scroll_warning_msg_list_down(self):

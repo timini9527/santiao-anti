@@ -33,7 +33,7 @@ class BasePage:
     @catch_exception
     def find_element(self, locator: tuple, condition: str = "visibility",
                      timeout: int = 10, raise_exception: bool = True,
-                     expect_missing: bool = False) -> WebElement:
+                     expect_missing: bool = False) -> WebElement | None:
         """
         查找并返回元素，用于后续点击或输入
         :param timeout: 超时时间
@@ -75,9 +75,20 @@ class BasePage:
         logger.info(f"🔎 正在查找元素: {locator} (模式: {condition})")
         wait = WebDriverWait(self.driver, timeout)
         if condition == 'visibility':
-            elements = wait.until(
-                EC.visibility_of_all_elements_located(locator)
+            # 注意：不使用 visibility_of_all_elements_located —— 它要求匹配到的【所有】元素都可见，
+            # 长列表中只要有一个元素滚出屏幕(不可见)就会判定不满足，一直等到超时返回空。
+            # 改为先用 presence 取到 DOM 中全部元素，再过滤出当前可见的，避免整体丢失。
+            all_elements = wait.until(
+                EC.presence_of_all_elements_located(locator)
             )
+            elements = []
+            for el in all_elements:
+                try:
+                    if el.is_displayed():
+                        elements.append(el)
+                except Exception:
+                    # 元素在判断瞬间失效(stale)等情况，跳过即可
+                    continue
         else:
             elements = wait.until(
                 EC.presence_of_all_elements_located(locator)
@@ -112,18 +123,6 @@ class BasePage:
         except Exception:
             logger.warning(f"⚠️ [Wait] 元素在 {timeout}s 内未能从页面消失: {locator}")
             return False
-
-    def count_elements(self, locator: tuple) -> int:
-        """
-        统计符合条件的元素数量
-        :param locator: 元素定位器
-        :return: 元素数量
-        """
-        elements = self.find_elements(locator)
-        print(f"元素数量：{elements}")
-        count = len(elements)
-        logger.info(f"🔎 统计元素数量: {locator} -> {count}")
-        return count
 
     @allure.step("通过 android uiautomator 定位, ID 和 Instance 获取元素")
     def find_element_by_id_instance(self, res_id: str, index: int = 0) -> WebElement:
@@ -160,7 +159,6 @@ class BasePage:
         if el is not None:
             attr = el.get_attribute(name)
             logger.info(f" 获取多个子元素 {name} 的属性值: {attr}")
-            print(f" 获取多个子元素 {name} 的属性值: {attr}")
             return el, attr
         return None, ""
 
@@ -183,7 +181,6 @@ class BasePage:
         if ele is not None:
             attr = ele.get_attribute(name)
             logger.info(f" 获取多个子元素 {name} 的属性值: {attr}")
-            print(f" 获取多个子元素 {name} 的属性值: {attr}")
             return attr
         return ""
 
@@ -217,8 +214,9 @@ class BasePage:
         :param locator: 元素定位
         :param timeout: 超时时间
         :param condition: 验证条件 (visibility-可见, presence-存在DOM中)
-        :param raise_exception: （无实际作用）由于被 check_element_status 装饰，默认不抛异常
-        :param expect_missing: （无实际作用）探测方法默认不作断言
+        :param raise_exception: 探测方法恒不抛异常，此参数仅为与 find_element/find_elements
+                                保持调用签名一致而保留，传入与否均不改变行为
+        :param expect_missing: 同上，探测方法不做断言，保留仅为签名兼容
         :return: True(存在) / False(不存在)
         """
         logger.info(f"🔎 探查元素状态: {locator} (模式: {condition}, 超时: {timeout}s)")
@@ -796,8 +794,8 @@ class BasePage:
         status_map = {
             "offline": 0,
             "none": 0,
-            "data": 1,
-            "mobile": 1,
+            "data": 4,
+            "mobile": 4,
             "wifi": 2,
             "all": 6,
             "online": 6

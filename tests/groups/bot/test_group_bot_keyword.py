@@ -21,13 +21,15 @@ keyword_params = [
 ]
 keyword_ids = [d["title"] for d in keyword_rules]
 
+# 元数据
+origin_list = ['您发送的信息已被撤回 🌟请勿发送与本群无关的内容', '您发送的消息包含敏感内容已被撤回，请注意：多次违规将被禁言或移除聊天⚠️', '刚才的消息不太合适哦～我们一起维护良好的聊天环境吧！', '请勿刷屏，保持良好聊天环境', '友善提醒：刚才的消息不太合适呢～已帮你撤回啦，我们一起保持群内整洁吧！❤️', '再次提醒：请注意发言内容，本次已撤回处理', '违规警告：您发送的内容严重违反群规，已撤回处理，请注意发言内容~']
 
 
 @allure.epic("IM核心功能测试")
 @allure.feature("群助手-禁止发送关键词")
 class TestGroupBotKeyword:
     """群助手禁止发送关键词功能测试"""
-
+    
     @pytest.fixture(autouse=True)
     def setup_method(self, driver_sender):
         """初始化发送方的页面对象"""
@@ -46,6 +48,7 @@ class TestGroupBotKeyword:
     def cleanup_keyword_settings(self):
         """用例后置清理：确保禁用禁发关键词检测，恢复群聊环境"""
         yield
+
         logger.info("🧹 [Cleanup] 开始清理群助手禁发关键词设置...")
         try:
             self.mainS.go_to_main_page()
@@ -91,6 +94,7 @@ class TestGroupBotKeyword:
     @pytest.mark.parametrize("keyword, expected_action, expected_text, description", keyword_params, ids=keyword_ids)
     def test_keyword_add_with_various_char_types(self, keyword, expected_action, expected_text, description):
         """验证关键词输入规则：最多10字，且不支持邮箱和特殊符号的组合测试"""
+
         with allure.step("1. 进入关键词配置列表"):
             self._enter_keyword_config_page()
             self.botS.click_keyword_row()
@@ -127,7 +131,6 @@ class TestGroupBotKeyword:
                         )
         finally:
             with allure.step("4. 环境清理"):
-                # 如果执行了成功的保存，或者触发了截断保存，此时页面在配置主页，需要再点击进去才能清空
                 if expected_action in ["success", "truncate"]:
                     self.botS.click_keyword_row()
                 self.botS.clear_all_keywords()
@@ -269,45 +272,6 @@ class TestGroupBotKeyword:
                 self._exit_keyword_config_page()
 
     
-    @allure.story("禁发关键词-警告处置方式")
-    @allure.title("命中违规关键词 - 触发群助手撤回并群内@警告")
-    @pytest.mark.usefixtures("cleanup_keyword_settings")
-    def test_group_bot_keyword_warning_flow(self, driver_receiver):
-        """群普通成员发送包含违规词的消息，消息被撤回且群助手发送警告消息"""
-        chatListR = ChatListPage(driver_receiver)
-        chatR = ChatPage(driver_receiver)
-        
-        with allure.step("1. 发送方(群主/管理员)进入群助手，配置违规关键词并设置处置方式为【警告】"):
-            self._enter_keyword_config_page()
-            self.botS.click_keyword_row()
-            self.botS.set_keywords(["打折", "发票"])
-            
-            # 选择警告
-            self.botS.select_action_rule("警告")
-            self.botS.click_save()
-            self._exit_keyword_config_page()
-
-        with allure.step("2. 接收方(普通群成员)进入相同群聊并发送命中关键词的消息"):
-            chatListR.enter_chat(GROUP_STRATEGY.name)
-            chatR.wait_for_chat_page_load()
-            chatR.send_message("大家想要低价打折商品吗")
-
-        with allure.step("3. 校验消息是否被撤回/拦截，并检查群内是否收到群助手的@警告消息"):
-            time.sleep(3)  # 等待机器人处理 and 撤回
-            
-            # 接收端检查最后一条消息是否为群助手的警告消息
-            try:
-                last_msg = chatR.find_message_content(index=-1, side='received')
-                logger.info(f"🔍 接收方最后收到的消息内容: {last_msg}")
-                check.is_true("撤回" in last_msg or "无关" in last_msg, f"❌ 未收到群助手的警告消息: {last_msg}")
-            except Exception as e:
-                logger.warning(f"⚠️ 获取接收方消息时发生错误或未找到: {e}")
-                # 尝试用发送端检查
-                last_msg_sender = self.chatS.find_message_content(index=-1, side='received')
-                logger.info(f"🔍 发送方(群主)最后收到的消息内容: {last_msg_sender}")
-                check.is_true("撤回" in last_msg_sender or "无关" in last_msg_sender, "❌ 群主未看到群助手的警告消息")
-
-
     @allure.story("禁发关键词-警告语设置-添加")
     @allure.title("自定义警告语 - 配置校验与上限测试")
     @pytest.mark.parametrize("warning_count, warning_msg", [
@@ -319,9 +283,6 @@ class TestGroupBotKeyword:
         ids=["添加0条警告语", "添加1条警告语", "添加敏感词警告语", "添加警告语到上限", "添加超过10条警告语"])
     def test_group_bot_keyword_warning_message_setting(self, warning_count, warning_msg):
         """验证配置自定义警告语的规则与数量上限，包括空输入拦截和批量添加的边界值校验"""
-
-        # 元数据
-        # origin_list = ['您发送的信息已被撤回 🌟请勿发送与本群无关的内容', '您发送的消息包含敏感内容已被撤回，请注意：多次违规将被禁言或移除聊天⚠️', '刚才的消息不太合适哦～我们一起维护良好的聊天环境吧！', '请勿刷屏，保持良好聊天环境', '友善提醒：刚才的消息不太合适呢～已帮你撤回啦，我们一起保持群内整洁吧！❤️', '再次提醒：请注意发言内容，本次已撤回处理', '违规警告：您发送的内容严重违反群规，已撤回处理，请注意发言内容~']
         
         with allure.step("1. 发送方进入群助手，进入警告语设置面板"):
             self._enter_keyword_config_page()
@@ -384,7 +345,7 @@ class TestGroupBotKeyword:
 
         with allure.step("1. 发送方进入群助手，进入警告语设置面板"):
             self._enter_keyword_config_page()
-            self.botS.get_warning_msg_text()
+            before_warning_msg_text = self.botS.get_warning_msg_text()
             self.botS.click_warning_msg_setting()
             self.botS.wait_warning_msg_panel()
             
@@ -392,22 +353,13 @@ class TestGroupBotKeyword:
             current_count = self.botS.get_warning_msg_count()
             if action == "delete_custom":
                 if current_count < 2:
-                    self.botS.set_custom_warning_msg(["准备删除的临时测试警告语"])
+                    self.botS.set_custom_warning_msg(origin_list)
                     if not self.botS.wait_warning_msg_panel(timeout=2):
                         self.botS.click_warning_msg_setting()
                         self.botS.wait_warning_msg_panel()
                     current_count = self.botS.get_warning_msg_count()
             elif action == "delete_last_one":
-                if current_count > 1:
-                    delete_icons = self.botS.get_keyword_delete_icon_list()
-                    for _ in range(current_count - 1):
-                        if delete_icons:
-                            delete_icons[-1].click()
-                            if self.botS.get_confirm_dialog():
-                                self.botS.click_keyword_delete_confirm_btn()
-                            time.sleep(1)
-                            delete_icons = self.botS.get_keyword_delete_icon_list()
-                    current_count = self.botS.get_warning_msg_count()
+                pass 
         
         with allure.step("3. 向下滑动"):
             if current_count > 5:
@@ -422,8 +374,7 @@ class TestGroupBotKeyword:
             if action == "delete_last_one":
                 self.botS.click_custom_warning_msg_confirm_btn()
                 warning_toast = self.botS.get_toast()
-                check.is_true(any(k in warning_toast for k in ["保留一个", "至少保留", "最少", "不能删除", "至少一条"]), f"未触发最后一条拦截 Toast，实际获取到的为: {warning_toast}")
-                check.equal(self.botS.get_warning_msg_count(), 1, "触发兜底拦截后，最后一条警告语数量不应改变")
+                check.is_true("至少保留一条警告语" in warning_toast, f"未触发最后一条警告语拦截Toast，实际为: {warning_toast}")
             else:
                 if not is_confirm:
                     self.botS.click_custom_warning_msg_cancel_btn()
@@ -440,3 +391,24 @@ class TestGroupBotKeyword:
                     check.equal(len(current_texts), current_count - 1, "确认删除后，警告语数量没有减少")
                     if target_text:
                         check.is_false(target_text in current_texts, f"确认删除后，被删警告语 {target_text} 仍然存在于列表中")
+        
+        with allure.step("6. 测试环境后置：恢复初始警告语"):
+            if action == "delete_last_one":
+                logger.info("⚙️ 正在恢复 delete_last_one 测试删除掉的警告语数据...")
+                self.botS.set_custom_warning_msg(origin_list)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

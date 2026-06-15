@@ -491,14 +491,15 @@ class ChatPage(BasePage):
                 return
         logger.error(f"✖️ 功能面板中未匹配到指定按钮: {attrName}")
 
+
+
     # =================================================================
     # 长按功能验证相关
     # =================================================================
-
     # 获取第 n 条文本消息内容
-    def get_text_message_content_by_index(self, index: int = -1, expect_missing: bool = False) -> str:
+    def get_text_message_content_by_index(self, index: int = -1, side: str = "sent", expect_missing: bool = False) -> str:
         """获取第 n 条文本消息内容"""
-        st_elems = self.get_message_elements(msg_type="text", side='sent', expect_missing=expect_missing)
+        st_elems = self.get_message_elements(msg_type="text", side=side, expect_missing=expect_missing)
         if expect_missing:
             logger.warning(f"⚠️ [Content] - 已知没有文本消息，跳过该消息的断言")
             return ""
@@ -737,7 +738,6 @@ class ChatPage(BasePage):
     # =================================================================
     # 图片和视频消息相关 
     # =================================================================
-    
     # 验证聊天区连续发送的消息数量与描述文本
     def verify_batch_sent_messages(self, expected_count: int, msg_type: Literal['image', 'video'], expect_text: str = "", max_slide: int = 5) -> tuple[int, bool, int]:
         """
@@ -1236,23 +1236,26 @@ class ChatPage(BasePage):
     # 获取撤回消息 
     def get_withdraw_message(self, index=-1) -> tuple[str, str] | None:
         """
-        获取撤回消息 
-        :param index: 撤回消息的索引，默认为最后一个（-1）
+        获取撤回提示及其前一条正常消息
+        :param index: 撤回提示的索引，默认最后一条（-1，仅支持负数索引）
         """
         elements = self.find_elements(ChatLocator.WITHDRAW_MESSAGE_ITEM, timeout=2)
         if not elements:
             logger.error("❌ 未找到撤回消息")
             return None
+
         withmsg = elements[index].get_attribute("text")
-        smsg = elements[index - 1].get_attribute("text")
+        # 防越界：前一条正常消息可能不存在
+        prev_index = index - 1
+        smsg = elements[prev_index].get_attribute("text") if -len(elements) <= prev_index < len(elements) else ""
         logger.info(f"✅ 获取到撤回消息: {withmsg}, 正常消息: {smsg}")
         return withmsg, smsg
+
 
     
     # ==================================
     # 聊天页面【长按操作】删除相关逻辑
     # ==================================
-
     # 等待删除弹窗出现
     def wait_for_del_dialog(self, timeout=2) -> bool:
         """等待删除弹窗出现"""
