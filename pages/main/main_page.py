@@ -30,24 +30,20 @@ class MainPage(BasePage):
         self.click(HomeLocator.FRIEND)
         logger.info("🚀 [Action] 进入好友列表页面")
 
-    # 等待主页面加载完成
-    def wait_for_main_page_load(self, timeout: int = 10):
-        """等待主页面加载完成"""
-        title = self.get_attribute(HomeLocator.MIDDLE_TITLE,'text', expect_missing=True)
-        if '三条' in title:
-            logger.info(f" 🍏 已找到会话列表标题 {title}，主页面加载完成")
-            time.sleep(2)
-            return
-
     def go_to_main_page(self, max_retries: int = 10):
-        """进入主页面消息列表页面，没有找到后，返回知道找到"""
+        """进入主页面消息列表页面，没有找到后，返回直到找到"""
+        from selenium.common.exceptions import WebDriverException
         while max_retries > 0:
             title = self.get_attribute(HomeLocator.MIDDLE_TITLE,'text', expect_missing=True)
             if '三条' in title:
                 logger.info(f" 🍏 已找到会话列表标题 {title}，回到主页面会话列表")
-                time.sleep(3)
+                time.sleep(1)
                 return
-            self.back()
-            time.sleep(1)  # 短暂等待页面加载
+            try:
+                self.back()
+                time.sleep(1.5)
+            except WebDriverException as e:
+                logger.error(f"❌ 系统返回失败，UiAutomator2 服务可能已崩溃或通信异常: {e}")
+                break
             max_retries -= 1
             logger.warning(f" 🍎 未找到会话列表标题或标题不匹配，继续返回，剩余尝试次数：{max_retries}")

@@ -219,6 +219,16 @@ class ChatLocator:
     ADD_MORE_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/input_more_bnt')     # 添加和取消按钮(+号按钮)
     SEND_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/input_send_bnt')         # 发送按钮
 
+
+    # 禁言状态输入框（包含容器）
+    NOT_IN_INPUT_BOX = (AppiumBy.ID, f'{PACKAGE_ID}/not_in')                                # 禁言状态输入框
+    TPV_1 = (AppiumBy.ID, f'{PACKAGE_ID}/tpv_1')                                            # 禁言状态语音按钮
+    TV_NOT_IN_TIPS_TITLE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_not_in_tips_title')              # 禁言状态提示标题
+    TV_NOT_IN_TIPS = (AppiumBy.ID, f'{PACKAGE_ID}/tv_not_in_tips')                          # 禁言状态禁言时长
+    TPV_2 = (AppiumBy.ID, f'{PACKAGE_ID}/tpv_2')                                            # 禁言状态表情按钮
+    TPV_3 = (AppiumBy.ID, f'{PACKAGE_ID}/tpv_3')                                            # 禁言状态加号按钮
+
+
     # 点击 + 按钮展开其它功能元素
     ADD_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/input_more_bnt')                              # 添加按钮
     INPUT_MORE_PAGER = (AppiumBy.ID, f'{PACKAGE_ID}/input_more_pager')                      # 加号面板滑动区域
@@ -261,7 +271,7 @@ class ChatLocator:
     # ==================================
     
     # 撤回、截屏消息通知
-    WITHDRAW_MESSAGE_ITEM = (AppiumBy.XPATH, f'//*[@resource-id="{MESSAGE_LAYOUT_ID}"]//*[@resource-id="{MESSAGE_CONTENT_ID}"]//android.widget.TextView')
+    WITHDRAW_MESSAGE_ITEM = (AppiumBy.XPATH, f'//*[@resource-id="{MESSAGE_LAYOUT_ID}"]//*[@resource-id="{MESSAGE_CONTENT_ID}"]/android.widget.TextView')
     
     # 删除操作二次确认和取消
     DEL_CONFIRM = CommonLocator.TEXT_CONFIRM_BTN

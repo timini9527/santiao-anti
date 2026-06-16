@@ -57,11 +57,8 @@ class TestGroupBotKeyword:
             self.chatS.click_more_button()
             self.settingS.wait_for_setting_page_load()
             self.settingS.click_group_manager()
-            
             self.botS.enter_group_bot()
             self.botS.enter_keyword_block()
-            
-            # 关闭开关并保存
             self.botS.toggle_switch(enable=False)
             self.botS.click_save()
             logger.info("🧹 [Cleanup] 成功关闭群助手禁发关键词设置")
@@ -78,11 +75,11 @@ class TestGroupBotKeyword:
         self.botS.wait_for_group_bot_page_load()
         self.botS.enter_keyword_block()
         self.botS.toggle_switch(enable=True)
+        self.botS.click_save()
     
 
     def _exit_keyword_config_page(self):
         """辅助方法：退出并返回聊天主页"""
-        self.botS.click_back()
         self.botS.click_back()
         self.botS.click_back()
 

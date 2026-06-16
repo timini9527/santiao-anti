@@ -6,6 +6,7 @@ from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.groups.create.group_create_page import GroupCreatePage
 from pages.groups.setting.group_setting_page import GroupSettingPage
+from pages.groups.setting.group_manager_page import GroupManagerPage
 from pages.chat.chat_page import ChatPage
 from pages.chat.chat_list_page import ChatListPage
 from pages.common.contact_select_page import ContactSelectPage
@@ -23,6 +24,7 @@ class TestGroupSetting:
         self.homePage = HomePage(driver_sender)
         self.groupCreatePage = GroupCreatePage(driver_sender)
         self.groupSettingPage = GroupSettingPage(driver_sender)
+        self.groupManagerPage = GroupManagerPage(driver_sender)
         self.chatPage = ChatPage(driver_sender)
         self.contactSelectPage = ContactSelectPage(driver_sender)
         self.chatListPage = ChatListPage(driver_sender)
@@ -54,7 +56,7 @@ class TestGroupSetting:
         with allure.step("2. 进入群详情页，进入群管理并点击解散群聊"):
             self.groupSettingPage.wait_for_setting_page_load()
             self.groupSettingPage.click_group_manager()
-            self.groupSettingPage.click_dismiss_group()
+            self.groupManagerPage.click_dismiss_group()
 
     @allure.story("群聊详情设置")
     @allure.title("切换显示群成员昵称开关并校验状态")

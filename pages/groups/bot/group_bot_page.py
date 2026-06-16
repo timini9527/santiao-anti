@@ -9,10 +9,12 @@ import time
 class GroupBotPage(BasePage):
     """群助手页面操作类，涵盖禁发关键词、发言管理、自动清理、入群验证、入群欢迎语、定时消息、自动清理群成员等功能域"""
 
-    # ==========================
-    # 页面进入与基本导航
-    # ==========================
+    # 禁言时长档位（顺序与 picker 滚轮从上到下一致），页面与测试参数化共用，避免重复维护
+    MUTE_DURATION_OPTIONS = ["10分钟", "30分钟", "2小时", "1天", "7天", "30天", "永久禁言"]
 
+    # =============================================================================
+    # 页面进入与基本导航
+    # =============================================================================
     # 从群详情/群管理页进入群助手页面
     def wait_for_group_bot_page_load(self, timeout=10) -> bool:
         """从群详情/群管理页进入群助手页面"""
@@ -47,9 +49,9 @@ class GroupBotPage(BasePage):
         self.click(GroupBotLocator.JOIN_VERIFY_ENTRY)
         logger.info("⏳ [Action-GroupBotPage] 进入【入群验证】设置页")
 
-    # ==========================
+    # =============================================================================
     # 通用开关与保存/确认操作
-    # ==========================
+    # =============================================================================
     # 获取当前页面主功能的 Switch 开关状态
     def get_switch_state(self) -> bool:
         """获取当前页面主功能的 Switch 开关状态"""
@@ -93,9 +95,9 @@ class GroupBotPage(BasePage):
         self.click(GroupBotLocator.CANCEL_BTN)
 
 
-    # ==========================
+    # =============================================================================
     # 禁发关键词检测页面细化操作
-    # ==========================
+    # =============================================================================
     # 关键词-点击关键词行进入关键词列表配置页
     def click_keyword_row(self):
         """关键词-点击关键词行进入关键词列表配置页"""
@@ -250,6 +252,8 @@ class GroupBotPage(BasePage):
         if rule_name in action_rule_list:
             self.click(action_rule_list[rule_name])
             logger.info(f"⚙️ [Action-GroupBotPage] 选择处置规则: {rule_name}")
+            # if rule_name == "禁言":
+            #     self.click(action_rule_list[rule_name])
         else:
             logger.warning(f"不支持的处置规则: {rule_name}")
             raise ValueError(f"不支持的处置规则: {rule_name}")
@@ -468,19 +472,69 @@ class GroupBotPage(BasePage):
         self.swipe_to_distance(slid_type="down", rect=elem.rect, duration=100)
         logger.info("⚙️ [Action-GroupBotPage] 警告语列表向下滑动")
 
+    # 关键词-获取设置禁言时长文本
+    def get_mute_duration_summary(self):
+        """关键词-获取设置禁言时长文本"""
+        txt = self.get_attribute(GroupBotLocator.TV_SUMMARY, "text")
+        logger.info(f"⚙️ [Action-GroupBotPage] 当前设置禁言时长为: {txt}")
+        return txt
+
     # 关键词-设置禁言时长
-    def select_mute_duration(self, duration: str):
-        """关键词-设置禁言时长"""
-        logger.info(f"⚙️ [Action-GroupBotPage] 正在设置禁言时长为: {duration}")
-        self.click(GroupBotLocator.MUTE_DURATION_ROW)
-        duration_option = (AppiumBy.ANDROID_UIAUTOMATOR, f'new UiSelector().text("{duration}")')
-        self.click(duration_option)
+    def select_mute_duration(self, rule_time: str = "10分钟", old_summary: str = None) -> bool:
+        """关键词-设置禁言时长
+        针对没有子节点、纯 Canvas 渲染的滚轮选择器（WheelPicker）：
+        1. 获取选择器 picker_duration 控件的 Rect 边界计算相对坐标，防分辨率兼容问题。
+        2. 向下滚动重置归零至顶端：picker 打开时定位到当前值，故按 old_summary 对应的
+           索引精准回退；old_summary 未知时按 len(options) 兜底滚动（滚轮到顶边界饱和，多滑无害）。
+        3. 按照时长列表相对顺序，计算需要向上滑动的次数，并精准执行 W3C 滑动手势。
+        :return: True 设置成功 / False 未找到选择器控件
+        """
+        logger.info(f"⚙️ [Action-GroupBotPage] 正在设置禁言时长为: {rule_time} (当前页面旧值: {old_summary})")
+
+        if old_summary and rule_time == old_summary:
+            self.click_custom_warning_msg_confirm_btn()
+            logger.info("⚙️ [Action-GroupBotPage] 禁言时长与当前设置相同，无需设置，仅点击确认")
+            return True
+
+        picker_element = self.find_element(GroupBotLocator.PICKER_DURATION)
+        if not picker_element:
+            logger.error("❌ 找不到禁言时长选择器 picker_duration")
+            return False
+
+        options = self.MUTE_DURATION_OPTIONS
+
+        if old_summary in options:
+            old_index = options.index(old_summary)
+        else:
+            old_index = len(options)
+
+        if rule_time not in options:
+            rule_time = options[0]
+        target_index = options.index(rule_time)
+
+        rect = picker_element.rect
+        slide_distance = int(rect['height'] * 0.18)  # 经验值：一格行高约占控件高度 18%
+
+        if old_index > 0:
+            logger.info(f"🔄 正在重置选择器至顶端（滑动回退步数: {old_index}）...")
+            for _ in range(old_index):
+                self.swipe_by_offset(rect=rect, y_offset=slide_distance, duration=400)
+                time.sleep(0.1)
+
+        if target_index > 0:
+            logger.info(f"🔄 向上滚动选择器以选择【{rule_time}】...")
+            for _ in range(target_index):
+                self.swipe_by_offset(rect=rect, y_offset=-slide_distance, duration=400)
+                time.sleep(0.15)
+
+        self.click_custom_warning_msg_confirm_btn()
+        logger.info("✅ 禁言时长选择完毕并点击确定")
+        return True
 
 
-    # =====================================================================
+    # =========================================================================
     # 发言管理页面细化操作
-    # =====================================================================
-
+    # =========================================================================
     # 对指定的限制类型或传播限制进行勾选/取消勾选
     def toggle_limit_item(self, item_name: str, enable: bool):
         """对指定的限制类型或传播限制进行勾选/取消勾选"""
@@ -512,9 +566,9 @@ class GroupBotPage(BasePage):
         else:
             logger.info(f"⚙️ [Action-GroupBotPage] 限制项【{item_name}】状态已为 {enable}，无需点击")
 
-    # =====================================================================
+    # ============================================================================
     # 自动清理成员页面细化操作
-    # =====================================================================
+    # ============================================================================
 
     # 进入清理规则设置页面
     def enter_clean_rules(self):
@@ -591,9 +645,9 @@ class GroupBotPage(BasePage):
         self.click(GroupBotLocator.CANCEL_CLEAN_TASK)
         self.click_confirm()
 
-    # =====================================================================
+    # ============================================================================
     # 入群验证页面细化操作
-    # =====================================================================
+    # ============================================================================
 
     # 一键配置入群验证规则
     def configure_join_verify(self, action_type: str = "仅移出群组", verify_time: str = "5min"):
@@ -623,9 +677,9 @@ class GroupBotPage(BasePage):
         logger.info("⚙️ [Action-GroupBotPage] 点击【去验证】")
         self.click(GroupBotLocator.GO_VERIFY_BTN)
 
-    # ==========================
-    # 5. 进群欢迎语页面操作
-    # ==========================
+    # =============================================================================
+    # 进群欢迎语页面操作
+    # =============================================================================
 
     # 进入【进群欢迎语】设置页
     def enter_welcome(self):
@@ -661,9 +715,9 @@ class GroupBotPage(BasePage):
         # 点击完成保存
         self.click(GroupBotLocator.WELCOME_FINISH_BTN)
 
-    # =====================================================================
+    # ============================================================================
     # 定时消息页面操作
-    # =====================================================================
+    # ============================================================================
 
     # 进入【定时消息】页
     def enter_timed_msg(self):

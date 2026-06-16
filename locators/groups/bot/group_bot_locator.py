@@ -75,10 +75,14 @@ class GroupBotLocator:
     
     # 关键词处理方式
     DESIGN_BOTTOM_SHEET = (AppiumBy.ID, f'{PACKAGE_ID}/design_bottom_sheet')                # bottomSheet 警告语布局
-    RULE_REVOKE = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("仅撤回")')         # 仅撤回
-    RULE_WARN = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("撤回+公开警告")')    # 撤回+公开警告
-    RULE_MUTE = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("撤回+禁言")')        # 撤回+禁言
-    RULE_KICK = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("撤回+移除群聊")')    # 撤回+移除群聊
+    RULE_REVOKE = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("仅撤回")')          # 仅撤回
+    RULE_WARN = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("撤回+公开警告")')     # 撤回+公开警告
+    
+    RULE_MUTE = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("撤回+禁言")')         # 撤回+禁言
+    TV_SUMMARY = (AppiumBy.ID, f'{PACKAGE_ID}/tv_summary')                                  # 设置禁言时长
+    PICKER_DURATION = (AppiumBy.ID, f'{PACKAGE_ID}/picker_duration')                        # 设置禁言时长控件
+    
+    RULE_KICK = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("撤回+移除群聊")')        # 撤回+移除群聊
     
     # 警告语设置
     TV_CONTENT = (AppiumBy.ID, f'{PACKAGE_ID}/tv_content')                                  # 警告语默认内容

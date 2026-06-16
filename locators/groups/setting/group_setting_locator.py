@@ -38,7 +38,6 @@ class GroupSettingLocator(ChatSettingLocator):
     # 底部危险操作
     SETTING_CLEAR_GROUPCHATMESSAGE = (AppiumBy.ID, f"{PACKAGE_ID}/setting_clear_groupChatMessage")      # 清空聊天记录
     SETTING_GROUP_DELETE_AND_OUT = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_groupDeleteAndOut")        # 删除并退出
-    SETTING_GROUP_DISMISS = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_groupDismiss")                    # 解散群聊
 
     # 通用弹窗
     TV_CONFIRM = CommonLocator.TEXT_CONFIRM_BTN                                                          # 确认按钮

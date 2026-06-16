@@ -151,11 +151,6 @@ class GroupSettingPage(BasePage):
         self.click(GroupSettingLocator.SETTING_GROUP_DELETE_AND_OUT)
         logger.info("✅ [Action-groupSettingPage] 群聊设置页 - 点击【删除并退出】")
 
-    # 点击解散群聊
-    def click_dismiss_group(self):
-        """点击解散群聊"""
-        self.click(GroupSettingLocator.SETTING_GROUP_DISMISS)
-        logger.info("✅ [Action-groupSettingPage] 群聊设置页 - 点击【解散群聊】")
 
     # 点击确认按钮
     def click_confirm_button(self):
