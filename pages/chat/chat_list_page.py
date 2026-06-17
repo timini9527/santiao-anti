@@ -14,6 +14,19 @@ from core.logger_utils import logger
 @allure.feature("会话列表页")
 class ChatListPage(ChatPage):
 
+    # 等待聊天会话列表页加载
+    def wait_chat_list_page_load(self, timeout=10) -> bool:
+        """等待聊天会话列表页加载"""
+        end_time = time.time() + timeout
+        while time.time() <= end_time:
+            home_title = self.get_attribute(HL.MIDDLE_TITLE, 'text')
+            if home_title and "三条" in home_title:
+                logger.info(f"✅ 进入会话列表")
+                return True
+            time.sleep(0.2)
+        logger.error(f"❌ 未找到会话列表项")
+        return False
+
     # 快速下滑避免页面不是原始页面
     def _quick_slide_to_top(self):
         self.swipe_page_quickly(slid_type='down', duration=200)

@@ -1,4 +1,4 @@
-﻿import os
+import os
 import re
 import time
 from typing import Union, List
@@ -123,6 +123,41 @@ class BasePage:
         except Exception:
             logger.warning(f"⚠️ [Wait] 元素在 {timeout}s 内未能从页面消失: {locator}")
             return False
+
+    def wait_for_element(self, locator: tuple, timeout: int = 15, interval: float = 1.0,
+                         text: str = None) -> bool:
+        """轮询等待元素出现（用于撤回/警告/禁言等异步上屏的场景）。
+
+        与 find_element 的区别：本方法用"短超时多次轮询"而非"一次等满"，
+        且恒返回 bool 不抛异常、不触发失败截图，适合赌异步时机的等待点，
+        从根上替代"裸 find_element 等满 10s 静默失败 → 下一步对 None 操作崩溃"的反模式。
+
+        :param locator: 定位器元组
+        :param timeout: 总最大等待时间（秒）
+        :param interval: 每轮探测间隔（秒）
+        :param text: 可选，要求元素文本包含此子串才算命中（用于等"特定内容"的消息）
+        :return: 命中返回 True，超时未命中返回 False
+        """
+        logger.info(f"⏳ [Wait] 轮询等待元素出现: {locator} (总超时 {timeout}s, 间隔 {interval}s"
+                    f"{', 文本含 ' + repr(text) if text else ''})")
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            try:
+                elements = self.driver.find_elements(*locator)
+                for el in elements:
+                    if text is None:
+                        logger.info(f"✅ [Wait] 已检测到目标元素: {locator}")
+                        return True
+                    if text in (el.text or ""):
+                        logger.info(f"✅ [Wait] 已检测到包含文本【{text}】的元素")
+                        return True
+            except Exception:
+                # 探测期间的 stale / 查找异常都忽略，继续下一轮轮询
+                pass
+            time.sleep(interval)
+        logger.warning(f"⚠️ [Wait] 等待 {timeout}s 仍未检测到目标元素: {locator}"
+                       f"{'（文本含 ' + repr(text) + '）' if text else ''}")
+        return False
 
     @allure.step("通过 android uiautomator 定位, ID 和 Instance 获取元素")
     def find_element_by_id_instance(self, res_id: str, index: int = 0) -> WebElement:

@@ -57,9 +57,4 @@ class GroupCreateLocator(CommonLocator):
     def get_index_bar_text(cls, text: str):
         return (AppiumBy.XPATH, f'//*[@resource-id="{cls.INDEX_BAR_ID}"]//android.widget.TextView[@text="{text}"]')
 
-    
-
-    # 横幅消息元素
-    TV_PREVIEW_ID = f"{PACKAGE_ID}/tv_preview"
-    TV_PREVIEW = (AppiumBy.ID, TV_PREVIEW_ID)                                          # 横幅消息详细文本
 

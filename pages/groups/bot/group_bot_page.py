@@ -475,6 +475,10 @@ class GroupBotPage(BasePage):
     # 关键词-获取设置禁言时长文本
     def get_mute_duration_summary(self):
         """关键词-获取设置禁言时长文本"""
+        time.sleep(1)
+        if not self.is_element_exist(GroupBotLocator.TV_SUMMARY, timeout=2):
+            logger.info("⚙️ [Action-GroupBotPage] 未显示禁言时长 summary 元素，可能当前未选择禁言规则")
+            return None
         txt = self.get_attribute(GroupBotLocator.TV_SUMMARY, "text")
         logger.info(f"⚙️ [Action-GroupBotPage] 当前设置禁言时长为: {txt}")
         return txt
@@ -491,16 +495,29 @@ class GroupBotPage(BasePage):
         """
         logger.info(f"⚙️ [Action-GroupBotPage] 正在设置禁言时长为: {rule_time} (当前页面旧值: {old_summary})")
 
+        # 检查滚轮选择器是否已经显示
+        picker_visible = self.is_element_exist(GroupBotLocator.PICKER_DURATION, timeout=2)
+
         if old_summary and rule_time == old_summary:
-            self.click_custom_warning_msg_confirm_btn()
-            logger.info("⚙️ [Action-GroupBotPage] 禁言时长与当前设置相同，无需设置，仅点击确认")
+            if picker_visible:
+                self.click_custom_warning_msg_confirm_btn()
+                logger.info("⚙️ [Action-GroupBotPage] 禁言时长与当前设置相同，且弹窗已显示，直接点击确认关闭")
+            else:
+                logger.info("⚙️ [Action-GroupBotPage] 禁言时长与当前设置相同，且无弹窗显示，无需操作")
             return True
 
-        picker_element = self.find_element(GroupBotLocator.PICKER_DURATION)
-        if not picker_element:
+        # 如果选择器未显示，点击 TV_SUMMARY 以唤起滚轮选择弹窗
+        if not picker_visible:
+            logger.info("⚙️ [Action-GroupBotPage] 滚轮选择器未显示，尝试点击 TV_SUMMARY 展开")
+            if self.is_element_exist(GroupBotLocator.TV_SUMMARY, timeout=2):
+                self.click(GroupBotLocator.TV_SUMMARY)
+                picker_visible = self.is_element_exist(GroupBotLocator.PICKER_DURATION, timeout=5)
+
+        if not picker_visible:
             logger.error("❌ 找不到禁言时长选择器 picker_duration")
             return False
 
+        picker_element = self.find_element(GroupBotLocator.PICKER_DURATION)
         options = self.MUTE_DURATION_OPTIONS
 
         if old_summary in options:

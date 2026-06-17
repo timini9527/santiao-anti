@@ -164,15 +164,3 @@ class GroupCreatePage(GroupSettingPage):
         # 3. 其他非字母、特殊符号、数字均归为 #
         return "#"
 
-    # 获取横幅消息吗，等待横幅消息消失
-    def wait_banner_message_disappear(self) -> bool:
-        """
-        等待横幅消息消失
-        :return: True - 横幅消息消失
-        """
-        is_disappear = self.wait_until_element_disappear(GroupCreateLocator.TV_PREVIEW)
-        if is_disappear:
-            logger.info("✅ [Action] GroupCreatePage 群详情页 - 横幅消息已消失")
-            return True
-        logger.warning("⚠️ [Action] GroupCreatePage 群详情页 - 横幅消息未消失")
-        return False

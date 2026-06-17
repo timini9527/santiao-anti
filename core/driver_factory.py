@@ -63,6 +63,17 @@ class DriverFactory:
                     f"Port: {desired_caps.get('systemPort')} | \n"
                     f"Appium Server URL: {appium_url}")
 
+        # 💡 在连接设备前，自动清理掉该端口的 adb forward 规则，防止 ghost 占位导致 busy 报错
+        system_port = desired_caps.get('systemPort')
+        if system_port:
+            import subprocess
+            try:
+                # 尝试移除该端口的 adb 转发规则以进行端口释放
+                subprocess.run(f"adb forward --remove tcp:{system_port}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                logger.info(f"🧹 [DriverFactory] 已尝试清理 adb 端口转发规则: tcp:{system_port}")
+            except Exception as e:
+                logger.debug(f"[DriverFactory] 清理 adb 端口转发异常 (可能原本就无此转发): {e}")
+
         # 💡 在尝试连接 Appium 之前，先进行一次快速网络探测 (3秒超时)，防止 Appium 服务未启动时连接无限挂起导致页面卡死
         import urllib.request
         from urllib.parse import urlparse
@@ -82,7 +93,7 @@ class DriverFactory:
                 f"\n❌ [DriverFactory] 无法连接到指定的 Appium 服务器: {appium_url}\n"
                 f"请检查:\n"
                 f"1. 该 IP 和端口的 Appium 服务是否已启动？\n"
-                f"2. 如果是远程 Appium，请确认 Appium 启动参数是否包含了 `-a 0.0.0.0` (允许局域网访问)？\n"
+                f"2. 如果是远程 Appium，请确认 Appium 启动参数是否包含了 `-a 0.0.0.0` (允许局域网访问) ?\n"
                 f"3. 局域网防火墙是否开放了该端口？\n"
                 f"探测失败原因: {e}\n"
             )

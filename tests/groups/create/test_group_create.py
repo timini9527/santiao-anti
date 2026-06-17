@@ -120,7 +120,7 @@ class TestGroupCreate:
             logger.info(f"加人Toast: {add_toast}")
 
             # 等待横幅消息消失
-            self.groupCreatePage.wait_banner_message_disappear()
+            self.chatPage.wait_banner_message_disappear()
             
             import time
             if "该用户状态异常，无法邀请其加入群聊" in add_toast:

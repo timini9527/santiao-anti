@@ -8,7 +8,7 @@ class SessionSelectPage(CommonPage):
     """通用会话选择组件页面对象"""
 
     # 等待页面加载完成
-    def wait_for_page_load(self, msg_type: int = 0, timeout=10):
+    def wait_for_session_page_load(self, msg_type: int = 0, timeout=10):
         """等待页面加载完成
         :param msg_type: 消息类型 0: 文本/群聊/文件/视频/语音等 1: 图片
         """

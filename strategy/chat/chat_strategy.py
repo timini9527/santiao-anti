@@ -44,6 +44,12 @@ PRIVATE_USER3 = ChatSessionStrategy(
     desc="私聊模式",
     name=web_receipt.get("私聊2") or "测试0225"
 )
+
+PRIVATE_USER4 = ChatSessionStrategy(
+    desc="私聊模式",
+    name=web_receipt.get("私聊3") or "测试0229"
+)
+
 # 停用或注销用户
 PRIVATE_DISABLE1 = ChatSessionStrategy(
     desc="私聊模式",

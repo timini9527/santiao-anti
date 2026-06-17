@@ -70,7 +70,7 @@ class TestGroupQrCode:
             self.contactSelectPage.click_action_button()
             
             # 等待进群横幅消失，保证页面稳定
-            self.groupCreatePage.wait_banner_message_disappear()
+            self.chatPage.wait_banner_message_disappear()
             self.chatPage.wait_for_chat_page_load()
 
     def _ensure_on_qrcode_page(self):

@@ -20,9 +20,9 @@ class SessionSelectLocator(CommonLocator):
     SESSION_CHECKBOX = (AppiumBy.ID, f"{PACKAGE_ID}/check_member")            # 会话条目CheckBox
     SESSION_FRIEND_HEADER = (AppiumBy.ID, f"{PACKAGE_ID}/friend_header")      # 头像
     SESSION_FRIEND_NAME_ID = f"{PACKAGE_ID}/friend_name"
-    SESSION_FRIEND_NAME = (AppiumBy.ID, SESSION_FRIEND_NAME_ID)                # 会话名称 (好友名/群名)
+    SESSION_FRIEND_NAME = (AppiumBy.ID, SESSION_FRIEND_NAME_ID)               # 会话名称 (好友名/群名)
     CONTACT_NAME_ID = f"{PACKAGE_ID}/tv_name"
-    CONTACT_NAME = (AppiumBy.ID, CONTACT_NAME_ID)                   # 好友姓名/群名称
+    CONTACT_NAME = (AppiumBy.ID, CONTACT_NAME_ID)                             # 好友姓名/群名称
 
     @classmethod
     def get_session_by_name(cls, name: str):

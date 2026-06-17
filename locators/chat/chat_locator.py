@@ -280,6 +280,14 @@ class ChatLocator:
 
     TOAST_MSG = CommonLocator.TOAST_MSG
 
+
+    # 横幅通知消息定位器
+    TV_PREVIEW_ID = f"{PACKAGE_ID}/tv_preview"
+    TV_PREVIEW = (AppiumBy.ID, TV_PREVIEW_ID)                                          # 横幅消息详细文本
+
+
+
+
     # ==================================
     # 聊天页面的公共逻辑方法
     # ==================================
@@ -343,7 +351,7 @@ class ChatLocator:
         return (AppiumBy.XPATH,
                 f'//*[@resource-id="{cls.MESSAGE_CONTAINER_ID}" and .//*[@text="{text}"]]//*[@text="已读" or @text="未读"]')
 
-
+   
 
 
 
