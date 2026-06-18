@@ -103,7 +103,7 @@ class TestGroupBotSpeechManage:
         self.chatR.click_emoji_button()
         time.sleep(0.5)
         # 尝试点击面板上的第一组系统表情
-        emoji_locator = (self.chatR.by.ANDROID_UIAUTOMATOR, 'newUiSelector().resourceIdMatches(".*emoji.*").instance(0)')
+        emoji_locator = (self.chatR.by.ANDROID_UIAUTOMATOR, 'new UiSelector().resourceIdMatches(".*emoji.*").instance(0)')
         try:
             self.chatR.click(emoji_locator)
         except Exception:
@@ -121,7 +121,7 @@ class TestGroupBotSpeechManage:
         check.is_true("禁止" in toast_text, f"❌ 未捕获到正确的语音拦截提示，实际Toast: '{toast_text}'")
         # 点击文本输入框以恢复状态
         try:
-            self.chatR.click((self.chatR.by.ANDROID_UIAUTOMATOR, 'newUiSelector().textContains("按住 说话")'))
+            self.chatR.click((self.chatR.by.ANDROID_UIAUTOMATOR, 'new UiSelector().textContains("按住 说话")'))
         except Exception:
             pass
         self.chatR.send_message("恢复状态")
@@ -131,7 +131,7 @@ class TestGroupBotSpeechManage:
         self.chatR.click_add_button()
         time.sleep(0.5)
         # 使用 Contains 以兼容 '相册' 或 '图片'、'音视频通话' 等不同命名
-        btn_locator = (self.chatR.by.ANDROID_UIAUTOMATOR, f'newUiSelector().textContains("{btn_text}")')
+        btn_locator = (self.chatR.by.ANDROID_UIAUTOMATOR, f'new UiSelector().textContains("{btn_text}")')
         self.chatR.click(btn_locator)
         
         toast_text = self.chatR.get_toast_text()
@@ -140,35 +140,8 @@ class TestGroupBotSpeechManage:
         # 发送文本以自动收起加号面板，确保环境干净
         self.chatR.send_message("恢复面板状态")
 
-    def _verify_file_blocked(self):
-        self._click_add_panel_item_and_verify("文件", "禁止")
-
-    def _verify_image_blocked(self):
-        self._click_add_panel_item_and_verify("相册", "禁止")
-
-    def _verify_camera_blocked(self):
-        self._click_add_panel_item_and_verify("拍摄", "禁止")
-
-    def _verify_video_blocked(self):
-        self._click_add_panel_item_and_verify("视频", "禁止")
-
-    def _verify_location_blocked(self):
-        self._click_add_panel_item_and_verify("位置", "禁止")
-
-    def _verify_card_blocked(self):
-        self._click_add_panel_item_and_verify("名片", "禁止")
-
-    def _verify_voice_call_blocked(self):
-        self._click_add_panel_item_and_verify("通话", "禁止")
-
-    def _verify_solitaire_blocked(self):
-        self._click_add_panel_item_and_verify("接龙", "禁止")
-
-    def _verify_poll_blocked(self):
-        self._click_add_panel_item_and_verify("投票", "禁止")
-
     # ==========================
-    # 长按菜单辅助验证逻辑
+    # 场景二：长按菜单辅助验证逻辑
     # ==========================
 
     def _long_press_action_and_verify(self, action_name: str):
@@ -188,67 +161,59 @@ class TestGroupBotSpeechManage:
         else:
             pytest.fail("❌ 未能在聊天窗口中找到可长按的消息")
 
-    def _verify_forward_blocked(self):
-        self._long_press_action_and_verify("转发")
-
-    def _verify_copy_blocked(self):
-        self._long_press_action_and_verify("复制")
-
-    def _verify_save_blocked(self):
-        self._long_press_action_and_verify("保存")
-
-    def _verify_collect_blocked(self):
-        self._long_press_action_and_verify("收藏")
-
     @allure.story("发言管理-直接发送限制验证")
     @allure.title("发送能力逐项验证: {item_name}")
-    @pytest.mark.parametrize("item_name, check_method_name", [
-        ("文本", "_verify_text_blocked"),
-        ("emoji", "_verify_emoji_blocked"),
-        ("语音", "_verify_voice_blocked"),
-        ("表情包", "_verify_emoji_blocked"),
-        ("图片", "_verify_image_blocked"),
-        ("拍照", "_verify_camera_blocked"),
-        ("视频", "_verify_video_blocked"),
-        ("位置", "_verify_location_blocked"),
-        ("名片", "_verify_card_blocked"),
-        ("文件", "_verify_file_blocked"),
-        ("音视频通话", "_verify_voice_call_blocked"),
-        ("接龙", "_verify_solitaire_blocked"),
-        ("投票", "_verify_poll_blocked")
+    @pytest.mark.parametrize("item_name, action_type, action_target", [
+        ("文本", "custom", "_verify_text_blocked"),
+        ("emoji", "custom", "_verify_emoji_blocked"),
+        ("语音", "custom", "_verify_voice_blocked"),
+        ("表情包", "custom", "_verify_emoji_blocked"),
+        ("图片", "panel", "相册"),
+        ("拍照", "panel", "拍摄"),
+        ("视频", "panel", "视频"),
+        ("位置", "panel", "位置"),
+        ("名片", "panel", "名片"),
+        ("文件", "panel", "文件"),
+        ("音视频通话", "panel", "通话"),
+        ("接龙", "panel", "接龙"),
+        ("投票", "panel", "投票")
     ], ids=["文本","emoji","语音","表情包","图片","拍照","视频","位置","名片","文件","音视频通话","接龙","投票"])
-    def test_basic_message_restrictions(self, item_name, check_method_name):
+    def test_basic_message_restrictions(self, item_name, action_type, action_target):
         """
-        验证直接在群内发起消息的拦截效果
-        利用 Sender 停留在设置页，Receiver 停留在聊天页的特性，以几乎为零的跳转成本验证
+        极速参数化验证：验证直接在群内发起操作的拦截效果。
+        利用 Sender 停留在设置页，Receiver 停留在聊天页的特性，以几乎为零的跳转成本验证。
         """
         with allure.step(f"1. 发送方(群主)开启限制: 【{item_name}】"):
             self._toggle_limit_and_save(item_name, True)
 
         with allure.step(f"2. 接收方尝试执行发送操作，验证系统能否成功拦截"):
-            verify_func = getattr(self, check_method_name)
-            verify_func()
+            if action_type == "custom":
+                # 自定义复杂流（如文本输入、点击录音按钮等）
+                verify_func = getattr(self, action_target)
+                verify_func()
+            elif action_type == "panel":
+                # 加号扩展面板标准流
+                self._click_add_panel_item_and_verify(action_target, "禁止")
 
         with allure.step(f"3. 测试后置：发送方关闭限制: 【{item_name}】"):
             self._toggle_limit_and_save(item_name, False)
 
     @allure.story("发言管理-长按消息菜单限制验证")
     @allure.title("长按能力逐项验证: {item_name}")
-    @pytest.mark.parametrize("item_name, check_method_name", [
-        ("禁止复制群内消息", "_verify_copy_blocked"),
-        ("禁止转发群内消息", "_verify_forward_blocked"),
-        ("禁止保存群内消息", "_verify_save_blocked"),
-        ("禁止收藏群内消息", "_verify_collect_blocked")
+    @pytest.mark.parametrize("item_name, menu_text", [
+        ("禁止复制群内消息", "复制"),
+        ("禁止转发群内消息", "转发"),
+        ("禁止保存群内消息", "保存"),
+        ("禁止收藏群内消息", "收藏")
     ], ids=["复制","转发","保存","收藏"])
-    def test_long_press_message_restrictions(self, item_name, check_method_name):
+    def test_long_press_message_restrictions(self, item_name, menu_text):
         """ 验证长按已有消息时弹出的菜单项操作的拦截效果 """
 
         with allure.step(f"1. 发送方(群主)开启限制: 【{item_name}】"):
             self._toggle_limit_and_save(item_name, True)
 
         with allure.step(f"2. 接收方长按已有消息进行操作，验证能否被成功拦截"):
-            verify_func = getattr(self, check_method_name)
-            verify_func()
+            self._long_press_action_and_verify(menu_text)
 
         with allure.step(f"3. 测试后置：发送方关闭限制: 【{item_name}】"):
             self._toggle_limit_and_save(item_name, False)
