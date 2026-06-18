@@ -557,22 +557,10 @@ class GroupBotPage(BasePage):
         """对指定的限制类型或传播限制进行勾选/取消勾选"""
         logger.info(f"⚙️ [Action-GroupBotPage] 设置限制项【{item_name}】状态为: {enable}")
         
-        # 匹配元素定位器
-        locators_map = {
-            "文本/emoji": GroupBotLocator.LIMIT_TEXT_EMOJI,
-            "语音": GroupBotLocator.LIMIT_VOICE,
-            "表情包": GroupBotLocator.LIMIT_EMOJI_PKG,
-            "图片/拍照/视频": GroupBotLocator.LIMIT_IMAGE_VIDEO,
-            "文件": GroupBotLocator.LIMIT_FILE,
-            "禁止转发": GroupBotLocator.LIMIT_FORWARD,
-            "禁止复制": GroupBotLocator.LIMIT_COPY,
-            "禁止保存收藏": GroupBotLocator.LIMIT_SAVE
-        }
+        locator = GroupBotLocator.SPEECH_MANAGE_SWITCH(item_name)
         
-        if item_name not in locators_map:
-            raise ValueError(f"未知的限制项: {item_name}")
-            
-        locator = locators_map[item_name]
+        # 滑动到对应的元素位置（如果列表过长）
+        self.scroll_to_element(locator, max_swipes=2)
         
         # 获取其勾选状态，通常 checked 属性在对应元素或者其父布局上
         is_checked = self.get_attribute(locator, "checked")
@@ -580,6 +568,7 @@ class GroupBotPage(BasePage):
         
         if state != enable:
             self.click(locator)
+            logger.info(f"⚙️ [Action-GroupBotPage] 成功切换限制项【{item_name}】至 {enable}")
         else:
             logger.info(f"⚙️ [Action-GroupBotPage] 限制项【{item_name}】状态已为 {enable}，无需点击")
 

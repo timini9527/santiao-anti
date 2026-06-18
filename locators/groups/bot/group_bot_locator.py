@@ -68,7 +68,7 @@ class GroupBotLocator:
     
     # 删除关键词二次确认框
     MESSAGE_BOX = (AppiumBy.ID, f'{PACKAGE_ID}/message')                                # 二次确认框
-    TITLE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_title')                                     # 确认/取消对话框的标题
+    TITLE = TV_TITLE                                                                    # 确认/取消对话框的标题
     NEGATIVE_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/negativeButton')                     # 确认按钮
     POSITIVE_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/positiveButton')                     # 取消按钮
 
@@ -82,7 +82,7 @@ class GroupBotLocator:
     TV_SUMMARY = (AppiumBy.ID, f'{PACKAGE_ID}/tv_summary')                                  # 设置禁言时长
     PICKER_DURATION = (AppiumBy.ID, f'{PACKAGE_ID}/picker_duration')                        # 设置禁言时长控件
     
-    RULE_KICK = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("撤回+移除群聊")')        # 撤回+移除群聊
+    RULE_KICK = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("撤回+移除群聊")')     # 撤回+移除群聊
     
     # 警告语设置
     TV_CONTENT = (AppiumBy.ID, f'{PACKAGE_ID}/tv_content')                                  # 警告语默认内容
@@ -100,17 +100,31 @@ class GroupBotLocator:
     ADD_WARNING_MSG_BTN = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("添加警告语")')
     
 
-    # 5. 发言管理页面元素
-    LIMIT_TEXT_EMOJI = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("文本/emoji")')
-    LIMIT_VOICE = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("语音")')
-    LIMIT_EMOJI_PKG = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("表情包")')
-    LIMIT_IMAGE_VIDEO = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("图片/拍照/视频")')
-    LIMIT_FILE = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("文件")')
+    # 5. 发言管理
+    # 整个页面容器
+    ACTION_BAR_ROOT = (AppiumBy.ID, f'{PACKAGE_ID}/action_bar_root')                    
+    FRAGMENT_CONTAINER_VIEW = (AppiumBy.ID, f'{PACKAGE_ID}/fragment_container_view')
+
+    TV_STATUS = (AppiumBy.ID, f'{PACKAGE_ID}/tv_status')        # 发言管理
+    SB_STATUS = (AppiumBy.ID, f'{PACKAGE_ID}/sb_status')        # 发言管理总开关
     
-    # 传播与保存限制
-    LIMIT_FORWARD = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("禁止转发")')
-    LIMIT_COPY = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("禁止复制")')
-    LIMIT_SAVE = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("禁止保存收藏")')
+    SB_OPTION_ID = f'{PACKAGE_ID}/sb_option'                    # 发言管理各功能的switch开关
+    SB_OPTION = (AppiumBy.ID, SB_OPTION_ID)
+
+    # 动态匹配switch的xpath
+    @staticmethod
+    def SB_OPTION_BY_STATUS(checked: bool) -> tuple:
+        """通过开关的状态进行查询的xpath（获取对应状态的 switch 元素）"""
+        status_str = "true" if checked else "false"
+        return (AppiumBy.XPATH, f'//*[@resource-id="{SB_OPTION_ID}" and @checked="{status_str}"]')
+
+    # 动态匹配文本标题的xpath
+    @classmethod
+    def TV_TITLE_BY_SWITCH_STATUS(cls, checked: bool) -> tuple:
+        """通过开关的状态进行查询的xpath（获取对应状态的文本标题元素）"""
+        status_str = "true" if checked else "false"
+        return (AppiumBy.XPATH, f'//*[@resource-id="{cls.SB_OPTION_ID}" and @checked="{status_str}"]/preceding-sibling::*[@resource-id="{cls.TV_TITLE}"]')
+    
 
     # 6. 自动清理成员页面元素
     CLEAN_RULES_ENTRY = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("清理规则设置")')
