@@ -178,23 +178,29 @@ def driver_sender():
     driver = DriverFactory.get_driver('sender')
     # MainPage(driver).wait_for_main_page_load()
     time.sleep(5)
-    yield driver
-    print("\n[Teardown] 关闭发送方驱动")
-    if os.environ.get("DEBUG_MODE") == "1":
-        print("🐞 [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
-    else:
-        driver.quit()
+    try:
+        yield driver
+    finally:
+        # 放进 finally：即使用例 setup/执行阶段抛异常，也保证执行清理逻辑，
+        # 避免 driver 未 quit 导致 systemPort 残留、下次启动端口 busy。
+        print("\n[Teardown] 关闭发送方驱动")
+        if os.environ.get("DEBUG_MODE") == "1":
+            print("🐞 [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
+        else:
+            driver.quit()
 
 @pytest.fixture(scope="session")
 def driver_receiver():
     """ 启动接收方设备 """
     driver = DriverFactory.get_driver('receiver')
-    yield driver
-    print("\n[Teardown] 关闭接收方驱动")
-    if os.environ.get("DEBUG_MODE") == "1":
-        print("🐞 [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
-    else:
-        driver.quit()
+    try:
+        yield driver
+    finally:
+        print("\n[Teardown] 关闭接收方驱动")
+        if os.environ.get("DEBUG_MODE") == "1":
+            print("🐞 [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
+        else:
+            driver.quit()
 
 # --- Page Object Fixtures (依赖注入) ---
 

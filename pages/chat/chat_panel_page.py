@@ -1,0 +1,87 @@
+import time
+from common.base_page import BasePage
+from locators.chat.chat_locaotr_panel import ChatLocatorPanel
+from core.logger_utils import logger
+
+
+class ChatPanelPage(BasePage):
+    """聊天页面“+”号扩展面板 Page Object"""
+
+    def wait_for_panel_load(self, timeout: int = 10) -> bool:
+        """等待扩展面板加载完成"""
+        logger.info(f"⏳ [Wait] 等待“+”号扩展面板加载，超时时间 {timeout} 秒")
+        is_loaded = self.is_element_exist(ChatLocatorPanel.INPUT_MORE_PAGER, timeout=timeout)
+        if is_loaded:
+            logger.info("✅ [Wait] “+”号扩展面板已成功加载")
+        else:
+            logger.error("❌ [Wait] “+”号扩展面板加载失败或超时")
+        return is_loaded
+
+    def click_panel_item(self, item_name: str):
+        """根据名称点击扩展面板中的子功能按钮"""
+        logger.info(f"🖱️ [Action-Panel] 尝试点击扩展面板按钮: 【{item_name}】")
+        locator = ChatLocatorPanel.get_panel_item_by_text(item_name)
+        self.click(locator)
+        time.sleep(0.5)
+
+    def click_file(self):
+        """点击‘文件’按钮"""
+        logger.info("🖱️ [Action-Panel] 点击扩展面板中的【文件】")
+        self.click(ChatLocatorPanel.BTN_FILE)
+        time.sleep(0.5)
+
+    def click_vote(self):
+        """点击‘投票’按钮"""
+        logger.info("🖱️ [Action-Panel] 点击扩展面板中的【投票】")
+        self.click(ChatLocatorPanel.BTN_VOTE)
+        time.sleep(0.5)
+
+    def click_solitaire(self):
+        """点击‘接龙’按钮"""
+        logger.info("🖱️ [Action-Panel] 点击扩展面板中的【接龙】")
+        self.click(ChatLocatorPanel.BTN_SOLITAIRE)
+        time.sleep(0.5)
+
+    def click_card(self):
+        """点击‘名片’按钮"""
+        logger.info("🖱️ [Action-Panel] 点击扩展面板中的【名片】")
+        self.click(ChatLocatorPanel.BTN_CARD)
+        time.sleep(0.5)
+
+    def click_location(self):
+        """点击‘位置’按钮"""
+        logger.info("🖱️ [Action-Panel] 点击扩展面板中的【位置】")
+        self.click(ChatLocatorPanel.BTN_LOCATION)
+        time.sleep(0.5)
+
+    def click_video_call(self):
+        """点击‘通话’按钮"""
+        logger.info("🖱️ [Action-Panel] 点击扩展面板中的【通话】")
+        self.click(ChatLocatorPanel.BTN_VIDEO_CALL)
+        time.sleep(0.5)
+
+    def click_album(self):
+        """点击‘图片’（相册）按钮"""
+        logger.info("🖱️ [Action-Panel] 点击扩展面板中的【图片】")
+        self.click(ChatLocatorPanel.BTN_ALBUM)
+        time.sleep(0.5)
+
+    def click_camera(self):
+        """点击‘拍摄’（相机）按钮"""
+        logger.info("🖱️ [Action-Panel] 点击扩展面板中的【拍摄】")
+        self.click(ChatLocatorPanel.BTN_CAMERA)
+        time.sleep(0.5)
+
+
+
+    # =========================================================================================
+    # 扩展面板功能区相关
+    # =========================================================================================
+    # 动态获取并点击扩展面板功能区选项卡
+    def click_panel_function_tab(self, tab_name: str):
+        """动态获取并点击扩展面板功能区选项卡"""
+        logger.info(f"🖱️ [Action-Panel] 尝试点击扩展面板功能区选项卡: 【{tab_name}】")
+        locator = ChatLocatorPanel.get_panel_item_by_text(tab_name)
+        self.click(locator, force_wait=True)
+        time.sleep(0.5)
+    

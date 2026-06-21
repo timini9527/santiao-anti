@@ -46,9 +46,9 @@ class ChatLocator:
                                                  f'and .//*[@text="[哼][哈哈][嘘][哼]"]]'
                                                  f'//*[@text="已读" or @text="未读"]")]')
        
-    # ==================================
+    # ==================================================================================================================
     # 聊天页面相关
-    # ==================================
+    # ==================================================================================================================
     # UI 变化后元素，头像元素 、文本
     MESSAGE_ROW_ID = f'{PACKAGE_ID}/message_row'
     MESSAGE_ROW_ITEM = (AppiumBy.ID, MESSAGE_ROW_ID)            # 消息行
@@ -66,9 +66,9 @@ class ChatLocator:
     AVATAR_ID = f'{PACKAGE_ID}/iv_avatar'
     AVATAR_ITEM = (AppiumBy.ID, AVATAR_ID)          # 头像
 
-    # ==================================
+    # ==================================================================================================================
     # 文本消息相关
-    # ==================================
+    # ==================================================================================================================
     TEXT_MESSAGE_VIEW_ID = f'{PACKAGE_ID}/text_message_view'
     TEXT_MESSAGE_VIEW_ITEM = (AppiumBy.ID, TEXT_MESSAGE_VIEW_ID) # 文本消息
     TEXT_MESSAGE_VIEW_CLASS = (AppiumBy.CLASS_NAME, "android.widget.TextView") # 文本消息
@@ -84,9 +84,9 @@ class ChatLocator:
     READ_FOOTER_STATUS_ITEM = (AppiumBy.ID, READ_FOOTER_STATUS_ID) 
     READ_FOOTER_READ_TEXT = (AppiumBy.ID, f'{PACKAGE_ID}/tv_unRead') # 已读/未读角标文本
 
-    # ==================================
+    # ==================================================================================================================
     # 图片/视频相关
-    # ==================================
+    # ==================================================================================================================
     IMAGE_ID = f'{PACKAGE_ID}/ivImage'
     IMAGE_ITEM = (AppiumBy.ID, IMAGE_ID) # 图片
     # 发送方图片
@@ -117,9 +117,9 @@ class ChatLocator:
                                             f'/following-sibling::*[@resource-id="{PACKAGE_ID}/message_layout"]'
                                             f'//*[@resource-id="{FAIL_MSG_ID}"]')
     
-    # ==================================
+    # ==================================================================================================================
     # 定位消息相关
-    # ==================================
+    # ==================================================================================================================
     LOCATION_MESSAGE_TITLE_ID  = f'{PACKAGE_ID}/tvTitle'
     LOCATION_MESSAGE_TITLE = (AppiumBy.ID, LOCATION_MESSAGE_TITLE_ID)            # 定位、合并转发聊天记录、消息标题
     LOCATION_MESSAGE_SUBTITLE_ID = f'{PACKAGE_ID}/tvSubTitle'
@@ -136,9 +136,9 @@ class ChatLocator:
     RECEIVE_LOCATION_MESSAGE_SUBTITLE = _BUBBLE_XPATH("following-sibling", LOCATION_MESSAGE_SUBTITLE_ID)
     RECEIVE_LOCATION_MESSAGE_MAP = _BUBBLE_XPATH("following-sibling", LOCATION_MESSAGE_MAP_ID)
 
-    # ==================================
+    # ==================================================================================================================
     # 名片消息相关
-    # ==================================
+    # ==================================================================================================================
     # 名片气泡内部特征
     CARD_TAG_ID = f'{PACKAGE_ID}/tvTag'                     # 名片类型标识
     CARD_TAG = (AppiumBy.ID, CARD_TAG_ID) 
@@ -169,9 +169,9 @@ class ChatLocator:
     RECEIVE_CARD_TAG_ITEM = _BUBBLE_XPATH("following-sibling", CARD_TAG_ID)
     
     
-    # ==================================
+    # ==================================================================================================================
     # 文件消息相关
-    # ==================================
+    # ==================================================================================================================
     FILE_NAME_ID = f'{PACKAGE_ID}/tvFileName'             # TODO: 替换实际文件名称ID
     FILE_NAME_ITEM = (AppiumBy.ID, FILE_NAME_ID)            # 文件名称
     FILE_SIZE_ID = f'{PACKAGE_ID}/tvFileSize'             # TODO: 替换实际文件大小ID
@@ -197,9 +197,9 @@ class ChatLocator:
     DISABLE_MESSAGE_TIP = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("对方账号已无法使用 详情")') # 给停用账号发送消息提示
     
 
-    # ==================================
+    # ==================================================================================================================
     # 聊天页面顶部元素定位
-    # ==================================
+    # ==================================================================================================================
     TOP_BACK_BUTTON = CommonLocator.TOP_BACK_BUTTON                     # 返回按钮
     TOP_USER_NAME_ID = f'{PACKAGE_ID}/to_user_name'                     # 聊天对象昵称ID
     TOP_USER_NAME = (AppiumBy.ID, TOP_USER_NAME_ID)                     # 聊天对象昵称
@@ -207,17 +207,17 @@ class ChatLocator:
     TOP_MORE_BUTTON = (AppiumBy.ID, 'right_bnt')                        # 更多按钮 setting
 
 
-    # ==================================
+    # ==================================================================================================================
     # 聊天页面底部元素定位
-    # ==================================
-    CHAT_INPUT= (AppiumBy.ID, f'{PACKAGE_ID}/chat_input')               # 聊天输入区域
-    CHAT_INPUT_CONTENT = (AppiumBy.ID, f'{PACKAGE_ID}/inputContent')    # 聊天输入框
-    CHAT_INPUT_BOX= (AppiumBy.ID, f'{PACKAGE_ID}/input_box')            # 聊天输入框
-    VOICE_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/voice_input_btn')       # 语音键盘切换按钮
-    TEXT_INPUT = (AppiumBy.ID, f'{PACKAGE_ID}/text_input')              # 输入框
-    EMOJI_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/input_expression_bnt')  # 表情按钮
-    ADD_MORE_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/input_more_bnt')     # 添加和取消按钮(+号按钮)
-    SEND_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/input_send_bnt')         # 发送按钮
+    # ==================================================================================================================
+    CHAT_INPUT= (AppiumBy.ID, f'{PACKAGE_ID}/chat_input')                                   # 聊天输入区域
+    CHAT_INPUT_CONTENT = (AppiumBy.ID, f'{PACKAGE_ID}/inputContent')                        # 聊天输入框
+    CHAT_INPUT_BOX= (AppiumBy.ID, f'{PACKAGE_ID}/input_box')                                # 聊天输入框
+    VOICE_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/voice_input_btn')                           # 语音键盘切换按钮
+    TEXT_INPUT = (AppiumBy.ID, f'{PACKAGE_ID}/text_input')                                  # 输入框
+    EMOJI_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/input_expression_bnt')                      # 表情按钮
+    ADD_MORE_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/input_more_bnt')                         # 添加和取消按钮(+号按钮)
+    SEND_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/input_send_bnt')                             # 发送按钮
 
 
     # 禁言状态输入框（包含容器）
@@ -237,26 +237,26 @@ class ChatLocator:
     # ELEM_GIRD_TEXT = (AppiumBy.ID, 'type_name')  # 拍摄、图片、小视频、位置、视频聊天、名片、文件文本按钮
 
 
-    # ==================================
+    # ==================================================================================================================
     # 聊天页面【多选菜单】元素定位
-    # ==================================
+    # ==================================================================================================================
     BT_SLEECT_ID = f'{PACKAGE_ID}/bt_select'
     BT_SELECT = (AppiumBy.ID, BT_SLEECT_ID)                   # 勾选消息按钮
     # 勾选消息不包含发送失败的按钮
     BT_SELECT_NOT_FAIL = (AppiumBy.XPATH, f'//*[@resource-id="{BT_SLEECT_ID}"'
                                             f'and following-sibling::*[@resource-id="{PACKAGE_ID}/message_layout"'
                                             f'and not(.//*[@resource-id="{PACKAGE_ID}/btn_state"])]]') 
-    IV_SHARE = (AppiumBy.ID, f'{PACKAGE_ID}/iv_share')                              # 转发按钮
-    IV_DELETE = (AppiumBy.ID, f'{PACKAGE_ID}/iv_delete')                            # 删除按钮
-    TV_FORWARD_ONE_BY_ONE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_forward_one_by_one')    # 逐条转发
-    TV_FORWARD_COMBINE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_forward_combine')          # 合并转发
-    TV_CANCEL = CommonLocator.TEXT_CANCEL_BTN                           # 取消按钮
+    IV_SHARE = (AppiumBy.ID, f'{PACKAGE_ID}/iv_share')                                                          # 转发按钮
+    IV_DELETE = (AppiumBy.ID, f'{PACKAGE_ID}/iv_delete')                                                        # 删除按钮
+    TV_FORWARD_ONE_BY_ONE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_forward_one_by_one')                                # 逐条转发
+    TV_FORWARD_COMBINE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_forward_combine')                                      # 合并转发
+    TV_CANCEL = CommonLocator.TEXT_CANCEL_BTN                                                                   # 取消按钮
     MULIT_TOAST_MESSAGE = (AppiumBy.XPATH, f'//*[@resource-id="{PACKAGE_ID}/toast_message" and @text="发送中"]') # 发送中
-    LEFT_TEXT = (AppiumBy.XPATH, f'//*[@resource-id="{PACKAGE_ID}/left_text"]')     # 聊天记录（合并转发）消息内容
+    LEFT_TEXT = (AppiumBy.XPATH, f'//*[@resource-id="{PACKAGE_ID}/left_text"]')                                 # 聊天记录（合并转发）消息内容
 
-    # ==================================
+    # ==================================================================================================================
     # 聊天页面【聊天记录】内部元素定位
-    # ==================================
+    # ==================================================================================================================
     CHAT_HISTORY_CONTENT_ID = f'{PACKAGE_ID}/tvContent'
     CHAT_HISTORY_CONTENT = (AppiumBy.ID, CHAT_HISTORY_CONTENT_ID)           # 聊天记录（合并转发）消息内容
 
@@ -266,9 +266,9 @@ class ChatLocator:
     HISTORY_TITLE_LAYOUT = (AppiumBy.ID, f'{PACKAGE_ID}/title_layout')      # 聊天记录（合并转发）标题栏
     
 
-    # ==================================
+    # ==================================================================================================================
     # 聊天页面 【撤回和删除】 相关元素定位
-    # ==================================
+    # ==================================================================================================================
     
     # 撤回、截屏消息通知
     WITHDRAW_MESSAGE_ITEM = (AppiumBy.XPATH, f'//*[@resource-id="{MESSAGE_LAYOUT_ID}"]//*[@resource-id="{MESSAGE_CONTENT_ID}"]/android.widget.TextView')
@@ -288,9 +288,9 @@ class ChatLocator:
 
 
 
-    # ==================================
+    # ==================================================================================================================
     # 聊天页面的公共逻辑方法
-    # ==================================
+    # ==================================================================================================================
 
     @classmethod
     def get_avatar_bubble_locator(cls, sub_id: str, is_sender: bool = True):

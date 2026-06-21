@@ -45,7 +45,7 @@ class TestGroupBotJoinVerify:
             self.group_bot_sender.enter_join_verify()
             
             # 关闭进群验证
-            self.group_bot_sender.toggle_switch(enable=False)
+            self.group_bot_sender.toggle_join_verify_switch(enable=False)
             logger.info("🧹 [Cleanup] 成功关闭群助手入群验证开关")
         except Exception as e:
             logger.warning(f"⚠️ [Cleanup] 清理入群验证开关发生异常: {e}")
@@ -67,7 +67,7 @@ class TestGroupBotJoinVerify:
             self.group_bot_sender.enter_join_verify()
 
         with allure.step("2. 切换入群验证开关为启用，验证 Toast 提示"):
-            self.group_bot_sender.toggle_switch(enable=True)
+            self.group_bot_sender.toggle_join_verify_switch(enable=True)
             toast_text = self.chat_sender.get_toast_text()
             logger.info(f"🔍 开启进群验证提示: '{toast_text}'")
             check.is_true("已开启" in toast_text or "开启" in toast_text or toast_text == "", f"❌ 开启进群验证未捕获到正确Toast: {toast_text}")
@@ -82,7 +82,7 @@ class TestGroupBotJoinVerify:
             check.is_true("已保存" in toast_save or "成功" in toast_save or toast_save == "", f"❌ 保存进群验证规则未捕获到成功Toast: {toast_save}")
 
         with allure.step("4. 切换开关为禁用，验证功能关闭"):
-            self.group_bot_sender.toggle_switch(enable=False)
+            self.group_bot_sender.toggle_join_verify_switch(enable=False)
             toast_off = self.chat_sender.get_toast_text()
             logger.info(f"🔍 关闭提示: '{toast_off}'")
             check.is_true("已关闭" in toast_off or "关闭" in toast_off or toast_off == "", f"❌ 关闭进群验证未捕获到正确Toast: {toast_off}")

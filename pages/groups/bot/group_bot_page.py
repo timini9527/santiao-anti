@@ -59,17 +59,18 @@ class GroupBotPage(BasePage):
         state = str(checked).lower() == 'true'
         logger.info(f"⚙️ [Action-GroupBotPage] 获取 Switch 开关状态: {state}")
         return state
-
-    # 切换主功能 Switch 开关状态
-    def toggle_switch(self, enable: bool):
-        """切换主功能 Switch 开关状态"""
-        current_state = self.get_switch_state()
-        if current_state != enable:
-            self.click(GroupBotLocator.SWITCH_BTN)
-            logger.info(f"⚙️ [Action-GroupBotPage] 切换 Switch 开关状态 -> {enable}")
-        else:
-            logger.info(f"⚙️ [Action-GroupBotPage] 开关状态已为 {enable}，无需切换")
     
+    # 主开关管理工具切换，在页面未加载完成时调用
+    def toggle_main_switch(self, enable: bool, locator: tuple):
+        """主开关管理工具切换，在页面未加载完成时调用"""
+        checked = self.get_attribute(locator, "checked")
+        current_state = str(checked).lower() == 'true'
+        if current_state != enable:
+            self.click(locator)
+            logger.info(f"⚙️ [Action-GroupBotPage] 切换 {locator} 开关状态 -> {enable}")
+        else:
+            logger.info(f"⚙️ [Action-GroupBotPage] {locator} 开关状态已为 {enable}，无需切换")
+
     # 点击左上角返回图标
     def click_back(self):
         """点击左上角返回图标"""
@@ -98,6 +99,12 @@ class GroupBotPage(BasePage):
     # =============================================================================
     # 禁发关键词检测页面细化操作
     # =============================================================================
+    # 切换禁发关键词检测功能 Switch 开关状态
+    def toggle_keyword_detection_switch(self, enable: bool):
+        """切换禁发关键词检测功能 Switch 开关状态"""
+        self.toggle_main_switch(enable, GroupBotLocator.SWITCH_BTN)
+        logger.info(f"⚙️ [Action-GroupBotPage] 切换禁发关键词检测功能 Switch 开关状态 -> {enable}")
+    
     # 关键词-点击关键词行进入关键词列表配置页
     def click_keyword_row(self):
         """关键词-点击关键词行进入关键词列表配置页"""
@@ -552,6 +559,45 @@ class GroupBotPage(BasePage):
     # =========================================================================
     # 发言管理页面细化操作
     # =========================================================================
+    # 发言管理-点击发言管理总开关
+    def toggle_speech_manage_switch(self, enable: bool):
+        """发言管理-点击发言管理总开关"""
+        self.toggle_main_switch(enable, GroupBotLocator.SB_STATUS)
+        logger.info(f"⚙️ [Action-GroupBotPage] 点击发言管理总开关, 设置状态为{enable}")
+    
+    # 发言管理-一键全部开启或关闭子菜单开关
+    def toggle_all_limit_items(self, origin_enable: bool, target_enable: bool, max_swipes=5):
+        """发言管理-一键全部开启或关闭子控开关（支持滚动扫描与去重）"""
+        logger.info(f"⚙️ [Action-GroupBotPage] 准备一键将所有限制项状态切换为: {target_enable}")
+        
+        locator = GroupBotLocator.sb_option_unchecked_by_status(origin_enable)
+        for swipe_idx in range(max_swipes):
+            switches = self.find_elements(locator, timeout=2, raise_exception=False)
+            if switches:
+                for switch in switches:
+                    try:
+                        checked = switch.get_attribute("checked")
+                        current_state = str(checked).lower() == 'true'
+                        if current_state != target_enable:
+                            switch.click()
+                            logger.info(f"⚙️ [Action-GroupBotPage] 已切换限制项状态 -> {target_enable}")
+                            time.sleep(0.1)
+                    except Exception as e:
+                        logger.warning(f"⚠️ 处理限制项时发生异常: {e}")
+            else:
+                logger.info("ℹ️ 当前视图中未找到需要切换的限制项，继续滑动扫描")
+            
+            last_source = self.driver.page_source
+            self.swipe_page(slid_type='up', duration=500)
+            time.sleep(0.5)
+            current_source = self.driver.page_source
+            if current_source == last_source:
+                logger.info("✅ 页面已滚动至最底部，停止扫描")
+                break
+
+        if swipe_idx == max_swipes:
+            logger.warning(f"⚠️ 扫描达到最大次数({max_swipes})，可能还有未处理的限制项")
+    
     # 对指定的限制类型或传播限制进行勾选/取消勾选
     def toggle_limit_item(self, item_name: str, enable: bool):
         """对指定的限制类型或传播限制进行勾选/取消勾选"""
@@ -575,6 +621,12 @@ class GroupBotPage(BasePage):
     # ============================================================================
     # 自动清理成员页面细化操作
     # ============================================================================
+
+    # 切换自动清理功能 Switch 开关状态
+    def toggle_auto_clean_switch(self, enable: bool):
+        """切换自动清理功能 Switch 开关状态"""
+        self.toggle_main_switch(enable, GroupBotLocator.SWITCH_BTN)
+        logger.info(f"⚙️ [Action-GroupBotPage] 切换自动清理功能 Switch 开关状态 -> {enable}")
 
     # 进入清理规则设置页面
     def enter_clean_rules(self):
@@ -654,6 +706,11 @@ class GroupBotPage(BasePage):
     # ============================================================================
     # 入群验证页面细化操作
     # ============================================================================
+    # 切换入群验证功能 Switch 开关状态
+    def toggle_join_verify_switch(self, enable: bool):
+        """切换入群验证功能 Switch 开关状态"""
+        self.toggle_main_switch(enable, GroupBotLocator.SWITCH_BTN)
+        logger.info(f"⚙️ [Action-GroupBotPage] 切换入群验证功能 Switch 开关状态 -> {enable}")
 
     # 一键配置入群验证规则
     def configure_join_verify(self, action_type: str = "仅移出群组", verify_time: str = "5min"):

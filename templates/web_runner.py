@@ -8,10 +8,18 @@ import subprocess
 import time
 import re
 import urllib.request
+import importlib.util
+import io
+import contextlib
+from types import SimpleNamespace
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 PORT = 8000
+AGENT_DIR = os.path.join(os.getcwd(), ".agents", "test-runner-agent")
+AGENT_SCRIPT = os.path.join(AGENT_DIR, "test_agent_runner.py")
+AGENT_PAGE = os.path.join(AGENT_DIR, "web_console.html")
+_agent_module = None
 
 # 任务并发管理系统数据结构
 # active_tasks 的结构为：
@@ -27,6 +35,86 @@ PORT = 8000
 # }
 active_tasks = {}
 tasks_lock = threading.Lock()
+
+def load_test_runner_agent():
+    """加载独立测试执行 Agent 模块，供 Web Runner 复用其匹配与参数化选择逻辑。"""
+    global _agent_module
+    if _agent_module is not None:
+        return _agent_module
+    if not os.path.exists(AGENT_SCRIPT):
+        raise FileNotFoundError(f"未找到测试执行 Agent 脚本: {AGENT_SCRIPT}")
+    spec = importlib.util.spec_from_file_location("test_runner_agent", AGENT_SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    _agent_module = module
+    return module
+
+def agent_entry_to_dict(entry):
+    return {
+        "file": entry.file,
+        "class_name": entry.class_name,
+        "test_name": entry.test_name,
+        "display_name": entry.display_name,
+        "params": entry.params,
+        "markers": sorted(entry.markers),
+        "nodeid": entry.nodeid,
+    }
+
+def resolve_agent_target(data):
+    agent = load_test_runner_agent()
+    query = (data.get("query") or "").strip()
+    allow_destructive = bool(data.get("allow_destructive", False))
+    case_value = data.get("case")
+    case_index = int(case_value) if str(case_value or "").strip() else None
+    param = (data.get("param") or "").strip()
+    entries = agent.collect_tests()
+    target, candidates, mode = agent.resolve_target(query, entries, allow_destructive)
+    if mode == "ambiguous":
+        return {
+            "success": False,
+            "reason": "ambiguous",
+            "message": "匹配到多个候选，请选择更精确的用例。",
+            "candidates": [agent_entry_to_dict(entry) for entry in candidates],
+        }
+    if not target:
+        return {
+            "success": False,
+            "reason": "not_found",
+            "message": "未匹配到测试目标。",
+            "candidates": [],
+        }
+    destructive = agent.filter_destructive(candidates)
+    if destructive and not allow_destructive:
+        return {
+            "success": False,
+            "reason": "destructive",
+            "message": "匹配目标包含 destructive 用例，默认不执行。",
+            "candidates": [agent_entry_to_dict(entry) for entry in destructive],
+        }
+    args = SimpleNamespace(case=case_index, param=param)
+    try:
+        target = agent.select_param_case(target, args)
+    except Exception as exc:
+        return {
+            "success": False,
+            "reason": "case_error",
+            "message": str(exc),
+            "candidates": [agent_entry_to_dict(entry) for entry in candidates],
+        }
+    command_args = SimpleNamespace(
+        allow_destructive=allow_destructive,
+        env=(data.get("env") or "").strip(),
+        allure_dir=(data.get("allure_dir") or "reports/allure-results"),
+    )
+    cmd = agent.build_pytest_command(target, command_args)
+    return {
+        "success": True,
+        "mode": mode,
+        "target": target,
+        "command": agent.command_to_text(cmd),
+        "candidates": [agent_entry_to_dict(entry) for entry in candidates],
+    }
 
 def get_host_ip():
     """获取本机局域网 IP (智能过滤虚拟机与代理网卡)"""
@@ -367,7 +455,7 @@ def stream_process_output(task_id, proc):
                 for tid in finished_tasks[:len(finished_tasks)-50]:
                     active_tasks.pop(tid, None)
 
-def run_pytest_node(task_id, nodeid, param_index=None, remote_appium=None, remote_udid=None, debug_mode=False, private_chat_name=None, group_chat_name=None, web_receipt_data=None):
+def run_pytest_node(task_id, nodeid, param_index=None, remote_appium=None, remote_udid=None, debug_mode=False, private_chat_name=None, group_chat_name=None, web_receipt_data=None, env_name=None):
     """构建并发起新的 Pytest 子进程执行特定的测试节点 (nodeid)"""
     global active_tasks
     
@@ -422,6 +510,8 @@ def run_pytest_node(task_id, nodeid, param_index=None, remote_appium=None, remot
                 nodeid_to_run = safe_nodeid
         
     cmd = [sys.executable, "-m", "pytest", nodeid_to_run, "-vs", "--color=yes", f"--alluredir={tmp_dir}"]
+    if env_name:
+        cmd.extend(["--env", env_name])
     if debug_mode:
         cmd.append("--pdb")
         
@@ -434,6 +524,9 @@ def run_pytest_node(task_id, nodeid, param_index=None, remote_appium=None, remot
         env["REMOTE_APPIUM_URL"] = remote_appium
     if remote_udid:
         env["REMOTE_UDID"] = remote_udid
+    if env_name:
+        env["ENV"] = env_name
+        env["TEST_ENV"] = env_name
     if debug_mode:
         env["DEBUG_MODE"] = "1"
     if private_chat_name:
@@ -487,6 +580,17 @@ class WebRunnerHandler(BaseHTTPRequestHandler):
                     html_content = f.read()
             else:
                 html_content = "<h3>未找到 templates/index.html 模板文件</h3>"
+            self.wfile.write(html_content.encode("utf-8"))
+
+        elif path == "/agent":
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            if os.path.exists(AGENT_PAGE):
+                with open(AGENT_PAGE, "r", encoding="utf-8") as f:
+                    html_content = f.read()
+            else:
+                html_content = "<h3>未找到 .agents/test-runner-agent/web_console.html</h3>"
             self.wfile.write(html_content.encode("utf-8"))
             
         elif path.startswith("/allure/"):
@@ -629,6 +733,7 @@ class WebRunnerHandler(BaseHTTPRequestHandler):
                 group_chat_name = data.get("group_chat_name", "").strip()
                 web_receipt_data = data.get("web_receipt_data", "").strip()
                 param_index = data.get("param_index")
+                env_name = data.get("env", "").strip()
                 
                 if not task_id:
                     self.send_json_response(400, {"success": False, "message": "缺少参数 task_id"})
@@ -637,7 +742,7 @@ class WebRunnerHandler(BaseHTTPRequestHandler):
                     self.send_json_response(400, {"success": False, "message": "缺少参数 nodeid"})
                     return
                 
-                success, msg = run_pytest_node(task_id, nodeid, param_index, remote_appium, remote_udid, debug_mode, private_chat_name, group_chat_name, web_receipt_data)
+                success, msg = run_pytest_node(task_id, nodeid, param_index, remote_appium, remote_udid, debug_mode, private_chat_name, group_chat_name, web_receipt_data, env_name)
                 if success:
                     self.send_json_response(200, {"success": True, "message": msg})
                 else:
@@ -645,6 +750,122 @@ class WebRunnerHandler(BaseHTTPRequestHandler):
             except Exception as e:
                 self.send_json_response(500, {"success": False, "message": f"服务器错误: {str(e)}"})
                 
+        elif path == "/api/agent/self_check":
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length).decode('utf-8') if content_length else "{}"
+            try:
+                data = json.loads(post_data)
+                agent = load_test_runner_agent()
+                args = SimpleNamespace(env=(data.get("env") or "").strip(), remote_appium=(data.get("remote_appium") or "").strip())
+                entries = agent.collect_tests()
+                buffer = io.StringIO()
+                with contextlib.redirect_stdout(buffer):
+                    exit_code = agent.self_check(args, entries)
+                self.send_json_response(200, {"success": exit_code == 0, "exit_code": exit_code, "output": buffer.getvalue()})
+            except Exception as e:
+                self.send_json_response(500, {"success": False, "message": str(e)})
+
+        elif path == "/api/agent/list":
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length).decode('utf-8') if content_length else "{}"
+            try:
+                data = json.loads(post_data)
+                agent = load_test_runner_agent()
+                query = (data.get("query") or "").strip()
+                allow_destructive = bool(data.get("allow_destructive", False))
+                limit = int(data.get("limit") or 80)
+                entries = agent.collect_tests()
+                if query:
+                    target, candidates, mode = agent.resolve_target(query, entries, allow_destructive)
+                    if candidates:
+                        entries = candidates
+                    elif target:
+                        entries = [entry for entry in entries if entry.nodeid.startswith(target) or entry.file == target]
+                    else:
+                        entries = agent.action_candidates(query, entries)
+                if not allow_destructive:
+                    entries = [entry for entry in entries if "destructive" not in entry.markers]
+                self.send_json_response(200, {
+                    "success": True,
+                    "count": len(entries),
+                    "items": [agent_entry_to_dict(entry) for entry in entries[:limit]],
+                })
+            except Exception as e:
+                self.send_json_response(500, {"success": False, "message": str(e)})
+
+        elif path == "/api/agent/resolve":
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length).decode('utf-8') if content_length else "{}"
+            try:
+                data = json.loads(post_data)
+                result = resolve_agent_target(data)
+                self.send_json_response(200 if result.get("success") else 400, result)
+            except Exception as e:
+                self.send_json_response(500, {"success": False, "message": str(e)})
+
+        elif path == "/api/agent/cases":
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length).decode('utf-8') if content_length else "{}"
+            try:
+                data = json.loads(post_data)
+                result = resolve_agent_target({**data, "case": "", "param": ""})
+                if not result.get("success"):
+                    self.send_json_response(400, result)
+                    return
+                agent = load_test_runner_agent()
+                cases = agent.collect_param_nodeids(result["target"])
+                self.send_json_response(200, {"success": True, "target": result["target"], "cases": cases})
+            except Exception as e:
+                self.send_json_response(500, {"success": False, "message": str(e)})
+
+        elif path == "/api/agent/run":
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length).decode('utf-8') if content_length else "{}"
+            try:
+                data = json.loads(post_data)
+                task_id = data.get("task_id")
+                if not task_id:
+                    self.send_json_response(400, {"success": False, "message": "缺少参数 task_id"})
+                    return
+                result = resolve_agent_target(data)
+                if not result.get("success"):
+                    self.send_json_response(400, result)
+                    return
+                success, msg = run_pytest_node(
+                    task_id,
+                    result["target"],
+                    None,
+                    data.get("remote_appium", "").strip(),
+                    data.get("remote_udid", "").strip(),
+                    bool(data.get("debug_mode", False)),
+                    data.get("private_chat_name", "").strip(),
+                    data.get("group_chat_name", "").strip(),
+                    data.get("web_receipt_data", "").strip(),
+                    data.get("env", "").strip(),
+                )
+                self.send_json_response(200 if success else 400, {
+                    "success": success,
+                    "message": msg,
+                    "target": result["target"],
+                    "command": result.get("command", ""),
+                })
+            except Exception as e:
+                self.send_json_response(500, {"success": False, "message": str(e)})
+
+        elif path == "/api/agent/analyze_report":
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length).decode('utf-8') if content_length else "{}"
+            try:
+                data = json.loads(post_data)
+                agent = load_test_runner_agent()
+                report_dir = (data.get("allure_dir") or "reports/allure-results").strip()
+                buffer = io.StringIO()
+                with contextlib.redirect_stdout(buffer):
+                    exit_code = agent.analyze_allure_report(report_dir)
+                self.send_json_response(200, {"success": exit_code == 0, "exit_code": exit_code, "output": buffer.getvalue()})
+            except Exception as e:
+                self.send_json_response(500, {"success": False, "message": str(e)})
+
         elif path == "/api/detect_appium":
             appium_url = ""
             try:

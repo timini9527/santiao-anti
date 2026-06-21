@@ -22,7 +22,6 @@ from pages.chat_options.emojis.chat_emoji_package_page import ChatEmojiPackagePa
 
 @allure.epic("IM核心功能测试")
 @allure.feature("聊天模块-长按菜单")
-@allure.story("辅助方法：进入会话并发送待测消息")
 class TestChatLongPress:
 
     @pytest.fixture(autouse=True)

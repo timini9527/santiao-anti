@@ -9,6 +9,11 @@ class ChatContactCardLocator(CommonLocator):
     CONTACT_CARD_BTN_ID = f'{PACKAGE_ID}/imCardIcon'
     CONTACT_CARD_BTN = (AppiumBy.ID, CONTACT_CARD_BTN_ID)
 
+    
+    CONTACT_CARD_ROOT_ID = f'{PACKAGE_ID}/more_action_root'
+    CONTACT_CARD_CONTENT_ID = f'{PACKAGE_ID}/more_action_content'
+    CONTACT_CARD_ROOT = (AppiumBy.XPATH, f'//*[@resource-id="{CONTACT_CARD_ROOT_ID}" and .//*[@text="名片"]]')
+
     # ==================== 群聊名片详情 ====================
     
     # 群头像

@@ -2,6 +2,7 @@ import copy
 from appium import webdriver
 from appium.options.android import UiAutomator2Options
 import os
+import subprocess
 from core.logger_utils import logger
 from utils.file_reader.data_loader import load_yaml_data
 
@@ -36,6 +37,52 @@ class DriverFactory:
         desired_caps = copy.deepcopy(common_caps)
         desired_caps.update(device_config)
         
+        # 🔌 动态分配 free systemPort 解决 Windows TCP TIME_WAIT 导致第一次重启失败的问题
+        system_port = desired_caps.get('systemPort')
+        if system_port:
+            base_port = 8200 if 'sender' in device_key.lower() else 8220
+            free_port = system_port
+
+            # 💡 先清理「原始配置端口」与设备端残留：上次用例异常 / debug 退出时 driver 未正常 quit，
+            # 老的 adb forward 规则与手机端 uiautomator2 server 仍占用「原始 systemPort」。必须在动态分配
+            # 「之前」清理它——否则后面清理的是分配后的新端口，老残留依旧占位，导致第一次启动 busy、第二次才成功。
+            origin_udid = desired_caps.get('udid')
+            try:
+                subprocess.run(f"adb forward --remove tcp:{system_port}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                logger.info(f"🧹 [DriverFactory] 已清理原始配置端口的 adb 转发规则: tcp:{system_port}")
+                if origin_udid:
+                    subprocess.run(f"adb -s {origin_udid} shell am force-stop io.appium.uiautomator2.server", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    subprocess.run(f"adb -s {origin_udid} shell am force-stop io.appium.uiautomator2.server.test", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    logger.info(f"🧹 [DriverFactory] 已强杀手机端残留的 UiAutomator2 Server 进程 (设备: {origin_udid})")
+            except Exception as e:
+                logger.debug(f"[DriverFactory] 清理原始端口残留异常: {e}")
+
+            try:
+                # 优先使用 psutil 检查，因为它可以识别 TIME_WAIT 状态，避免 socket.bind 的假自由判定
+                import psutil
+                for port in range(base_port, base_port + 20):
+                    in_use = False
+                    for conn in psutil.net_connections(kind='inet'):
+                        if conn.laddr and conn.laddr.port == port:
+                            in_use = True
+                            break
+                    if not in_use:
+                        free_port = port
+                        break
+            except (ImportError, Exception):
+                # 如果未安装 psutil 或权限不足，回退到 socket 探测
+                import socket
+                for port in range(base_port, base_port + 20):
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                        try:
+                            s.bind(('127.0.0.1', port))
+                            free_port = port
+                            break
+                        except socket.error:
+                            continue
+            desired_caps['systemPort'] = free_port
+            logger.info(f"🔌 [DriverFactory] 动态分配 systemPort: {free_port} (原始配置: {system_port})")
+        
         # == 支持环境变量动态覆盖 (供 Web Runner 远程调用使用) ==
         env_udid = os.environ.get("REMOTE_UDID")
         env_appium = os.environ.get("REMOTE_APPIUM_URL")
@@ -63,16 +110,16 @@ class DriverFactory:
                     f"Port: {desired_caps.get('systemPort')} | \n"
                     f"Appium Server URL: {appium_url}")
 
-        # 💡 在连接设备前，自动清理掉该端口的 adb forward 规则，防止 ghost 占位导致 busy 报错
+        # 💡 兜底：清理「新分配端口」可能残留的 adb forward 规则。
+        # 原始端口残留与设备端 uiautomator2 server 已在动态分配前统一清理，
+        # 这里只针对最终选定的新端口再移除一次 forward，避免极小概率的占位。
         system_port = desired_caps.get('systemPort')
         if system_port:
-            import subprocess
             try:
-                # 尝试移除该端口的 adb 转发规则以进行端口释放
                 subprocess.run(f"adb forward --remove tcp:{system_port}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                logger.info(f"🧹 [DriverFactory] 已尝试清理 adb 端口转发规则: tcp:{system_port}")
+                logger.info(f"🧹 [DriverFactory] 已清理新分配端口的 adb 转发规则: tcp:{system_port}")
             except Exception as e:
-                logger.debug(f"[DriverFactory] 清理 adb 端口转发异常 (可能原本就无此转发): {e}")
+                logger.debug(f"[DriverFactory] 清理新分配端口 adb 转发异常: {e}")
 
         # 💡 在尝试连接 Appium 之前，先进行一次快速网络探测 (3秒超时)，防止 Appium 服务未启动时连接无限挂起导致页面卡死
         import urllib.request

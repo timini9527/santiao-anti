@@ -56,10 +56,9 @@ class TestGroupBotKeyword:
             self.chatS.wait_for_chat_page_load()
             self.chatS.click_more_button()
             self.settingS.wait_for_setting_page_load()
-            self.settingS.click_group_manager()
-            self.botS.enter_group_bot()
+            self.settingS.click_friend_header()
             self.botS.enter_keyword_block()
-            self.botS.toggle_switch(enable=False)
+            self.botS.toggle_keyword_detection_switch(enable=False)
             self.botS.click_save()
             logger.info("🧹 [Cleanup] 成功关闭群助手禁发关键词设置")
         except Exception as e:
@@ -74,7 +73,7 @@ class TestGroupBotKeyword:
         self.settingS.click_friend_header()
         self.botS.wait_for_group_bot_page_load()
         self.botS.enter_keyword_block()
-        self.botS.toggle_switch(enable=True)
+        self.botS.toggle_keyword_detection_switch(enable=True)
         self.botS.click_save()
     
 

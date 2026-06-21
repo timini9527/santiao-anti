@@ -21,6 +21,8 @@ env/
 .idea/
 .continue/
 .cursor/
+.agents/
+.claude/
 *.suo
 *.ntvs*
 *.njsproj

@@ -112,15 +112,15 @@ class GroupBotLocator:
     SB_OPTION = (AppiumBy.ID, SB_OPTION_ID)
 
     # 动态匹配switch的xpath
-    @staticmethod
-    def SB_OPTION_BY_STATUS(checked: bool) -> tuple:
+    @classmethod
+    def sb_option_unchecked_by_status(cls, checked: bool) -> tuple:
         """通过开关的状态进行查询的xpath（获取对应状态的 switch 元素）"""
         status_str = "true" if checked else "false"
-        return (AppiumBy.XPATH, f'//*[@resource-id="{SB_OPTION_ID}" and @checked="{status_str}"]')
+        return (AppiumBy.XPATH, f'//*[@resource-id="{cls.SB_OPTION_ID}" and @checked="{status_str}"]')
 
     # 动态匹配文本标题的xpath
     @classmethod
-    def TV_TITLE_BY_SWITCH_STATUS(cls, checked: bool) -> tuple:
+    def tv_title_by_switch_status(cls, checked: bool) -> tuple:
         """通过开关的状态进行查询的xpath（获取对应状态的文本标题元素）"""
         status_str = "true" if checked else "false"
         return (AppiumBy.XPATH, f'//*[@resource-id="{cls.SB_OPTION_ID}" and @checked="{status_str}"]/preceding-sibling::*[@resource-id="{cls.TV_TITLE}"]')

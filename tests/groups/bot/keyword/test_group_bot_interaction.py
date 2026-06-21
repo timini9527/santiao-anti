@@ -326,7 +326,7 @@ class TestGroupBotInteraction:
         with allure.step(f"1. 设置处置方式为【{rule_name}】"):
             self._set_action_rule(rule_name)
 
-        with allure.step(f"2. 接收方 (普通群成员) 进入群聊并发送【{message}】"):
+        with allure.step(f"2. 接收方(普通群成员)进入群聊并发送【{message}】"):
             self._trigger_and_assert_withdraw(rule_name, message)
 
         with allure.step("3. 接收方校验群内出现移除系统消息"):
