@@ -94,7 +94,6 @@ class TestChatLongPress:
         with allure.step(f"3. 前置准备：进入聊天页面并发送一条【{msg_type}】消息"):
             self._prepare_message(msg_type)
 
-        
         with allure.step("4. 执行操作：长按并点击【复制】"):
             self.longPressPage.long_press_last_message()
             is_ok = self.longPressPage._execute_and_verify_menu_item("复制")
@@ -131,7 +130,6 @@ class TestChatLongPress:
         with allure.step(f"3. 前置准备：进入聊天页面并发送一条【{msg_type}】消息"):
             self._prepare_message(msg_type)
 
-
         with allure.step(f"4. 记录【{msg_type}】消息原始特征数据"):
             original_hash = None
             if msg_type == "image":
@@ -150,7 +148,7 @@ class TestChatLongPress:
 
             expected_text = "发送收藏消息进行测试‼️⚠️🚀✔️✅♏🧑‍🚀🪲🍎✖️"
             if msg_type == "text":
-                coll_tt = self.collectionPage.get_collection_first_text()
+                coll_tt = self.collectionPage.get_collection_text_content()
                 check.equal(coll_tt, expected_text, f"❌ 收藏夹文本不一致: {coll_tt}")
             elif msg_type == "image":
                 coll_img_hash = self.collectionPage.get_collection_image_hash()

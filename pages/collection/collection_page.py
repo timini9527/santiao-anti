@@ -57,47 +57,81 @@ class CollectionPage(ChatPage):
         logger.info(f"✅ [Action] - 获取到 {len(items)} 个收藏Item")
         return items
 
-    # 获取收藏的文本
+    # 获取收藏的文本列表
     def get_collection_texts(self) -> list[WebElement]:
-        """获取收藏的文本"""
+        """获取收藏的文本列表"""
         texts = self.find_elements(CollectionLocator.COLL_CONTENT_TEXT)
-        if not texts and len(texts) == 0:
-            logger.error("❌ [Action] - 未找到收藏的文本")
+        if not texts:
+            logger.error("❌ [Action] - 未找到任何收藏的文本")
             return []
         logger.info(f"✅ [Action] - 获取到 {len(texts)} 个收藏的文本")
         return texts 
 
-    # 获取收藏的第 {index} 条文本
-    def get_collection_first_text(self, index: int = 0) -> str:
-        """获取收藏的第 {index} 条文本"""
+    # 根据索引获取收藏的文本 Element
+    def get_collection_text_element(self, index: int = 0) -> WebElement | None:
+        """根据索引获取收藏的文本 Element"""
         text_list = self.get_collection_texts()
-        if not text_list and len(text_list) == 0:
-            logger.error(f"❌ [Action] - 未找到收藏的第 {index} 条文本")
+        if not text_list:
+            return None
+        if index >= len(text_list):
+            logger.error(f"❌ [Action] - 索引 {index} 越界，当前仅有 {len(text_list)} 条文本")
+            return None
+        text_elem = text_list[index]
+        logger.info(f"✅ [Action] - 获取到收藏的第 {index} 条文本 Element")
+        return text_elem
+    
+    # 获取收藏的第 {index} 条文本内容
+    def get_collection_text_content(self, index: int = 0) -> str:
+        """获取收藏的第 {index} 条文本内容"""
+        text_elem = self.get_collection_text_element(index)
+        if not text_elem:
+            logger.error(f"❌ [Action] - 无法获取第 {index} 条文本内容，Element 为 None")
             return ""
-        text_first = text_list[index].get_attribute('text')
-        logger.info(f"✅ [Action] - 获取到收藏的 {index} 条文本: {text_first}")
-        return text_first
+        return text_elem.get_attribute('text')
+    
+    # 点击收藏的第 {index} 条文本
+    def get_collection_text_and_click(self, index: int = 0):
+        """点击收藏的第 {index} 条文本"""
+        text_elem = self.get_collection_text_element(index)
+        if not text_elem:
+            logger.error(f"❌ [Action] - 无法点击第 {index} 条文本，Element 为 None")
+            return
+        text_elem.click()
+        logger.info(f"✅ [Action] - 点击了收藏的第 {index} 条文本")
 
-    # 获取收藏图片
+    # 获取收藏图片列表
     def get_collection_images(self) -> list[WebElement]:
-        """获取收藏图片"""
+        """获取收藏图片列表"""
         images = self.find_elements(CollectionLocator.COLL_CONTENT_IMAGE)
-        if not images and len(images) == 0:
-            logger.error("❌ [Action] - 未找到收藏图片")
+        if not images:
+            logger.error("❌ [Action] - 未找到任何收藏图片")
             return []
         logger.info(f"✅ [Action] - 获取到 {len(images)} 个收藏图片")
         return images 
     
-    # 获取收藏的第 {index} 张图片
-    def get_collection_first_image(self, index: int = 0) -> str:
-        """获取收藏的第 {index} 张图片"""
+    # 根据索引获取收藏的图片 Element
+    def get_collection_image_element(self, index: int = 0) -> WebElement | None:
+        """根据索引获取收藏的图片 Element"""
         images = self.get_collection_images()
-        if not images and len(images) == 0:
-            logger.error(f"❌ [Action] - 未找到收藏的第 {index} 张图片")
-            return ""
+        if not images:
+            return None
+        if index >= len(images):
+            logger.error(f"❌ [Action] - 索引 {index} 越界，当前仅有 {len(images)} 张图片")
+            return None
         image = images[index]
-        logger.info(f"✅ [Action] - 获取到收藏的第 {index} 张图片: {image}")
-        return image 
+        logger.info(f"✅ [Action] - 获取到收藏的第 {index} 张图片 Element")
+        return image
+    
+    # 点击收藏的第 {index} 张图片
+    def get_collection_image_and_click(self, index: int = 0):
+        """点击收藏的第 {index} 张图片"""
+        image = self.get_collection_image_element(index)
+        if not image:
+            logger.error(f"❌ [Action] - 无法点击第 {index} 张图片，Element 为 None")
+            return
+        image.click()
+        logger.info(f"✅ [Action] - 点击了收藏的第 {index} 张图片")
+
     
     # 获取收藏的用户昵称
     def get_collection_user_nicknames(self) -> list[WebElement]:

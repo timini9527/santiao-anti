@@ -187,15 +187,21 @@ class ChatPage(BasePage):
     # 聊天输入-点击底部表情按钮
     def click_emoji_button(self):
         """聊天输入-点击底部表情按钮"""
-        self.click(ChatLocator.EMOJI_BUTTON, force_wait=True)
-        logger.info("🚀[Action-chat] - chat 点击表情按钮")
+        if self.get_attribute(ChatLocator.EMOJI_BUTTON, 'checked') != 'true':
+            self.click(ChatLocator.EMOJI_BUTTON, force_wait=True)
+            logger.info("🚀[Action-chat] - chat 点击表情按钮")
+        else:
+            logger.info("🚀[Action-chat] - chat 表情按钮已选中，无需点击")
 
-    # 聊天输入-点击加号更多选项按钮
-    def click_add_more_button(self):
-        """聊天输入-点击加号更多选项按钮"""
-        self.click(ChatLocator.ADD_MORE_BUTTON, force_wait=True)
-        logger.info("🚀[Action-chat] - chat 点击 + 号按钮")
-
+    # 聊天输入-点击 + 号按钮，展开其它功能面板按钮
+    def click_add_button(self):
+        """聊天输入-点击 + 号按钮，展开其它功能面板按钮"""
+        if self.get_attribute(ChatLocator.ADD_BUTTON, 'checked') != 'true':
+            self.click(ChatLocator.ADD_BUTTON, force_wait=True)
+            logger.info("🚀[Action-chat] - chat 点击 + 号按钮，展开其它功能元素")
+        else:
+            logger.info("🚀[Action-chat] - chat + 号按钮已选中，无需点击")
+    
     # 聊天输入-点击发送消息按钮
     def click_send_button(self):
         """聊天输入-点击发送消息按钮"""
@@ -203,12 +209,6 @@ class ChatPage(BasePage):
         logger.info("🚀[Action-chat] - chat 点击发送按钮")
         time.sleep(0.5)
 
-    # 聊天输入-点击展开其它功能面板按钮
-    def click_add_button(self):
-        """聊天输入-点击展开其它功能面板按钮"""
-        self.click(ChatLocator.ADD_BUTTON, force_wait=True)
-        logger.info("🚀[Action-chat] - chat 点击展开其它功能元素")
-    
     # 快捷功能-检测快捷功能面板是否可左右滑动
     def has_input_more_scrollable_indicator(self) -> bool:
         """快捷功能-检测快捷功能面板是否可左右滑动"""
@@ -578,6 +578,19 @@ class ChatPage(BasePage):
             raise IndexError("🚀[Action-chat] - chat 图片索引超出范围")
         image_elements[index].click()
         logger.info(f"🚀[Action-chat] - chat 点击图片: {index}，等待消息详情页面加载...")
+
+    # 图片消息-长按预览的图片
+    def long_press_preview_image(self):
+        """图片消息-长按预览的图片"""
+        preview_image = self.find_element(ChatLocator.PREVIEW_IMAGE_ITEM)
+        self.long_press_action(element=preview_image)
+        logger.info("🚀[Action-chat] - chat 长按预览的图片")
+
+    # 图片消息-点击预览图上的下载图标
+    def click_download_icon_in_image_preview(self):
+        """图片消息-点击预览图上的下载图标"""
+        self.click(ChatLocator.IV_DOWNLOAD_ITEM)
+        logger.info("🚀[Action-chat] - chat 点击图片下载图标")
 
     
     # 视频消息-获取指定索引的视频消息时长文本

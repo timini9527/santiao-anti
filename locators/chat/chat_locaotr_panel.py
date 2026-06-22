@@ -8,6 +8,9 @@ class ChatLocatorPanel(CommonLocator):
     # 扩展面板主容器
     INPUT_MORE_PAGER = (AppiumBy.ID, f'{PACKAGE_ID}/input_more_pager')
 
+    # 扩展面板主容器 - 功能
+    LL_INPUT_MORE = (AppiumBy.ID, f'{PACKAGE_ID}/llInputMore')
+
     # 面板按钮项根容器 ID
     MORE_ACTION_ROOT_ID = f'{PACKAGE_ID}/more_action_root'
     MORE_ACTION_ROOT = (AppiumBy.ID, MORE_ACTION_ROOT_ID)

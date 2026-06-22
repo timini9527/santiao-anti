@@ -94,6 +94,15 @@ class ChatLocator:
     # 接收方图片
     RECEIV_IMAGE_ITEM = _BUBBLE_XPATH("following-sibling", IMAGE_ID)
 
+    # 预览图片
+    PREVIEW_IMAGE_ID = f'{PACKAGE_ID}/preview_image'
+    PREVIEW_IMAGE_ITEM = (AppiumBy.ID, PREVIEW_IMAGE_ID)
+    # 下载图标
+    IV_DOWNLOAD_ID = f'{PACKAGE_ID}/iv_download'
+    IV_DOWNLOAD_ITEM = (AppiumBy.ID, IV_DOWNLOAD_ID)
+    
+
+
     # 视频播放按钮
     VIDEO_PLAY_BUTTON_ID = f'{PACKAGE_ID}/ivPlay'
     VIDEO_PLAY_BUTTON_ITEM = (AppiumBy.ID, VIDEO_PLAY_BUTTON_ID)    # 视频播放按钮
@@ -172,13 +181,13 @@ class ChatLocator:
     # ==================================================================================================================
     # 文件消息相关
     # ==================================================================================================================
-    FILE_NAME_ID = f'{PACKAGE_ID}/tvFileName'             # TODO: 替换实际文件名称ID
+    FILE_NAME_ID = f'{PACKAGE_ID}/tvFileName'               # TODO: 替换实际文件名称ID
     FILE_NAME_ITEM = (AppiumBy.ID, FILE_NAME_ID)            # 文件名称
-    FILE_SIZE_ID = f'{PACKAGE_ID}/tvFileSize'             # TODO: 替换实际文件大小ID
+    FILE_SIZE_ID = f'{PACKAGE_ID}/tvFileSize'               # TODO: 替换实际文件大小ID
     FILE_SIZE_ITEM = (AppiumBy.ID, FILE_SIZE_ID)            # 文件大小
-    FILE_ICON_ID = f'{PACKAGE_ID}/ivFileIcon'             # TODO: 替换实际文件图标ID
+    FILE_ICON_ID = f'{PACKAGE_ID}/ivFileIcon'               # TODO: 替换实际文件图标ID
     FILE_ICON_ITEM = (AppiumBy.ID, FILE_ICON_ID)            # 文件图标
-    FILE_STATUS_ID = f'{PACKAGE_ID}/tvStatus'             # TODO: 替换实际文件状态ID
+    FILE_STATUS_ID = f'{PACKAGE_ID}/tvStatus'               # TODO: 替换实际文件状态ID
     FILE_STATUS_ITEM = (AppiumBy.ID, FILE_STATUS_ID)        # 文件状态
 
     # 发送方的文件气泡
@@ -216,7 +225,6 @@ class ChatLocator:
     VOICE_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/voice_input_btn')                           # 语音键盘切换按钮
     TEXT_INPUT = (AppiumBy.ID, f'{PACKAGE_ID}/text_input')                                  # 输入框
     EMOJI_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/input_expression_bnt')                      # 表情按钮
-    ADD_MORE_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/input_more_bnt')                         # 添加和取消按钮(+号按钮)
     SEND_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/input_send_bnt')                             # 发送按钮
 
 
@@ -230,7 +238,7 @@ class ChatLocator:
 
 
     # 点击 + 按钮展开其它功能元素
-    ADD_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/input_more_bnt')                              # 添加按钮
+    ADD_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/input_more_bnt')                              # 添加按钮(+号按钮)
     INPUT_MORE_PAGER = (AppiumBy.ID, f'{PACKAGE_ID}/input_more_pager')                      # 加号面板滑动区域
     INPUT_MORE_SCROLLABLE_INDICATOR = (AppiumBy.ID, f'{PACKAGE_ID}/input_more_indicator')   # 加号面板可左右滑动标识
     # ELEM_BUTTON = (AppiumBy.ID, 'll_grid_item')  # 元素按钮

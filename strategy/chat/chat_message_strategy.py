@@ -62,6 +62,7 @@ class ChatMessageBuilder(ChatPage):
         self.send_message(content)
     
     def _prepare_emoji_msg(self, **kwargs):
+        """发送/准备 Emoji 表情消息"""
         from pages.chat_options.emojis.chat_emoji_page import ChatEmojiPage
         emojiPage = ChatEmojiPage(self.driver)
         self.enter_emoji_page()
@@ -71,6 +72,7 @@ class ChatMessageBuilder(ChatPage):
         self.enter_emoji_page()
     
     def _prepare_package_msg(self, **kwargs):
+        """发送/准备第三方表情包消息"""
         from pages.chat_options.emojis.chat_emoji_package_page import ChatEmojiPackagePage
         emoji_package = ChatEmojiPackagePage(self.driver)
         self.enter_emoji_page()
@@ -80,6 +82,7 @@ class ChatMessageBuilder(ChatPage):
     
     # 收藏表情包专项：用于验证“收藏表情”功能，重置测试环境
     def _prepare_collection_emoji_msg(self, **kwargs) -> bool:
+        """重置测试环境，清理所有收藏表情"""
         from pages.chat_options.emojis.chat_emoji_page import ChatEmojiPage
         from pages.chat_options.emojis.chat_emoji_manage_page import ChatEmojiManagePage
         emojiPage = ChatEmojiPage(self.driver)
@@ -92,6 +95,7 @@ class ChatMessageBuilder(ChatPage):
     
     # 收藏表情包专项：用于验证“已添加表情包”是否成功
     def _prepare_has_pkg_msg(self, **kwargs) -> bool:
+        """校验当前是否已添加表情包"""
         from pages.chat_options.emojis.chat_emoji_page import ChatEmojiPage
         emojiPage = ChatEmojiPage(self.driver)
         self.enter_emoji_page()
@@ -102,6 +106,7 @@ class ChatMessageBuilder(ChatPage):
         return has_pkg
 
     def _prepare_image_msg(self, **kwargs):
+        """发送/准备单张相册图片消息"""
         from pages.chat_options.images.chat_image_page import ChatImagePage
         img = ChatImagePage(self.driver)
         img.open_panel_to_album()
@@ -110,6 +115,7 @@ class ChatMessageBuilder(ChatPage):
         self.click_add_button()
 
     def _prepare_voice_msg(self, **kwargs):
+        """发送/准备语音消息"""
         from pages.chat_options.voice.chat_voice_page import ChatVoicePage
         voice = ChatVoicePage(self.driver)
         voice.click_voice_button()
@@ -118,6 +124,7 @@ class ChatMessageBuilder(ChatPage):
         voice.click_voice_button()
 
     def _prepare_video_msg(self, **kwargs):
+        """发送/准备单张视频消息"""
         from pages.chat_options.videos.chat_video_page import ChatVideoPage
         video = ChatVideoPage(self.driver)
         video.open_panel_to_album()
@@ -126,6 +133,7 @@ class ChatMessageBuilder(ChatPage):
         self.click_add_button()
 
     def _prepare_position_msg(self, **kwargs):
+        """发送/准备地理位置消息"""
         from pages.chat_options.location.chat_position_page import ChatPositionPage
         pos = ChatPositionPage(self.driver)
         pos.open_panel_enter_location_page()
@@ -134,6 +142,7 @@ class ChatMessageBuilder(ChatPage):
         self.click_add_button()
 
     def _prepare_card_msg(self, **kwargs):
+        """发送/准备联系人名片消息"""
         from pages.chat_options.contact.chat_contact_card_page import ChatContactCardPage
         from pages.common.contact_select_page import ContactSelectPage
         ChatContactCardPage(self.driver).open_panel_enter_contact_card_page()
@@ -143,6 +152,7 @@ class ChatMessageBuilder(ChatPage):
         self.click_add_button()
 
     def _prepare_file_msg(self, **kwargs):
+        """发送/准备本地文件消息"""
         from pages.chat_options.file.chat_file_page import ChatFilePage
         file_page = ChatFilePage(self.driver)
         file_page.open_panel_enter_file_page()
