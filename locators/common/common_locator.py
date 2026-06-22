@@ -42,6 +42,14 @@ class CommonLocator:
     # 顶部返回按钮
     TOP_BACK_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/back_bnt')
 
+    # TOPBar 3个控件通用定位
+    # 左上角返回按钮 通用
+    TOPBAR_LEFT_BACK_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/back')
+    # 右上角完成按钮 通用
+    TOPBAR_RIGHT_FINISH_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/edit_to')
+    # 中间标题 通用
+    TOPBAR_TITLE = (AppiumBy.ID, f'{PACKAGE_ID}/title_tv')
+
 
 # class HomeLocatorIOS(HomeLocatorBase):
 #     """iOS 专属定位"""
