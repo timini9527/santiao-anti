@@ -1,5 +1,6 @@
 import pytest
 import allure
+import time
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.groups.create.group_create_page import GroupCreatePage
@@ -18,6 +19,8 @@ from strategy.chat.chat_strategy import (
     PRIVATE_DISABLE2, 
     GROUP_STRATEGY
 )
+
+
 
 @allure.epic("IM核心功能测试")
 @allure.feature("群聊模块-发起群聊")
@@ -122,7 +125,6 @@ class TestGroupCreate:
             # 等待横幅消息消失
             self.chatPage.wait_banner_message_disappear()
             
-            import time
             if "该用户状态异常，无法邀请其加入群聊" in add_toast:
                 logger.warning("该用户状态异常，无法邀请其加入群聊")
                 exclude_names.extend(clicked_names)
