@@ -1340,3 +1340,13 @@ class ChatPage(BasePage):
         logger.warning("⚠️ [Action] ChatPage 聊天页 - 横幅消息未消失")
         return False
 
+    # 群公告/群邀请-获取横幅群公告/群邀请文本内容
+    def get_group_notice_content(self) -> str | None:
+        """群公告/群邀请-获取横幅群公告/群邀请文本内容"""
+        banner_text = self.get_attribute(ChatLocator.NEW_ANNOUNCEMENT_CONTENT, 'text')
+        if banner_text:
+            logger.info(f"✅ [Action] ChatPage 聊天页 - 获取到横幅群公告/群邀请文本内容: {banner_text}")
+            return banner_text
+        logger.warning("⚠️ [Action] ChatPage 聊天页 - 未获取到横幅群公告/群邀请文本内容")
+        return None
+    

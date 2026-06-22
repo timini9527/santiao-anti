@@ -1,0 +1,69 @@
+test_suite_info:
+  module: "Group_Notice_Rules - 群公告发布与内容限制规则"
+  version: "1.0"
+  author: "Auto"
+
+test_data:
+  notice_validation:
+    - case_id: "NOTICE_RULE_001"
+      title: "正常文本"
+      priority: "P0"
+      data:
+        content: "这是正常的群公告内容，仅包含汉字、数字123和英文abc。"
+      expected:
+        should_success: true
+        expected_toast: null
+
+    - case_id: "NOTICE_RULE_002"
+      title: "允许的特殊字符"
+      priority: "P0"
+      data:
+        content: "📢【重要通知】测试群公告！\n1. 数字: 123\n2. 英文: AutoTest_v1.0\n3. 符号: ~!@#$%^&*()_+{}|:*?-=[];,."
+      expected:
+        should_success: true
+        expected_toast: null
+
+    - case_id: "NOTICE_RULE_003"
+      title: "包含非法特殊字符"
+      priority: "P1"
+      data:
+        content: "群公告测试内容 ⛔ 包含非法 HTML 标签 <script>alert(1)</script>"
+      expected:
+        should_success: false
+        expected_toast: "可能包含<>/等特殊字符或尚未支持的语言，请修改重试"
+
+    - case_id: "NOTICE_RULE_004"
+      title: "长度边界-300字"
+      priority: "P0"
+      data:
+        content: "GENERATE_CHAR:A:300"
+      expected:
+        should_success: true
+        expected_toast: null
+
+    - case_id: "NOTICE_RULE_005"
+      title: "长度边界-301字"
+      priority: "P0"
+      data:
+        content: "GENERATE_CHAR:B:301"
+      expected:
+        should_success: false
+        expected_toast: "长度范围0-300"
+
+    - case_id: "NOTICE_RULE_006"
+      title: "包含敏感词-习近平"
+      priority: "P1"
+      data:
+        content: "请大家注意，习近平指出要做好相关工作。"
+      expected:
+        should_success: false
+        expected_toast: "操作不成功，公告内容不合法！"
+
+    - case_id: "NOTICE_RULE_007"
+      title: "包含敏感词-毛泽东"
+      priority: "P1"
+      data:
+        content: "学习毛泽东思想，天天向上。"
+      expected:
+        should_success: false
+        expected_toast: "操作不成功，公告内容不合法！"

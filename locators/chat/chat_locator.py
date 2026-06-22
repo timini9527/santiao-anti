@@ -293,7 +293,10 @@ class ChatLocator:
     TV_PREVIEW_ID = f"{PACKAGE_ID}/tv_preview"
     TV_PREVIEW = (AppiumBy.ID, TV_PREVIEW_ID)                                          # 横幅消息详细文本
 
+    # 群公告/邀请人消息横幅
+    NEW_ANNOUNCEMENT_CONTENT = (AppiumBy.ID, f'{PACKAGE_ID}/new_announcement_content')
 
+    
 
 
     # ==================================================================================================================
