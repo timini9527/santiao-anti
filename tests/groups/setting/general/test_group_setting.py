@@ -230,6 +230,78 @@ class TestGroupSetting:
             self.groupSettingPage.input_remark_content("")
             self.groupSettingPage.click_remark_confirm()
 
+    @allure.story("群聊详情设置")
+    @allure.title("切换消息免打扰开关并校验状态")
+    def test_group_dnd_toggle(self):
+        """测试消息免打扰开关"""
+        friend_list = [PRIVATE_USER1.name, PRIVATE_USER2.name]
+        self._create_temp_group(friend_list)
+        
+        with allure.step("1. 在群聊页面点击右上角进入群详情"):
+            self.chatPage.click_more_button()
+            self.groupSettingPage.wait_for_setting_page_load()
+            
+        with allure.step("2. 获取当前消息免打扰状态"):
+            init_state = self.groupSettingPage.get_dnd_switch_state()
+            
+        with allure.step("3. 点击消息免打扰进行切换"):
+            self.groupSettingPage.click_chat_dnd()
+            new_state = self.groupSettingPage.get_dnd_switch_state()
+            check.not_equal(init_state, new_state, "❌ 消息免打扰开关切换失败")
+            
+        with allure.step("4. 再次点击恢复初始状态"):
+            self.groupSettingPage.click_chat_dnd()
+            final_state = self.groupSettingPage.get_dnd_switch_state()
+            check.equal(init_state, final_state, "❌ 消息免打扰开关恢复初始状态失败")
+
+    @allure.story("群聊详情设置")
+    @allure.title("切换置顶聊天开关并校验状态")
+    def test_group_settop_toggle(self):
+        """测试置顶聊天开关"""
+        friend_list = [PRIVATE_USER1.name, PRIVATE_USER2.name]
+        self._create_temp_group(friend_list)
+        
+        with allure.step("1. 在群聊页面点击右上角进入群详情"):
+            self.chatPage.click_more_button()
+            self.groupSettingPage.wait_for_setting_page_load()
+            
+        with allure.step("2. 获取当前置顶聊天状态"):
+            init_state = self.groupSettingPage.get_settop_switch_state()
+            
+        with allure.step("3. 点击置顶聊天进行切换"):
+            self.groupSettingPage.click_chat_settop()
+            new_state = self.groupSettingPage.get_settop_switch_state()
+            check.not_equal(init_state, new_state, "❌ 置顶聊天开关切换失败")
+            
+        with allure.step("4. 再次点击恢复初始状态"):
+            self.groupSettingPage.click_chat_settop()
+            final_state = self.groupSettingPage.get_settop_switch_state()
+            check.equal(init_state, final_state, "❌ 置顶聊天开关恢复初始状态失败")
+
+    @allure.story("群聊详情设置")
+    @allure.title("切换聊天密码开关并校验状态")
+    def test_group_pwd_toggle(self):
+        """测试聊天密码开关"""
+        friend_list = [PRIVATE_USER1.name, PRIVATE_USER2.name]
+        self._create_temp_group(friend_list)
+        
+        with allure.step("1. 在群聊页面点击右上角进入群详情"):
+            self.chatPage.click_more_button()
+            self.groupSettingPage.wait_for_setting_page_load()
+            
+        with allure.step("2. 获取当前聊天密码状态"):
+            init_state = self.groupSettingPage.get_pwd_switch_state()
+            
+        with allure.step("3. 点击聊天密码进行切换"):
+            self.groupSettingPage.click_chat_pwd()
+            new_state = self.groupSettingPage.get_pwd_switch_state()
+            check.not_equal(init_state, new_state, "❌ 聊天密码开关切换失败")
+            
+        with allure.step("4. 再次点击恢复初始状态"):
+            self.groupSettingPage.click_chat_pwd()
+            final_state = self.groupSettingPage.get_pwd_switch_state()
+            check.equal(init_state, final_state, "❌ 聊天密码开关恢复初始状态失败")
+
 
 
 
