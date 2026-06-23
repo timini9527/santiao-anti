@@ -30,28 +30,17 @@ class TestGroupManager:
         self.contactSelectPage = ContactSelectPage(driver_sender)
         self.chatListPage = ChatListPage(driver_sender)
 
-        # 准备一个临时群并进入其群管理页面
-        friend_list = [PRIVATE_USER1.name, PRIVATE_USER2.name]
-        self._enter_group_manager(friend_list)
+        self._enter_group_manager()
 
         yield
 
         # 测试完毕后，返回首页以保证后续用例的前置状态干净
         self.mainPage.go_to_main_page()
 
-    def _enter_group_manager(self, friend_list):
+    def _enter_group_manager(self):
         """内部辅助：快速建群并导航进入群管理页面"""
-        with allure.step("-> [前置准备] 在首页发起群聊创建临时群"):
-            self.homePage.click_add_button()
-            self.homePage.click_start_group_chat()
-            self.contactSelectPage.wait_for_contact_and_group_select_page_load()
-            for contact in friend_list:
-                self.contactSelectPage.click_contact_by_name(contact)
-            self.contactSelectPage.click_action_button()
-            
-            # 等待进群横幅消失，保证页面稳定
-            self.chatPage.wait_banner_message_disappear()
-            self.chatPage.wait_for_chat_page_load()
+        with allure.step("-> [前置准备] 进入群聊"):
+            self.chatListPage.enter_chat(GROUP_STRATEGY.name)
 
         with allure.step("-> 进入群详情设置页"):
             self.chatPage.click_more_button()
@@ -77,6 +66,14 @@ class TestGroupManager:
         
         with allure.step("1. 点击群管理员"):
             self.groupManagerPage.click_administrators()
+
+        with allure.step("-> 准备群管理员数据"):
+            pass
+
+        with allure.step("-> 点击新增群管理员"):
+            pass
+
+        
     
     # TODO：
     @allure.story("群管理-群ID搜索开关")

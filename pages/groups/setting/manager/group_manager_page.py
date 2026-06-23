@@ -3,6 +3,7 @@ from core.logger_utils import logger
 from common.base_page import BasePage
 from locators.groups.setting.manager.group_manager_locator import GroupManagerLocator
 from selenium.webdriver.remote.webelement import WebElement
+from appium.webdriver.common.appiumby import AppiumBy
 
 
 class GroupManagerPage(BasePage):
@@ -16,57 +17,115 @@ class GroupManagerPage(BasePage):
         time.sleep(0.5)
         return res
 
-    # 点击返回按钮
+    # 顶部-点击返回按钮
     def click_back_button(self):
-        """点击顶部返回按钮"""
+        """顶部-点击顶部返回按钮"""
         self.click(GroupManagerLocator.IV_BACK)
         logger.info("⚙️ [Action-groupManagerPage] 点击顶部【返回】按钮")
 
-    # 点击升级群组
+    # 群管理-点击升级群组
     def click_upgrade_group(self):
-        """点击升级群组"""
+        """群管理-点击升级群组"""
         self.click(GroupManagerLocator.VIEW_UPDATE_GROUP)
         logger.info("⚙️ [Action-groupManagerPage] 点击【升级群组】")
 
-    # 点击管理员
+    # 群管理-点击管理员
     def click_administrators(self):
-        """点击管理员"""
+        """群管理-点击管理员"""
         self.click(GroupManagerLocator.IT_GROUP_MANAGER)
         logger.info("⚙️ [Action-groupManagerPage] 点击【管理员】")
 
-    # 点击进群申请
+    # 群管理-点击进群申请
     def click_join_to_group_apply(self):
-        """点击进群申请"""
+        """群管理-点击进群申请"""
         self.click(GroupManagerLocator.JOIN_TO_GROUP_APPLY)
         logger.info("⚙️ [Action-groupManagerPage] 点击【进群申请】")
 
-    # 点击指定成员禁言
+    # 群管理-点击指定成员禁言
     def click_mute_member(self):
-        """点击指定成员禁言"""
+        """群管理-点击指定成员禁言"""
         self.click(GroupManagerLocator.GROUP_MEMBER_MUTE)
         logger.info("⚙️ [Action-groupManagerPage] 点击【指定成员禁言】")
 
-    # 点击群黑名单
+    # 群管理-点击群黑名单
     def click_group_black_member(self):
-        """点击群黑名单"""
+        """群管理-点击群黑名单"""
         self.click(GroupManagerLocator.GROUP_BLACK_MEMBER)
         logger.info("⚙️ [Action-groupManagerPage] 点击【群黑名单】")
 
-    # 点击转让群主
+    # 群管理-点击转让群主
     def click_group_give(self):
-        """点击转让群主"""
+        """群管理-点击转让群主"""
         self.click(GroupManagerLocator.GROUP_GIVE)
         logger.info("⚙️ [Action-groupManagerPage] 点击【转让群主】")
 
-    # 点击解散群组
+    # 群管理-点击解散群组
     def click_dismiss_group(self):
         """点击解散群组"""
         self.click(GroupManagerLocator.DISMISS_GROUP)
         logger.info("⚙️ [Action-groupManagerPage] 点击【解散群组】")
 
-    # ==========================
+
+    # ===================================================================================
+    # 管理员列表相关
+    # ===================================================================================
+    # 管理员-等待管理员列表页面加载完成
+    def wait_for_admin_page_load(self, timeout: int = 10) -> bool:
+        """管理员-等待管理员列表页面加载完成"""
+        res = self.get_attribute(GroupManagerLocator.TITLE_TV, "text") == "群管理员"
+        logger.info(f"⏳ [Action-groupManagerPage] 管理员列表页面 - 加载{'成功' if res else '超时'}")
+        time.sleep(0.5)
+        return res
+
+    # 管理员-点击新增管理员按钮
+    def click_add_admin(self):
+        """管理员-点击新增管理员按钮"""
+        self.click(GroupManagerLocator.IT_ADD_FRIEND)
+        logger.info("⚙️ [Action-groupManagerPage] 点击【新增管理员】按钮")
+
+    # 管理员-在管理员搜索框输入关键字
+    def input_admin_search_keyword(self, keyword: str):
+        """管理员-在管理员搜索框输入关键字"""
+        self.send_keys(GroupManagerLocator.EDIT_SEARCH, keyword)
+        logger.info(f"✍️ [Action-groupManagerPage] 管理员搜索框输入: '{keyword}'")
+
+    # 管理员-在成员搜索输入框输入关键字
+    def input_member_search_keyword(self, keyword: str):
+        """管理员-在成员搜索输入框输入关键字"""
+        self.send_keys(GroupManagerLocator.search_edit_text, keyword)
+        logger.info(f"✍️ [Action-groupManagerPage] 成员搜索输入框输入: '{keyword}'")
+
+    # 管理员-获取当前列表展示的所有成员姓名
+    def get_member_names(self) -> list[str]:
+        """管理员-获取当前列表展示的所有成员姓名"""
+        elements = self.find_elements(GroupManagerLocator.TV_FRIEND_NAME)
+        if not elements:
+            logger.warning("⚠️ [Action-groupManagerPage] 未找到列表中的成员姓名")
+            return []
+        names = [el.get_attribute("text") for el in elements]
+        logger.info(f"✅ [Action-groupManagerPage] 获取成员姓名成功: {names}")
+        return names
+
+    # 管理员-根据姓名点击列表中的某个成员
+    def click_member_by_name(self, name: str):
+        """管理员-根据姓名点击列表中的某个成员"""
+        locator = (AppiumBy.XPATH, f"//android.widget.TextView[@resource-id='{GroupManagerLocator.PACKAGE_ID}/friend_name' and @text='{name}']")
+        self.click(locator)
+        logger.info(f"⚙️ [Action-groupManagerPage] 点击列表中姓名为【{name}】的成员")
+        time.sleep(0.5)
+
+    # 管理员-获取管理员/群成员标签标识文本
+    def get_member_type(self) -> str:
+        """管理员-获取管理员/群成员标签标识文本"""
+        res = self.get_attribute(GroupManagerLocator.MEMBER_TYPE, "text", raise_exception=False)
+        logger.info(f"✅ [Action-groupManagerPage] 获取角色标签: {res}")
+        return res
+    
+
+    # =========================================================================================
     # Switch 开关类操作
-    # ==========================
+    # =========================================================================================
+    
     # 1. 群ID搜索开关
     def get_group_id_search_state(self) -> bool:
         """获取【群ID搜索】开关状态"""
@@ -209,6 +268,7 @@ class GroupManagerPage(BasePage):
             if len(member_items) >= before_count:
                 logger.error(f"❌ [Action-groupManagerPage] 解禁第一个成员后列表未缩短({before_count}->{len(member_items)})，疑似解禁失败，中止")
                 break
+
 
 
 
