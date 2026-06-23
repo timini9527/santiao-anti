@@ -15,7 +15,8 @@ class GroupSettingLocator(ChatSettingLocator):
     # 基础信息设置项
     SETTING_CHAT_GROUP_CODE = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_groupCode")                     # 群聊二维码
     SETTING_CHAT_GROUP_ANNOUNCEMENT = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_groupAnnouncement")     # 群公告
-    SETTING_CHAT_GROUP_REMARKS = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_groupRemarks")               # 群备注
+    SETTING_CHAT_GROUP_REMARKS_ID = f"{PACKAGE_ID}/setting_chat_groupRemarks"                           # 群备注 ID
+    SETTING_CHAT_GROUP_REMARKS = (AppiumBy.ID, f"{SETTING_CHAT_GROUP_REMARKS_ID}")                      # 群备注
     SETTING_CHAT_GROUP_MANAGER = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_groupManager")               # 群管理
     SETTING_CHAT_GROUP_HEADER = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_groupHeader")                 # 群头像
     SETTING_CHAT_GROUP_NAME = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_groupName")                     # 群聊名称
@@ -39,9 +40,14 @@ class GroupSettingLocator(ChatSettingLocator):
     SETTING_CLEAR_GROUPCHATMESSAGE = (AppiumBy.ID, f"{PACKAGE_ID}/setting_clear_groupChatMessage")      # 清空聊天记录
     SETTING_GROUP_DELETE_AND_OUT = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_groupDeleteAndOut")        # 删除并退出
 
-    # 通用弹窗
+    # 通用弹窗-二次确认
     TV_CONFIRM = CommonLocator.TEXT_CONFIRM_BTN                                                          # 确认按钮
     TV_CANCEL = CommonLocator.TEXT_CANCEL_BTN                                                            # 取消按钮 
 
+    # 群备注弹窗
+    NVA_TV = (AppiumBy.XPATH, f"//*[contains(@resource-id, '{SETTING_CHAT_GROUP_REMARKS_ID}')]//*[contains(@resource-id, 'nva_tv')]")  # 群备注名称
+
+    REMARK_DIALOG_TITLE = (AppiumBy.ID, f"{PACKAGE_ID}/tv_main")                                        # 弹窗标题
+    REMARK_DIALOG_INPUT = (AppiumBy.ID, f"{PACKAGE_ID}/update_name")                                    # 输入框 
 
 

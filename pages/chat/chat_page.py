@@ -1350,3 +1350,10 @@ class ChatPage(BasePage):
         logger.warning("⚠️ [Action] ChatPage 聊天页 - 未获取到横幅群公告/群邀请文本内容")
         return None
     
+    # 点击横幅公告/群邀请
+    def click_group_notice(self):
+        """点击横幅公告/群邀请"""
+        self.click(ChatLocator.NEW_ANNOUNCEMENT_CONTENT)
+        logger.info("🚀 [Action] ChatPage 聊天页 - 点击横幅群公告/群邀请")
+        time.sleep(0.5)
+

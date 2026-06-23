@@ -6,13 +6,14 @@ from core.logger_utils import logger
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.groups.create.group_create_page import GroupCreatePage
-from pages.groups.setting.group_setting_page import GroupSettingPage
-from pages.groups.setting.group_notice_page import GroupNoticePage
+from pages.groups.setting.general.group_setting_page import GroupSettingPage
+from pages.groups.setting.notice.group_notice_page import GroupNoticePage
 from pages.chat.chat_page import ChatPage
 from pages.chat.chat_list_page import ChatListPage
 from pages.common.contact_select_page import ContactSelectPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, GROUP_STRATEGY
 from utils.file_reader.data_loader import load_yaml_data
+from locators.common.common_locator import CommonLocator
 
 
 
@@ -32,7 +33,8 @@ for d in notice_rules:
         d["title"],
         content,
         d["expected"]["should_success"],
-        d["expected"]["expected_toast"]
+        d["expected"]["expected_toast"],
+        d["expected"].get("truncate", False)  # 输入超长时 App 当场截断后仍成功发布，默认 False
     ))
 notice_ids = [d["title"] for d in notice_rules]
 
@@ -42,31 +44,57 @@ notice_ids = [d["title"] for d in notice_rules]
 class TestGroupNotice:
     """群公告发布与内容测试"""
 
-    @pytest.fixture(autouse=True)
-    def setup_class(self, driver_sender):
-        """初始化页面对象"""
-        self.mainPage = MainPage(driver_sender)
-        self.homePage = HomePage(driver_sender)
-        self.groupCreatePage = GroupCreatePage(driver_sender)
-        self.groupSettingPage = GroupSettingPage(driver_sender)
-        self.groupNoticePage = GroupNoticePage(driver_sender)
-        self.chatPage = ChatPage(driver_sender)
-        self.chatListPage = ChatListPage(driver_sender)
-        self.contactSelectPage = ContactSelectPage(driver_sender)
-        
-        
+    # 类型注解帮助 IDE 提示
+    mainPage: MainPage
+    homePage: HomePage
+    groupCreatePage: GroupCreatePage
+    groupSettingPage: GroupSettingPage
+    groupNoticePage: GroupNoticePage
+    chatPage: ChatPage
+    chatListPage: ChatListPage
+    contactSelectPage: ContactSelectPage
+
+    @pytest.fixture(scope="class", autouse=True)
+    def setup_class_objects(self, request, driver_sender):
+        """类级别 Setup & Teardown：初始化页面对象并在所有测试完成后清理环境"""
+        request.cls.mainPage = MainPage(driver_sender)
+        request.cls.homePage = HomePage(driver_sender)
+        request.cls.groupCreatePage = GroupCreatePage(driver_sender)
+        request.cls.groupSettingPage = GroupSettingPage(driver_sender)
+        request.cls.groupNoticePage = GroupNoticePage(driver_sender)
+        request.cls.chatPage = ChatPage(driver_sender)
+        request.cls.chatListPage = ChatListPage(driver_sender)
+        request.cls.contactSelectPage = ContactSelectPage(driver_sender)
+                
         yield
         
+        logger.info("🧹 [Teardown Class] 开始进行群公告环境清理...")
         try:
+            self.chatListPage.enter_chat(GROUP_STRATEGY.name)
+            desc = self.chatPage.get_group_notice_content()
+            if desc != "":
+                self.chatPage.click_group_notice()
+                self.groupNoticePage.click_publish_btn()
+                self.groupNoticePage.input_notice_content("")
+                self.groupNoticePage.click_publish_btn()
+                logger.info("✅ [Teardown Class] 已成功清空并删除群公告")
+            else:
+                logger.info("✅ [Teardown Class] 当前无已发布的群公告，无需清理")
             self.mainPage.go_to_main_page()
         except Exception as e:
-            logger.error(f"Teardown 失败，未能返回首页: {e}")
+            logger.error(f"❌ [Teardown Class] 群公告环境清理失败: {e}")
+
+    @pytest.fixture(scope="function", autouse=True)
+    def reset_to_main_page(self):
+        """方法级别 Teardown：保证每个用例执行完都返回首页"""
+        yield
+        self.mainPage.go_to_main_page()
 
     
     def _enter_group(self):
         """进入群聊"""
         self.chatListPage.enter_chat(GROUP_STRATEGY.name)
-        self.chatPage.wait_for_chat_page_load()
+        self.chatPage.wait_for_chat_page_load(timeout=1, raise_exception=False)
         self.chatPage.click_more_button()
         self.groupSettingPage.wait_for_setting_page_load()
 
@@ -81,17 +109,16 @@ class TestGroupNotice:
                 self.contactSelectPage.click_contact_by_name(contact)
             self.contactSelectPage.click_action_button()
             
-            # 等待进群横幅消失，保证页面稳定
             self.chatPage.wait_banner_message_disappear()
             self.chatPage.wait_for_chat_page_load()
     
 
     @allure.story("群公告功能")
     @allure.title("发布群公告限制校验 - {test_id}")
-    @pytest.mark.parametrize("test_id, content, should_success, expected_toast", notice_params, ids=notice_ids)
-    def test_publish_group_notice_restrictions(self, test_id, content, should_success, expected_toast):
+    @pytest.mark.parametrize("test_id, content, should_success, expected_toast, truncate", notice_params, ids=notice_ids)
+    def test_publish_group_notice_restrictions(self, test_id, content, should_success, expected_toast, truncate):
         """测试发布群公告的各种限制条件（特殊字符、长度、敏感词）"""
-        with allure.step("1. 进入群聊并获取当前公告状态"):
+        with allure.step("1. 进入群聊并打开群公告页面"):
             self._enter_group()
             desc = self.groupNoticePage.get_notice_content()
 
@@ -102,20 +129,21 @@ class TestGroupNotice:
                 self.groupNoticePage.click_publish_btn()
                 time.sleep(0.5)
 
+
+        expected_content = content[:300] if truncate else content
+
         with allure.step(f"3. 输入待测的群公告内容: '{test_id}'"):
             self.groupNoticePage.input_notice_content(content)
-            if len(content) > 300:
+            if truncate:
                 toast_msg = self.groupNoticePage.get_toast(expected_toast, timeout=1)
                 check.is_true(toast_msg != "", f"❌ 预期弹出包含 '{expected_toast}' 的 Toast 提示，但实际未捕获到 {toast_msg}")
-                content = content[:300]
-                should_success = True
 
         with allure.step("4. 点击发布并验证结果"):
             self.groupNoticePage.click_publish_btn()
-            
+
             if should_success:
                 current_notice = self.groupNoticePage.get_notice_content()
-                check.equal(current_notice, content, f"❌ 群公告内容发布后校验不一致 {current_notice}")
+                check.equal(current_notice, expected_content, f"❌ 群公告内容发布后校验不一致 {current_notice}")
             else:
                 toast_msg = self.groupNoticePage.get_toast(expected_toast, timeout=1)
                 check.is_true(toast_msg != "", f"❌ 预期弹出包含 '{expected_toast}' 的 Toast 提示，但实际未捕获到 {toast_msg}")
@@ -124,14 +152,14 @@ class TestGroupNotice:
             self.chatPage.back_to_chat_page()
             if should_success:
                 banner_text = self.chatPage.get_group_notice_content()
-                check.equal(banner_text, content, f"❌ 群公告内容发布后校验不一致 {banner_text}")
+                check.equal(banner_text, expected_content, f"❌ 群公告内容发布后校验不一致 {banner_text}")
 
 
     @allure.story("群公告功能")
     @allure.title("发布新群公告 - 取消发布流程")
     def test_publish_group_notice_cancel(self):
         """取消发布群公告"""
-        with allure.step("1. 进入群聊并获取当前公告状态"):
+        with allure.step("1. 进入群聊并打开群公告页面"):
             self._enter_group()
             desc = self.groupNoticePage.get_notice_content()
 

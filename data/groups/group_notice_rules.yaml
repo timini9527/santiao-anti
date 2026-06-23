@@ -47,7 +47,9 @@ test_data:
       data:
         content: "GENERATE_CHAR:B:301"
       expected:
-        should_success: false
+        # App 交互：输入超过300字时当场弹 toast 并自动截断到300，截断后仍可成功发布
+        should_success: true
+        truncate: true
         expected_toast: "长度范围0-300"
 
     - case_id: "NOTICE_RULE_006"

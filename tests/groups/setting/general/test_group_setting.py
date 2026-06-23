@@ -5,8 +5,8 @@ from core.logger_utils import logger
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.groups.create.group_create_page import GroupCreatePage
-from pages.groups.setting.group_setting_page import GroupSettingPage
-from pages.groups.setting.group_manager_page import GroupManagerPage
+from pages.groups.setting.general.group_setting_page import GroupSettingPage
+from pages.groups.setting.manager.group_manager_page import GroupManagerPage
 from pages.chat.chat_page import ChatPage
 from pages.chat.chat_list_page import ChatListPage
 from pages.common.contact_select_page import ContactSelectPage
@@ -179,6 +179,57 @@ class TestGroupSetting:
         with allure.step("4、获取聊天页面消息数量"):
             new_msg_count = self.chatListPage.get_total_message_count()
             check.equal(new_msg_count, 0, f"❌ 清空聊天记录后，消息数量应为 0，实际为 {new_msg_count}")
+
+
+    @allure.story("群备注功能")
+    @allure.title("群备注修改校验 - {test_id}")
+    @pytest.mark.parametrize("test_id, input_content, action, expect_truncated", [
+        ("正常修改并保存", "测试群备注1", "confirm", False),
+        ("修改并取消", "企图修改备注但取消", "cancel", False),
+        ("超长20字限制截断", "一二三四五六七八九十一二三四五六七八九十加", "confirm", True),
+    ], ids=["正常修改并保存", "修改并取消", "超长20字限制截断"])
+    @pytest.mark.parametrize("chat_strategy", [GROUP_STRATEGY], ids=["群聊-群备注功能"])
+    def test_group_remark_validation(self, test_id, input_content, action, expect_truncated, chat_strategy):
+        """测试不同场景下的群备注修改逻辑（保存、取消、超长限制）"""
+        
+        with allure.step("1. 进入群设置页面"):
+            self.chatListPage.enter_chat(chat_strategy.name)
+            self.chatPage.click_more_button()
+            self.groupSettingPage.wait_for_setting_page_load()
+            
+        with allure.step("2. 获取修改前的群备注"):
+            old_remark = self.groupSettingPage.get_group_remark()
+            
+        with allure.step(f"3. 点击群备注，输入待测内容: '{input_content}'并执行【{action}】"):
+            self.groupSettingPage.click_group_remark()
+            self.groupSettingPage.wait_for_remark_dialog_load()
+            
+            self.groupSettingPage.input_remark_content(input_content)
+            if action == "confirm":
+                self.groupSettingPage.click_remark_confirm()
+            else:
+                self.groupSettingPage.click_remark_cancel()
+            
+        with allure.step("4. 校验修改后的群备注结果"):
+            new_remark = self.groupSettingPage.get_group_remark()
+            if action == "confirm":
+                expected_remark = input_content[:20] if expect_truncated else input_content
+                check.equal(new_remark, expected_remark, f"❌ 群备注确认修改后保存内容不一致")
+            else:
+                check.equal(new_remark, old_remark, f"❌ 取消修改后群备注被变更了")
+
+        # TODO：BUG待修复，群聊不展示群备注
+        # with allure.step("5. 校验群名称是否修改"):
+        #     self.groupSettingPage.click_iv_back_button()
+        #     title = self.chatPage.get_top_name()
+        #     check.is_in(expected_remark, title, f"❌ 群名称校验失败")
+ 
+        with allure.step("6. 恢复初始群备注值"):
+            self.groupSettingPage.click_group_remark()
+            self.groupSettingPage.wait_for_remark_dialog_load()
+            self.groupSettingPage.input_remark_content("")
+            self.groupSettingPage.click_remark_confirm()
+
 
 
 

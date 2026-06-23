@@ -4,7 +4,7 @@ from core.logger_utils import logger
 from common.base_page import BasePage
 from locators.groups.create.group_create_locator import GroupCreateLocator
 from appium.webdriver.webelement import WebElement
-from pages.groups.setting.group_setting_page import GroupSettingPage
+from pages.groups.setting.general.group_setting_page import GroupSettingPage
 
 
 class GroupCreatePage(GroupSettingPage):

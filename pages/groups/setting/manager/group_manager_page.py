@@ -1,7 +1,7 @@
 import time
 from core.logger_utils import logger
 from common.base_page import BasePage
-from locators.groups.setting.group_manager_locator import GroupManagerLocator
+from locators.groups.setting.manager.group_manager_locator import GroupManagerLocator
 from selenium.webdriver.remote.webelement import WebElement
 
 
