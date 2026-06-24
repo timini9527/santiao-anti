@@ -1,6 +1,7 @@
 import pytest
 import allure
 import pytest_check as check
+from datetime import datetime, timedelta
 from core.logger_utils import logger
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
@@ -181,13 +182,51 @@ class TestGroupManager:
             self.groupManagerPage.click_member_by_name(name=PRIVATE_USER1.name)
             self.groupManagerPage.click_edit_finish_button()
 
-        with allure.step("2. 选择禁言类型和时长"):
+        with allure.step("3. 选择禁言类型和时长"):
             if mute_type == 0:
                 self.groupManagerPage.click_cb_1()
             else:
                 self.groupManagerPage.click_cb_2()
-                
+                self.groupManagerPage.click_temp_mute_time()
+                self.groupManagerPage.click_set_mute_duration(duration)
             self.groupManagerPage.click_sure_button()
+            self.groupManagerPage.click_mute_confirm_btn()
+        
+        with allure.step("4. 验证禁言状态"):
+            res = self.groupManagerPage.get_mute_status(PRIVATE_USER1.name)
+            if mute_type == 0:
+                check.is_in("永久禁言", res, f"❌ [Action-groupManagerPage] 指定成员禁言状态未生效: {res}")
+            else:
+                check.is_in('预计', res, f"❌ [Action-groupManagerPage] 指定成员禁言状态未生效: {res}")
+                check.is_in('恢复', res, f"❌ [Action-groupManagerPage] 指定成员禁言状态未生效: {res}")
+                
+                # 动态计算预期的禁言时长增量
+                def get_expected_delta(d_str: str) -> timedelta:
+                    if "分钟" in d_str:
+                        return timedelta(minutes=int(d_str.replace("分钟", "")))
+                    elif "小时" in d_str:
+                        return timedelta(hours=int(d_str.replace("小时", "")))
+                    elif "天" in d_str:
+                        return timedelta(days=int(d_str.replace("天", "")))
+                    return timedelta(0)
+                
+                try:
+                    time_str = res.replace('预计', '').replace('恢复', '').strip()
+                    actual_time = datetime.strptime(time_str, '%Y-%m-%d %H:%M')
+                    expected_time = datetime.now() + get_expected_delta(duration)
+                    # 允许有 ±120 秒的执行与时间获取误差
+                    diff_seconds = abs((actual_time - expected_time).total_seconds())
+                    check.less(diff_seconds, 120, f"❌ [Action-groupManagerPage] 禁言恢复时间不符: 预期约 {expected_time}, 实际 {actual_time}")
+                except Exception as e:
+                    pytest.fail(f"❌ [Action-groupManagerPage] 解析/校验禁言恢复时间失败: {res}, Error: {e}")
+
+        with allure.step("5. 点击移除禁言"):
+            self.groupManagerPage.click_cancel_mute(PRIVATE_USER1.name)
+            self.groupManagerPage.click_back_button()
+            self.groupManagerPage.click_back_button()
+            self.groupManagerPage.click_back_button()
+            
+
 
     @allure.story("群管理-禁止群成员互相加好友开关")
     @allure.title("切换【禁止群成员互相加好友】开关状态校验")

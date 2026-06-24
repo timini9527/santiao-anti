@@ -26,6 +26,7 @@ class GroupManagerLocator(CommonLocator):
     SWITCH_BTN_ID = f"{PACKAGE_ID}/switch_btn"
     SWITCH_BTN = (AppiumBy.ID, SWITCH_BTN_ID)                                                            # Switch 开关
 
+
     # 具有 Switch 开关的配置项及其对应的开关按钮
     GROUP_ID_SEARCH_SWITCH = (AppiumBy.XPATH, 
         "//*[contains(@resource-id, 'group_id_search')]//*[contains(@resource-id, 'switch_btn')]")                   # 群ID搜索开关
@@ -74,8 +75,10 @@ class GroupManagerLocator(CommonLocator):
     RECYCLER_ID = f"{PACKAGE_ID}/recycler"
     RECYCLE_VIEW_MEMBER = (AppiumBy.ID, RECYCLER_ID)                                        # 成员列表区域
     IMG_HEADER = (AppiumBy.ID, f"{PACKAGE_ID}/img_header")                                  # 群成员头像
-    RECYCLE_VIEW_MEMBER_TV_NAME = (AppiumBy.ID, f"{PACKAGE_ID}/tv_name")                    # 成员姓名
-    RECYCLE_VIEW_MEMBER_TV_STATUS = (AppiumBy.ID, f"{PACKAGE_ID}/tv_status")                # 禁言状态及时间
+    TV_NAME_ID = f"{PACKAGE_ID}/tv_name"
+    RECYCLE_VIEW_MEMBER_TV_NAME = (AppiumBy.ID, TV_NAME_ID)                                 # 成员姓名
+    TV_STATUS_ID = f"{PACKAGE_ID}/tv_status"
+    RECYCLE_VIEW_MEMBER_TV_STATUS = (AppiumBy.ID, TV_STATUS_ID)                             # 禁言状态及时间
     TV_CANCEL_MUTE = (AppiumBy.ID, f"{PACKAGE_ID}/tv_remove")                               # 解除禁言按钮
 
     # 已禁言 Item（包含头像、名称、状态、操作按钮）
@@ -85,6 +88,7 @@ class GroupManagerLocator(CommonLocator):
     TV_DIALOG_MSG = (AppiumBy.ID, f"{PACKAGE_ID}/message")                                  # 弹窗内容
     POSITIVE_BUTTON = (AppiumBy.ID, f"{PACKAGE_ID}/positiveButton")                         # 确认按钮
     NEGATIVE_BUTTON = (AppiumBy.ID, f"{PACKAGE_ID}/negativeButton")                         # 取消按钮
+
     
     # 禁言设置页面
     CB_1 = (AppiumBy.ID, f"{PACKAGE_ID}/cb_1")                                              # 永久禁言
@@ -93,14 +97,21 @@ class GroupManagerLocator(CommonLocator):
     ED_CONTENT = (AppiumBy.ID, f"{PACKAGE_ID}/et_content")                                  # 禁言原因输入框
     LOOP_SELECTOR = (AppiumBy.ID, f"{PACKAGE_ID}/loop")                                     # 循环滚动选择器
     TV_SURE = (AppiumBy.ID, f"{PACKAGE_ID}/tv_sure")                                        # 确认按钮
-
+    
+    MUTE_CONFIRM_BTN = CommonLocator.DIALOG_CONFIRM_BTN                                     # 指定禁言二次确认-确认按钮
+    MUTE_CANCEL_BTN = CommonLocator.DIALOG_CANCEL_BTN                                       # 指定禁言二次确认-取消按钮
 
     
     # 通过昵称定位到成员
     @classmethod
     def get_member_by_name(cls, name: str) -> tuple:
         """通过昵称定位到成员"""
-        return (AppiumBy.XPATH, f"//*[@resource-id='{cls.RECYCLER_ID}']//*[@resource-id='{cls.RECYCLE_VIEW_MEMBER_TV_NAME}'][contains(@text, '{name}')]/ancestor::android.view.ViewGroup[1]")
+        return (AppiumBy.XPATH, f"//*[@resource-id='{cls.TV_NAME_ID}' and @text='{name}']")
+        # return (AppiumBy.XPATH, f"//*[@resource-id='{cls.RECYCLER_ID}']//*[@resource-id='{cls.RECYCLE_VIEW_MEMBER_TV_NAME}'][contains(@text, '{name}')]/ancestor::android.view.ViewGroup[1]")
 
-
+    # 通过昵称定位到其禁言状态元素
+    @classmethod
+    def get_mute_status_by_name(cls, name: str) -> tuple:
+        """通过昵称定位到其禁言状态元素"""
+        return (AppiumBy.XPATH, f"//*[@resource-id='{cls.TV_NAME_ID}' and @text='{name}']/following-sibling::*[@resource-id='{cls.TV_STATUS_ID}']")
 

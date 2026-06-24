@@ -333,6 +333,30 @@ class GroupManagerPage(BasePage):
         self.click(GroupManagerLocator.NEGATIVE_BUTTON)
         logger.info("⚙️ [Action-groupManagerPage] 禁言-点击移除禁言后的二次弹窗取消按钮")
     
+    # 禁言-点击移除禁言后的二次弹窗确认按钮
+    def click_mute_confirm_btn(self):
+        """禁言-点击移除禁言后的二次弹窗确认按钮"""
+        self.click(GroupManagerLocator.MUTE_CONFIRM_BTN)
+        logger.info("⚙️ [Action-groupManagerPage] 禁言-点击移除禁言后的二次弹窗确认按钮")
+    
+    # 禁言-点击移除禁言后的二次弹窗取消按钮
+    def click_mute_cancel_btn(self):
+        """禁言-点击移除禁言后的二次弹窗取消按钮"""
+        self.click(GroupManagerLocator.MUTE_CANCEL_BTN)
+        logger.info("⚙️ [Action-groupManagerPage] 禁言-点击移除禁言后的二次弹窗取消按钮")
+
+    # 指定禁言-永久禁言
+    def click_cb_1(self):
+        """指定禁言-永久禁言"""
+        self.click(GroupManagerLocator.CB_1)
+        logger.info("⚙️ [Action-groupManagerPage] 指定禁言-永久禁言")
+    
+    # 指定禁言-临时禁言
+    def click_cb_2(self):
+        """指定禁言-临时禁言"""
+        self.click(GroupManagerLocator.CB_2)
+        logger.info("⚙️ [Action-groupManagerPage] 指定禁言-临时禁言")
+    
     # 指定禁言-临时禁言，获取禁言时间
     def get_temp_mute_time(self) -> str:
         """指定禁言-临时禁言，获取禁言时间"""
@@ -343,6 +367,12 @@ class GroupManagerPage(BasePage):
         logger.info(f"✅ [Action-groupManagerPage] 成功获取禁言时间: {res}")
         return res
 
+    # 指定禁言-临时禁言，点击禁言时间
+    def click_temp_mute_time(self):
+        """指定禁言-临时禁言，点击禁言时间"""
+        self.click(GroupManagerLocator.TV_TIME)
+        logger.info("⚙️ [Action-groupManagerPage] 指定禁言-临时禁言，点击禁言时间")
+
     # 指定禁言-临时禁言-点击确定选择时间
     def click_select_time(self):
         """指定禁言-临时禁言-点击确定选择时间"""
@@ -350,44 +380,21 @@ class GroupManagerPage(BasePage):
         logger.info("⚙️ [Action-groupManagerPage] 禁言-点击确定选择时间")
 
     # 指定禁言-临时禁言-选择时长，并且支持切换禁言时长选项
-    def click_time(self, rule_time: str, old_summary: str = "10分钟"):
+    def click_set_mute_duration(self, rule_time: str, old_summary: str = "10分钟"):
         """指定禁言-临时禁言-选择并切换指定的禁言时长"""
-        
-        MUTE_DURATION_OPTIONS = ["10分钟", "30分钟", "2小时", "1天", "7天", "30天", "永久禁言"]
+        MUTE_DURATION_OPTIONS = ["10分钟", "30分钟", "2小时", "1天", "3天", "7天", "30天", "永久禁言"]
         logger.info(f"⚙️ [Action-groupManagerPage] 正在设置禁言时长为: {rule_time} (当前页面旧值: {old_summary})")
 
-        # 检查滚轮选择器是否已经显示
-        picker_visible = self.is_element_exist(GroupManagerLocator.LOOP_SELECTOR, timeout=2)
-
+        # 如果新旧值相同，直接点击确认关闭即可
         if old_summary and rule_time == old_summary:
-            if picker_visible:
-                self.click_select_time()
-                logger.info("⚙️ [Action-groupManagerPage] 禁言时长与当前设置相同，且弹窗已显示，直接点击确认关闭")
-            else:
-                logger.info("⚙️ [Action-groupManagerPage] 禁言时长与当前设置相同，且无弹窗显示，无需操作")
+            self.click_select_time()
             return True
 
-        # 如果选择器未显示，点击 TV_SUMMARY 以唤起滚轮选择弹窗
-        if not picker_visible:
-            logger.info("⚙️ [Action-groupManagerPage] 滚轮选择器未显示，尝试点击 TV_TIME 展开")
-            if self.is_element_exist(GroupManagerLocator.TV_TIME, timeout=2):
-                self.click(GroupManagerLocator.TV_TIME)
-                picker_visible = self.is_element_exist(GroupManagerLocator.LOOP_SELECTOR, timeout=5)
-
-        if not picker_visible:
-            logger.error("❌ 找不到禁言时长选择器 LOOP_SELECTOR")
-            return False
-
-        picker_element = self.find_element(GroupManagerLocator.LOOP_SELECTOR)
+        picker_element = self.find_element(GroupManagerLocator.LOOP_SELECTOR, timeout=5)
         options = MUTE_DURATION_OPTIONS
 
-        if old_summary in options:
-            old_index = options.index(old_summary)
-        else:
-            old_index = len(options)
-
-        if rule_time not in options:
-            rule_time = options[0]
+        old_index = options.index(old_summary) if old_summary in options else len(options)
+        rule_time = rule_time if rule_time in options else options[0]
         target_index = options.index(rule_time)
 
         rect = picker_element.rect
@@ -408,6 +415,14 @@ class GroupManagerPage(BasePage):
         self.click_select_time()
         logger.info("✅ 禁言时长选择完毕并点击确定")
         return True
+
+    # 禁言-获取指定成员禁言状态
+    def get_mute_status(self, name: str) -> str:
+        """禁言-获取指定成员禁言状态"""
+        status_locator = GroupManagerLocator.get_mute_status_by_name(name)
+        res = self.get_attribute(status_locator, "text")
+        logger.info(f"✅ [Action-groupManagerPage] 成功获取【{name}】的禁言状态: {res}")
+        return res
 
     # 禁言-解除某一个成员禁言
     def click_cancel_mute(self, name: str):
