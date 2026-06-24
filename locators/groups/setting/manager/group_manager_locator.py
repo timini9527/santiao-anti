@@ -91,6 +91,7 @@ class GroupManagerLocator(CommonLocator):
     CB_2 = (AppiumBy.ID, f"{PACKAGE_ID}/cb_2")                                              # 临时禁言
     TV_TIME = (AppiumBy.ID, f"{PACKAGE_ID}/tv_time")                                        # 临时禁言时长
     ED_CONTENT = (AppiumBy.ID, f"{PACKAGE_ID}/et_content")                                  # 禁言原因输入框
+    LOOP_SELECTOR = (AppiumBy.ID, f"{PACKAGE_ID}/loop")                                     # 循环滚动选择器
     TV_SURE = (AppiumBy.ID, f"{PACKAGE_ID}/tv_sure")                                        # 确认按钮
 
 

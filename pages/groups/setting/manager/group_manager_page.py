@@ -343,15 +343,71 @@ class GroupManagerPage(BasePage):
         logger.info(f"✅ [Action-groupManagerPage] 成功获取禁言时间: {res}")
         return res
 
-    # TODO：
-    # 指定禁言-临时禁言-选择时长，默认10分钟，切换时间
-    def click_time(self):
-        """临时禁言-选择时长，默认10分钟"""
+    # 指定禁言-临时禁言-点击确定选择时间
+    def click_select_time(self):
+        """指定禁言-临时禁言-点击确定选择时间"""
+        self.click(GroupManagerLocator.TV_SURE)
+        logger.info("⚙️ [Action-groupManagerPage] 禁言-点击确定选择时间")
+
+    # 指定禁言-临时禁言-选择时长，并且支持切换禁言时长选项
+    def click_time(self, rule_time: str, old_summary: str = "10分钟"):
+        """指定禁言-临时禁言-选择并切换指定的禁言时长"""
         
-        # 禁言时长档位（顺序与 picker 滚轮从上到下一致），页面与测试参数化共用，避免重复维护
         MUTE_DURATION_OPTIONS = ["10分钟", "30分钟", "2小时", "1天", "7天", "30天", "永久禁言"]
-        self.click(GroupManagerLocator.TV_TIME)
-        logger.info("⚙️ [Action-groupManagerPage] 临时禁言-选择时长，默认10分钟")
+        logger.info(f"⚙️ [Action-groupManagerPage] 正在设置禁言时长为: {rule_time} (当前页面旧值: {old_summary})")
+
+        # 检查滚轮选择器是否已经显示
+        picker_visible = self.is_element_exist(GroupManagerLocator.LOOP_SELECTOR, timeout=2)
+
+        if old_summary and rule_time == old_summary:
+            if picker_visible:
+                self.click_select_time()
+                logger.info("⚙️ [Action-groupManagerPage] 禁言时长与当前设置相同，且弹窗已显示，直接点击确认关闭")
+            else:
+                logger.info("⚙️ [Action-groupManagerPage] 禁言时长与当前设置相同，且无弹窗显示，无需操作")
+            return True
+
+        # 如果选择器未显示，点击 TV_SUMMARY 以唤起滚轮选择弹窗
+        if not picker_visible:
+            logger.info("⚙️ [Action-groupManagerPage] 滚轮选择器未显示，尝试点击 TV_TIME 展开")
+            if self.is_element_exist(GroupManagerLocator.TV_TIME, timeout=2):
+                self.click(GroupManagerLocator.TV_TIME)
+                picker_visible = self.is_element_exist(GroupManagerLocator.LOOP_SELECTOR, timeout=5)
+
+        if not picker_visible:
+            logger.error("❌ 找不到禁言时长选择器 LOOP_SELECTOR")
+            return False
+
+        picker_element = self.find_element(GroupManagerLocator.LOOP_SELECTOR)
+        options = MUTE_DURATION_OPTIONS
+
+        if old_summary in options:
+            old_index = options.index(old_summary)
+        else:
+            old_index = len(options)
+
+        if rule_time not in options:
+            rule_time = options[0]
+        target_index = options.index(rule_time)
+
+        rect = picker_element.rect
+        slide_distance = int(rect['height'] * 0.18)  # 经验值：一格行高约占控件高度 18%
+
+        if old_index > 0:
+            logger.info(f"🔄 正在重置选择器至顶端（滑动回退步数: {old_index}）...")
+            for _ in range(old_index):
+                self.swipe_by_offset(rect=rect, y_offset=slide_distance, duration=400)
+                time.sleep(0.1)
+
+        if target_index > 0:
+            logger.info(f"🔄 向上滚动选择器以选择【{rule_time}】...")
+            for _ in range(target_index):
+                self.swipe_by_offset(rect=rect, y_offset=-slide_distance, duration=400)
+                time.sleep(0.15)
+
+        self.click_select_time()
+        logger.info("✅ 禁言时长选择完毕并点击确定")
+        return True
 
     # 禁言-解除某一个成员禁言
     def click_cancel_mute(self, name: str):
