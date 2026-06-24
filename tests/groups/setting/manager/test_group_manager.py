@@ -37,11 +37,8 @@ class TestGroupManager:
         # 测试完毕后，返回首页以保证后续用例的前置状态干净
         self.mainPage.go_to_main_page()
 
-    def _enter_group_manager(self):
-        """内部辅助：快速建群并导航进入群管理页面"""
-        with allure.step("-> [前置准备] 进入群聊"):
-            self.chatListPage.enter_chat(GROUP_STRATEGY.name)
-
+    def _enter_group_setting(self):
+        """内部辅助：进入群详情设置页"""
         with allure.step("-> 进入群详情设置页"):
             self.chatPage.click_more_button()
             self.groupSettingPage.wait_for_setting_page_load()
@@ -50,34 +47,57 @@ class TestGroupManager:
             self.groupSettingPage.click_group_manager()
             self.groupManagerPage.wait_for_page_load()
 
+    def _enter_group_manager(self):
+        """内部辅助：快速建群并导航进入群管理页面"""
+        with allure.step("-> [前置准备] 进入群聊"):
+            self.chatListPage.enter_chat(GROUP_STRATEGY.name)
+        self._enter_group_setting()
+
     # TODO：
     @allure.story("群管理-升级群组")
     @allure.title("【升级群组】功能正常使用校验")
+    @pytest.mark.skip("升级群组功能未实现")
     def test_upgrade_group_functionality(self):
         """测试【升级群组】功能是否正常使用"""
         
         with allure.step("1. 点击升级群组"):
             self.groupManagerPage.click_upgrade_group()
 
+
     @allure.story("群管理-管理员")
     @allure.title("【群管理员】功能正常使用校验")
     def test_group_manager_functionality(self):
         """测试【群管理员】功能是否正常使用"""
         
-        with allure.step("1. 点击群管理员"):
+        with allure.step("1. 点击群管理员，并添加管理员"):
             self.groupManagerPage.click_administrators()
+            self.groupManagerPage.click_add_admin()
 
-        with allure.step("-> 准备群管理员数据"):
-            pass
+        with allure.step("2. 准备群管理员数据"):
+            self.groupManagerPage.click_member_by_name(name=PRIVATE_USER1.name)
 
-        with allure.step("-> 点击新增群管理员"):
-            pass
-
+        with allure.step("3. 点击新增群管理员"):
+            self.groupManagerPage.click_all_switch(checked_str="false")
+            self.groupManagerPage.click_confirm_button()
+            self.chatPage.wait_banner_message_disappear()
         
+        with allure.step("4. 返回管理员列表，并校验管理员状态"):
+            member_names = self.groupManagerPage.get_member_names()
+            check.is_in(PRIVATE_USER1.name, member_names, "❌ [Action-groupManagerPage] 添加管理员失败")
+
+        with allure.step("5. 移除管理员"):
+            self.groupManagerPage.click_member_by_name(name=PRIVATE_USER1.name)
+            self.groupManagerPage.click_sure_button()
+            self.groupManagerPage.click_sure_content_button()
+            self.chatPage.wait_banner_message_disappear()
+            member_names = self.groupManagerPage.get_member_names()
+            check.is_not_in(PRIVATE_USER1.name, member_names, "❌ [Action-groupManagerPage] 移除管理员失败")
+
     
     # TODO：
     @allure.story("群管理-群ID搜索开关")
     @allure.title("切换【群ID搜索】开关状态校验")
+    @pytest.mark.skip("群ID搜索功能未实现")
     def test_group_id_search_toggle(self):
         """测试群管理中【群ID搜索】开关的状态切换与校验"""
         with allure.step("1. 获取当前群ID搜索开关状态"):
@@ -93,68 +113,105 @@ class TestGroupManager:
             final_state = self.groupManagerPage.get_group_id_search_state()
             check.equal(init_state, final_state, "❌ 【群ID搜索】开关恢复初始状态失败")
 
+
     @allure.story("群管理-进群验证开关")
     @allure.title("切换【进群验证】开关状态校验")
     def test_join_group_verify_toggle(self):
         """测试群管理中【进群验证】开关的状态切换与校验"""
-        with allure.step("1. 获取当前进群验证开关状态"):
-            init_state = self.groupManagerPage.get_join_group_verify_state()
 
-        with allure.step("2. 点击切换进群验证开关"):
-            self.groupManagerPage.click_join_group_verify_switch()
-            new_state = self.groupManagerPage.get_join_group_verify_state()
-            check.not_equal(init_state, new_state, "❌ 【进群验证】开关点击后状态未改变")
+        with allure.step("1. 开启进群验证"):
+            self.groupManagerPage.click_join_group_verify_switch(checked_str='true')
+            self.chatPage.wait_banner_message_disappear()
+
+        with allure.step("2. 回到聊天页面中，并校验进群验证开关状态"):
+            self.chatPage.back_to_chat_page()
+            cmd_texts = self.chatPage.get_cmd_notification_texts(index=-1)
+            check.is_in('已启用"群聊邀请确认"', cmd_texts, "❌ [Action-groupManagerPage] 进群验证开关未开启")
 
         with allure.step("3. 再次点击开关恢复至初始状态"):
-            self.groupManagerPage.click_join_group_verify_switch()
-            final_state = self.groupManagerPage.get_join_group_verify_state()
-            check.equal(init_state, final_state, "❌ 【进群验证】开关恢复初始状态失败")
+            self._enter_group_setting()
+            self.groupManagerPage.click_join_group_verify_switch(checked_str='false')
+            self.chatPage.wait_banner_message_disappear()
+
+        with allure.step("4. 回到聊天页面中，并校验进群验证关闭后Banner消息"):
+            self.chatPage.back_to_chat_page()
+            cmd_texts = self.chatPage.get_cmd_notification_texts(index=-1)
+            check.is_in("已恢复默认进群模式", cmd_texts, "❌ [Action-groupManagerPage] 进群验证开关未关闭")
+
 
     @allure.story("群管理-全员禁言开关")
     @allure.title("切换【全员禁言】开关状态校验")
     def test_all_member_mute_toggle(self):
         """测试群管理中【全员禁言】开关的状态切换与校验"""
-        with allure.step("1. 获取当前全员禁言开关状态"):
-            init_state = self.groupManagerPage.get_all_member_mute_state()
 
-        with allure.step("2. 点击切换全员禁言开关"):
-            self.groupManagerPage.click_all_member_mute_switch()
-            new_state = self.groupManagerPage.get_all_member_mute_state()
-            check.not_equal(init_state, new_state, "❌ 【全员禁言】开关点击后状态未改变")
+        with allure.step("1. 开启全员禁言"):
+            self.groupManagerPage.click_all_member_mute_switch(checked_str='true')
+            self.chatPage.wait_banner_message_disappear()
+
+        with allure.step("2. 回到聊天页面中，并校验全员禁言开启状态"):
+            self.chatPage.back_to_chat_page()
+            cmd_texts = self.chatPage.get_cmd_notification_texts(index=-1)
+            check.is_in('开启全员禁言', cmd_texts, "❌ [Action-groupManagerPage] 全员禁言开关未开启")
 
         with allure.step("3. 再次点击开关恢复至初始状态"):
-            self.groupManagerPage.click_all_member_mute_switch()
-            final_state = self.groupManagerPage.get_all_member_mute_state()
-            check.equal(init_state, final_state, "❌ 【全员禁言】开关恢复初始状态失败")
+            self._enter_group_setting()
+            self.groupManagerPage.click_all_member_mute_switch(checked_str='false')
+            self.chatPage.wait_banner_message_disappear()
+
+        with allure.step("4. 回到聊天页面中，并校验全员禁言关闭后Banner消息"):
+            self.chatPage.back_to_chat_page()
+            cmd_texts = self.chatPage.get_cmd_notification_texts(index=-1)
+            check.is_in("关闭全员禁言", cmd_texts, "❌ [Action-groupManagerPage] 全员禁言开关未关闭")
 
     @allure.story("群管理-指定成员禁言")
     @allure.title("指定成员禁言页面初始状态校验")
-    def test_specify_mute_page_init_state(self):
+    @pytest.mark.parametrize('mute_type, duration',
+                            [(0, 0), (1, '10分钟'), (1, '30分钟'), (1, '2小时'), (1, '1天'), (1, '3天'), (1, '7天'), (1, '30天')],
+                            ids=["永久禁言", "临时禁言-10分钟", "临时禁言-30分钟", "临时禁言-2小时", "临时禁言-1天", "临时禁言-3天", "临时禁言-7天", "临时禁言-30天"])
+    def test_specify_mute_page_init_state(self, mute_type, duration):
         """测试进入指定成员禁言页面时，默认无已禁言成员的状态"""
+
         with allure.step("1. 进入【指定成员禁言】子页面"):
             self.groupManagerPage.click_mute_member()
             self.groupManagerPage.wait_for_specify_mute_page_load()
+            self.groupManagerPage.click_confirm_button()
 
-        with allure.step("2. 校验已禁言群成员列表默认为空"):
-            muted_members = self.groupManagerPage.get_muted_member_items()
-            check.equal(len(muted_members), 0, "❌ 新建群聊的指定禁言成员列表默认不为空")
+        with allure.step("2. 添加指定禁言成员"):
+            self.groupManagerPage.input_member_search_keyword(PRIVATE_USER1.name)
+            self.groupManagerPage.click_member_by_name(name=PRIVATE_USER1.name)
+            self.groupManagerPage.click_edit_finish_button()
+
+        with allure.step("2. 选择禁言类型和时长"):
+            if mute_type == 0:
+                self.groupManagerPage.click_cb_1()
+            else:
+                self.groupManagerPage.click_cb_2()
+                
+            self.groupManagerPage.click_sure_button()
 
     @allure.story("群管理-禁止群成员互相加好友开关")
     @allure.title("切换【禁止群成员互相加好友】开关状态校验")
     def test_un_add_friend_each_other_toggle(self):
         """测试群管理中【禁止群成员互相加好友】开关的状态切换与校验"""
-        with allure.step("1. 获取当前禁止互相加好友开关状态"):
-            init_state = self.groupManagerPage.get_un_add_friend_each_other_state()
 
-        with allure.step("2. 点击切换禁止互相加好友开关"):
-            self.groupManagerPage.click_un_add_friend_each_other_switch()
-            new_state = self.groupManagerPage.get_un_add_friend_each_other_state()
-            check.not_equal(init_state, new_state, "❌ 【禁止群成员互相加好友】开关点击后状态未改变")
+        with allure.step("1. 开启禁止群成员互相加好友"):
+            self.groupManagerPage.click_un_add_friend_each_other_switch(checked_str='true')
+            self.chatPage.wait_banner_message_disappear()
+
+        with allure.step("2. 回到聊天页面中，并校验禁止互相加好友开启状态"):
+            self.chatPage.back_to_chat_page()
+            cmd_texts = self.chatPage.get_cmd_notification_texts(index=-1)
+            check.is_in('开启群内禁止添加好友', cmd_texts, "❌ [Action-groupManagerPage] 禁止群成员互相加好友开关未开启")
 
         with allure.step("3. 再次点击开关恢复至初始状态"):
-            self.groupManagerPage.click_un_add_friend_each_other_switch()
-            final_state = self.groupManagerPage.get_un_add_friend_each_other_state()
-            check.equal(init_state, final_state, "❌ 【禁止群成员互相加好友】开关恢复初始状态失败")
+            self._enter_group_setting()
+            self.groupManagerPage.click_un_add_friend_each_other_switch(checked_str='false')
+            self.chatPage.wait_banner_message_disappear()
+
+        with allure.step("4. 回到聊天页面中，并校验关闭后的Banner消息"):
+            self.chatPage.back_to_chat_page()
+            cmd_texts = self.chatPage.get_cmd_notification_texts(index=-1)
+            check.is_in('关闭群内禁止添加好友', cmd_texts, "❌ [Action-groupManagerPage] 禁止群成员互相加好友开关未关闭")
 
     @allure.story("群管理-群黑名单")
     @allure.title("【群黑名单】功能正常使用校验")

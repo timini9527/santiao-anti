@@ -341,5 +341,24 @@ def driver_receiver():
 
 
 
-
-
+# Testing 中映射用例名称（使用 allure.title或者docstring 第一行）
+# def pytest_itemcollected(item):
+#     """
+#     pytest 收集用例时的钩子：为用例添加自定义中文名称（优先使用 allure.title，其次使用 docstring）
+#     这可以在 IDE（如 VS Code Testing 面板）和命令行执行输出中显示直观的中文名称
+#     """
+#     try:
+#         # 1. 尝试从 allure.title 中获取自定义名称 (allure 内部使用 allure_display_name 标记)
+#         allure_marker = item.get_closest_marker("allure_display_name")
+#         if allure_marker and allure_marker.args:
+#             custom_name = allure_marker.args[0]
+#             # item.name = f"{item.name} [{custom_name}]"
+#             item.name = f"[{custom_name}]"
+#         # 2. 如果没有 allure.title，则使用函数 docstring 的第一行
+#         elif item.obj and item.obj.__doc__:
+#             doc_first_line = item.obj.__doc__.strip().split('\n')[0].strip()
+#             if doc_first_line:
+#                 # item.name = f"{item.name} [{doc_first_line}]"
+#                 item.name = f"[{doc_first_line}]"
+#     except Exception as e:
+#         logger.warning(f"⚠️ [Hook-pytest_itemcollected] 自定义用例名称失败: {e}")

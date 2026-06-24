@@ -3,7 +3,6 @@ from core.logger_utils import logger
 from common.base_page import BasePage
 from locators.groups.setting.manager.group_manager_locator import GroupManagerLocator
 from selenium.webdriver.remote.webelement import WebElement
-from appium.webdriver.common.appiumby import AppiumBy
 
 
 class GroupManagerPage(BasePage):
@@ -22,6 +21,18 @@ class GroupManagerPage(BasePage):
         """顶部-点击顶部返回按钮"""
         self.click(GroupManagerLocator.IV_BACK)
         logger.info("⚙️ [Action-groupManagerPage] 点击顶部【返回】按钮")
+    
+    # 顶部-点击确定按钮
+    def click_confirm_button(self):
+        """顶部-点击确定按钮"""
+        self.click(GroupManagerLocator.FB_BTN)
+        logger.info("⚙️ [Action-groupManagerPage] 点击顶部【确定】按钮")
+
+    # 顶部-点击编辑完成按钮
+    def click_edit_finish_button(self):
+        """顶部-点击编辑完成按钮"""
+        self.click(GroupManagerLocator.EDIT_TO_BTN)
+        logger.info("⚙️ [Action-groupManagerPage] 点击编辑【完成】按钮")
 
     # 群管理-点击升级群组
     def click_upgrade_group(self):
@@ -109,7 +120,7 @@ class GroupManagerPage(BasePage):
     # 管理员-根据姓名点击列表中的某个成员
     def click_member_by_name(self, name: str):
         """管理员-根据姓名点击列表中的某个成员"""
-        locator = (AppiumBy.XPATH, f"//android.widget.TextView[@resource-id='{GroupManagerLocator.PACKAGE_ID}/friend_name' and @text='{name}']")
+        locator = GroupManagerLocator.get_member_by_text(name)
         self.click(locator)
         logger.info(f"⚙️ [Action-groupManagerPage] 点击列表中姓名为【{name}】的成员")
         time.sleep(0.5)
@@ -121,58 +132,144 @@ class GroupManagerPage(BasePage):
         logger.info(f"✅ [Action-groupManagerPage] 获取角色标签: {res}")
         return res
     
+    # 管理员-点击移除管理员按钮
+    def click_sure_button(self):
+        """管理员-点击移除管理员按钮"""
+        self.click(GroupManagerLocator.SURE_BTN)
+        logger.info("⚙️ [Action-groupManagerPage] 点击【移除管理员】按钮")
+
+    # 管理员-点击二次弹窗移除按钮
+    def click_sure_content_button(self):
+        """管理员-点击二次弹窗移除按钮"""
+        self.click(GroupManagerLocator.TV_CONTENT)
+        logger.info("⚙️ [Action-groupManagerPage] 点击【移除】按钮")
+
 
     # =========================================================================================
     # Switch 开关类操作
     # =========================================================================================
     
-    # 1. 群ID搜索开关
-    def get_group_id_search_state(self) -> bool:
-        """获取【群ID搜索】开关状态"""
+    # Switch - 获取群ID搜索开关
+    def get_group_id_search_state(self) -> str:
+        """Switch - 获取【群ID搜索】开关状态"""
         res = self.get_attribute(GroupManagerLocator.GROUP_ID_SEARCH_SWITCH, "checked")
         logger.info(f"⚙️ [Action-groupManagerPage] 获取【群ID搜索】开关状态: {res}")
-        return str(res).lower() == 'true'
+        return str(res).lower()
+    
+    # Switch - 点击群ID搜索开关
+    def click_group_id_search_switch(self, checked_str):
+        """Switch - 点击【群ID搜索】开关"""
+        init_state = self.get_group_id_search_state()
+        if init_state == checked_str:
+            logger.info(f"⚙️ [Action-groupManagerPage] 【群ID搜索】开关状态已经是{checked_str},无需点击")
+        else:
+            self.click(GroupManagerLocator.GROUP_ID_SEARCH_SWITCH)
+            time.sleep(1)
+            logger.info(f"⚙️ [Action-groupManagerPage] 将【群ID搜索】开关设置为{checked_str}")
 
-    def click_group_id_search_switch(self):
-        """点击【群ID搜索】开关"""
-        self.click(GroupManagerLocator.GROUP_ID_SEARCH_SWITCH)
-        logger.info("⚙️ [Action-groupManagerPage] 点击【群ID搜索】开关")
-
-    # 2. 进群验证开关
-    def get_join_group_verify_state(self) -> bool:
-        """获取【进群验证】开关状态"""
+    # Switch - 获取进群验证开关
+    def get_join_group_verify_state(self) -> str:
+        """Switch - 获取【进群验证】开关状态"""
         res = self.get_attribute(GroupManagerLocator.JOIN_TO_GROUP_VERIFY_SWITCH, "checked")
         logger.info(f"⚙️ [Action-groupManagerPage] 获取【进群验证】开关状态: {res}")
-        return str(res).lower() == 'true'
-
-    def click_join_group_verify_switch(self):
-        """点击【进群验证】开关"""
-        self.click(GroupManagerLocator.JOIN_TO_GROUP_VERIFY_SWITCH)
-        logger.info("⚙️ [Action-groupManagerPage] 点击【进群验证】开关")
-
-    # 3. 全员禁言开关
-    def get_all_member_mute_state(self) -> bool:
-        """获取【全员禁言】开关状态"""
+        return str(res).lower()
+    
+    # Switch - 点击进群验证开关
+    def click_join_group_verify_switch(self, checked_str):
+        """Switch - 点击【进群验证】开关"""
+        init_state = self.get_join_group_verify_state()
+        if init_state == checked_str:
+            logger.info(f"⚙️ [Action-groupManagerPage] 【进群验证】开关状态已经是{checked_str},无需点击")
+        else:
+            self.click(GroupManagerLocator.JOIN_TO_GROUP_VERIFY_SWITCH)
+            time.sleep(1)
+            logger.info(f"⚙️ [Action-groupManagerPage] 将【进群验证】开关设置为{checked_str}")
+    
+    # Switch - 获取全员禁言开关
+    def get_all_member_mute_state(self) -> str:
+        """Switch - 获取【全员禁言】开关状态"""
         res = self.get_attribute(GroupManagerLocator.ALL_MEMBER_MUTE_SWITCH, "checked")
         logger.info(f"⚙️ [Action-groupManagerPage] 获取【全员禁言】开关状态: {res}")
-        return str(res).lower() == 'true'
+        return str(res).lower()
+    
+    # Switch - 点击全员禁言开关
+    def click_all_member_mute_switch(self, checked_str):
+        """Switch - 点击【全员禁言】开关"""
+        init_state = self.get_all_member_mute_state()
+        if init_state == checked_str:
+            logger.info(f"⚙️ [Action-groupManagerPage] 【全员禁言】开关状态已经是{checked_str},无需点击")
+        else:
+            self.click(GroupManagerLocator.ALL_MEMBER_MUTE_SWITCH)
+            time.sleep(1)
+            logger.info(f"⚙️ [Action-groupManagerPage] 将【全员禁言】开关设置为{checked_str}")
 
-    def click_all_member_mute_switch(self):
-        """点击【全员禁言】开关"""
-        self.click(GroupManagerLocator.ALL_MEMBER_MUTE_SWITCH)
-        logger.info("⚙️ [Action-groupManagerPage] 点击【全员禁言】开关")
-
-    # 4. 禁止群成员互相加好友开关
-    def get_un_add_friend_each_other_state(self) -> bool:
-        """获取【禁止群成员互相加好友】开关状态"""
+    # Switch - 获取禁止群成员互相加好友开关
+    def get_un_add_friend_each_other_state(self) -> str:
+        """Switch - 获取【禁止群成员互相加好友】开关状态"""
         res = self.get_attribute(GroupManagerLocator.UN_ADD_FRIEND_EACH_OTHER_SWITCH, "checked")
         logger.info(f"⚙️ [Action-groupManagerPage] 获取【禁止群成员互相加好友】开关状态: {res}")
-        return str(res).lower() == 'true'
+        return str(res).lower()
 
-    def click_un_add_friend_each_other_switch(self):
-        """点击【禁止群成员互相加好友】开关"""
-        self.click(GroupManagerLocator.UN_ADD_FRIEND_EACH_OTHER_SWITCH)
-        logger.info("⚙️ [Action-groupManagerPage] 点击【禁止群成员互相加好友】开关")
+    # Switch - 点击禁止群成员互相加好友开关
+    def click_un_add_friend_each_other_switch(self, checked_str):
+        """Switch - 点击【禁止群成员互相加好友】开关"""
+        init_state = self.get_un_add_friend_each_other_state()
+        if init_state == checked_str:
+            logger.info(f"⚙️ [Action-groupManagerPage] 【禁止群成员互相加好友】开关状态已经是{checked_str},无需点击")
+        else:
+            self.click(GroupManagerLocator.UN_ADD_FRIEND_EACH_OTHER_SWITCH)
+            time.sleep(1)
+            logger.info(f"⚙️ [Action-groupManagerPage] 将【禁止群成员互相加好友】开关设置为{checked_str}")
+
+    # Switch - 获取 switch item 列表（支持状态过滤）
+    def get_switch_items(self, checked_str: str = None) -> list[WebElement]:
+        """Switch - 获取 switch item 列表（可按 checked_str "true"/"false" 过滤，None 表示获取全部）"""
+        if checked_str is None:
+            locator = GroupManagerLocator.SWITCH_BTN
+            desc = "全部"
+        else:
+            locator = GroupManagerLocator.get_switch_by_checked_value(checked_str)
+            desc = "已开启" if checked_str == "true" else "未开启"
+
+        switch_item_list = self.find_elements(locator)
+        if not switch_item_list:
+            logger.warning(f"⚠️ [Action-groupManagerPage] 未找到【{desc}】的 switch item")
+            return []
+        logger.info(f"✅ [Action-groupManagerPage] 获取【{desc}】的 switch item 列表, 共找到 {len(switch_item_list)} 个")
+        return switch_item_list
+    
+    # Switch - 开启/关闭全部指定状态的 switch
+    def click_all_switch(self, checked_str: str = "true", max_swipes: int = 5):
+        """Switch - 开启/关闭全部指定状态的 switch（支持滑动遍历，checked_str=None 表示不分状态点击全部）"""
+        swipes = 0
+        desc = "全部" if checked_str is None else ("已开启" if checked_str == "true" else "未开启")
+        last_source = ""
+
+        while swipes <= max_swipes:
+            is_changed, last_source = self.is_page_source_changed(last_source)
+            if swipes > 0 and not is_changed:
+                logger.info("⚙️ [Action-groupManagerPage] 滑动后页面 DOM 无变化，已达底部边界，退出切换")
+                break
+
+            current_elements = self.get_switch_items(checked_str=checked_str)
+            if current_elements:
+                for elem in current_elements:
+                    try:
+                        elem.click()
+                        logger.info(f"⚙️ [Action-groupManagerPage] 已点击切换【{desc}】开关")
+                        time.sleep(0.5)
+                    except Exception as e:
+                        logger.warning(f"⚠️ [Action-groupManagerPage] 点击开关失败: {e}")
+            
+            if swipes < max_swipes:
+                logger.info(f"⚙️ [Action-groupManagerPage] 向下滚动寻找更多开关... (当前已滑动 {swipes} 次)")
+                _, last_source = self.is_page_source_changed("")
+                self.swipe_page(slid_type="up")
+                time.sleep(0.5)
+            else:
+                break
+            
+            swipes += 1
 
 
 
@@ -235,7 +332,26 @@ class GroupManagerPage(BasePage):
         """禁言-点击移除禁言后的二次弹窗取消按钮"""
         self.click(GroupManagerLocator.NEGATIVE_BUTTON)
         logger.info("⚙️ [Action-groupManagerPage] 禁言-点击移除禁言后的二次弹窗取消按钮")
+    
+    # 指定禁言-临时禁言，获取禁言时间
+    def get_temp_mute_time(self) -> str:
+        """指定禁言-临时禁言，获取禁言时间"""
+        res = self.get_attribute(GroupManagerLocator.TV_TIME, "text")
+        if not res:
+            logger.warning("⚠️ [Action-groupManagerPage] 未找到禁言时间")
+            return ""
+        logger.info(f"✅ [Action-groupManagerPage] 成功获取禁言时间: {res}")
+        return res
 
+    # TODO：
+    # 指定禁言-临时禁言-选择时长，默认10分钟，切换时间
+    def click_time(self):
+        """临时禁言-选择时长，默认10分钟"""
+        
+        # 禁言时长档位（顺序与 picker 滚轮从上到下一致），页面与测试参数化共用，避免重复维护
+        MUTE_DURATION_OPTIONS = ["10分钟", "30分钟", "2小时", "1天", "7天", "30天", "永久禁言"]
+        self.click(GroupManagerLocator.TV_TIME)
+        logger.info("⚙️ [Action-groupManagerPage] 临时禁言-选择时长，默认10分钟")
 
     # 禁言-解除某一个成员禁言
     def click_cancel_mute(self, name: str):

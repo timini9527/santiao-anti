@@ -8,9 +8,12 @@ class GroupManagerLocator(CommonLocator):
     PACKAGE_ID = CommonLocator.PACKAGE_ID
 
     # 顶部导航
-    IV_BACK = CommonLocator.TOP_IV_BACK                                                 # 返回按钮
+    IV_BACK = CommonLocator.TOP_IV_BACK_BTN                                             # 返回按钮
     TV_TITLE = CommonLocator.TOP_TV_TITLE                                               # 顶部标题
     TITLE_TV = CommonLocator.TOPBAR_TITLE                                               # 标题
+    FB_BTN = CommonLocator.TOP_FB_ACTION_BTN                                            # 完成/确定
+    EDIT_TO_BTN = CommonLocator.TOPBAR_RIGHT_FINISH_BTN                                 # 编辑完成按钮
+
 
     # 列表项
     VIEW_UPDATE_GROUP = (AppiumBy.ID, f"{PACKAGE_ID}/view_update_group")                                 # 升级群组
@@ -20,6 +23,8 @@ class GroupManagerLocator(CommonLocator):
     GROUP_BLACK_MEMBER = (AppiumBy.ID, f"{PACKAGE_ID}/group_black_member")                               # 群黑名单
     GROUP_GIVE = (AppiumBy.ID, f"{PACKAGE_ID}/group_give")                                               # 转让群主
     DISMISS_GROUP = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_groupDismiss")                             # 解散群组
+    SWITCH_BTN_ID = f"{PACKAGE_ID}/switch_btn"
+    SWITCH_BTN = (AppiumBy.ID, SWITCH_BTN_ID)                                                            # Switch 开关
 
     # 具有 Switch 开关的配置项及其对应的开关按钮
     GROUP_ID_SEARCH_SWITCH = (AppiumBy.XPATH, 
@@ -38,20 +43,29 @@ class GroupManagerLocator(CommonLocator):
     # ===================================================================================
     EDIT_SEARCH = (AppiumBy.ID, f"{PACKAGE_ID}/edit_search")                                    # 管理员搜索框
     MEMBER_TYPE = (AppiumBy.ID, f"{PACKAGE_ID}/member_type")                                    # 管理员/群成员标签标识
-    IT_ADD_FRIEND = (AppiumBy.ID, f"{PACKAGE_ID}/it_add_friend")                                # 新增管理员按钮
+    IT_ADD_FRIEND = (AppiumBy.ID, f"{PACKAGE_ID}/lt_add_friend")                                # 新增管理员按钮
     search_edit_text = (AppiumBy.ID, f"{PACKAGE_ID}/search_edit_text")                          # 成员搜索输入框
-    IT_GROUP_MANAGER = (AppiumBy.ID, f"{PACKAGE_ID}/it_group_manager")                          # 管理员
     TV_FRIEND_HEADER = (AppiumBy.ID, f"{PACKAGE_ID}/friend_header")                             # 成员头像
     TV_FRIEND_NAME_ID = f"{PACKAGE_ID}/friend_name"
     TV_FRIEND_NAME = (AppiumBy.ID, TV_FRIEND_NAME_ID)                                           # 成员名称
 
+    # 管理员内部权限管理
+    IC_LAYOUT = (AppiumBy.ID, f"{PACKAGE_ID}/ic_layout")                                        # 权限 LAYOUT
+    SURE_BTN = (AppiumBy.ID, f"{PACKAGE_ID}/sure")                                              # 移除管理员按钮
+    TV_CONTENT = (AppiumBy.ID, f"{PACKAGE_ID}/tv_content")                                      # 二次弹窗移除按钮
+
+    
     # 通过姓名获取成员
     @classmethod
     def get_member_by_text(cls, name: str) -> tuple:
         """通过姓名获取成员"""
         return (AppiumBy.XPATH, f"//*[@resource-id='{cls.TV_FRIEND_NAME_ID}' and @text='{name}']")
 
-
+    # 通过 checked 状态定位到switch：false/true状态的开关
+    @classmethod
+    def get_switch_by_checked_value(cls, checked: str) -> tuple:
+        """通过 checked 状态定位到 switch：false/true状态的开关"""
+        return (AppiumBy.XPATH, f"//*[@resource-id='{cls.SWITCH_BTN_ID}' and @checked='{checked}']")
 
 
     # ===================================================================================
@@ -72,7 +86,15 @@ class GroupManagerLocator(CommonLocator):
     POSITIVE_BUTTON = (AppiumBy.ID, f"{PACKAGE_ID}/positiveButton")                         # 确认按钮
     NEGATIVE_BUTTON = (AppiumBy.ID, f"{PACKAGE_ID}/negativeButton")                         # 取消按钮
     
+    # 禁言设置页面
+    CB_1 = (AppiumBy.ID, f"{PACKAGE_ID}/cb_1")                                              # 永久禁言
+    CB_2 = (AppiumBy.ID, f"{PACKAGE_ID}/cb_2")                                              # 临时禁言
+    TV_TIME = (AppiumBy.ID, f"{PACKAGE_ID}/tv_time")                                        # 临时禁言时长
+    ED_CONTENT = (AppiumBy.ID, f"{PACKAGE_ID}/et_content")                                  # 禁言原因输入框
+    TV_SURE = (AppiumBy.ID, f"{PACKAGE_ID}/tv_sure")                                        # 确认按钮
 
+
+    
     # 通过昵称定位到成员
     @classmethod
     def get_member_by_name(cls, name: str) -> tuple:

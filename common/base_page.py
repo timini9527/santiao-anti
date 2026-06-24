@@ -314,7 +314,6 @@ class BasePage:
         logger.info(f"[Action] 输入消息: {text}")
 
 
-
     @allure.step("系统返回")
     def back(self):
         self.driver.back()

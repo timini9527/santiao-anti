@@ -72,13 +72,13 @@ class ChatPage(BasePage):
         logger.info(f"🚀[Action-chat] - 开始循环尝试返回聊天页面，最大重试次数: {max_retries}")
         
         for i in range(max_retries):
-            if self.wait_for_chat_page_load(timeout=2):
+            if self.wait_for_chat_page_load(timeout=1, raise_exception=False):
                 logger.info(f"✅ [Action-chat] - 确认当前已处于聊天页面 (尝试次数: {i})")
                 return True
 
             logger.info(f"🔄 [Action-chat] - 未检测到聊天主界面，执行第 {i+1} 次返回...")
             self.back()
-            time.sleep(0.1)
+            time.sleep(0.3)
         logger.error(f"❌ [Action-chat] - 尝试返回 {max_retries} 次后仍未能回到聊天页面")
         return False
 
@@ -497,6 +497,34 @@ class ChatPage(BasePage):
                 child_elem.click()
                 return
         logger.error(f"✖️ 功能面板中未匹配到指定按钮: {attrName}")
+
+    # CMD通知-获取聊天界面所有系统CMD通知消息: 包含撤回、截屏、进群消息、群聊等
+    def get_all_cmd_notifications(self) -> list:
+        """CMD通知-获取聊天界面所有系统CMD通知消息: 包含撤回、截屏、进群消息、群聊等"""
+        cmd_elems = self.find_elements(ChatLocator.WITHDRAW_MESSAGE_ITEM)
+        if not cmd_elems or len(cmd_elems) == 0:
+            logger.error(f"没有找到聊天界面中的CMD通知消息")
+            return []
+        logger.info(f"[Assert] 获取聊天界面所有CMD通知消息")
+        return cmd_elems
+
+    # CMD通知-获取聊天界面所有CMD通知消息-texts内容
+    def get_cmd_notification_texts(self, index: int | None = None) -> list[str] | str:
+        """CMD通知-获取聊天界面所有CMD通知消息-texts内容"""
+        cmd_elems = self.get_all_cmd_notifications()
+        if not cmd_elems:
+            return [] if index is None else ""
+        cmd_texts = [cmd.text for cmd in cmd_elems]
+        logger.info(f"[Assert] 获取聊天界面所有CMD通知消息texts内容: {cmd_texts}")
+        
+        if index is None:
+            return cmd_texts
+        
+        try:
+            return cmd_texts[index]
+        except IndexError:
+            logger.error(f"❌ [Assert] 索引 {index} 越界，当前共有 {len(cmd_texts)} 条通知消息")
+            return ""
 
     
 
