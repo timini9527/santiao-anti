@@ -54,10 +54,10 @@ devices:
   #    platformVersion: "11.0"
   #    udid: "dfa6dc15"      # 通过 adb devices 获取
       platformVersion: "12.0"
-      udid: "emulator-5556"  # 模拟器
+      udid: "emulator-5560"  # 模拟器
       deviceName: "ReceiverPhone"
       systemPort: 8201         # 关键！必须与 Sender 不同
-      appiumServerUrl: "http://127.0.0.1:4724/wd/hub" # 建议启动两个Appium服务避免拥堵
+      appiumServerUrl: "http://127.0.0.1:4724" # 建议启动两个Appium服务避免拥堵
       # wdaLocalPort: 8101     # iOS 必须不同
 
   test:

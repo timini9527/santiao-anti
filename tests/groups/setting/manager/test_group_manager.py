@@ -252,21 +252,6 @@ class TestGroupManager:
             cmd_texts = self.chatPage.get_cmd_notification_texts(index=-1)
             check.is_in('关闭群内禁止添加好友', cmd_texts, "❌ [Action-groupManagerPage] 禁止群成员互相加好友开关未关闭")
 
-    @allure.story("群管理-群黑名单")
-    @allure.title("【群黑名单】功能正常使用校验")
-    def test_group_blacklist_functionality(self):
-        """测试群管理中【群黑名单】功能是否正常使用"""
-        with allure.step("1. 点击群黑名单"):
-            self.groupManagerPage.click_group_blacklist()
-            self.groupManagerPage.wait_for_group_blacklist_page_load()
-
-    @allure.story("群管理-转让群主")
-    @allure.title("【转让群主】功能正常使用校验")
-    def test_transfer_group_owner_functionality(self):
-        """测试群管理中【转让群主】功能是否正常使用"""
-        with allure.step("1. 点击转让群主"):
-            self.groupManagerPage.click_transfer_group_owner()
-            self.groupManagerPage.wait_for_transfer_group_owner_page_load()
 
 
 

@@ -45,10 +45,10 @@ class GroupManagerLocator(CommonLocator):
     EDIT_SEARCH = (AppiumBy.ID, f"{PACKAGE_ID}/edit_search")                                    # 管理员搜索框
     MEMBER_TYPE = (AppiumBy.ID, f"{PACKAGE_ID}/member_type")                                    # 管理员/群成员标签标识
     IT_ADD_FRIEND = (AppiumBy.ID, f"{PACKAGE_ID}/lt_add_friend")                                # 新增管理员按钮
-    search_edit_text = (AppiumBy.ID, f"{PACKAGE_ID}/search_edit_text")                          # 成员搜索输入框
     TV_FRIEND_HEADER = (AppiumBy.ID, f"{PACKAGE_ID}/friend_header")                             # 成员头像
     TV_FRIEND_NAME_ID = f"{PACKAGE_ID}/friend_name"
     TV_FRIEND_NAME = (AppiumBy.ID, TV_FRIEND_NAME_ID)                                           # 成员名称
+    SEARCH_EDIT_TEXT = (AppiumBy.ID, f"{PACKAGE_ID}/search_edit_text")                          # 搜索框编辑框
 
     # 管理员内部权限管理
     IC_LAYOUT = (AppiumBy.ID, f"{PACKAGE_ID}/ic_layout")                                        # 权限 LAYOUT
@@ -115,3 +115,21 @@ class GroupManagerLocator(CommonLocator):
         """通过昵称定位到其禁言状态元素"""
         return (AppiumBy.XPATH, f"//*[@resource-id='{cls.TV_NAME_ID}' and @text='{name}']/following-sibling::*[@resource-id='{cls.TV_STATUS_ID}']")
 
+
+    # ==================================================================================
+    # 群黑名单
+    # ==================================================================================
+    ADD_MEMBER_LL = (AppiumBy.ID, f"{PACKAGE_ID}/add_member_ll")                            # 添加成员行
+    ADD_MEMBER = (AppiumBy.ID, f"{PACKAGE_ID}/add_member")                                  # 添加成员 + 号
+    GROUP_BLACK_MEMBER_RV = (AppiumBy.ID, f"{PACKAGE_ID}/group_black_member_rv")            # 群黑名单列表
+    BLACK_REMOVE_MEMBER_ID = f"{PACKAGE_ID}/black_remove_member"
+    BLACK_REMOVE_MEMBER = (AppiumBy.ID, BLACK_REMOVE_MEMBER_ID)                             # 移除黑名单按钮
+
+    TEXT_CONFIRM_BTN = CommonLocator.TEXT_CONFIRM_BTN                                       # 移除黑名单二次确认
+    TEXT_CANCEL_BTN = CommonLocator.TEXT_CANCEL_BTN                                         # 移除黑名单二次确认
+
+    # 根据昵称定位黑名单移除按钮
+    @classmethod
+    def get_black_remove_member(cls, name: str) -> tuple:
+        """通过姓名获取移除黑名单按钮"""
+        return (AppiumBy.XPATH, f"//*[@resource-id='{cls.TV_FRIEND_NAME_ID}' and @text='{name}']/following-sibling::*[@resource-id='{cls.BLACK_REMOVE_MEMBER_ID}']")

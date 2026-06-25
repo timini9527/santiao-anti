@@ -36,6 +36,12 @@ class GroupSettingPage(BasePage):
             return []
         logger.info(f"✅ [Action-groupSettingPage] 群聊设置页 - 获取群成员头像成功，共 {len(elements)} 个")
         return elements
+    
+    # 群成员-点击群成员头像【+】按钮 (friend_headers 倒数第二个为 + 号)
+    def click_add_friend_header(self):
+        """群成员-点击群成员头像【+】按钮"""
+        self.get_friend_headers()[-2].click()
+        logger.info("⚙️ [Action-groupSettingPage] 群聊设置页 - 点击【群成员头像【+】按钮】")
 
     # 群成员-点击群成员头像（默认为群助手/群主）
     def click_friend_header(self):

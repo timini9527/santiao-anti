@@ -103,7 +103,7 @@ class GroupManagerPage(BasePage):
     # 管理员-在成员搜索输入框输入关键字
     def input_member_search_keyword(self, keyword: str):
         """管理员-在成员搜索输入框输入关键字"""
-        self.send_keys(GroupManagerLocator.search_edit_text, keyword)
+        self.send_keys(GroupManagerLocator.SEARCH_EDIT_TEXT, keyword)
         logger.info(f"✍️ [Action-groupManagerPage] 成员搜索输入框输入: '{keyword}'")
 
     # 管理员-获取当前列表展示的所有成员姓名
@@ -124,6 +124,13 @@ class GroupManagerPage(BasePage):
         self.click(locator)
         logger.info(f"⚙️ [Action-groupManagerPage] 点击列表中姓名为【{name}】的成员")
         time.sleep(0.5)
+    
+    # 管理员-先通过搜索，再点击搜索结果中的某个成员
+    def click_member_by_search_keyword(self, name: str):
+        """管理员-先通过搜索，再点击搜索结果中的某个成员"""
+        self.input_member_search_keyword(name)
+        self.click_member_by_name(name)
+        logger.info(f"⚙️ [Action-groupManagerPage] 点击搜索结果中的【{name}】成员")
 
     # 管理员-获取管理员/群成员标签标识文本
     def get_member_type(self) -> str:
@@ -382,10 +389,9 @@ class GroupManagerPage(BasePage):
     # 指定禁言-临时禁言-选择时长，并且支持切换禁言时长选项
     def click_set_mute_duration(self, rule_time: str, old_summary: str = "10分钟"):
         """指定禁言-临时禁言-选择并切换指定的禁言时长"""
-        MUTE_DURATION_OPTIONS = ["10分钟", "30分钟", "2小时", "1天", "3天", "7天", "30天", "永久禁言"]
+        MUTE_DURATION_OPTIONS = ["10分钟", "30分钟", "2小时", "1天", "3天", "7天", "30天"]
         logger.info(f"⚙️ [Action-groupManagerPage] 正在设置禁言时长为: {rule_time} (当前页面旧值: {old_summary})")
 
-        # 如果新旧值相同，直接点击确认关闭即可
         if old_summary and rule_time == old_summary:
             self.click_select_time()
             return True
@@ -457,6 +463,75 @@ class GroupManagerPage(BasePage):
                 break
 
 
+    # ================================================================================
+    # 群黑名单相关
+    # ================================================================================         
+    # 群黑名单-等待群黑名单页面加载完成
+    def wait_for_group_blacklist_page_load(self, timeout: int = 10) -> bool:
+        """群黑名单-等待群黑名单页面加载完成"""
+        res = self.get_attribute(GroupManagerLocator.TV_TITLE, "text") == "群黑名单"
+        logger.info(f"⏳ [Action-groupManagerPage] 群黑名单页面 - 加载{'成功' if res else '超时'}")
+        time.sleep(0.5)
+        return res
+
+    # 群黑名单-点击添加黑名单成员
+    def click_add_black_member(self):
+        """群黑名单-点击添加黑名单成员"""
+        self.click(GroupManagerLocator.ADD_MEMBER_LL)
+        logger.info("⚙️ [Action-groupManagerPage] 群黑名单-点击添加黑名单成员")
+
+    # 群黑名单-移除黑名单成员
+    def click_black_remove_member(self, name: str):
+        """群黑名单-点击移除黑名单成员"""
+        self.click(GroupManagerLocator.get_black_remove_member(name))
+        logger.info(f"⚙️ [Action-groupManagerPage] 群黑名单-移除【{name}】的黑名单")
+
+    # 群黑名单-获取当前列表展示的某一个成员姓名
+    def is_black_member_name_exist(self, name: str) -> bool:
+        """群黑名单-获取当前列表展示的某一个成员姓名"""
+        black_list = self.find_elements(GroupManagerLocator.get_member_by_text(name), timeout=1)
+        if not black_list:
+            logger.warning(f"⚠️ [Action-groupManagerPage] 未找到列表中的成员姓名: {name}")
+            return False
+        logger.info(f"✅ [Action-groupManagerPage] 获取成员姓名: {name}")
+        return True
+
+    # 群黑名单-获取当前列表展示的所有成员姓名
+    def get_black_member_names(self) -> list[str]:
+        """群黑名单-获取当前列表展示的所有成员姓名"""
+        elements = self.find_elements(GroupManagerLocator.TV_FRIEND_NAME)
+        if not elements:
+            logger.warning("⚠️ [Action-groupManagerPage] 未找到列表中的成员姓名")
+            return []
+        names = [el.get_attribute("text") for el in elements]
+        logger.info(f"✅ [Action-groupManagerPage] 获取成员姓名成功: {names}")
+        return names
+
+    # 群黑名单-二次确认-点击确认按钮
+    def click_black_remove_member_confirm(self):
+        """群黑名单-二次确认-点击确认按钮"""
+        self.click(GroupManagerLocator.TEXT_CONFIRM_BTN)
+        logger.info("⚙️ [Action-groupManagerPage] 群黑名单-二次确认-点击确认按钮")
+        time.sleep(0.5)
+    
+    # 群黑名单-二次确认-点击取消按钮
+    def click_black_remove_member_cancel(self):
+        """群黑名单-二次确认-点击取消按钮"""
+        self.click(GroupManagerLocator.TEXT_CANCEL_BTN)
+        logger.info("⚙️ [Action-groupManagerPage] 群黑名单-二次确认-点击取消按钮")
+        time.sleep(0.5)
+
+
+    # ==================================================================================
+    # 转让群主相关
+    # ==================================================================================
+    # 群管理-等待转让群主页面加载完成
+    def wait_for_transfer_group_owner_page_load(self, timeout: int = 10) -> bool:
+        """等待转让群主页面加载完成"""
+        res = self.get_attribute(GroupManagerLocator.TV_TITLE, "text") == "转让群主"
+        logger.info(f"⏳ [Action-groupManagerPage] 转让群主页面 - 加载{'成功' if res else '超时'}")
+        time.sleep(0.5)
+        return res
 
 
 

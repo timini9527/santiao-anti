@@ -59,9 +59,6 @@ class ContactSelectLocator(CommonLocator):
     # 好友已勾选    
     CB_SELECT_CHECKED = (AppiumBy.XPATH, f'//*[@resource-id="{RV_FRIENDS_ID}"]/android.view.ViewGroup/*[@resource-id="{CB_SELECT_ID}" and @checked="true"]')        
 
-
-    
-
     
 
     # 好友页面通过好友名字定位
