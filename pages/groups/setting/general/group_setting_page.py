@@ -92,7 +92,17 @@ class GroupSettingPage(BasePage):
         """群功能项-点击群管理"""
         self.click(GroupSettingLocator.SETTING_CHAT_GROUP_MANAGER)
         logger.info("✅ [Action-groupSettingPage] 群聊设置页 - 点击【群管理】")
-
+    
+    # 群功能项-群管理是否存在
+    def is_group_manager_visible(self) -> bool:
+        """群功能项-群管理是否存在"""
+        res = self.is_element_exist(GroupSettingLocator.SETTING_CHAT_GROUP_MANAGER, timeout=1)
+        if res:
+            logger.info("✅ [Action-groupSettingPage] 群聊设置页 - 群管理存在")
+        else:
+            logger.warning("⚠️ [Action-groupSettingPage] 群聊设置页 - 群管理不存在")
+        return res
+    
     # 群功能项-点击群头像
     def click_group_avatar(self):
         """群功能项-点击群头像"""

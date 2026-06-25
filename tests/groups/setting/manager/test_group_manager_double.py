@@ -168,7 +168,7 @@ class TestGroupManagerDouble:
             self.groupManagerS.click_group_give()
 
         with allure.step("2. 选择需要转让的新群主(接收端成员)"):
-            self.groupManagerS.click_member_by_name(name=new_owner_name)
+            self.groupManagerS.click_member_by_name(name=PRIVATE_USER1.name)
             self.groupManagerS.click_black_remove_member_confirm()
             self.chatS.wait_banner_message_disappear()
 
@@ -189,6 +189,10 @@ class TestGroupManagerDouble:
             self.groupManagerR.click_member_by_name(name=new_owner_name)
             self.groupManagerR.click_black_remove_member_confirm()
             self.chatR.wait_banner_message_disappear()
+            is_visible = self.groupSettingR.is_group_manager_visible()
+            check.is_false(is_visible, "❌ 新群主(接收端)未重获群管理权限")
 
         with allure.step("6. 校验双方状态已复原(发送端重获群管理权限)"):
-            pass
+            self.chatS.click_more_button()
+            is_visible = self.groupSettingS.is_group_manager_visible()
+            check.is_true(is_visible, "❌ 原群主(发送端)未重获群管理权限")
