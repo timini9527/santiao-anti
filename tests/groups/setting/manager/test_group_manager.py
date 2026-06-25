@@ -262,9 +262,13 @@ class TestGroupManager:
             self.groupManagerPage.click_group_give()
             self.groupManagerPage.click_member_by_name(name=new_owner_name)
 
-        with allure.step("2. toast 自己验证"):
+        with allure.step("2. 验证toast：你已经是群主"):
             toasts = self.chatPage.get_toast()
             check.is_in('你已经是群主', toasts, f"❌ [Action-groupManagerPage] 转让群主失败，toast: {toasts}")
+
+        with allure.step("3. 退出群管理页面"):
+            self.groupManagerPage.click_back_button()
+            
 
 
 
