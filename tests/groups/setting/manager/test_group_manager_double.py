@@ -13,7 +13,7 @@ from pages.chat.chat_page import ChatPage
 from pages.chat.chat_list_page import ChatListPage
 from pages.common.contact_select_page import ContactSelectPage
 from pages.common.session_select_page import SessionSelectPage
-from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, GROUP_STRATEGY
+from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, PRIVATE_USER3, GROUP_STRATEGY
 
 
 @allure.epic("IM核心功能测试")
@@ -33,6 +33,8 @@ class TestGroupManagerDouble:
         self.mainR = MainPage(driver_receiver)
         self.chatListR = ChatListPage(driver_receiver)
         self.chatR = ChatPage(driver_receiver)
+        self.groupSettingR = GroupSettingPage(driver_receiver)
+        self.groupManagerR = GroupManagerPage(driver_receiver)
 
         with allure.step("-> [前置准备] 发送端(群主)进入指定群聊"):
             self.chatListS.enter_chat(GROUP_STRATEGY.name)
@@ -60,6 +62,14 @@ class TestGroupManagerDouble:
             self.groupSettingS.wait_for_setting_page_load()
             self.groupSettingS.click_group_manager()
             self.groupManagerS.wait_for_page_load()
+
+    def _enter_chat_receiver(self):
+        """内部辅助：接收端进入聊天页面"""
+        with allure.step("-> [前置准备] 接收端(普通成员)进入指定群聊聊天界面"):
+            self.chatR.click_more_button()
+            self.groupSettingR.wait_for_setting_page_load()
+            self.groupSettingR.click_group_manager()
+            self.groupManagerR.wait_for_page_load()
 
 
 
@@ -175,7 +185,14 @@ class TestGroupManagerDouble:
             check.is_true(bool(match_res2), f"❌ 接收端(群成员)未被加入黑名单")
             
         with allure.step("5. 恢复环境：新群主(接收端)将群主权限转让回原群主(发送端)"):
-            pass
+            self._enter_chat_receiver()
+            self.groupManagerR.click_group_give()
+            res = self.groupManagerR.wait_for_transfer_group_owner_page_load()
+            check.is_true(res, "❌ 群主进入【转让群主】页面失败")
+            
+            self.groupManagerR.click_member_by_name(name=PRIVATE_USER3.name)
+            self.groupManagerR.click_black_remove_member_confirm()
+            self.chatR.wait_banner_message_disappear()
 
         with allure.step("6. 校验双方状态已复原(发送端重获群管理权限)"):
             pass
