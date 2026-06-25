@@ -149,62 +149,42 @@ class TestGroupManagerDouble:
     @allure.title("【转让群主】双端转让与权限移交校验")
     def test_transfer_group_owner_double_validation(self):
         """双端验证：群主转让群主给成员，双方权限变更，随后再将群主转让回原群主"""
-        from locators.groups.setting.general.group_setting_locator import GroupSettingLocator
-        
-        # 内部动态实例化接收端的页面对象，避免修改公用的 setup_double_env 结构
-        groupSettingR = GroupSettingPage(self.chatR.driver)
-        groupManagerR = GroupManagerPage(self.chatR.driver)
-
-        # 此时发送端 (S) 驻留在群管理页面，需要返回到群聊设置页面来动态获取群主自己（即列表第一个成员）的昵称
-        with allure.step("1. 原群主(发送端)从群管理页返回以获取自身昵称"):
-            self.groupManagerS.click_back_button()
-            self.groupSettingS.wait_for_setting_page_load()
-            names = self.groupSettingS.get_friend_names()
-            owner_name = names[0] if names else ""
-            logger.info(f"动态获取的原群主(发送端)昵称为: {owner_name}")
-            
-            # 获取昵称后，重新进入群管理页面
-            self.groupSettingS.click_group_manager()
-            self.groupManagerS.wait_for_page_load()
-
-        with allure.step("2. 群主点击进入【转让群主】页面"):
+        with allure.step("1. 群主点击进入【转让群主】页面"):
             self.groupManagerS.click_group_give()
             res = self.groupManagerS.wait_for_transfer_group_owner_page_load()
             check.is_true(res, "❌ 群主进入【转让群主】页面失败")
 
-        with allure.step("3. 选择需要转让的新群主(接收端成员)并确认"):
+        with allure.step("2. 选择需要转让的新群主(接收端成员)"):
             self.groupManagerS.click_member_by_name(name=PRIVATE_USER1.name)
             self.groupManagerS.click_black_remove_member_confirm()
 
-        with allure.step("4. 校验原群主(发送端)权限已降级(无群管理选项)"):
+        with allure.step("3. 校验原群主(发送端)权限已降级(无群管理选项)"):
             self.groupSettingS.wait_for_setting_page_load()
             is_exist = self.groupSettingS.is_element_exist(GroupSettingLocator.SETTING_CHAT_GROUP_MANAGER, timeout=3)
             check.is_false(is_exist, "❌ 转让群主后，原群主的群详情页中依然显示【群管理】选项")
 
-        with allure.step("5. 校验新群主(接收端)权限已升级(显示群管理选项)"):
+        with allure.step("4. 校验新群主(接收端)权限已升级(显示群管理选项)"):
             self.chatR.click_more_button()
-            groupSettingR.wait_for_setting_page_load()
-            is_exist = groupSettingR.is_element_exist(GroupSettingLocator.SETTING_CHAT_GROUP_MANAGER, timeout=3)
+            self.groupSettingR.wait_for_setting_page_load()
+            is_exist = self.groupSettingR.is_element_exist(GroupSettingLocator.SETTING_CHAT_GROUP_MANAGER, timeout=3)
             check.is_true(is_exist, "❌ 转让群主后，新群主的群详情页中未显示【群管理】选项")
 
-        with allure.step("6. 恢复环境：新群主(接收端)将群主权限转让回原群主(发送端)"):
-            groupSettingR.click_group_manager()
-            groupManagerR.wait_for_page_load()
+        with allure.step("5. 恢复环境：新群主(接收端)将群主权限转让回原群主(发送端)"):
+            self.groupSettingR.click_group_manager()
+            self.groupManagerR.wait_for_page_load()
             
-            groupManagerR.click_group_give()
-            groupManagerR.wait_for_transfer_group_owner_page_load()
+            self.groupManagerR.click_group_give()
+            self.groupManagerR.wait_for_transfer_group_owner_page_load()
             
-            groupManagerR.click_member_by_name(name=owner_name)
-            groupManagerR.click_black_remove_member_confirm()
+            self.groupManagerR.click_member_by_name(name=self.owner_name)
+            self.groupManagerR.click_transfer_owner_confirm()
             
-            groupSettingR.wait_for_setting_page_load()
+            self.groupSettingR.wait_for_setting_page_load()
 
-        with allure.step("7. 校验双方状态已复原(发送端重获群管理权限)"):
-            # 接收端从详情页返回聊天页
-            groupSettingR.click_iv_back_button()
+        with allure.step("6. 校验双方状态已复原(发送端重获群管理权限)"):
+            self.groupSettingR.click_iv_back_button()
             self.chatR.wait_for_chat_page_load()
             
-            # 发送端从详情页返回聊天页，再重新进入群详情页以刷新UI状态
             self.groupSettingS.click_iv_back_button()
             self.chatS.wait_for_chat_page_load()
             
@@ -213,6 +193,5 @@ class TestGroupManagerDouble:
             is_exist = self.groupSettingS.is_element_exist(GroupSettingLocator.SETTING_CHAT_GROUP_MANAGER, timeout=3)
             check.is_true(is_exist, "❌ 恢复环境后，原群主的群详情页中未重现【群管理】选项")
             
-            # 重新进入群管理页，以匹配 setup_double_env 预期的退出状态
             self.groupSettingS.click_group_manager()
             self.groupManagerS.wait_for_page_load()
