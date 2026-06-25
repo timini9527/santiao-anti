@@ -163,6 +163,7 @@ class TestGroupManagerDouble:
     @allure.title("【转让群主】双端转让与权限移交校验")
     def test_transfer_group_owner_double_validation(self):
         """双端验证：群主转让群主给成员，双方权限变更，随后再将群主转让回原群主"""
+        
         new_owner_name = '1234567890'
         with allure.step("1. 群主点击进入【转让群主】页面"):
             self.groupManagerS.click_group_give()

@@ -227,7 +227,6 @@ class TestGroupManager:
             self.groupManagerPage.click_back_button()
             
 
-
     @allure.story("群管理-禁止群成员互相加好友开关")
     @allure.title("切换【禁止群成员互相加好友】开关状态校验")
     def test_un_add_friend_each_other_toggle(self):
@@ -253,6 +252,19 @@ class TestGroupManager:
             check.is_in('关闭群内禁止添加好友', cmd_texts, "❌ [Action-groupManagerPage] 禁止群成员互相加好友开关未关闭")
 
 
+    @allure.story("群管理-群主transfer")
+    @allure.title("转让群主功能校验")
+    def test_transfer_group_owner(self):
+        """测试群管理中【转让群主】功能"""
+
+        new_owner_name = '1234567890'
+        with allure.step("1. 转让群主转让给自己"):
+            self.groupManagerPage.click_group_give()
+            self.groupManagerPage.click_member_by_name(name=new_owner_name)
+
+        with allure.step("2. toast 自己验证"):
+            toasts = self.chatPage.get_toast()
+            check.is_in('你已经是群主', toasts, f"❌ [Action-groupManagerPage] 转让群主失败，toast: {toasts}")
 
 
 
