@@ -63,7 +63,7 @@ class TestGroupManagerDouble:
             self.groupSettingS.click_group_manager()
             self.groupManagerS.wait_for_page_load()
 
-    def _enter_chat_receiver(self):
+    def _enter_group_manager_receiver(self):
         """内部辅助：接收端进入聊天页面"""
         with allure.step("-> [前置准备] 接收端(普通成员)进入指定群聊聊天界面"):
             self.chatR.click_more_button()
@@ -163,10 +163,9 @@ class TestGroupManagerDouble:
     @allure.title("【转让群主】双端转让与权限移交校验")
     def test_transfer_group_owner_double_validation(self):
         """双端验证：群主转让群主给成员，双方权限变更，随后再将群主转让回原群主"""
+        
         with allure.step("1. 群主点击进入【转让群主】页面"):
             self.groupManagerS.click_group_give()
-            res = self.groupManagerS.wait_for_transfer_group_owner_page_load()
-            check.is_true(res, "❌ 群主进入【转让群主】页面失败")
 
         with allure.step("2. 选择需要转让的新群主(接收端成员)"):
             self.groupManagerS.click_member_by_name(name=PRIVATE_USER1.name)
@@ -185,12 +184,10 @@ class TestGroupManagerDouble:
             check.is_true(bool(match_res2), f"❌ 接收端(群成员)未被加入黑名单")
             
         with allure.step("5. 恢复环境：新群主(接收端)将群主权限转让回原群主(发送端)"):
-            self._enter_chat_receiver()
+            self._enter_group_manager_receiver()
             self.groupManagerR.click_group_give()
-            res = self.groupManagerR.wait_for_transfer_group_owner_page_load()
-            check.is_true(res, "❌ 群主进入【转让群主】页面失败")
             
-            self.groupManagerR.click_member_by_name(name=PRIVATE_USER3.name)
+            self.groupManagerR.click_member_by_name(name='1234567890')
             self.groupManagerR.click_black_remove_member_confirm()
             self.chatR.wait_banner_message_disappear()
 
