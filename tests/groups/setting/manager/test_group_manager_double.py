@@ -182,14 +182,12 @@ class TestGroupManagerDouble:
             self.groupManagerS.click_back_button()
 
         with allure.step("7. 校验群主端入群cmd消息"):
-            cmd_info1 = self.chatS.get_cmd_notification_texts(index=-1)
-            match_res1 = re.search(r"您把.*加入群聊", cmd_info1)
-            check.is_true(bool(match_res1), f"❌ 群主端入群cmd消息不匹配，实际为: '{cmd_info1}'")
+            res1 = self.chatS.is_cmd_notification_matching(r"您把.*加入群聊")
+            check.is_true(res1, "❌ 群主端入群cmd消息不匹配")
 
         with allure.step("8. 校验群两端入群cmd消息"):
-            cmd_info2 = self.chatR.get_cmd_notification_texts(index=-1)
-            match_res2 = re.search(r".*把您加入群聊", cmd_info2)
-            check.is_true(bool(match_res2), f"❌ 接收端入群cmd消息不匹配，实际为: '{cmd_info2}'")
+            res2 = self.chatR.is_cmd_notification_matching(r".*把您加入群聊")
+            check.is_true(res2, "❌ 接收端入群cmd消息不匹配")
 
 
     @allure.story("群管理-转让群主双端校验")
@@ -208,14 +206,12 @@ class TestGroupManagerDouble:
 
         with allure.step("3. 校验原群主(发送端)权限已降级(无群管理选项)"):
             self.groupManagerS.click_back_button()
-            cmd_info1 = self.chatS.get_cmd_notification_texts(index=-1)
-            match_res1 = re.search(r".*已成为新群主", cmd_info1)
-            check.is_true(bool(match_res1), f"❌ 接收端(群成员)未被加入黑名单")
+            res1 = self.chatS.is_cmd_notification_matching(r".*已成为新群主")
+            check.is_true(res1, "❌ 发送端未收到转让群主的通知消息")
 
         with allure.step("4. 校验新群主(接收端)权限已升级(显示群管理选项)"):
-            cmd_info2 = self.chatR.get_cmd_notification_texts(index=-1)
-            match_res2 = re.search(r".*已成为新群主", cmd_info2)
-            check.is_true(bool(match_res2), f"❌ 接收端(群成员)未被加入黑名单")
+            res2 = self.chatR.is_cmd_notification_matching(r".*已成为新群主")
+            check.is_true(res2, "❌ 接收端未收到转让群主的通知消息")
             
         with allure.step("5. 恢复环境：新群主(接收端)将群主权限转让回原群主(发送端)"):
             self._enter_group_manager_receiver()

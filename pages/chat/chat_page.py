@@ -526,6 +526,20 @@ class ChatPage(BasePage):
             logger.error(f"❌ [Assert] 索引 {index} 越界，当前共有 {len(cmd_texts)} 条通知消息")
             return ""
 
+    # CMD通知-校验指定索引的通知消息是否匹配特定正则表达式模式
+    def is_cmd_notification_matching(self, pattern: str, index: int = -1) -> bool:
+        """CMD通知-校验指定索引的通知消息是否匹配特定正则表达式模式"""
+        text = self.get_cmd_notification_texts(index=index)
+        if not text:
+            logger.warning(f"⚠️ [Assert] 未获取到索引为 {index} 的 CMD 通知文本")
+            return False
+        match_res = re.search(pattern, text)
+        if match_res:
+            logger.info(f"✅ [Assert] 找到匹配 of CMD 通知: '{text}' 匹配模式 '{pattern}'")
+            return True
+        logger.warning(f"❌ [Assert] CMD 通知不匹配: '{text}' 不匹配模式 '{pattern}'")
+        return False
+
     
 
     # =========================================================================================
