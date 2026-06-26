@@ -75,78 +75,12 @@ class TestGroupManagerDouble:
 
     
     @allure.story("群管理-管理员分配")
-    @allure.title("【管理员】是否是管理员身份的分配验证-逐一验证分配的权限")
-    def test_admin_allocation_permission_validation(self):
-        """验证群主分配管理员身份，以及对应的成员端权限同步和CMD通知"""
-        
-        with allure.step("1. 发送端(群主)点击群管理员，并点击新增管理员"):
-            self.groupManagerS.click_administrators()
-            self.groupManagerS.wait_for_admin_page_load()
-            self.groupManagerS.click_add_admin()
-
-        with allure.step("2. 选择要添加的管理员"):
-            self.groupManagerS.click_member_by_name(name=PRIVATE_USER1.name)
-
-        with allure.step("3. 确认添加管理员，并分配所有权限"):
-            self.groupManagerS.click_all_switch(checked_str="false")
-            self.groupManagerS.click_confirm_button()
-            self.chatS.wait_banner_message_disappear()
-        with allure.step("4. 校验发送端(群主)管理员列表状态"):
-            member_names = self.groupManagerS.get_member_names()
-            check.is_in(PRIVATE_USER1.name, member_names, "❌ 群主端管理员列表未显示新增的管理员")
-
-        with allure.step("5. 接收端(普通成员)收到通知，进入群详情并点击群管理"):
-            res = self.chatR.is_cmd_notification_matching(r".*将您添加为管理员")
-            check.is_true(res, "❌ 接收端未收到成为管理员的通知消息")
-            
-            self.chatR.click_more_button()
-            self.groupSettingR.wait_for_setting_page_load()
-            self.groupSettingR.click_group_manager()
-            self.groupManagerR.wait_for_page_load()
-
-        with allure.step("6. 逐一验证接收端(新管理员)可以正常操作群管理权限开关"):
-            # 验证【群ID搜索】开关可被操作且状态同步
-            init_search_state = self.groupManagerR.get_group_id_search_state()
-            target_search_state = "false" if init_search_state == "true" else "true"
-            self.groupManagerR.click_group_id_search_switch(target_search_state)
-            new_search_state = self.groupManagerR.get_group_id_search_state()
-            check.equal(target_search_state, new_search_state, "❌ 新管理员无法修改【群ID搜索】开关状态")
-            
-            # 验证【全员禁言】开关可被操作且状态同步
-            init_mute_state = self.groupManagerR.get_all_member_mute_state()
-            target_mute_state = "false" if init_mute_state == "true" else "true"
-            self.groupManagerR.click_all_member_mute_switch(target_mute_state)
-            new_mute_state = self.groupManagerR.get_all_member_mute_state()
-            check.equal(target_mute_state, new_mute_state, "❌ 新管理员无法修改【全员禁言】开关状态")
-
-            # 恢复开关初始状态（良好的测试恢复习惯）
-            self.groupManagerR.click_group_id_search_switch(init_search_state)
-            self.groupManagerR.click_all_member_mute_switch(init_mute_state)
-
-        with allure.step("7. 接收端返回聊天界面"):
-            self.groupManagerR.click_back_button()
-            self.groupSettingR.click_iv_back_button()
-
-        with allure.step("8. 发送端(群主)移除管理员"):
-            self.groupManagerS.click_member_by_name(name=PRIVATE_USER1.name)
-            self.groupManagerS.click_sure_button()
-            self.groupManagerS.click_sure_content_button()
-            self.chatS.wait_banner_message_disappear()
-            member_names = self.groupManagerS.get_member_names()
-            check.is_not_in(PRIVATE_USER1.name, member_names, "❌ 群主端移除管理员失败")
-
-        with allure.step("9. 发送端(群主)返回群管理主页"):
-            self.groupManagerS.click_back_button()
-            self.groupManagerS.click_back_button()
-            self.groupManagerS.click_back_button()
-
-
-
-    @allure.story("群管理-管理员分配")
     @allure.title("【管理员】是否是管理员身份的分配验证-分配所有权限")
     def test_admin_allocation_double_validation(self):
         """验证群主分配和撤销管理员身份，以及对应的成员端权限同步和CMD通知"""
         
+        manager_permissions = ['管理员', '进群验证', '进群申请', '全员禁言', '指定成员禁言', '禁止群成员互加好友', '群黑名单']
+
         with allure.step("1. 发送端(群主)点击群管理员，并点击新增管理员"):
             self.groupManagerS.click_administrators()
             self.groupManagerS.wait_for_admin_page_load()
@@ -172,9 +106,36 @@ class TestGroupManagerDouble:
             self.groupSettingR.wait_for_setting_page_load()
             is_visible = self.groupSettingR.is_group_manager_visible()
             check.is_true(is_visible, "❌ 接收端被设为管理员后，群设置中没有显示【群管理】入口")
-            self.groupManagerR.click_back_button()
 
-        with allure.step("6. 发送端(群主)移除管理员"):
+        with allure.step("6. 校验接收端(新任管理员)具有全部管理项入口(只读代理验证)"):
+            self.groupSettingR.click_group_manager()
+            self.groupManagerR.wait_for_page_load()
+
+            from locators.groups.setting.manager.group_manager_locator import GroupManagerLocator
+
+            # 7项权限与定位器映射
+            permission_locators = {
+                '管理员': GroupManagerLocator.IT_GROUP_MANAGER,
+                '进群验证': GroupManagerLocator.JOIN_TO_GROUP_VERIFY_SWITCH,
+                '进群申请': GroupManagerLocator.JOIN_TO_GROUP_APPLY,
+                '全员禁言': GroupManagerLocator.ALL_MEMBER_MUTE_SWITCH,
+                '指定成员禁言': GroupManagerLocator.GROUP_MEMBER_MUTE,
+                '禁止群成员互加好友': GroupManagerLocator.UN_ADD_FRIEND_EACH_OTHER_SWITCH,
+                '群黑名单': GroupManagerLocator.GROUP_BLACK_MEMBER
+            }
+
+            for perm in manager_permissions:
+                locator = permission_locators.get(perm)
+                check.is_true(
+                    self.groupManagerR.is_element_exist(locator, timeout=3),
+                    f"❌ 接收端成为管理员后，群管理页面未发现【{perm}】权限入口/开关"
+                )
+
+            # 返回聊天界面，以便后续接收端可以接收到“移除管理员”通知
+            self.groupManagerR.click_back_button()
+            self.groupSettingR.click_iv_back_button()
+
+        with allure.step("7. 发送端(群主)移除管理员"):
             self.groupManagerS.click_member_by_name(name=PRIVATE_USER1.name)
             self.groupManagerS.click_sure_button()
             self.groupManagerS.click_sure_content_button()
@@ -182,7 +143,7 @@ class TestGroupManagerDouble:
             member_names = self.groupManagerS.get_member_names()
             check.is_not_in(PRIVATE_USER1.name, member_names, "❌ 群主端移除管理员失败")
 
-        with allure.step("7. 校验接收端(群成员)管理员权限降级且可见性移除"):
+        with allure.step("8. 校验接收端(群成员)管理员权限降级且可见性移除"):
             res = self.chatR.is_cmd_notification_matching(r".*移除管理员身份")
             check.is_true(res, "❌ 接收端未收到被解除管理员的通知消息")
 
@@ -190,9 +151,9 @@ class TestGroupManagerDouble:
             self.groupSettingR.wait_for_setting_page_load()
             is_visible = self.groupSettingR.is_group_manager_visible()
             check.is_false(is_visible, "❌ 接收端被解除管理员后，群设置中依然显示【群管理】入口")
-            self.groupManagerR.click_back_button()
+            self.groupSettingR.click_iv_back_button()
 
-        with allure.step("8. 发送端(群主)返回群管理主页"):
+        with allure.step("9. 发送端(群主)返回群管理主页"):
             self.groupManagerS.click_back_button()
             self.groupManagerS.click_back_button()
             self.groupManagerS.click_back_button()
