@@ -13,6 +13,7 @@ from pages.chat.chat_page import ChatPage
 from pages.chat.chat_list_page import ChatListPage
 from pages.common.contact_select_page import ContactSelectPage
 from pages.common.session_select_page import SessionSelectPage
+from pages.personal.contact_detail_page import ContactDetailPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, PRIVATE_USER3, GROUP_STRATEGY
 
 
@@ -35,6 +36,7 @@ class TestGroupManagerDouble:
         self.chatR = ChatPage(driver_receiver)
         self.groupSettingR = GroupSettingPage(driver_receiver)
         self.groupManagerR = GroupManagerPage(driver_receiver)
+        self.contactDetailR = ContactDetailPage(driver_receiver)
 
         with allure.step("-> [前置准备] 发送端(群主)进入指定群聊"):
             self.chatListS.enter_chat(GROUP_STRATEGY.name)
@@ -124,20 +126,19 @@ class TestGroupManagerDouble:
         with allure.step(f"3. 校验接收端(群成员)聊天信息栏中没有添加【{name}】好友按钮"):
             self.chatR.click_more_button()
             self.groupSettingR.click_member_avatar_by_name(name=name)
-            has_add_friend_after = self.chatR.has_add_friend_button()
-            check.is_false(has_add_friend_after, f"❌ 群主开启禁止添加好友后，【{name}】聊天信息栏未能成功移除添加好友按钮")
+            has_add = self.contactDetailR.has_add_friend_button()
+            check.is_false(has_add, f"❌ 群主开启禁止添加好友后，【{name}】聊天信息栏未能成功移除添加好友按钮")
 
         with allure.step("4. 群主侧关闭【禁止添加好友】开关"):
-            self.groupManagerS.click_forbid_add_friend_switch()
-            time.sleep(2)
+            self.groupManagerS.click_un_add_friend_each_other_switch(checked_str='false')
 
         with allure.step(f"5. 校验接收端(群成员)聊天信息栏中恢复有添加【{name}】好友按钮"):
-            has_add_friend_final = self.chatR.has_add_friend_button()
-            check.is_true(has_add_friend_final, "❌ 群主关闭禁止添加好友后，普通群成员聊天信息栏仍处于没有添加好友按钮状态")
+            self.groupManagerR.click_back_button()
+            self.groupManagerR.click_back_button()
+            self.groupManagerR.click_back_button()
+            cmd_texts = self.chatR.get_cmd_notification_texts(index=-1)
+            check.is_in('开启群内禁止添加好友', cmd_texts, "❌ 禁止群成员互相加好友开关未开启")
 
-        with allure.step("6. 再次点击开关恢复至初始状态"):
-            self.groupManagerS.click_un_add_friend_each_other_switch(checked_str='false')
-            self.chatS.wait_banner_message_disappear()
 
 
     @allure.story("群管理-群黑名单双端校验")

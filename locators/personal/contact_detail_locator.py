@@ -19,12 +19,13 @@ class ContactDetailLocator:
     RECOMMEND_ITEM = (AppiumBy.ID, f"{PACKAGE_ID}/share_to_friend") # 推荐给朋友
     MOMENTS_ITEM = (AppiumBy.ID, f"{PACKAGE_ID}/title_moments")     # 动态
     MORE_ITEM = (AppiumBy.ID, f"{PACKAGE_ID}/title_more")           # 更多
+    MAIN = (AppiumBy.ID, f"{PACKAGE_ID}/main")                      # 更多-NEW
     
     # 底部操作按钮区域
-    BOTTOM_BAR = (AppiumBy.ID, f"{PACKAGE_ID}/friend")  # 底部按钮容器包含发送消息 and 视频通话
-    SEND_MSG_BTN = (AppiumBy.ID, f"{PACKAGE_ID}/send_message")   # 发送消息
-    CALL_BTN = (AppiumBy.ID, f"{PACKAGE_ID}/video_call")       # 视频通话
+    BOTTOM_BAR = (AppiumBy.ID, f"{PACKAGE_ID}/friend")              # 底部按钮容器包含发送消息和视频通话
+    SEND_MSG_BTN = (AppiumBy.ID, f"{PACKAGE_ID}/send_message")      # 发送消息
+    CALL_BTN = (AppiumBy.ID, f"{PACKAGE_ID}/video_call")            # 视频通话
+
 
     # 非好友详情页面
-    UN_FRIEND_BAR = (AppiumBy.ID, f"{PACKAGE_ID}/cl_un_friends")   # 非好友操作栏区域
-    ADD_FRIEND_BTN = (AppiumBy.ID, f"{PACKAGE_ID}/add_friend")     # 申请加好友按钮
+    WHITE_UNFRIEND = (AppiumBy.ID, f"{PACKAGE_ID}/white_unfriend")  # 申请添加好友按钮

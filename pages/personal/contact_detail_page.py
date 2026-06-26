@@ -84,6 +84,27 @@ class ContactDetailPage(CommonPage):
         self.click(ContactDetailLocator.CALL_BTN)
         logger.info("📞 [Action] 资料详情页 - 点击 [音视频通话]")
 
+    # 非好友-点击申请加好友
+    def click_add_friend(self):
+        """点击 [申请加好友] 按钮"""
+        self.click(ContactDetailLocator.WHITE_UNFRIEND)
+        logger.info("🚀 [Action] 资料详情页 - 点击 [申请加好友]")
+
+    # 非好友-验证当前页面是否存在申请按钮
+    def has_add_friend_button(self) -> bool:
+        """非好友-验证当前页面是否存在申请按钮"""
+        res = self.is_element_exist(ContactDetailLocator.WHITE_UNFRIEND, timeout=1)
+        if res:
+            logger.info("✅ [Action] 资料详情页 - 申请加好友按钮存在")
+        else:
+            logger.warning("⚠️ [Action] 资料详情页 - 申请加好友按钮不存在")
+        return res
+    
+
+    
+    # ======================================================================
+    # 逻辑相关
+    # ======================================================================
     # 验证当前是否在资料详情页
     def verify_is_on_detail_page(self, card_info: dict, msgType: Literal['friend', 'group'] = 'friend') -> bool:
         """验证当前是否在资料详情页"""
