@@ -24,6 +24,16 @@ class GroupBotPage(BasePage):
             raise Exception("未找到群助手功能页面")
         logger.info(f"✅ [Action-GroupBotPage] 成功进入【群助手功能页面】,共找到 {len(bot_list)} 个群助手功能")
         return True
+    
+    # 校验是否具有群助手权限
+    def has_group_assistant_permission(self) -> bool:
+        """校验是否具有群助手权限"""
+        res = self.is_element_exist(GroupBotLocator.HAS_GROUP_BOT_PERMISSION)
+        if res:
+            logger.info(f"✅ [Action-GroupBotPage] 具有群助手权限")
+        else:
+            logger.error(f"❌ [Action-GroupBotPage] 不具有群助手权限")
+        return res
 
     # 进入【禁发关键词检测】设置页面
     def enter_keyword_block(self):

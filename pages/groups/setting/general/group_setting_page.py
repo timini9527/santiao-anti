@@ -80,12 +80,6 @@ class GroupSettingPage(BasePage):
         """群功能项-点击群二维码"""
         self.click(GroupSettingLocator.SETTING_CHAT_GROUP_CODE)
         logger.info("✅ [Action-groupSettingPage] 群聊设置页 - 点击【群二维码】")
-
-    # 群功能项-点击群公告
-    def click_group_notice(self):
-        """群功能项-点击群公告"""
-        self.click(GroupSettingLocator.SETTING_CHAT_GROUP_ANNOUNCEMENT)
-        logger.info("✅ [Action-groupSettingPage] 群聊设置页 - 点击【群公告】")
     
     # 群功能项-点击群备注
     def click_group_remark(self):
@@ -252,6 +246,74 @@ class GroupSettingPage(BasePage):
         """switch - 点击switch_btn"""
         self.click(GroupSettingLocator.SWITCH_BTN)
         logger.info("✅ [Action-groupSettingPage] 群聊设置页 - 点击【switch_btn】")
+
+
+    # ===============================================================================
+    # 群头像-弹窗操作
+    # ===============================================================================
+    # 群头像-点击拍照
+    def click_group_avatar_take_photo(self):
+        """群头像-点击拍照"""
+        self.click(GroupSettingLocator.ACTION_TAKE_PHOTO)
+        logger.info("✅ [Action-groupSettingPage] 群聊设置页 - 点击【拍照】")
+
+    # 群头像-点击从相册选择
+    def click_group_avatar_pick_gallery(self):
+        """群头像-点击从相册选择"""
+        self.click(GroupSettingLocator.ACTION_PICK_GALLERY)
+        logger.info("✅ [Action-groupSettingPage] 群聊设置页 - 点击【从相册选择】")
+    
+    # 群头像-判断相册弹窗是否存在
+    def is_album_dialog_displayed(self, timeout=2) -> bool:
+        """群头像-判断相册弹窗是否存在"""
+        res = self.element_exists(GroupSettingLocator.ACTION_PICK_GALLERY, timeout=timeout)
+        logger.info(f"✅ [Action-groupSettingPage] 群聊设置页 - 【相册弹窗】是否显示: {res}")
+        return res
+
+    # 群头像-点击保存图片
+    def click_group_avatar_save_image(self):
+        """群头像-点击保存图片"""
+        self.click(GroupSettingLocator.ACTION_SAVE_IMAGE)
+        logger.info("✅ [Action-groupSettingPage] 群聊设置页 - 点击【保存图片】")
+
+    # 群头像-点击取消按钮
+    def click_group_avatar_cancel(self):
+        """群头像-点击取消按钮"""
+        self.click(GroupSettingLocator.ACTION_CANCEL)
+        logger.info("✅ [Action-groupSettingPage] 群聊设置页 - 点击【取消】")
+
+
+    # ===============================================================================
+    # 群名称-弹窗操作
+    # ===============================================================================
+    # 群名称弹窗-获取弹窗内容提示
+    def get_group_name_dialog_message(self) -> str:
+        """群名称弹窗-获取弹窗内容提示"""
+        res = self.get_attribute(GroupSettingLocator.TV_MESSAGE, 'text')
+        logger.info(f"✅ [Action-groupSettingPage] 群聊设置页 - 获取群名称弹窗内容: {res}")
+        return res
+
+    # 群名称弹窗-获取弹窗内容提示
+    def get_group_name_dialog_message(self) -> str:
+        """群名称弹窗-获取弹窗内容提示"""
+        res = self.get_attribute(GroupSettingLocator.TV_SECOND, 'text')
+        logger.info(f"✅ [Action-groupSettingPage] 群聊设置页 - 获取群名称弹窗内容: {res}")
+        return res
+    
+    # ===============================================================================
+    # 群公告-弹窗操作
+    # ===============================================================================
+    # 群公告-等待群公告加载
+    def wait_for_notice_dialog_load(self, timeout=5) -> bool:
+        """群公告-等待群公告加载"""
+        res = self.get_attribute(GroupSettingLocator.TV_TITLE, 'text') == '群公告'
+        if res:
+            logger.info(f"✅ [Action-groupSettingPage] 群公告弹窗加载成功")
+            return True
+        logger.warning(f"❌ [Action-groupSettingPage] 群公告弹窗加载失败，当前弹窗标题: {res}")
+        return False
+    
+    
 
     # ===============================================================================
     # 群备注弹窗操作与信息获取

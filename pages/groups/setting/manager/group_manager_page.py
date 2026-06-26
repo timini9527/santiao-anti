@@ -264,7 +264,7 @@ class GroupManagerPage(BasePage):
                     try:
                         elem.click()
                         logger.info(f"⚙️ [Action-groupManagerPage] 已点击切换【{desc}】开关")
-                        time.sleep(0.5)
+                        time.sleep(0.3)
                     except Exception as e:
                         logger.warning(f"⚠️ [Action-groupManagerPage] 点击开关失败: {e}")
             
@@ -533,7 +533,16 @@ class GroupManagerPage(BasePage):
         time.sleep(0.5)
         return res
 
-
+    # 群管理-获取已拥有的权限名称
+    def get_has_permissions_names(self) -> list[str]:
+        """群管理-获取已拥有的权限名称"""
+        elements = self.find_elements(GroupManagerLocator.TITLE_TV)
+        if not elements:
+            logger.warning("⚠️ [Action-groupManagerPage] 未找到已拥有的权限名称")
+            return []
+        names = [el.get_attribute("text") for el in elements]
+        logger.info(f"✅ [Action-groupManagerPage] 获取已拥有的权限名称成功: {names}")
+        return names
 
 
 

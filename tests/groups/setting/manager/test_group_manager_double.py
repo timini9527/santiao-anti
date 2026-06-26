@@ -80,8 +80,6 @@ class TestGroupManagerDouble:
     def test_admin_allocation_double_validation(self):
         """验证群主分配和撤销管理员身份，以及对应的成员端权限同步和CMD通知"""
         
-        manager_permissions = ['管理员', '进群验证', '进群申请', '全员禁言', '指定成员禁言', '禁止群成员互加好友', '群黑名单']
-
         with allure.step("1. 发送端(群主)点击群管理员，并点击新增管理员"):
             self.groupManagerS.click_administrators()
             self.groupManagerS.wait_for_admin_page_load()

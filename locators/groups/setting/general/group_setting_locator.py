@@ -8,6 +8,8 @@ class GroupSettingLocator(ChatSettingLocator):
 
     PACKAGE_ID = CommonLocator.PACKAGE_ID
 
+    TV_TITLE = CommonLocator.TOPBAR_TITLE
+
     # 成员区域
     FRIEND_HEADER_ID = f"{PACKAGE_ID}/friend_header"                                                    # 群成员头像 ID
     FRIEND_HEADER = (AppiumBy.ID, FRIEND_HEADER_ID)                                                     # 群成员头像
@@ -53,7 +55,19 @@ class GroupSettingLocator(ChatSettingLocator):
     REMARK_DIALOG_INPUT = (AppiumBy.ID, f"{PACKAGE_ID}/update_name")                                    # 输入框 
 
 
-    # 通过成员名称定位其头像
+    # 群头像-弹窗相关
+    ACTION_TAKE_PHOTO = (AppiumBy.ID, f"{PACKAGE_ID}/action_take_photo")                                # 拍照
+    ACTION_PICK_GALLERY = (AppiumBy.ID, f"{PACKAGE_ID}/action_pick_gallery")                            # 从相册选择
+    ACTION_SAVE_IMAGE = (AppiumBy.ID, f"{PACKAGE_ID}/action_save_image")                                # 保存图片
+    ACTION_CANCEL = (AppiumBy.ID, f"{PACKAGE_ID}/action_cancel")                                        # 取消按钮
+    
+    # 群名称：
+    TV_MESSAGE = (AppiumBy.ID, f"{PACKAGE_ID}/tv_message")                                              # 无权限弹窗内容提示
+    TV_SECOND = (AppiumBy.ID, f"{PACKAGE_ID}/tv_second")                                                # 修改群公告弹窗内容提示
+    
+
+    
+    # 群成员-通过成员名称定位其头像
     @classmethod
     def get_member_avatar_by_name(cls, name: str) -> tuple:
         """通过成员名称定位其头像"""

@@ -11,6 +11,9 @@ class GroupBotLocator:
 
     # 群助手页面
     GROUP_BOT_RECYCLER_VIEW = (AppiumBy.ID, f'{PACKAGE_ID}/recycler')
+
+    # 是否具有群助手权限标识
+    HAS_GROUP_BOT_PERMISSION = (AppiumBy.XPATH, f'//*[@resource-id="{PACKAGE_ID}/layout_tips"]//following-sibling::android.widget.TextView')
     
     # 群助手功能列表入口
     KEYWORD_BLOCK_ENTRY = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("禁止发送关键词")')
