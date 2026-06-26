@@ -73,6 +73,8 @@ class TestGroupManagerDouble:
             self.groupSettingR.click_group_manager()
             self.groupManagerR.wait_for_page_load()
 
+    
+
     @allure.story("群管理-管理员分配")
     @allure.title("【管理员】是否是管理员身份的分配验证-分配所有权限")
     def test_admin_allocation_double_validation(self):
