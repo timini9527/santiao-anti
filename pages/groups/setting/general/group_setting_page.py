@@ -64,6 +64,12 @@ class GroupSettingPage(BasePage):
             return []
         logger.info(f"✅ [Action-groupSettingPage] 群聊设置页 - 获取群成员名称成功，共 {len(elements)} 个")
         return [element.get_attribute("text") for element in elements]
+    
+    # 群成员-根据成员名称定位其头像并点击
+    def click_member_avatar_by_name(self, name: str):
+        """群成员-根据成员名称定位其头像并点击"""
+        self.click(GroupSettingLocator.get_member_avatar_by_name(name), timeout=2)
+        logger.info(f"⚙️ [Action-groupSettingPage] 群聊设置页 - 点击成员【{name}】的头像")
 
 
     # ===============================================================================

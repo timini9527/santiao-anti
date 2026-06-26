@@ -9,8 +9,10 @@ class GroupSettingLocator(ChatSettingLocator):
     PACKAGE_ID = CommonLocator.PACKAGE_ID
 
     # 成员区域
-    FRIEND_HEADER = (AppiumBy.ID, f"{PACKAGE_ID}/friend_header")                                        # 群成员头像
-    FRIEND_NAME = (AppiumBy.ID, f"{PACKAGE_ID}/friend_name")                                            # 群成员名称
+    FRIEND_HEADER_ID = f"{PACKAGE_ID}/friend_header"                                                    # 群成员头像 ID
+    FRIEND_HEADER = (AppiumBy.ID, FRIEND_HEADER_ID)                                                     # 群成员头像
+    FRIEND_NAME_ID = f"{PACKAGE_ID}/friend_name"                                                        # 群成员名称 ID
+    FRIEND_NAME = (AppiumBy.ID, FRIEND_NAME_ID)                                                         # 群成员名称
     
     # 基础信息设置项
     SETTING_CHAT_GROUP_CODE = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_groupCode")                     # 群聊二维码
@@ -51,3 +53,8 @@ class GroupSettingLocator(ChatSettingLocator):
     REMARK_DIALOG_INPUT = (AppiumBy.ID, f"{PACKAGE_ID}/update_name")                                    # 输入框 
 
 
+    # 通过成员名称定位其头像
+    @classmethod
+    def get_member_avatar_by_name(cls, name: str) -> tuple:
+        """通过成员名称定位其头像"""
+        return (AppiumBy.XPATH, f"//*[@resource-id='{cls.FRIEND_NAME_ID}' and contains(@text, '{name}')]/preceding-sibling::*[@resource-id='{cls.FRIEND_HEADER_ID}']")

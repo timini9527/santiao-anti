@@ -107,6 +107,38 @@ class TestGroupManagerDouble:
             is_disabled_final = self.chatR.is_input_disabled()
             check.is_false(is_disabled_final, "❌ 群主关闭全员禁言后，普通群成员的输入框仍处于禁用状态")
 
+    @allure.story("群禁言双端校验")
+    @allure.title("【禁止添加好友】开关开启与关闭 - 接收端没有添加好友按钮")
+    def test_forbid_add_friend_double_validation(self):
+        """验证群主开启禁止添加好友后，普通群成员的聊天信息栏中没有添加好友按钮；群主关闭禁止添加好友后，普通群成员的聊天信息栏有添加好友按钮"""
+        
+        name = "422"
+        with allure.step("1. 开启禁止群成员互相加好友"):
+            self.groupManagerS.click_un_add_friend_each_other_switch(checked_str='true')
+            self.chatS.wait_banner_message_disappear()
+
+        with allure.step("2. 校验接收方 Banner 消息"):
+            cmd_texts = self.chatR.get_cmd_notification_texts(index=-1)
+            check.is_in('开启群内禁止添加好友', cmd_texts, "❌ 禁止群成员互相加好友开关未开启")
+
+        with allure.step(f"3. 校验接收端(群成员)聊天信息栏中没有添加【{name}】好友按钮"):
+            self.chatR.click_more_button()
+            self.groupSettingR.click_member_avatar_by_name(name=name)
+            has_add_friend_after = self.chatR.has_add_friend_button()
+            check.is_false(has_add_friend_after, f"❌ 群主开启禁止添加好友后，【{name}】聊天信息栏未能成功移除添加好友按钮")
+
+        with allure.step("4. 群主侧关闭【禁止添加好友】开关"):
+            self.groupManagerS.click_forbid_add_friend_switch()
+            time.sleep(2)
+
+        with allure.step(f"5. 校验接收端(群成员)聊天信息栏中恢复有添加【{name}】好友按钮"):
+            has_add_friend_final = self.chatR.has_add_friend_button()
+            check.is_true(has_add_friend_final, "❌ 群主关闭禁止添加好友后，普通群成员聊天信息栏仍处于没有添加好友按钮状态")
+
+        with allure.step("6. 再次点击开关恢复至初始状态"):
+            self.groupManagerS.click_un_add_friend_each_other_switch(checked_str='false')
+            self.chatS.wait_banner_message_disappear()
+
 
     @allure.story("群管理-群黑名单双端校验")
     @allure.title("【群黑名单】页面加载与返回校验")
@@ -163,7 +195,7 @@ class TestGroupManagerDouble:
     @allure.title("【转让群主】双端转让与权限移交校验")
     def test_transfer_group_owner_double_validation(self):
         """双端验证：群主转让群主给成员，双方权限变更，随后再将群主转让回原群主"""
-        
+
         new_owner_name = '1234567890'
         with allure.step("1. 群主点击进入【转让群主】页面"):
             self.groupManagerS.click_group_give()
