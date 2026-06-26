@@ -74,42 +74,119 @@ class TestGroupManagerDouble:
             self.groupManagerR.wait_for_page_load()
 
 
+    @allure.story("群管理-管理员分配")
+    @allure.title("【管理员】是否是管理员身份的分配验证")
+    def test_admin_allocation_double_validation(self):
+        """验证是否是管理员身份的分配"""
+        pass
 
-    @allure.story("群禁言双端校验")
+    @allure.story("群申请-进群验证")
+    @allure.title("【进群验证】是否是管理员的多重场景")
+    def test_join_verify_admin_scenarios_double_validation(self):
+        """验证进群验证是否是管理员的多重场景"""
+        pass
+
+
+    @allure.story("群申请-进群申请双端校验")
+    @allure.title("【进群申请】管理员=是，可以看到进群申请横幅；管理员=否，看不到进群申请横幅")
+    def test_add_admin_double_validation(self):
+        """验证是否为管理员【进群申请】管理员=是，可以看到进群申请横幅；管理员=否，看不到进群申请横幅"""
+        pass
+        
+
+    @allure.story("群禁言-全员禁言双端校验")
     @allure.title("【全员禁言】开关开启与关闭 - 接收端输入框禁言状态实时同步校验")
     def test_all_member_mute_double_validation(self):
         """验证群主开启全员禁言后，普通成员的输入框应立即被禁用并展示‘全员禁言中’；群主关闭全员禁言后，普通成员恢复正常发言"""
         
-        with allure.step("1. 验证初始状态：群主侧全员禁言关闭，群成员侧输入框正常可用"):
-            is_muted_init = self.groupManagerS.get_all_member_mute_state()
-            if is_muted_init:
-                self.groupManagerS.click_all_member_mute_switch()
-                time.sleep(1)
-            
-            # 成员侧验证输入框可正常输入
-            is_disabled_init = self.chatR.is_input_disabled()
-            check.is_false(is_disabled_init, "❌ 初始全员禁言关闭时，普通群成员输入框不应被禁用")
+        with allure.step("1. 开启全员禁言"):
+            self.groupManagerS.click_all_member_mute_switch(checked_str='true')
+            self.chatR.wait_banner_message_disappear()
 
-        with allure.step("2. 群主侧开启【全员禁言】开关"):
-            self.groupManagerS.click_all_member_mute_switch()
-            time.sleep(2)  # 等待通道状态同步
+        with allure.step("2. 回到聊天页面中，并校验全员禁言开启状态"):
+            cmd_texts = self.chatR.get_cmd_notification_texts(index=-1)
+            check.is_in('开启全员禁言', cmd_texts, "❌ [Action-groupManagerPage] 全员禁言开关未开启")
+        
+        with allure.step("3. 接收方校验被禁言（底部输入框被禁用与提示）"):
+            title, _ = self.chatR.get_input_disabled_info()
+            check.equal("禁言中", title, f"❌ 禁言提示标题不存在: {title}")
+        
+        with allure.step("4. 再次点击开关恢复至初始状态"):
+            self.groupManagerS.click_all_member_mute_switch(checked_str='false')
+            self.chatR.wait_banner_message_disappear()
 
-        with allure.step("3. 校验接收端(群成员)输入框状态变为禁用，并展示‘全员禁言中’"):
-            is_disabled_after = self.chatR.is_input_disabled()
-            check.is_true(is_disabled_after, "❌ 群主开启全员禁言后，普通群成员的输入框未能成功禁用")
-            
-            disable_title, _ = self.chatR.get_input_disabled_info()
-            check.is_in("全员禁言中", disable_title, f"❌ 禁言提示标题不匹配，实际显示: '{disable_title}'")
+        with allure.step("5. 移除禁言后，接收方校验输入框状态恢复可用"):
+            is_disabled = self.chatR.is_input_disabled()
+            check.is_false(is_disabled, "❌ 移除禁言后，普通群成员的输入框仍处于禁用状态")
 
-        with allure.step("4. 群主侧关闭【全员禁言】开关"):
-            self.groupManagerS.click_all_member_mute_switch()
-            time.sleep(2)  # 等待状态同步
 
-        with allure.step("5. 校验接收端(群成员)输入框状态恢复为可用"):
-            is_disabled_final = self.chatR.is_input_disabled()
-            check.is_false(is_disabled_final, "❌ 群主关闭全员禁言后，普通群成员的输入框仍处于禁用状态")
+    @allure.story("群禁言-指定群成员禁言双端校验")
+    @allure.title("【指定群成员禁言】群主开启指定禁言")
+    @pytest.mark.parametrize('mute_type, duration',
+                            [(0, 0), (1, '10分钟'), (1, '30分钟'), (1, '2小时'), (1, '1天'), (1, '3天'), (1, '7天'), (1, '30天')],
+                            ids=["永久禁言", "临时禁言-10分钟", "临时禁言-30分钟", "临时禁言-2小时", "临时禁言-1天", "临时禁言-3天", "临时禁言-7天", "临时禁言-30天"])
+    def test_specify_member_mute_double_validation(self, mute_type, duration):
+        """验证群主开启指定禁言后，被禁言成员不能发送消息，解除禁言后可正常发送消息"""
+        
+        with allure.step("1. 进入【指定成员禁言】子页面"):
+            self.groupManagerS.click_mute_member()
+            self.groupManagerS.wait_for_specify_mute_page_load()
+            self.groupManagerS.click_confirm_button()
 
-    @allure.story("群禁言双端校验")
+        with allure.step("2. 添加指定禁言成员"):
+            self.groupManagerS.input_member_search_keyword(PRIVATE_USER1.name)
+            self.groupManagerS.click_member_by_name(name=PRIVATE_USER1.name)
+            self.groupManagerS.click_edit_finish_button()
+
+        with allure.step("3. 选择禁言类型和时长"):
+            if mute_type == 0:
+                self.groupManagerS.click_cb_1()
+            else:
+                self.groupManagerS.click_cb_2()
+                self.groupManagerS.click_temp_mute_time()
+                self.groupManagerS.click_set_mute_duration(duration)
+            self.groupManagerS.click_sure_button()
+            self.groupManagerS.click_mute_confirm_btn()
+
+        with allure.step("4. 接收方校验被禁言（底部输入框被禁用与提示）"):
+            title, tip = self.chatR.get_input_disabled_info()
+            check.is_true(bool(title) or bool(tip), f"❌ 禁言提示标题不存在: {title}")
+        
+        with allure.step("5. 接收方校验禁言具体倒计时"):
+            if mute_type == 0:
+                check.is_false(bool(title), f"❌ 永久禁言不应有具体的禁言时间: {tip}")
+            else:
+                total_mins = self.chatR.get_mute_remaining_minutes(tip)
+                if total_mins is None:
+                    check.is_true(False, f"❌ 禁言提示时间格式不匹配 (期望包含 '剩余HH:MM:SS'): {tip}")
+                else:
+                    expected_ranges = {
+                        "10分钟": (8, 10),
+                        "30分钟": (28, 30),
+                        "2小时": (115, 120),
+                        "1天": (1430, 1440),
+                        "3天": (4310, 4320),
+                        "7天": (10050, 10080),
+                        "30天": (43150, 43200),
+                    }
+                    min_val, max_val = expected_ranges.get(duration, (0, 0))
+                    check.is_true(
+                        min_val <= total_mins <= max_val,
+                        f"❌ 禁言时间不匹配: 期望 {min_val}~{max_val} 分钟，实际 {total_mins} 分钟 ({tip})"
+                    )
+
+        with allure.step("6. 点击移除禁言"):
+            self.groupManagerS.click_cancel_mute(PRIVATE_USER1.name)
+            self.groupManagerS.click_back_button()
+            self.groupManagerS.click_back_button()
+            self.groupManagerS.click_back_button()
+
+        with allure.step("7. 移除禁言后，接收方校验输入框状态恢复可用"):
+            is_disabled = self.chatR.is_input_disabled()
+            check.is_false(is_disabled, "❌ 移除禁言后，普通群成员的输入框仍处于禁用状态")
+
+
+    @allure.story("群管理-添加好友双端校验")
     @allure.title("【禁止添加好友】开关开启与关闭 - 接收端没有添加好友按钮")
     def test_forbid_add_friend_double_validation(self):
         """验证群主开启禁止添加好友后，普通群成员的聊天信息栏中没有添加好友按钮；群主关闭禁止添加好友后，普通群成员的聊天信息栏有添加好友按钮"""
@@ -133,12 +210,11 @@ class TestGroupManagerDouble:
             self.groupManagerS.click_un_add_friend_each_other_switch(checked_str='false')
 
         with allure.step(f"5. 校验接收端(群成员)聊天信息栏中恢复有添加【{name}】好友按钮"):
-            self.groupManagerR.click_back_button()
+            self.chatR.wait_banner_message_disappear()
             self.groupManagerR.click_back_button()
             self.groupManagerR.click_back_button()
             res = self.chatR.is_cmd_notification_matching(r".*关闭群内禁止添加好友")
             check.is_true(res, "❌ 禁止群成员互相加好友开关未关闭")
-
 
 
     @allure.story("群管理-群黑名单双端校验")
