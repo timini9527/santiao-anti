@@ -75,7 +75,7 @@ class TestGroupManagerDouble:
 
 
     @allure.story("群管理-管理员分配")
-    @allure.title("【管理员】是否是管理员身份的分配验证")
+    @allure.title("【管理员】是否是管理员身份的分配验证-分配所有权限")
     def test_admin_allocation_double_validation(self):
         """验证群主分配和撤销管理员身份，以及对应的成员端权限同步和CMD通知"""
         
@@ -97,16 +97,14 @@ class TestGroupManagerDouble:
             check.is_in(PRIVATE_USER1.name, member_names, "❌ 群主端管理员列表未显示新增的管理员")
 
         with allure.step("5. 校验接收端(群成员)收到管理员身份通知并获得群管理权限"):
-            # 校验成为管理员的 CMD 通知
-            res = self.chatR.is_cmd_notification_matching(r".*成为管理员")
+            res = self.chatR.is_cmd_notification_matching(r".*将您添加为管理员")
             check.is_true(res, "❌ 接收端未收到成为管理员的通知消息")
-            
-            # 进入群设置校验【群管理】是否可见
+
             self.chatR.click_more_button()
             self.groupSettingR.wait_for_setting_page_load()
             is_visible = self.groupSettingR.is_group_manager_visible()
             check.is_true(is_visible, "❌ 接收端被设为管理员后，群设置中没有显示【群管理】入口")
-            self.groupSettingR.click_iv_back_button()  # 返回聊天页面
+            self.groupManagerR.click_back_button()
 
         with allure.step("6. 发送端(群主)移除管理员"):
             self.groupManagerS.click_member_by_name(name=PRIVATE_USER1.name)
@@ -117,20 +115,19 @@ class TestGroupManagerDouble:
             check.is_not_in(PRIVATE_USER1.name, member_names, "❌ 群主端移除管理员失败")
 
         with allure.step("7. 校验接收端(群成员)管理员权限降级且可见性移除"):
-            # 校验被解除管理员的 CMD 通知
-            res = self.chatR.is_cmd_notification_matching(r".*解除管理员|.*取消管理员")
+            res = self.chatR.is_cmd_notification_matching(r".*移除管理员身份")
             check.is_true(res, "❌ 接收端未收到被解除管理员的通知消息")
-            
-            # 进入群设置校验【群管理】是否不可见
+
             self.chatR.click_more_button()
             self.groupSettingR.wait_for_setting_page_load()
             is_visible = self.groupSettingR.is_group_manager_visible()
             check.is_false(is_visible, "❌ 接收端被解除管理员后，群设置中依然显示【群管理】入口")
-            self.groupSettingR.click_iv_back_button()  # 返回聊天页面
+            self.groupManagerR.click_back_button()
 
         with allure.step("8. 发送端(群主)返回群管理主页"):
             self.groupManagerS.click_back_button()
-            self.groupManagerS.wait_for_page_load()
+            self.groupManagerS.click_back_button()
+            self.groupManagerS.click_back_button()
 
 
     @allure.story("群申请-进群验证")

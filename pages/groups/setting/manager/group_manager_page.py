@@ -83,7 +83,7 @@ class GroupManagerPage(BasePage):
     # 管理员-等待管理员列表页面加载完成
     def wait_for_admin_page_load(self, timeout: int = 10) -> bool:
         """管理员-等待管理员列表页面加载完成"""
-        res = self.get_attribute(GroupManagerLocator.TITLE_TV, "text") == "群管理员"
+        res = self.get_attribute(GroupManagerLocator.TV_TITLE, "text") == "群管理员"
         logger.info(f"⏳ [Action-groupManagerPage] 管理员列表页面 - 加载{'成功' if res else '超时'}")
         time.sleep(0.5)
         return res
