@@ -120,8 +120,8 @@ class TestGroupManagerDouble:
             self.chatS.wait_banner_message_disappear()
 
         with allure.step("2. 校验接收方 Banner 消息"):
-            cmd_texts = self.chatR.get_cmd_notification_texts(index=-1)
-            check.is_in('开启群内禁止添加好友', cmd_texts, "❌ 禁止群成员互相加好友开关未开启")
+            res = self.chatR.is_cmd_notification_matching(r".*开启群内禁止添加好友")
+            check.is_true(res, "❌ 禁止群成员互相加好友开关未开启")
 
         with allure.step(f"3. 校验接收端(群成员)聊天信息栏中没有添加【{name}】好友按钮"):
             self.chatR.click_more_button()
@@ -136,8 +136,8 @@ class TestGroupManagerDouble:
             self.groupManagerR.click_back_button()
             self.groupManagerR.click_back_button()
             self.groupManagerR.click_back_button()
-            cmd_texts = self.chatR.get_cmd_notification_texts(index=-1)
-            check.is_in('开启群内禁止添加好友', cmd_texts, "❌ 禁止群成员互相加好友开关未开启")
+            res = self.chatR.is_cmd_notification_matching(r".*关闭群内禁止添加好友")
+            check.is_true(res, "❌ 禁止群成员互相加好友开关未关闭")
 
 
 
