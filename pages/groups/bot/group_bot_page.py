@@ -28,7 +28,7 @@ class GroupBotPage(BasePage):
     # 校验是否具有群助手权限
     def has_group_assistant_permission(self) -> bool:
         """校验是否具有群助手权限"""
-        res = self.is_element_exist(GroupBotLocator.HAS_GROUP_BOT_PERMISSION)
+        res = self.is_element_exist(GroupBotLocator.HAS_GROUP_BOT_PERMISSION, timeout=2, raise_exception=False)
         if res:
             logger.info(f"✅ [Action-GroupBotPage] 具有群助手权限")
         else:

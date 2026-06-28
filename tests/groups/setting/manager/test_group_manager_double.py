@@ -105,7 +105,7 @@ class TestGroupManagerDouble:
             self.groupSettingR.wait_for_setting_page_load()
             is_visible = self.groupSettingR.is_group_manager_visible()
             check.is_true(is_visible, "❌ 接收端被设为管理员后，群设置中没有显示【群管理】入口")
-            self.groupManagerR.click_back_button()
+            self.groupManagerR.click_iv_back_button()
 
         with allure.step("6. 发送端(群主)移除管理员"):
             self.groupManagerS.click_member_by_name(name=PRIVATE_USER1.name)
@@ -123,12 +123,12 @@ class TestGroupManagerDouble:
             self.groupSettingR.wait_for_setting_page_load()
             is_visible = self.groupSettingR.is_group_manager_visible()
             check.is_false(is_visible, "❌ 接收端被解除管理员后，群设置中依然显示【群管理】入口")
-            self.groupManagerR.click_back_button()
+            self.groupManagerR.click_iv_back_button()
 
         with allure.step("8. 发送端(群主)返回群管理主页"):
-            self.groupManagerS.click_back_button()
-            self.groupManagerS.click_back_button()
-            self.groupManagerS.click_back_button()
+            self.groupManagerS.click_iv_back_button()
+            self.groupManagerS.click_iv_back_button()
+            self.groupManagerS.click_iv_back_button()
 
 
     @allure.story("群申请-进群验证")
@@ -228,9 +228,9 @@ class TestGroupManagerDouble:
 
         with allure.step("6. 点击移除禁言"):
             self.groupManagerS.click_cancel_mute(PRIVATE_USER1.name)
-            self.groupManagerS.click_back_button()
-            self.groupManagerS.click_back_button()
-            self.groupManagerS.click_back_button()
+            self.groupManagerS.click_iv_back_button()
+            self.groupManagerS.click_iv_back_button()
+            self.groupManagerS.click_iv_back_button()
 
         with allure.step("7. 移除禁言后，接收方校验输入框状态恢复可用"):
             is_disabled = self.chatR.is_input_disabled()
@@ -262,8 +262,8 @@ class TestGroupManagerDouble:
 
         with allure.step(f"5. 校验接收端(群成员)聊天信息栏中恢复有添加【{name}】好友按钮"):
             self.chatR.wait_banner_message_disappear()
-            self.groupManagerR.click_back_button()
-            self.groupManagerR.click_back_button()
+            self.groupManagerR.click_iv_back_button()
+            self.groupManagerR.click_iv_back_button()
             res = self.chatR.is_cmd_notification_matching(r".*关闭群内禁止添加好友")
             check.is_true(res, "❌ 禁止群成员互相加好友开关未关闭")
 
@@ -298,15 +298,15 @@ class TestGroupManagerDouble:
             self.chatS.wait_banner_message_disappear()
 
         with allure.step("6. 恢复环境：邀请该成员进群"):
-            self.groupManagerS.click_back_button()
-            self.groupManagerS.click_back_button()
+            self.groupManagerS.click_iv_back_button()
+            self.groupManagerS.click_iv_back_button()
             self.groupSettingS.wait_for_setting_page_load()
 
             self.groupSettingS.click_add_friend_header()
             self.groupManagerS.click_member_by_search_keyword(name=PRIVATE_USER1.name)
             self.groupManagerS.click_edit_finish_button()
             self.chatS.wait_banner_message_disappear()
-            self.groupManagerS.click_back_button()
+            self.groupManagerS.click_iv_back_button()
 
         with allure.step("7. 校验群主端入群cmd消息"):
             res1 = self.chatS.is_cmd_notification_matching(r"您把.*加入群聊")
@@ -332,7 +332,7 @@ class TestGroupManagerDouble:
             self.chatS.wait_banner_message_disappear()
 
         with allure.step("3. 校验原群主(发送端)权限已降级(无群管理选项)"):
-            self.groupManagerS.click_back_button()
+            self.groupManagerS.click_iv_back_button()
             res1 = self.chatS.is_cmd_notification_matching(r".*已成为新群主")
             check.is_true(res1, "❌ 发送端未收到转让群主的通知消息")
 

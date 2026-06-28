@@ -222,9 +222,9 @@ class TestGroupManager:
 
         with allure.step("5. 点击移除禁言"):
             self.groupManagerPage.click_cancel_mute(PRIVATE_USER1.name)
-            self.groupManagerPage.click_back_button()
-            self.groupManagerPage.click_back_button()
-            self.groupManagerPage.click_back_button()
+            self.groupManagerPage.click_iv_back_button()
+            self.groupManagerPage.click_iv_back_button()
+            self.groupManagerPage.click_iv_back_button()
             
 
     @allure.story("群管理-禁止群成员互相加好友开关")
@@ -267,7 +267,7 @@ class TestGroupManager:
             check.is_in('你已经是群主', toasts, f"❌ [Action-groupManagerPage] 转让群主失败，toast: {toasts}")
 
         with allure.step("3. 退出群管理页面"):
-            self.groupManagerPage.click_back_button()
+            self.groupManagerPage.click_iv_back_button()
             
 
 

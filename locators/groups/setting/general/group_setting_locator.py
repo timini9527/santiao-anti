@@ -9,6 +9,7 @@ class GroupSettingLocator(ChatSettingLocator):
     PACKAGE_ID = CommonLocator.PACKAGE_ID
 
     TV_TITLE = CommonLocator.TOPBAR_TITLE
+    BACK = CommonLocator.TOPBAR_LEFT_BACK_BTN
 
     # 成员区域
     FRIEND_HEADER_ID = f"{PACKAGE_ID}/friend_header"                                                    # 群成员头像 ID
@@ -65,6 +66,9 @@ class GroupSettingLocator(ChatSettingLocator):
     TV_MESSAGE = (AppiumBy.ID, f"{PACKAGE_ID}/tv_message")                                              # 无权限弹窗内容提示
     TV_SECOND = (AppiumBy.ID, f"{PACKAGE_ID}/tv_second")                                                # 修改群公告弹窗内容提示
     
+
+    # @所有人按钮
+    LL_AT_ALL = (AppiumBy.ID, f"{PACKAGE_ID}/ll_at_all")                                                # @所有人按钮
 
     
     # 群成员-通过成员名称定位其头像

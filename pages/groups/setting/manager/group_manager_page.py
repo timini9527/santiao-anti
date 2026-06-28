@@ -17,7 +17,7 @@ class GroupManagerPage(BasePage):
         return res
 
     # 顶部-点击返回按钮
-    def click_back_button(self):
+    def click_iv_back_button(self):
         """顶部-点击顶部返回按钮"""
         self.click(GroupManagerLocator.IV_BACK)
         logger.info("⚙️ [Action-groupManagerPage] 点击顶部【返回】按钮")
@@ -238,7 +238,7 @@ class GroupManagerPage(BasePage):
             locator = GroupManagerLocator.get_switch_by_checked_value(checked_str)
             desc = "已开启" if checked_str == "true" else "未开启"
 
-        switch_item_list = self.find_elements(locator)
+        switch_item_list = self.find_elements(locator, timeout=2)
         if not switch_item_list:
             logger.warning(f"⚠️ [Action-groupManagerPage] 未找到【{desc}】的 switch item")
             return []
@@ -260,13 +260,19 @@ class GroupManagerPage(BasePage):
 
             current_elements = self.get_switch_items(checked_str=checked_str)
             if current_elements:
-                for elem in current_elements:
+                num_to_click = len(current_elements)
+                for _ in range(num_to_click):
+                    fresh_elements = self.get_switch_items(checked_str=checked_str)
+                    if not fresh_elements:
+                        break
+                    elem = fresh_elements[0]
                     try:
                         elem.click()
                         logger.info(f"⚙️ [Action-groupManagerPage] 已点击切换【{desc}】开关")
-                        time.sleep(0.3)
+                        time.sleep(0.5)
                     except Exception as e:
                         logger.warning(f"⚠️ [Action-groupManagerPage] 点击开关失败: {e}")
+                        break
             
             if swipes < max_swipes:
                 logger.info(f"⚙️ [Action-groupManagerPage] 向下滚动寻找更多开关... (当前已滑动 {swipes} 次)")

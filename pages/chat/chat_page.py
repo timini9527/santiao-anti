@@ -556,16 +556,22 @@ class ChatPage(BasePage):
         logger.info(f"[Assert] side={side} - 获取聊天页面所有文本消息内容: {txs}")
         return txs
 
+    # 文本消息-点击第 n 条文本消息
+    def click_text_message_by_index(self, index: int = -1, side: str = "sent", expect_missing: bool = False):
+        """文本消息-点击第 n 条文本消息"""
+        tx_elems = self.get_message_elements(msg_type="text", side=side, expect_missing=expect_missing)
+        if not tx_elems or len(tx_elems) == 0:
+            logger.error(f"没有找到聊天页面中的文本消息元素: side={side}")
+            return
+        tx_elems[index].click()
+        logger.info(f"🚀[Action-chat] - chat 文本消息-点击第 {index} 条文本消息")
 
     # 文本消息-获取第 n 条文本消息内容
     def get_text_message_content_by_index(self, index: int = -1, side: str = "sent", expect_missing: bool = False) -> str:
         """文本消息-获取第 n 条文本消息内容"""
         st_elems = self.get_message_elements(msg_type="text", side=side, expect_missing=expect_missing)
-        if expect_missing:
-            logger.warning(f"⚠️ [Content] - 已知没有文本消息，跳过该消息的断言")
-            return ""
         if not st_elems:
-            logger.error("❌ 没有找到任何文本消息")
+            logger.error(f"❌ 没有找到聊天页面中的文本消息元素: side={side}")
             return ""
         if index >= len(st_elems) or index < -len(st_elems):
             logger.error(f"❌ 索引 {index} 超出范围，当前文本消息数为: {len(st_elems)}")

@@ -86,8 +86,8 @@ class TestGroupBotInteraction:
             botS.toggle_switch(enable=False)
             botS.click_save()
             
-            self.groupManagerS.click_back_button()
-            self.groupManagerS.click_back_button()
+            self.groupManagerS.click_iv_back_button()
+            self.groupManagerS.click_iv_back_button()
             self.mainS.go_to_main_page()
         except Exception as e:
             logger.error(f"❌ [Class Teardown] 环境恢复失败，关键词配置可能残留，需人工检查: {e}")
@@ -305,8 +305,8 @@ class TestGroupBotInteraction:
             self.groupManagerS.click_mute_member()
             self.groupManagerS.wait_for_specify_mute_page_load()
             self.groupManagerS.click_cancel_all_mute()
-            self.groupManagerS.click_back_button()
-            self.groupManagerS.click_back_button()
+            self.groupManagerS.click_iv_back_button()
+            self.groupManagerS.click_iv_back_button()
             self.settingS.click_iv_back_button()
 
         with allure.step("8. 发送方重新进入设置以供下一次参数化/teardown恢复环境"):

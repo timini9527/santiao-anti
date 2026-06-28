@@ -23,6 +23,12 @@ class GroupSettingPage(BasePage):
         self.click(CommonLocator.TOP_IV_BACK_BTN)
         logger.info("通用 Common 点击返回按钮")
 
+    # 顶板栏-点击返回按钮
+    def click_back_button(self):
+        """顶板栏-点击返回按钮"""
+        self.click(GroupSettingLocator.BACK)
+        logger.info("顶板栏-点击返回按钮")
+
 
     # ===============================================================================   
     # 成员区域操作
@@ -266,7 +272,7 @@ class GroupSettingPage(BasePage):
     # 群头像-判断相册弹窗是否存在
     def is_album_dialog_displayed(self, timeout=2) -> bool:
         """群头像-判断相册弹窗是否存在"""
-        res = self.element_exists(GroupSettingLocator.ACTION_PICK_GALLERY, timeout=timeout)
+        res = self.is_element_exist(GroupSettingLocator.ACTION_PICK_GALLERY, timeout=timeout)
         logger.info(f"✅ [Action-groupSettingPage] 群聊设置页 - 【相册弹窗】是否显示: {res}")
         return res
 
@@ -300,6 +306,7 @@ class GroupSettingPage(BasePage):
         logger.info(f"✅ [Action-groupSettingPage] 群聊设置页 - 获取群名称弹窗内容: {res}")
         return res
     
+
     # ===============================================================================
     # 群公告-弹窗操作
     # ===============================================================================
@@ -313,8 +320,20 @@ class GroupSettingPage(BasePage):
         logger.warning(f"❌ [Action-groupSettingPage] 群公告弹窗加载失败，当前弹窗标题: {res}")
         return False
     
+    # 群公告-点击群公告
+    def click_group_notice(self):
+        """群公告-点击群公告"""
+        self.click(GroupSettingLocator.SETTING_CHAT_GROUP_ANNOUNCEMENT)
+        logger.info("✅ [Action-groupSettingPage] 群聊设置页 - 点击【群公告】")
     
-
+    # @所有人-检查该元素是否存在
+    def is_at_all_displayed(self) -> bool:
+        """@所有人-检查该元素是否存在"""
+        res = self.is_element_exist(GroupSettingLocator.LL_AT_ALL, timeout=2)
+        logger.info(f"✅ [Action-groupSettingPage] @所有人-检查该元素是否存在: {res}")
+        return res
+    
+    
     # ===============================================================================
     # 群备注弹窗操作与信息获取
     # ===============================================================================

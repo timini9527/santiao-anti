@@ -77,9 +77,35 @@ class ChatLongPressPage(ChatPage):
     # ==================================
     # 校验长按菜单项相关
     # ==================================
+    # 长按消息-获取长按菜单是否存在某一个item
+    def get_menu_item_status(self, menu_name: str) -> bool:
+        """
+        校验单个长按菜单项的存在性。
+        逻辑: 1. 优先通过 XML 定位器判断 2. 失败后通过 OCR 兜底识别（去除空格干扰进行模糊匹配）
+        :param menu_name: 菜单项名称
+        :return: True 表示菜单项存在，False 表示不存在
+        """
+        logger.info(f"🖱️ [Action] - 正在校验长按菜单项: 【{menu_name}】")
+        
+        locator = ChatLongPressLocator.get_menu_item_by_name(menu_name)
+        if self.is_element_exist(locator, timeout=2, raise_exception=False):
+            logger.info(f"✅ XML 成功识别菜单: {menu_name}")
+            return True
+
+        logger.warning(f"⚠️ XML 未能识别菜单项: {menu_name}，准备启动 OCR 降级方案...")
+        ocr_list = OcrUtils(self.driver).get_all_text()
+        ocr_text_blob = "".join(ocr_list).replace(" ", "")
+        clean_menu_name = menu_name.replace(" ", "")
+        
+        if clean_menu_name in ocr_text_blob:
+            logger.info(f"✅ OCR 成功识别菜单: {menu_name}")
+            return True
+        
+        logger.error(f"❌ OCR 也未能识别出文字: {menu_name}")
+        return False
     
-    # 获取菜单项
-    def get_menu_items(self, msg_type: str, is_admin: bool = False) -> bool:
+    # 长按消息-获取所有菜单项
+    def get_menu_items(self, msg_type: str = "text", is_admin: bool = False) -> bool:
         """
         校验长按菜单项的完整性，
         逻辑:1.优先通过 XML 定位器判断  2.失败后通过OCR兜底识别
@@ -144,7 +170,7 @@ class ChatLongPressPage(ChatPage):
         logger.info(f"✅ OCR 成功识别出 XML 缺失的菜单项: {missing_in_xml}")
         return True
 
-    # 点击菜单项(降级OCR)
+    # 长按消息-点击菜单项(降级OCR)
     def click_menu_item(self, menu_name: str):
         """
         点击弹窗菜单中的指定项目
@@ -170,6 +196,8 @@ class ChatLongPressPage(ChatPage):
         else:
             logger.error(f"❌ OCR 也未能识别出文字: {menu_name}")
             raise RuntimeError(f"无法定位并点击长按菜单项: {menu_name}")
+
+
 
     # ==================================
     # 动作与预期结果映射表 (核心重构点)
