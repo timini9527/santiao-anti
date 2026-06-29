@@ -81,7 +81,7 @@ class ChatLongPressPage(ChatPage):
         message_content = self.get_last_message_content_bubble()
         self.long_press_action(message_content)
         logger.info("🖱️ [Action] - 正在长按最后一条聊天消息...")
-        time.sleep(1)
+        time.sleep(0.5)
     
     # ==================================
     # 校验长按菜单项相关

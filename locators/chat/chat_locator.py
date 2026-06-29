@@ -54,7 +54,7 @@ class ChatLocator:
     MESSAGE_ROW_ITEM = (AppiumBy.ID, MESSAGE_ROW_ID)            # 消息行
     MESSAGE_CONTENT_ID = f'{PACKAGE_ID}/message_content'
     MESSAGE_CONTENT_ITEM = (AppiumBy.ID, MESSAGE_CONTENT_ID)    # 消息内容
-    MESSAGE_CONTENT_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{MESSAGE_CONTENT_ID}" and not(./android.widget.TextView)]')
+    MESSAGE_CONTENT_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{MESSAGE_CONTENT_ID}" and not(./android.widget.TextView[not(@resource-id)])]')
 
     # 发送方和接收方的聊天行容器
     SENT_MESSAGE_ROW_ITEM = _BUBBLE_XPATH("preceding-sibling", f"{PACKAGE_ID}/message_row")
@@ -70,10 +70,10 @@ class ChatLocator:
     # ==================================================================================================================
     # 文本消息相关
     # ==================================================================================================================
-    TEXT_MESSAGE_VIEW_ID = f'{PACKAGE_ID}/text_message_view'
-    TEXT_MESSAGE_VIEW_ITEM = (AppiumBy.ID, TEXT_MESSAGE_VIEW_ID) # 文本消息
-    TEXT_MESSAGE_VIEW_CLASS = (AppiumBy.CLASS_NAME, "android.widget.TextView") # 文本消息
-    TEXT_MESSAGE_VIEW_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{TEXT_MESSAGE_VIEW_ID}"]/android.widget.TextView') # 文本消息内容
+    TEXT_MESSAGE_VIEW_ID = f'{PACKAGE_ID}/text_message_view'    # 文本消息
+    TEXT_MESSAGE_VIEW_ITEM = (AppiumBy.ID, TEXT_MESSAGE_VIEW_ID)    
+    TEXT_MESSAGE_VIEW_CLASS = (AppiumBy.CLASS_NAME, "android.widget.TextView")
+    TEXT_MESSAGE_VIEW_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{TEXT_MESSAGE_VIEW_ID}"]/android.widget.TextView')
     
     # 文本消息内容 (用于根据消息类型过滤气泡)
     TEXT_MESSAGE_CLASS = f'//*[@resource-id="{TEXT_MESSAGE_VIEW_ID}"]/android.widget.TextView'
