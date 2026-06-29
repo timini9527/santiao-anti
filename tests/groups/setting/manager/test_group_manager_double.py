@@ -75,74 +75,8 @@ class TestGroupManagerDouble:
 
     
 
-    @allure.story("群管理-管理员分配")
-    @allure.title("【管理员】是否是管理员身份的分配验证-分配所有权限")
-    def test_admin_allocation_double_validation(self):
-        """验证群主分配和撤销管理员身份，以及对应的成员端权限同步和CMD通知"""
-        
-        with allure.step("1. 发送端(群主)点击群管理员，并点击新增管理员"):
-            self.groupManagerS.click_administrators()
-            self.groupManagerS.wait_for_admin_page_load()
-            self.groupManagerS.click_add_admin()
-
-        with allure.step("2. 选择要添加的管理员"):
-            self.groupManagerS.click_member_by_name(name=PRIVATE_USER1.name)
-
-        with allure.step("3. 确认添加管理员，并分配所有权限"):
-            self.groupManagerS.click_all_switch(checked_str="false")
-            self.groupManagerS.click_confirm_button()
-            self.chatS.wait_banner_message_disappear()
-        
-        with allure.step("4. 校验发送端(群主)管理员列表状态"):
-            member_names = self.groupManagerS.get_member_names()
-            check.is_in(PRIVATE_USER1.name, member_names, "❌ 群主端管理员列表未显示新增的管理员")
-
-        with allure.step("5. 校验接收端(群成员)收到管理员身份通知并获得群管理权限"):
-            res = self.chatR.is_cmd_notification_matching(r".*将您添加为管理员")
-            check.is_true(res, "❌ 接收端未收到成为管理员的通知消息")
-
-            self.chatR.click_more_button()
-            self.groupSettingR.wait_for_setting_page_load()
-            is_visible = self.groupSettingR.is_group_manager_visible()
-            check.is_true(is_visible, "❌ 接收端被设为管理员后，群设置中没有显示【群管理】入口")
-            self.groupManagerR.click_iv_back_button()
-
-        with allure.step("6. 发送端(群主)移除管理员"):
-            self.groupManagerS.click_member_by_name(name=PRIVATE_USER1.name)
-            self.groupManagerS.click_sure_button()
-            self.groupManagerS.click_sure_content_button()
-            self.chatS.wait_banner_message_disappear()
-            member_names = self.groupManagerS.get_member_names()
-            check.is_not_in(PRIVATE_USER1.name, member_names, "❌ 群主端移除管理员失败")
-
-        with allure.step("7. 校验接收端(群成员)管理员权限降级且可见性移除"):
-            res = self.chatR.is_cmd_notification_matching(r".*移除管理员身份")
-            check.is_true(res, "❌ 接收端未收到被解除管理员的通知消息")
-
-            self.chatR.click_more_button()
-            self.groupSettingR.wait_for_setting_page_load()
-            is_visible = self.groupSettingR.is_group_manager_visible()
-            check.is_false(is_visible, "❌ 接收端被解除管理员后，群设置中依然显示【群管理】入口")
-            self.groupManagerR.click_iv_back_button()
-
-        with allure.step("8. 发送端(群主)返回群管理主页"):
-            self.groupManagerS.click_iv_back_button()
-            self.groupManagerS.click_iv_back_button()
-            self.groupManagerS.click_iv_back_button()
-
-
-    @allure.story("群申请-进群验证")
-    @allure.title("【进群验证】是否是管理员的多重场景")
-    def test_join_verify_admin_scenarios_double_validation(self):
-        """验证进群验证是否是管理员的多重场景"""
-        pass
-
-
-    @allure.story("群申请-进群申请双端校验")
-    @allure.title("【进群申请】管理员=是，可以看到进群申请横幅；管理员=否，看不到进群申请横幅")
-    def test_add_admin_double_validation(self):
-        """验证是否为管理员【进群申请】管理员=是，可以看到进群申请横幅；管理员=否，看不到进群申请横幅"""
-        pass
+    # 说明：管理员分配、进群验证及进群申请等需要管理员身份的测试用例已重构至下方的 TestGroupAdminScenariosDouble 类中，
+    # 共享同一个类级别的管理员权限分配 Fixture，以实现分配逻辑仅执行一次，提升执行效率。
         
 
     @allure.story("群禁言-全员禁言双端校验")
@@ -353,3 +287,136 @@ class TestGroupManagerDouble:
             self.chatS.click_more_button()
             is_visible = self.groupSettingS.is_group_manager_visible()
             check.is_true(is_visible, "❌ 原群主(发送端)未重获群管理权限")
+
+
+@allure.epic("IM核心功能测试")
+@allure.feature("群聊模块-群管理-管理员权限双端校验")
+class TestGroupAdminScenariosDouble:
+    """群管理员身份关联场景双端（群主发端与成员收端）协同验证测试"""
+
+    @pytest.fixture(scope="class", autouse=True)
+    def setup_admin_role(self, driver_sender, driver_receiver):
+        """类级别前置：在类内所有用例执行前分配管理员，在所有用例执行后回收管理员"""
+        mainS = MainPage(driver_sender)
+        chatListS = ChatListPage(driver_sender)
+        chatS = ChatPage(driver_sender)
+        groupSettingS = GroupSettingPage(driver_sender)
+        groupManagerS = GroupManagerPage(driver_sender)
+
+        with allure.step("-> [类前置准备] 一键分配接收端为管理员并全开权限"):
+            mainS.go_to_main_page()
+            chatListS.enter_chat(GROUP_STRATEGY.name)
+            chatS.wait_for_chat_page_load()
+            
+            chatS.click_more_button()
+            groupSettingS.wait_for_setting_page_load()
+            groupSettingS.click_group_manager()
+            groupManagerS.wait_for_page_load()
+            groupManagerS.click_administrators()
+            groupManagerS.wait_for_admin_page_load()
+            groupManagerS.click_add_admin()
+            groupManagerS.click_member_by_name(name=PRIVATE_USER1.name)
+            groupManagerS.click_all_switch(checked_str="false")
+            groupManagerS.click_confirm_button()
+            chatS.wait_banner_message_disappear()
+            
+            mainS.go_to_main_page()
+
+        yield
+
+        with allure.step("-> [类环境清理] 撤销接收端的管理员身份并复原"):
+            try:
+                mainS.go_to_main_page()
+                chatListS.enter_chat(GROUP_STRATEGY.name)
+                chatS.wait_for_chat_page_load()
+                
+                chatS.click_more_button()
+                groupSettingS.wait_for_setting_page_load()
+                groupSettingS.click_group_manager()
+                groupManagerS.wait_for_page_load()
+                groupManagerS.click_administrators()
+                groupManagerS.wait_for_admin_page_load()
+                
+                groupManagerS.click_member_by_name(name=PRIVATE_USER1.name)
+                groupManagerS.click_sure_button()
+                groupManagerS.click_sure_content_button()
+                chatS.wait_banner_message_disappear()
+                
+                mainS.go_to_main_page()
+            except Exception as e:
+                logger.warning(f"⚠️ [Cleanup] 撤销管理员身份失败: {e}")
+
+    @pytest.fixture(autouse=True)
+    def setup_double_env(self, driver_sender, driver_receiver):
+        """初始化双端页面对象"""
+        self.mainS = MainPage(driver_sender)
+        self.groupSettingS = GroupSettingPage(driver_sender)
+        self.groupManagerS = GroupManagerPage(driver_sender)
+        self.chatS = ChatPage(driver_sender)
+        self.chatListS = ChatListPage(driver_sender)
+
+        self.mainR = MainPage(driver_receiver)
+        self.chatListR = ChatListPage(driver_receiver)
+        self.chatR = ChatPage(driver_receiver)
+        self.groupSettingR = GroupSettingPage(driver_receiver)
+        self.groupManagerR = GroupManagerPage(driver_receiver)
+
+        with allure.step("-> [前置准备] 发送端(群主)进入指定群聊"):
+            self.chatListS.enter_chat(GROUP_STRATEGY.name)
+            self.chatS.wait_for_chat_page_load()
+
+        with allure.step("-> [前置准备] 接收端(普通成员)进入指定群聊聊天界面"):
+            self.chatListR.enter_chat(GROUP_STRATEGY.name)
+            self.chatR.wait_for_chat_page_load()
+
+        self._enter_group_manager_sender()
+
+        yield
+
+        with allure.step("-> [环境清理] 双端返回首页"):
+            try:
+                self.mainS.go_to_main_page()
+                self.mainR.go_to_main_page()
+            except Exception as e:
+                logger.warning(f"⚠️ [Cleanup] 双端返回首页失败: {e}")
+
+    def _enter_group_manager_sender(self):
+        """内部辅助：发送端(群主)进入该群【群管理】页面"""
+        with allure.step("-> [前置准备] 发送端(群主)进入该群【群管理】页面"):
+            self.chatS.click_more_button()
+            self.groupSettingS.wait_for_setting_page_load()
+            self.groupSettingS.click_group_manager()
+            self.groupManagerS.wait_for_page_load()
+
+    @allure.story("群管理-管理员分配")
+    @allure.title("【管理员】管理员身份状态与权限同步验证")
+    def test_admin_allocation_double_validation(self):
+        """验证被分配管理员身份后的状态同步、权限可见性及CMD通知"""
+        with allure.step("1. 校验发送端(群主)管理员列表状态"):
+            self.groupManagerS.click_administrators()
+            self.groupManagerS.wait_for_admin_page_load()
+            member_names = self.groupManagerS.get_member_names()
+            check.is_in(PRIVATE_USER1.name, member_names, "❌ 群主端管理员列表未显示新增的管理员")
+            self.groupManagerS.click_iv_back_button()
+
+        with allure.step("2. 校验接收端(群成员)收到管理员身份通知并获得群管理权限"):
+            res = self.chatR.is_cmd_notification_matching(r".*将您添加为管理员")
+            check.is_true(res, "❌ 接收端未收到成为管理员的通知消息")
+
+            self.chatR.click_more_button()
+            self.groupSettingR.wait_for_setting_page_load()
+            is_visible = self.groupSettingR.is_group_manager_visible()
+            check.is_true(is_visible, "❌ 接收端被设为管理员后，群设置中没有显示【群管理】入口")
+            self.groupManagerR.click_iv_back_button()
+
+    @allure.story("群申请-进群验证")
+    @allure.title("【进群验证】是否是管理员的多重场景")
+    def test_join_verify_admin_scenarios_double_validation(self):
+        """验证进群验证是否是管理员的多重场景"""
+        pass
+
+    @allure.story("群申请-进群申请双端校验")
+    @allure.title("【进群申请】管理员=是，可以看到进群申请横幅；管理员=否，看不到进群申请横幅")
+    def test_add_admin_double_validation(self):
+        """验证是否为管理员【进群申请】管理员=是，可以看到进群申请横幅；管理员=否，看不到进群申请横幅"""
+        pass

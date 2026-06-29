@@ -54,7 +54,8 @@ class ChatLocator:
     MESSAGE_ROW_ITEM = (AppiumBy.ID, MESSAGE_ROW_ID)            # 消息行
     MESSAGE_CONTENT_ID = f'{PACKAGE_ID}/message_content'
     MESSAGE_CONTENT_ITEM = (AppiumBy.ID, MESSAGE_CONTENT_ID)    # 消息内容
-    MESSAGE_CONTENT_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{MESSAGE_CONTENT_ID}" and not(./android.widget.TextView[not(@resource-id)])]')
+    # 排除CMD消息的气泡
+    MESSAGE_CONTENT_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{MESSAGE_CONTENT_ID}" and not(./android.widget.TextView)]')
 
     # 发送方和接收方的聊天行容器
     SENT_MESSAGE_ROW_ITEM = _BUBBLE_XPATH("preceding-sibling", f"{PACKAGE_ID}/message_row")
