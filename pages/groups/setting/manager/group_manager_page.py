@@ -229,7 +229,7 @@ class GroupManagerPage(BasePage):
             logger.info(f"⚙️ [Action-groupManagerPage] 将【禁止群成员互相加好友】开关设置为{checked_str}")
 
     # Switch - 获取 switch item 列表（支持状态过滤）
-    def get_switch_items(self, checked_str: str = None) -> list[WebElement]:
+    def get_switch_items(self, checked_str: str = None, raise_exception: bool = True) -> list[WebElement]:
         """Switch - 获取 switch item 列表（可按 checked_str "true"/"false" 过滤，None 表示获取全部）"""
         if checked_str is None:
             locator = GroupManagerLocator.SWITCH_BTN
@@ -238,7 +238,7 @@ class GroupManagerPage(BasePage):
             locator = GroupManagerLocator.get_switch_by_checked_value(checked_str)
             desc = "已开启" if checked_str == "true" else "未开启"
 
-        switch_item_list = self.find_elements(locator, timeout=2)
+        switch_item_list = self.find_elements(locator, timeout=2, raise_exception=raise_exception)
         if not switch_item_list:
             logger.warning(f"⚠️ [Action-groupManagerPage] 未找到【{desc}】的 switch item")
             return []
@@ -258,11 +258,11 @@ class GroupManagerPage(BasePage):
                 logger.info("⚙️ [Action-groupManagerPage] 滑动后页面 DOM 无变化，已达底部边界，退出切换")
                 break
 
-            current_elements = self.get_switch_items(checked_str=checked_str)
+            current_elements = self.get_switch_items(checked_str=checked_str, raise_exception=False)
             if current_elements:
                 num_to_click = len(current_elements)
                 for _ in range(num_to_click):
-                    fresh_elements = self.get_switch_items(checked_str=checked_str)
+                    fresh_elements = self.get_switch_items(checked_str=checked_str, raise_exception=False)
                     if not fresh_elements:
                         break
                     elem = fresh_elements[0]

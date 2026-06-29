@@ -54,6 +54,7 @@ class ChatLocator:
     MESSAGE_ROW_ITEM = (AppiumBy.ID, MESSAGE_ROW_ID)            # 消息行
     MESSAGE_CONTENT_ID = f'{PACKAGE_ID}/message_content'
     MESSAGE_CONTENT_ITEM = (AppiumBy.ID, MESSAGE_CONTENT_ID)    # 消息内容
+    MESSAGE_CONTENT_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{MESSAGE_CONTENT_ID}" and not(./android.widget.TextView)]')
 
     # 发送方和接收方的聊天行容器
     SENT_MESSAGE_ROW_ITEM = _BUBBLE_XPATH("preceding-sibling", f"{PACKAGE_ID}/message_row")
@@ -64,7 +65,7 @@ class ChatLocator:
     RECEIVED_MESSAGE_CONTENT_ITEM = _BUBBLE_XPATH("following-sibling", f"{PACKAGE_ID}/message_content")
 
     AVATAR_ID = f'{PACKAGE_ID}/iv_avatar'
-    AVATAR_ITEM = (AppiumBy.ID, AVATAR_ID)          # 头像
+    AVATAR_ITEM = (AppiumBy.ID, AVATAR_ID)                      # 头像
 
     # ==================================================================================================================
     # 文本消息相关
