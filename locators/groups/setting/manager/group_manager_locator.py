@@ -68,6 +68,19 @@ class GroupManagerLocator(CommonLocator):
         """通过 checked 状态定位到 switch：false/true状态的开关"""
         return (AppiumBy.XPATH, f"//*[@resource-id='{cls.SWITCH_BTN_ID}' and @checked='{checked}']")
 
+    # ===================================================================================
+    # 进群验证/申请相关（管理员操作+普通成员操作）
+    # ===================================================================================
+    ERROR_TIPS_ID = f"{PACKAGE_ID}/error"
+    ERROR_TIPS = (AppiumBy.ID, ERROR_TIPS_ID)                                               # 错误信息
+    ERROR_TIPS_TITLE = (AppiumBy.XPATH, f"//*[@resource-id='{ERROR_TIPS_ID}']//android.widget.TextView")
+    GROUP_VERIFY_RV = (AppiumBy.ID, f"{PACKAGE_ID}/group_verify_rv")                        # 进群申请列表
+    GROUP_VERIFY_HEADER = (AppiumBy.ID, f"{PACKAGE_ID}/group_verify_header")                # 进群申请列表头部
+    GROUP_VERIFY_NAME = (AppiumBy.ID, f"{PACKAGE_ID}/group_verify_name")                    # 进群申请成员姓名
+    GROUP_VERIFY_METHOD = (AppiumBy.ID, f"{PACKAGE_ID}/group_verify_method")                # 进群申请方式
+    GROUP_VERIFY_AGREE = (AppiumBy.ID, f"{PACKAGE_ID}/group_verify_no")                     # 进群申请同意
+    GROUP_VERIFY_DISAGREE = (AppiumBy.ID, f"{PACKAGE_ID}/group_verify_yes")                 # 进群申请拒绝
+
 
     # ===================================================================================
     # 指定禁言页面相关

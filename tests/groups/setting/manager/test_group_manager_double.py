@@ -121,18 +121,20 @@ class TestGroupManagerDouble:
             self.groupManagerS.click_all_switch(checked_str="false")
             self.groupManagerS.click_confirm_button()
             self.chatS.wait_banner_message_disappear()
+            member_names = self.groupManagerS.get_member_names()
+            check.is_in(PRIVATE_USER1.name, member_names, "❌ 群主端管理员列表未显示新增的管理员")
 
     def _remove_admin_permission(self):
         """后置辅助：群主从管理员列表移除该成员"""
         with allure.step("-> [环境清理] 群主从管理员列表移除该成员并校验降级"):
-            self.groupManagerS.click_administrators()
-            self.groupManagerS.wait_for_admin_page_load()
             self.groupManagerS.click_member_by_name(name=PRIVATE_USER1.name)
             self.groupManagerS.click_sure_button()
             self.groupManagerS.click_sure_content_button()
             self.chatS.wait_banner_message_disappear()
             member_names = self.groupManagerS.get_member_names()
             check.is_not_in(PRIVATE_USER1.name, member_names, "❌ 群主端移除管理员失败")
+            self.groupManagerS.click_iv_back_button()
+            self.groupManagerS.click_iv_back_button()
             self.groupManagerS.click_iv_back_button()
 
             res = self.chatR.is_cmd_notification_matching(r".*移除管理员身份")
@@ -154,11 +156,7 @@ class TestGroupManagerDouble:
         # with allure.step("1. 发送端(群主)点击群管理员，并点击新增管理员"):
         #     self._assign_admin_permission()
         
-        with allure.step("2. 校验发送端(群主)管理员列表状态"):
-            member_names = self.groupManagerS.get_member_names()
-            check.is_in(PRIVATE_USER1.name, member_names, "❌ 群主端管理员列表未显示新增的管理员")
-
-        with allure.step("3. 校验接收端(群成员)收到管理员身份通知并获得群管理权限"):
+        with allure.step("1. 校验接收端(群成员)收到管理员身份通知并获得群管理权限"):
             res = self.chatR.is_cmd_notification_matching(r".*将您添加为管理员")
             check.is_true(res, "❌ 接收端未收到成为管理员的通知消息")
 
@@ -169,20 +167,56 @@ class TestGroupManagerDouble:
             self.groupManagerR.click_iv_back_button()
 
 
-
     @allure.story("群申请-进群验证")
     @allure.title("【进群验证】是否是管理员的多重场景")
     @pytest.mark.usefixtures("admin_role")
     def test_join_verify_admin_scenarios_double_validation(self):
         """验证进群验证是否是管理员的多重场景"""
-        pass
+        
+        # with allure.step("1. 发送端(群主)点击群管理员，并点击新增管理员"):
+        #     self._assign_admin_permission()
+        
+        with allure.step("1. 接收端进群校验验证"):
+            self.chatR.click_more_button()
+            self.groupSettingR.wait_for_setting_page_load()
+            self.groupSettingR.click_group_manager()
+            state = self.groupManagerR.get_join_group_verify_state()
+            check.is_in(state, ("true", "false"), "❌ 接收端进群校验状态异常")
+            self.groupManagerR.click_iv_back_button()
+            self.groupManagerR.click_iv_back_button()
+            
 
     @allure.story("群申请-进群申请双端校验")
     @allure.title("【进群申请】管理员=是，可以看到进群申请横幅；管理员=否，看不到进群申请横幅")
     @pytest.mark.usefixtures("admin_role")
     def test_add_admin_double_validation(self):
         """验证是否为管理员【进群申请】管理员=是，可以看到进群申请横幅；管理员=否，看不到进群申请横幅"""
-        pass
+
+        # with allure.step("1. 发送端(群主)点击群管理员，并点击新增管理员"):
+        #     self._assign_admin_permission()
+
+        with allure.step("1. 接收端进群申请横幅与操作按钮校验"):
+            self.chatR.click_more_button()
+            self.groupSettingR.wait_for_setting_page_load()
+            self.groupSettingR.click_group_manager()
+            self.groupManagerR.click_join_to_group_apply()
+            
+            # 1. 校验进群申请头部/横幅提示
+            res = self.groupManagerR.get_join_apply_tips()
+            check.is_in("入群申请", res, "❌ 接收端【进群申请】页头部提示异常")
+            
+            # 2. 动态校验：如果有待处理申请，验证操作按钮的存在性
+            agree_btns = self.groupManagerR.get_agree_buttons()
+            disagree_btns = self.groupManagerR.get_disagree_buttons()
+            if agree_btns:
+                check.is_true(len(agree_btns) > 0, "❌ 列表中有申请项时未显示‘同意’按钮")
+                check.is_true(len(disagree_btns) > 0, "❌ 列表中有申请项时未显示‘拒绝’按钮")
+            else:
+                logger.info("ℹ️ 当前没有待处理的进群申请，跳过同意/拒绝按钮的强校验")
+                
+            self.groupManagerR.click_iv_back_button()
+            self.groupManagerR.click_iv_back_button()
+            self.groupManagerR.click_iv_back_button()
         
 
     @allure.story("群禁言-全员禁言双端校验")

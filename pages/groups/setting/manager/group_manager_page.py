@@ -155,7 +155,7 @@ class GroupManagerPage(BasePage):
     # =========================================================================================
     # Switch 开关类操作
     # =========================================================================================
-    
+
     # Switch - 获取群ID搜索开关
     def get_group_id_search_state(self) -> str:
         """Switch - 获取【群ID搜索】开关状态"""
@@ -285,6 +285,62 @@ class GroupManagerPage(BasePage):
             swipes += 1
 
 
+    # ===================================================================================
+    # 进群验证/申请相关（管理员操作+普通成员操作）
+    # ===================================================================================
+    # 等待进群申请页面加载
+    def wait_for_join_apply_page_load(self, timeout: int = 10) -> bool:
+        """等待进群申请页面加载完成"""
+        res = self.get_attribute(GroupManagerLocator.TV_TITLE, "text") == "进群申请"
+        logger.info(f"⏳ [Action-groupManagerPage] 进群申请页面 - 加载{'成功' if res else '超时'}")
+        time.sleep(0.5)
+        return res
+    
+    # 进群申请-进群申请横幅
+    def get_join_apply_banner_text(self) -> str:
+        """进群申请-进群申请横幅"""
+        res = self.get_text(GroupManagerLocator.TV_TITLE)
+        logger.info(f"✅ [Action-groupManagerPage] 获取进群申请横幅: {res}")
+        return res
+
+    # 进群申请-获取Tips
+    def get_join_apply_tips(self) -> str:
+        """进群申请-获取Tips"""
+        res = self.get_attribute(GroupManagerLocator.ERROR_TIPS_TITLE, "text")
+        logger.info(f"✅ [Action-groupManagerPage] 获取Tips: {res}")
+        return res
+    
+    # 进群申请-获取同意按钮（可根据下标取）
+    def get_agree_buttons(self) -> list[WebElement]:
+        """进群申请-获取同意按钮（可根据下标取）"""
+        res = self.find_elements(GroupManagerLocator.GROUP_VERIFY_AGREE)
+        if not res:
+            logger.warning("⚠️ [Action-groupManagerPage] 未找到同意按钮")
+            return []
+        logger.info(f"✅ [Action-groupManagerPage] 获取同意按钮: {res}")
+        return res
+    
+    # 进群申请-点击同意按钮
+    def click_agree_button(self, index: int = 0):
+        """进群申请-点击同意按钮（可根据下标取）"""
+        self.get_agree_buttons()[index].click()
+        logger.info(f"✅ [Action-groupManagerPage] 点击同意按钮")
+    
+    # 进群申请-获取拒绝按钮（可根据下标取）
+    def get_disagree_buttons(self) -> list[WebElement]:
+        """进群申请-获取拒绝按钮（可根据下标取）"""
+        res = self.find_elements(GroupManagerLocator.GROUP_VERIFY_DISAGREE)
+        if not res:
+            logger.warning("⚠️ [Action-groupManagerPage] 未找到拒绝按钮")
+            return []
+        logger.info(f"✅ [Action-groupManagerPage] 获取拒绝按钮: {res}")
+        return res
+    
+    # 进群申请-点击拒绝按钮
+    def click_disagree_button(self, index: int = 0):
+        """进群申请-点击拒绝按钮（可根据下标取）"""
+        self.get_disagree_buttons()[index].click()
+        logger.info(f"✅ [Action-groupManagerPage] 点击拒绝按钮")
 
     # ===================================================================================
     # 群成员禁言相关（全员禁言+指定成员禁言）
