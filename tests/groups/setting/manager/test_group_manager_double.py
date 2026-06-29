@@ -151,6 +151,8 @@ class TestGroupManagerDouble:
             self.chatS.wait_banner_message_disappear()
             member_names = self.groupManagerS.get_member_names()
             check.is_not_in(PRIVATE_USER1.name, member_names, "❌ 群主端移除管理员失败")
+            self.chatS.wait_banner_message_disappear()
+            self.groupManagerS.click_iv_back_button()
             self.groupManagerS.click_iv_back_button()
             self.groupManagerS.click_iv_back_button()
             # self.groupManagerS.click_iv_back_button()
