@@ -425,15 +425,6 @@ class ChatPage(BasePage):
             raise NoSuchElementException("没有找到已发送的消息元素")
         return msg_layout_items[-1]
 
-    # 消息接收-获取最后一条消息的气泡内容容器
-    def get_message_content_bubble(self):
-        """消息接收-获取最后一条消息的气泡内容容器"""
-        elements = self.find_elements(ChatLocator.MESSAGE_CONTENT_XPATH)
-        if not elements:
-            logger.error("没有找到任何消息气泡容器")
-            raise NoSuchElementException("没有找到任何消息气泡容器")
-        return elements[-1]
-
     # 消息状态-获取最后一条消息是否包含发送失败状态
     def get_last_message_send_fail_status(self) -> bool:
         """消息状态-获取最后一条消息是否包含发送失败状态"""
@@ -444,6 +435,21 @@ class ChatPage(BasePage):
         logger.info(f"最后一条消息发送{'失败' if status else '成功'}")
         return status
     
+    # 消息接收-获取所有消息气泡容器
+    def get_message_content_bubbles(self):
+        """消息接收-获取所有消息气泡容器"""
+        elements = self.find_elements(ChatLocator.MESSAGE_CONTENT_XPATH)
+        if not elements:
+            logger.error("没有找到任何消息气泡容器")
+            raise NoSuchElementException("没有找到任何消息气泡容器")
+        return elements
+
+    # 消息接收-获取最后一条消息的气泡内容容器
+    def get_last_message_content_bubble(self):
+        """消息接收-获取最后一条消息的气泡内容容器"""
+        elements = self.get_message_content_bubbles()
+        return elements[-1]
+
 
     # 视频消息-验证最后一条视频消息的状态是否完整成功
     def get_last_message_video_status(self) -> bool:
@@ -458,21 +464,7 @@ class ChatPage(BasePage):
         logger.info(f"最后一条视频消息状态校验: {'通过' if status else '不通过(缺失组件或存在红点)'}")
         return status
 
-    # 消息接收-智能识别最后一条消息的媒体类型
-    def get_last_message_type(self) -> str:
-        """消息接收-智能识别最后一条消息的媒体类型"""
-        last_item = self._get_last_message_layout_item()
-        
-        if len(last_item.find_elements(*ChatLocator.VIDEO_DURATION_ITEM)) > 0:
-            return "video"
-        if len(last_item.find_elements(*ChatLocator.SENT_IMAGE_ITEM)) > 0 or \
-           len(last_item.find_elements(*ChatLocator.RECEIV_IMAGE_ITEM)) > 0:
-            return "image"
-        if len(last_item.find_elements(*ChatLocator.MESSAGE_CONTENT_ITEM)) > 0:
-            return "text"
-        
-        return "unknown"
-
+   
     # 消息接收-通过输入内容在聊天气泡中查找并验证内容
     def verify_message_content_by_input(self, message: str) -> str:
         """消息接收-通过输入内容在聊天气泡中查找并验证内容"""
