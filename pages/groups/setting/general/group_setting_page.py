@@ -89,13 +89,11 @@ class GroupSettingPage(BasePage):
             return False
 
         del_btn = headers[index]
-        path_obj = find_file("images/delbtn.png")
+        template_path = find_file("images/delbtn.png")
 
-        if not path_obj:
-            logger.error("❌ 找不到本地模板图片: images/delbtn.png")
+        if template_path is None or not template_path.exists():
+            logger.error(f"❌ 找不到本地模板图片: {template_path}")
             return False
-
-        template_path = str(path_obj)
 
         try:
             element_bytes = ScreenshotUtils.element_png(del_btn)
