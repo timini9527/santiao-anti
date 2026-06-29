@@ -99,7 +99,8 @@ class TestAdminPermissionsDouble:
             self.groupSettingR.click_back_button()
 
         with allure.step("4. 校验管理群成员权限"):
-            self.groupSettingR.
+            is_displayed = self.groupSettingR.is_delete_member_btn_visible()
+            check.is_true(is_displayed, "❌ 未找到【删除群成员】按钮")
             self.groupManagerR.click_iv_back_button()
         
         with allure.step("5. 校验删除（撤回）群成员消息权限"):
