@@ -52,16 +52,16 @@ class TestGroupManagerDouble:
         if not is_admin_test:
             self._run_env_setup()
         else:
-            if not TestGroupManagerDouble._env_setup_locked:
+            if not self.__class__._env_setup_locked:
                 self._run_env_setup()
-                TestGroupManagerDouble._env_setup_locked = True
+                self.__class__._env_setup_locked = True
 
         yield
 
         # 锁判断：非管理员用例，或最后一个管理员用例执行清理并解锁
         if not is_admin_test or current_test == "test_add_admin_double_validation":
             self._run_env_teardown()
-            TestGroupManagerDouble._env_setup_locked = False
+            self.__class__._env_setup_locked = False
 
     def _run_env_setup(self):
         """执行发送端和接收端进群及群管理的前置流程"""
@@ -106,9 +106,9 @@ class TestGroupManagerDouble:
     @pytest.fixture(scope="function", autouse=False)
     def admin_role(self, request):
         """确保分配了管理员权限，在首个用例自动或手动分配，在最后一个用例自动清理"""
-        if not TestGroupManagerDouble._admin_assigned:
+        if not self.__class__._admin_assigned:
             self._assign_admin_permission()
-            TestGroupManagerDouble._admin_assigned = True
+            self.__class__._admin_assigned = True
         
         yield
         
@@ -125,9 +125,9 @@ class TestGroupManagerDouble:
         if current_test in tests_to_run:
             is_last_admin_test = (tests_to_run.index(current_test) == len(tests_to_run) - 1)
             if is_last_admin_test:
-                if TestGroupManagerDouble._admin_assigned:
+                if self.__class__._admin_assigned:
                     self._remove_admin_permission()
-                    TestGroupManagerDouble._admin_assigned = False
+                    self.__class__._admin_assigned = False
 
     def _assign_admin_permission(self):
         """前置辅助：群主分配管理员权限并开启所有开关"""
@@ -153,7 +153,7 @@ class TestGroupManagerDouble:
             check.is_not_in(PRIVATE_USER1.name, member_names, "❌ 群主端移除管理员失败")
             self.groupManagerS.click_iv_back_button()
             self.groupManagerS.click_iv_back_button()
-            self.groupManagerS.click_iv_back_button()
+            # self.groupManagerS.click_iv_back_button()
 
             res = self.chatR.is_cmd_notification_matching(r".*移除管理员身份")
             check.is_true(res, "❌ 接收端未收到被解除管理员的通知消息")
