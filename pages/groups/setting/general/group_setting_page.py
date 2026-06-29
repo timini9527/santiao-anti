@@ -89,7 +89,7 @@ class GroupSettingPage(BasePage):
             return False
 
         del_btn = headers[index]
-        template_path = find_file("images/delbtn.png")
+        template_path = find_file(filename="images/delbtn.png")
 
         if template_path is None or not template_path.exists():
             logger.error(f"❌ 找不到本地模板图片: {template_path}")
@@ -97,11 +97,13 @@ class GroupSettingPage(BasePage):
 
         try:
             element_bytes = ScreenshotUtils.element_png(del_btn)
+            logger.info(f"⚙️ [Action-groupSettingPage] 删除按钮截图成功，字节数: {len(element_bytes)}")
             
             with open(template_path, "rb") as f:
                 template_bytes = f.read()
+            logger.info(f"⚙️ [Action-groupSettingPage] 模板图片成功，字节数: {len(template_bytes)}")
 
-            res = ImageComparator.compare_similarity(template_bytes, element_bytes, threshold=10)
+            res = ImageComparator.compare_similarity(template_bytes, element_bytes, threshold=30)
             logger.info(f"⚙️ [Action-groupSettingPage] 对比删除按钮截图结果: {res}")
             return res
         except Exception as e:

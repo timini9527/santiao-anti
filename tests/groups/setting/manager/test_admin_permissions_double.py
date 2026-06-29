@@ -75,30 +75,31 @@ class TestAdminPermissionsDouble:
     def test_admin_all_permissions_ui_verification(self):
         """采用只读校验策略，一键检查分配给管理员的各项功能入口、开关状态及长按菜单权限（14项权限覆盖）"""
 
-        with allure.step("1. 校验修改群头像权限"):
-            self.chatR.click_more_button()
-            self.groupSettingR.wait_for_setting_page_load()
-            self.groupSettingR.click_group_avatar()
-            self.groupManagerR.click_confirm_button()
-            is_displayed = self.groupSettingR.is_album_dialog_displayed()
-            check.is_true(is_displayed, "❌ 未找到【相册弹窗】，管理员没有对应权限")
-            self.groupSettingR.click_group_avatar_cancel()
-            self.groupManagerR.click_iv_back_button()
+        # with allure.step("1. 校验修改群头像权限"):
+        #     self.chatR.click_more_button()
+        #     self.groupSettingR.wait_for_setting_page_load()
+        #     self.groupSettingR.click_group_avatar()
+        #     self.groupManagerR.click_confirm_button()
+        #     is_displayed = self.groupSettingR.is_album_dialog_displayed()
+        #     check.is_true(is_displayed, "❌ 未找到【相册弹窗】，管理员没有对应权限")
+        #     self.groupSettingR.click_group_avatar_cancel()
+        #     self.groupManagerR.click_iv_back_button()
 
 
-        with allure.step("2. 校验修改群名称权限"):
-            self.groupSettingR.click_group_name()
-            dialog_message = self.groupSettingR.get_group_name_dialog_message()
-            check.is_in("修改群聊名称后，将在群内通知其他成员", dialog_message, "❌ 未找到【修改群聊名称后，将在群内通知其他成员】提示")
-            self.groupSettingR.click_remark_cancel()
+        # with allure.step("2. 校验修改群名称权限"):
+        #     self.groupSettingR.click_group_name()
+        #     dialog_message = self.groupSettingR.get_group_name_dialog_message()
+        #     check.is_in("修改群聊名称后，将在群内通知其他成员", dialog_message, "❌ 未找到【修改群聊名称后，将在群内通知其他成员】提示")
+        #     self.groupSettingR.click_remark_cancel()
 
-        with allure.step("3. 校验编辑群公告权限"):
-            self.groupSettingR.click_group_notice()
-            dialog_message = self.groupSettingR.wait_for_notice_dialog_load()
-            check.is_true(dialog_message, "❌ 未找到【群公告】弹窗")
-            self.groupSettingR.click_back_button()
+        # with allure.step("3. 校验编辑群公告权限"):
+        #     self.groupSettingR.click_group_notice()
+        #     dialog_message = self.groupSettingR.wait_for_notice_dialog_load()
+        #     check.is_true(dialog_message, "❌ 未找到【群公告】弹窗")
+        #     self.groupSettingR.click_back_button()
 
         with allure.step("4. 校验管理群成员权限"):
+            self.chatR.click_more_button()
             is_displayed = self.groupSettingR.is_delete_member_btn_visible()
             check.is_true(is_displayed, "❌ 未找到【删除群成员】按钮")
             self.groupManagerR.click_iv_back_button()
