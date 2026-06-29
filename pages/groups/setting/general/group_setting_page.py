@@ -77,13 +77,44 @@ class GroupSettingPage(BasePage):
         self.click(GroupSettingLocator.get_member_avatar_by_name(name), timeout=2)
         logger.info(f"⚙️ [Action-groupSettingPage] 群聊设置页 - 点击成员【{name}】的头像")
 
+    # 群成员-获取群聊页面群成员头像列表
+    def get_friend_headers(self) -> list:
+        """群成员-获取群聊页面群成员头像列表"""
+        return self.find_elements(GroupSettingLocator.FRIEND_HEADER, timeout=2)
+
     # 群成员-判断是否存在删除群成员按钮
     def is_delete_member_btn_visible(self, index: int = -1) -> bool:
         """群成员-判断是否存在删除群成员按钮"""
-        headers = self.get_friend_headers()
-        del_btn = headers[index]
+        import os
+        from utils.cv_recognition.screenshot_utils import ScreenshotUtils, ImageComparator
 
-        return 
+        headers = self.get_friend_headers()
+        if not headers or abs(index) > len(headers):
+            logger.warning("⚠️ [Action-groupSettingPage] 群成员头像列表为空或索引溢出")
+            return False
+
+        del_btn = headers[index]
+        template_path = r"D:\projects\santiao-anti\data\images\delbtn.png"
+
+        if not os.path.exists(template_path):
+            logger.error(f"❌ 找不到本地模板图片: {template_path}")
+            return False
+
+        try:
+            # 截取头像控件区域的截图
+            element_bytes = ScreenshotUtils.element_png(del_btn)
+            
+            # 读取本地模板图片
+            with open(template_path, "rb") as f:
+                template_bytes = f.read()
+
+            # 使用感知哈希比对两个图像，阈值推荐设置为 10
+            res = ImageComparator.compare_similarity(template_bytes, element_bytes, threshold=10)
+            logger.info(f"⚙️ [Action-groupSettingPage] 对比删除按钮截图结果: {res}")
+            return res
+        except Exception as e:
+            logger.error(f"❌ 对比删除按钮截图失败: {e}")
+            return False
 
     # ===============================================================================
     # 群功能设置项操作
