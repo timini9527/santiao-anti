@@ -22,8 +22,11 @@ from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, PRIVATE_US
 class TestGroupManagerDouble:
     """群管理功能双端（群主发端与成员收端）协同验证测试"""
 
+    # 环境准备状态变量
+    _env_ready = False
+
     @pytest.fixture(autouse=True)
-    def setup_double_env(self, driver_sender, driver_receiver):
+    def setup_double_env(self, request, driver_sender, driver_receiver):
         """初始化双端页面对象，进入指定群聊并让群主驻留群管理页面，普通成员驻留聊天页面"""
         self.mainS = MainPage(driver_sender)
         self.groupSettingS = GroupSettingPage(driver_sender)
@@ -38,24 +41,58 @@ class TestGroupManagerDouble:
         self.groupManagerR = GroupManagerPage(driver_receiver)
         self.contactDetailR = ContactDetailPage(driver_receiver)
 
-        with allure.step("-> [前置准备] 发送端(群主)进入指定群聊"):
-            self.chatListS.enter_chat(GROUP_STRATEGY.name)
-            self.chatS.wait_for_chat_page_load()
+        # 判断当前测试是否是前三个管理员测试之一
+        target_tests = [
+            "test_admin_allocation_double_validation",
+            "test_join_verify_admin_scenarios_double_validation",
+            "test_add_admin_double_validation"
+        ]
+        is_admin_test = request.node.name in target_tests
 
-        with allure.step("-> [前置准备] 接收端(普通成员)进入指定群聊聊天界面"):
-            self.chatListR.enter_chat(GROUP_STRATEGY.name)
-            self.chatR.wait_for_chat_page_load()
+        # 如果环境没有就绪，或者是其他测试，则执行完整前置进入群聊和群管理
+        if not TestGroupManagerDouble._env_ready or not is_admin_test:
+            with allure.step("-> [前置准备] 发送端(群主)进入指定群聊"):
+                self.chatListS.enter_chat(GROUP_STRATEGY.name)
+                self.chatS.wait_for_chat_page_load()
 
-        self._enter_group_manager_sender()
+            with allure.step("-> [前置准备] 接收端(普通成员)进入指定群聊聊天界面"):
+                self.chatListR.enter_chat(GROUP_STRATEGY.name)
+                self.chatR.wait_for_chat_page_load()
+
+            self._enter_group_manager_sender()
+            
+            if is_admin_test:
+                TestGroupManagerDouble._env_ready = True
 
         yield
 
-        with allure.step("-> [环境清理] 双端返回首页"):
-            try:
-                self.mainS.go_to_main_page()
-                self.mainR.go_to_main_page()
-            except Exception as e:
-                logger.warning(f"⚠️ [Cleanup] 双端返回首页失败: {e}")
+        # 统计在当前运行队列中属于这三个需要管理员权限的用例
+        session_tests = [item.name for item in request.session.items]
+        tests_to_run = [t for t in target_tests if t in session_tests]
+
+        # 记录执行过的管理员用例
+        if not hasattr(TestGroupManagerDouble, "_executed_env_tests"):
+            TestGroupManagerDouble._executed_env_tests = []
+        if request.node.name in target_tests:
+            if request.node.name not in TestGroupManagerDouble._executed_env_tests:
+                TestGroupManagerDouble._executed_env_tests.append(request.node.name)
+
+        # 只有在下列情况下才执行返回首页的清理：
+        # 1. 当前不是管理员测试
+        # 2. 当前是管理员测试，且是本轮执行的最后一个管理员相关用例
+        should_cleanup = not is_admin_test or (
+            len(TestGroupManagerDouble._executed_env_tests) == len(tests_to_run)
+        )
+
+        if should_cleanup:
+            with allure.step("-> [环境清理] 双端返回首页"):
+                try:
+                    self.mainS.go_to_main_page()
+                    self.mainR.go_to_main_page()
+                except Exception as e:
+                    logger.warning(f"⚠️ [Cleanup] 双端返回首页失败: {e}")
+            TestGroupManagerDouble._env_ready = False
+            TestGroupManagerDouble._executed_env_tests = []
 
     def _enter_group_manager_sender(self):
         """内部辅助：发送端(群主)进入该群【群管理】页面"""
