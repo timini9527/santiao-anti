@@ -77,6 +77,13 @@ class GroupSettingPage(BasePage):
         self.click(GroupSettingLocator.get_member_avatar_by_name(name), timeout=2)
         logger.info(f"⚙️ [Action-groupSettingPage] 群聊设置页 - 点击成员【{name}】的头像")
 
+    # 群成员-判断是否存在删除群成员按钮
+    def is_delete_member_btn_visible(self, index: int = -1) -> bool:
+        """群成员-判断是否存在删除群成员按钮"""
+        headers = self.get_friend_headers()
+        del_btn = headers[index]
+
+        return 
 
     # ===============================================================================
     # 群功能设置项操作

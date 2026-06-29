@@ -99,7 +99,8 @@ class TestAdminPermissionsDouble:
             self.groupSettingR.click_back_button()
 
         with allure.step("4. 校验管理群成员权限"):
-
+            is_visible = self.groupSettingR.is_delete_member_btn_visible(index=-1)
+            check.is_true(is_visible, "❌ 未找到【删除群成员】按钮，管理员可能缺少管理群成员权限")
             self.groupManagerR.click_iv_back_button()
         
         with allure.step("5. 校验删除（撤回）群成员消息权限"):
@@ -124,10 +125,13 @@ class TestAdminPermissionsDouble:
             self.groupManagerR.click_iv_back_button()
 
         with allure.step("8. 校验查看管理员列表权限"):
-            manager_permissions = ['管理员', '进群验证', '进群申请', '全员禁言', '指定成员禁言', '禁止群成员互加好友', '群黑名单']
+            manager_permissions = ['管理员', '进群验证', '进群申请', '全员禁言', '指定成员禁言', '禁止群成员互相加好友', '群黑名单']
+            self.groupSettingR.click_iv_back_button()
+            self.chatR.click_more_button()
             self.groupSettingR.click_group_manager()
             permissions = self.groupManagerR.get_has_permissions_names()
-            check.is_true(all(item in permissions for item in manager_permissions), "❌ 管理员在群设置中无法看到【群管理】选项")
+            res = set(manager_permissions).issubset(set(permissions))
+            check.is_true(res, f"❌ 管理员在群设置中无法看到【群管理】选项: {set(manager_permissions) - set(permissions)}")
 
         with allure.step("9. 接收端(管理员)退回聊天页面，以便环境清理"):
             self.groupManagerR.click_iv_back_button()

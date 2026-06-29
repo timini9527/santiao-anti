@@ -20,7 +20,7 @@ class GroupBotPage(BasePage):
         """从群详情/群管理页进入群助手页面"""
         bot_list = self.find_elements(GroupBotLocator.GROUP_BOT_RECYCLER_VIEW, timeout=timeout)
         if not bot_list:
-            logger.error(f"❌ [Action-GroupBotPage] 未找到群助手功能页面,等待超时 {timeout} 秒")
+            logger.warning(f"⚠️ [Action-GroupBotPage] 未找到群助手功能页面,等待超时 {timeout} 秒")
             raise Exception("未找到群助手功能页面")
         logger.info(f"✅ [Action-GroupBotPage] 成功进入【群助手功能页面】,共找到 {len(bot_list)} 个群助手功能")
         return True
@@ -32,7 +32,7 @@ class GroupBotPage(BasePage):
         if res:
             logger.info(f"✅ [Action-GroupBotPage] 具有群助手权限")
         else:
-            logger.error(f"❌ [Action-GroupBotPage] 不具有群助手权限")
+            logger.warning(f"⚠️ [Action-GroupBotPage] 不具有群助手权限")
         return res
 
     # 进入【禁发关键词检测】设置页面

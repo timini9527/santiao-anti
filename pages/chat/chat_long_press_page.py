@@ -12,12 +12,12 @@ class ChatLongPressPage(ChatPage):
     专门处理消息长按后的弹窗交互逻辑
     """
 
-    # 等待长按弹窗出现
+    # 长按前置条件：等待长按弹窗出现
     def wait_for_long_press_dialog(self):
         """等待长按弹窗出现"""
-        menu_status = self.is_element_exist(ChatLongPressLocator.LONG_PRESS_MENU_CONTAINER, timeout=5)
+        menu_status = self.is_element_exist(ChatLongPressLocator.LONG_PRESS_MENU_CONTAINER, timeout=2)
         if not menu_status:
-            logger.error("❌ 长按弹窗未出现")
+            logger.warning("⚠️ 长按弹窗未出现")
             return False
         
         logger.info("✅ 长按弹窗出现")
@@ -26,39 +26,47 @@ class ChatLongPressPage(ChatPage):
     # ==================================
     # 长按消息弹窗相关
     # ==================================
-    # --- 具体动作实现 ---
+    # 长按消息-点击复制
     def click_copy(self):
         """ 点击复制 """
         self.click_menu_item("复制")
-        
+    
+    # 长按消息-点击收藏
     def click_favorite(self):
         """ 点击收藏 """
         self.click_menu_item("收藏")
-        
+    
+    # 长按消息-点击转发
     def click_forward(self):
         """ 点击转发 """
         self.click_menu_item("转发")
 
+    # 长按消息-点击多选
     def click_multi_select(self):
         """ 点击多选 """
         self.click_menu_item("多选")
 
+    # 长按消息-点击回复
     def click_reply(self):
         """ 点击回复 """
         self.click_menu_item("回复")
 
+    # 长按消息-点击删除
     def click_delete(self):
         """ 点击删除 """
         self.click_menu_item("删除")
 
+    # 长按消息-点击添加表情
     def click_add_emoji(self):
         """ 点击添加表情 """
         self.click_menu_item("添加表情")
 
+    # 长按消息-点击撤回
     def click_revoke(self):
         """ 点击撤回 """
         self.click_menu_item("撤回")
-        
+    
+    # 长按消息-点击切换听筒/扬声器
     def click_speaker(self):
         """ 切换听筒/扬声器 """
         # 语音消息独有，动态识别当前是哪个就点哪个
@@ -67,6 +75,7 @@ class ChatLongPressPage(ChatPage):
         else:
             self.click_menu_item("扬声器")
 
+    # 长按最后一条消息
     def long_press_last_message(self):
         """执行长按最后一条消息的操作"""
         message_content = self.get_message_content_bubble()
