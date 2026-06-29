@@ -75,10 +75,11 @@ class TestGroupManagerDouble:
 
     
 
-    # 状态与计数器变量
+    # 状态与计数器变量 (使用类级别变量以跨用例共享)
     _admin_assigned = False
+    _executed_admin_tests = []
 
-    @pytest.fixture()
+    @pytest.fixture(scope="function", autouse=False)
     def admin_role(self, request):
         """确保分配了管理员权限，在首个用例自动或手动分配，在最后一个用例自动清理"""
         if not TestGroupManagerDouble._admin_assigned:
@@ -97,8 +98,6 @@ class TestGroupManagerDouble:
         ]
         tests_to_run = [t for t in target_tests if t in session_tests]
         
-        if not hasattr(TestGroupManagerDouble, "_executed_admin_tests"):
-            TestGroupManagerDouble._executed_admin_tests = []
         if request.node.name not in TestGroupManagerDouble._executed_admin_tests:
             TestGroupManagerDouble._executed_admin_tests.append(request.node.name)
             
@@ -134,11 +133,6 @@ class TestGroupManagerDouble:
             check.is_not_in(PRIVATE_USER1.name, member_names, "❌ 群主端移除管理员失败")
             self.groupManagerS.click_iv_back_button()
 
-            try:
-                self.groupSettingR.click_iv_back_button()
-            except Exception:
-                pass
-            
             res = self.chatR.is_cmd_notification_matching(r".*移除管理员身份")
             check.is_true(res, "❌ 接收端未收到被解除管理员的通知消息")
 
@@ -148,10 +142,10 @@ class TestGroupManagerDouble:
             check.is_false(is_visible, "❌ 接收端被解除管理员后，群设置中依然显示【群管理】入口")
             self.groupSettingR.click_iv_back_button()
 
+
     @allure.story("群管理-管理员分配")
     @allure.title("【管理员】是否是管理员身份的分配验证-分配所有权限")
-    @pytest.mark.usefixtures("admin_role")
-    def test_admin_allocation_double_validation(self):
+    def test_admin_allocation_double_validation(self, admin_role):
         """验证群主分配和撤销管理员身份，以及对应的成员端权限同步和CMD通知"""
         
         with allure.step("1. 发送端(群主)点击群管理员，并点击新增管理员"):
@@ -181,7 +175,6 @@ class TestGroupManagerDouble:
             check.is_true(is_visible, "❌ 接收端被设为管理员后，群设置中没有显示【群管理】入口")
             self.groupManagerR.click_iv_back_button()
 
-        # 设置标志表明已被 test 成功分配
         TestGroupManagerDouble._admin_assigned = True
 
         with allure.step("6. 发送端(群主)返回群管理主页面"):
@@ -189,15 +182,13 @@ class TestGroupManagerDouble:
 
     @allure.story("群申请-进群验证")
     @allure.title("【进群验证】是否是管理员的多重场景")
-    @pytest.mark.usefixtures("admin_role")
-    def test_join_verify_admin_scenarios_double_validation(self):
+    def test_join_verify_admin_scenarios_double_validation(self, admin_role):
         """验证进群验证是否是管理员的多重场景"""
         pass
 
     @allure.story("群申请-进群申请双端校验")
     @allure.title("【进群申请】管理员=是，可以看到进群申请横幅；管理员=否，看不到进群申请横幅")
-    @pytest.mark.usefixtures("admin_role")
-    def test_add_admin_double_validation(self):
+    def test_add_admin_double_validation(self, admin_role):
         """验证是否为管理员【进群申请】管理员=是，可以看到进群申请横幅；管理员=否，看不到进群申请横幅"""
         pass
         
