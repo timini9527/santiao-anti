@@ -100,18 +100,15 @@ class TestGroupManagerDouble:
             self.groupSettingR.click_group_manager()
             self.groupManagerR.wait_for_page_load()
 
-    # 状态与计数器变量
+    # 状态变量
     _admin_assigned = False
-    _executed_admin_tests = []
 
     @pytest.fixture(scope="function", autouse=False)
     def admin_role(self, request):
         """确保分配了管理员权限，在首个用例自动或手动分配，在最后一个用例自动清理"""
-        if not self._admin_assigned:
-            test_name = request.node.name
-            if test_name == "test_admin_allocation_double_validation":
-                self._assign_admin_permission()
-                self._admin_assigned = True
+        if not TestGroupManagerDouble._admin_assigned:
+            self._assign_admin_permission()
+            TestGroupManagerDouble._admin_assigned = True
         
         yield
         
@@ -124,17 +121,13 @@ class TestGroupManagerDouble:
         ]
         tests_to_run = [t for t in target_tests if t in session_tests]
         
-        if not self._executed_admin_tests:
-            self._executed_admin_tests = []
-        if request.node.name not in self._executed_admin_tests:
-            self._executed_admin_tests.append(request.node.name)
-            
-        # 如果是本轮执行的最后一个管理员相关用例，则执行自动清理
-        if len(self._executed_admin_tests) == len(tests_to_run):
-            if self._admin_assigned:
-                self._remove_admin_permission()
-                self._admin_assigned = False
-            self._executed_admin_tests = []
+        current_test = request.node.name
+        if current_test in tests_to_run:
+            is_last_admin_test = (tests_to_run.index(current_test) == len(tests_to_run) - 1)
+            if is_last_admin_test:
+                if TestGroupManagerDouble._admin_assigned:
+                    self._remove_admin_permission()
+                    TestGroupManagerDouble._admin_assigned = False
 
     def _assign_admin_permission(self):
         """前置辅助：群主分配管理员权限并开启所有开关"""
