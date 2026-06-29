@@ -22,9 +22,6 @@ from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, PRIVATE_US
 class TestGroupManagerDouble:
     """群管理功能双端（群主发端与成员收端）协同验证测试"""
 
-    # 环境准备状态变量
-    _env_ready = False
-
     @pytest.fixture(autouse=True)
     def setup_double_env(self, request, driver_sender, driver_receiver):
         """初始化双端页面对象，进入指定群聊并让群主驻留群管理页面，普通成员驻留聊天页面"""
@@ -41,16 +38,21 @@ class TestGroupManagerDouble:
         self.groupManagerR = GroupManagerPage(driver_receiver)
         self.contactDetailR = ContactDetailPage(driver_receiver)
 
-        # 判断当前测试是否是前三个管理员测试之一
+        # 获取当前运行队列中这三个测试用例的实际存在性
+        session_tests = [item.name for item in request.session.items]
         target_tests = [
             "test_admin_allocation_double_validation",
             "test_join_verify_admin_scenarios_double_validation",
             "test_add_admin_double_validation"
         ]
-        is_admin_test = request.node.name in target_tests
+        tests_to_run = [t for t in target_tests if t in session_tests]
+        
+        current_test = request.node.name
+        is_admin_test = current_test in tests_to_run
+        is_first_admin_test = is_admin_test and (tests_to_run.index(current_test) == 0)
+        need_setup = (not is_admin_test) or is_first_admin_test
 
-        # 如果环境没有就绪，或者是其他测试，则执行完整前置进入群聊和群管理
-        if not TestGroupManagerDouble._env_ready or not is_admin_test:
+        if need_setup:
             with allure.step("-> [前置准备] 发送端(群主)进入指定群聊"):
                 self.chatListS.enter_chat(GROUP_STRATEGY.name)
                 self.chatS.wait_for_chat_page_load()
@@ -60,39 +62,19 @@ class TestGroupManagerDouble:
                 self.chatR.wait_for_chat_page_load()
 
             self._enter_group_manager_sender()
-            
-            if is_admin_test:
-                TestGroupManagerDouble._env_ready = True
 
         yield
 
-        # 统计在当前运行队列中属于这三个需要管理员权限的用例
-        session_tests = [item.name for item in request.session.items]
-        tests_to_run = [t for t in target_tests if t in session_tests]
+        is_last_admin_test = is_admin_test and (tests_to_run.index(current_test) == len(tests_to_run) - 1)
+        need_teardown = (not is_admin_test) or is_last_admin_test
 
-        # 记录执行过的管理员用例
-        if not hasattr(TestGroupManagerDouble, "_executed_env_tests"):
-            TestGroupManagerDouble._executed_env_tests = []
-        if request.node.name in target_tests:
-            if request.node.name not in TestGroupManagerDouble._executed_env_tests:
-                TestGroupManagerDouble._executed_env_tests.append(request.node.name)
-
-        # 只有在下列情况下才执行返回首页的清理：
-        # 1. 当前不是管理员测试
-        # 2. 当前是管理员测试，且是本轮执行的最后一个管理员相关用例
-        should_cleanup = not is_admin_test or (
-            len(TestGroupManagerDouble._executed_env_tests) == len(tests_to_run)
-        )
-
-        if should_cleanup:
+        if need_teardown:
             with allure.step("-> [环境清理] 双端返回首页"):
                 try:
                     self.mainS.go_to_main_page()
                     self.mainR.go_to_main_page()
                 except Exception as e:
                     logger.warning(f"⚠️ [Cleanup] 双端返回首页失败: {e}")
-            TestGroupManagerDouble._env_ready = False
-            TestGroupManagerDouble._executed_env_tests = []
 
     def _enter_group_manager_sender(self):
         """内部辅助：发送端(群主)进入该群【群管理】页面"""
@@ -109,8 +91,6 @@ class TestGroupManagerDouble:
             self.groupSettingR.wait_for_setting_page_load()
             self.groupSettingR.click_group_manager()
             self.groupManagerR.wait_for_page_load()
-
-    
 
     # 状态与计数器变量
     _admin_assigned = False
@@ -237,19 +217,15 @@ class TestGroupManagerDouble:
             self.groupSettingR.wait_for_setting_page_load()
             self.groupSettingR.click_group_manager()
             self.groupManagerR.click_join_to_group_apply()
-            
-            # 1. 校验进群申请头部/横幅提示
+        
+        with allure.step("2. 校验进群申请横幅与操作按钮校验"):
             res = self.groupManagerR.get_join_apply_tips()
             check.is_in("入群申请", res, "❌ 接收端【进群申请】页头部提示异常")
-            
-            # 2. 动态校验：如果有待处理申请，验证操作按钮的存在性
             agree_btns = self.groupManagerR.get_agree_buttons()
             disagree_btns = self.groupManagerR.get_disagree_buttons()
             if agree_btns:
                 check.is_true(len(agree_btns) > 0, "❌ 列表中有申请项时未显示‘同意’按钮")
                 check.is_true(len(disagree_btns) > 0, "❌ 列表中有申请项时未显示‘拒绝’按钮")
-            else:
-                logger.info("ℹ️ 当前没有待处理的进群申请，跳过同意/拒绝按钮的强校验")
                 
             self.groupManagerR.click_iv_back_button()
             self.groupManagerR.click_iv_back_button()
