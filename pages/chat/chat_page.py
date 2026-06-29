@@ -428,8 +428,11 @@ class ChatPage(BasePage):
     # 消息接收-获取最后一条消息的气泡内容容器
     def get_message_content_bubble(self):
         """消息接收-获取最后一条消息的气泡内容容器"""
-        last_item = self._get_last_message_layout_item()
-        return last_item.find_element(*ChatLocator.MESSAGE_CONTENT_ITEM)
+        elements = self.find_elements(ChatLocator.MESSAGE_CONTENT_XPATH)
+        if not elements:
+            logger.error("没有找到任何消息气泡容器")
+            raise NoSuchElementException("没有找到任何消息气泡容器")
+        return elements[-1]
 
     # 消息状态-获取最后一条消息是否包含发送失败状态
     def get_last_message_send_fail_status(self) -> bool:
@@ -465,7 +468,7 @@ class ChatPage(BasePage):
         if len(last_item.find_elements(*ChatLocator.SENT_IMAGE_ITEM)) > 0 or \
            len(last_item.find_elements(*ChatLocator.RECEIV_IMAGE_ITEM)) > 0:
             return "image"
-        if len(last_item.find_elements(*ChatLocator.MESSAGE_CONTENT)) > 0:
+        if len(last_item.find_elements(*ChatLocator.MESSAGE_CONTENT_ITEM)) > 0:
             return "text"
         
         return "unknown"
