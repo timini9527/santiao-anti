@@ -793,7 +793,7 @@ function clearTerminal() {
           </div>
 
           <el-form label-position="top" size="small">
-            <el-form-item label="系统与 Appium 1 地址 (发送端)">
+            <el-form-item label="Appium 1 地址 (发送端)">
               <div class="appium-group">
                 <el-select v-model="osSelect" style="width: 100px;" placeholder="系统">
                   <el-option label="Win" value="windows" />
@@ -846,7 +846,7 @@ function clearTerminal() {
                   <el-option label="华为 (QFF0219A11009305)" value="QFF0219A11009305" />
                   <el-option label="小米 (20a5fa17)" value="20a5fa17" />
                 </el-select>
-                <el-button type="primary" plain @click="detectConnectedDevices">检测主控</el-button>
+                <el-button type="primary" plain @click="detectConnectedDevices">检测真机</el-button>
               </div>
             </el-form-item>
 
@@ -1259,6 +1259,11 @@ function clearTerminal() {
   width: 100%;
   height: 100%;
   border: none;
+}
+
+/* 防止拖拽过程中 iframe 吞噬鼠标/指针事件导致拖动卡顿、失效 */
+.is-resizing iframe {
+  pointer-events: none !important;
 }
 
 .iframe-placeholder {
