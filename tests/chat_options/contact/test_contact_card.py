@@ -38,12 +38,14 @@ class TestContactCard:
         self.chatListPage.enter_chat(chat_name)
         self.chatContactCardPage.open_panel_enter_contact_card_page()
 
+
+
     @allure.story("发送好友名片-正向流程")
+    @allure.title("发送好友名片-正向流程-状态：已完成")
     @pytest.mark.parametrize("cardName", ["测试0222", "0223OiO"])
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_send_contact_card_success(self, strategy, cardName):
         """测试搜索并发送好友名片"""
-        allure.title(f"发送好友名片-正向流程【{strategy.desc}】")
         with allure.step(f"1. 进入聊天并打开名片页"):
             self._enter_chat_and_open_card(strategy.name)
 
@@ -70,7 +72,9 @@ class TestContactCard:
             chat_object_title = self.chatPage.get_top_name()
             check.equal(chat_object_title, cardName, f"❌ 返回聊天页面后，聊天对象名称与预期不匹配 {chat_object_title}")
     
+
     @allure.story("发送好友名片-搜索无结果")
+    @allure.title("发送好友名片-搜索无结果-状态：已完成")
     @pytest.mark.parametrize("cardName", ['不存在的神秘人999'])
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_search_contact_no_results(self, strategy, cardName):
@@ -90,7 +94,9 @@ class TestContactCard:
             is_empty = self.contactSelectPage.is_empty_result()
             check.is_true(is_empty, "❌ 预期搜索无结果，但列表不为空")
 
+
     @allure.story("发送好友名片-取消操作")
+    @allure.title("发送好友名片-取消操作-状态：已完成")
     @pytest.mark.parametrize("cardName", ["测试0222"])
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_cancel_send_contact_card(self, strategy, cardName):
@@ -111,12 +117,13 @@ class TestContactCard:
             check.is_true(result, "❌ 点击取消后未正确返回聊天页面")
 
     
+    # TODO：Android 需要补充二次确认弹窗的逻辑
     @allure.story("发送群聊名片-正向流程")
+    @allure.title("发送群聊名片-正向流程-状态：已完成")
     @pytest.mark.parametrize("group_card_name", ["测试群aaaaa"])
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_send_group_card_success(self, strategy, group_card_name):
         """测试搜索并发送群聊名片"""
-        allure.title(f"发送群聊名片【{strategy.desc}】")
 
         with allure.step(f"0. 确保群聊存在并进入群聊"):
             self.chatListPage.enter_chat(group_card_name)
@@ -144,13 +151,14 @@ class TestContactCard:
             chat_object_title = self.chatPage.get_top_name()
             check.is_in(group_card_name, chat_object_title, f"❌ 返回聊天页面后，聊天对象名称与预期不匹配，{chat_object_title}")
 
+
+    # TODO：Android 需要补充二次确认弹窗的逻辑
     @allure.story("分享群聊名片-取消操作")
-    @pytest.mark.skip(reason="没有二次确认弹窗")
+    @allure.title("分享群聊名片-取消操作-状态：已完成")
     @pytest.mark.parametrize("group_card_name", ["测试群aaaaa"])
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_cancel_send_group_card(self, strategy, group_card_name):
         """验证在分享群聊名片时，在会话选择页面取消后返回"""
-        allure.title(f"分享群聊名片-取消操作【{strategy.desc}】")
 
         with allure.step(f"1. 确保群聊存在并进入群聊"):
             self.chatListPage.enter_chat(group_card_name)

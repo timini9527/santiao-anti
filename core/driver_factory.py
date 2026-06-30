@@ -83,19 +83,47 @@ class DriverFactory:
             desired_caps['systemPort'] = free_port
             logger.info(f"🔌 [DriverFactory] 动态分配 systemPort: {free_port} (原始配置: {system_port})")
         
-        # == 支持环境变量动态覆盖 (供 Web Runner 远程调用使用) ==
+        # == 支持环境变量与 Web 回执动态覆盖 ==
         env_udid = os.environ.get("REMOTE_UDID")
+        env_udid2 = os.environ.get("REMOTE_UDID2")
         env_appium = os.environ.get("REMOTE_APPIUM_URL")
-        logger.info(f"[DriverFactory] 环境变量动态覆盖: {env_udid} {env_appium}")
+        env_appium2 = os.environ.get("REMOTE_APPIUM_URL2")
+        logger.info(f"[DriverFactory] 环境变量动态覆盖：UDID1={env_udid}, UDID2={env_udid2}, Appium1={env_appium}, Appium2={env_appium2}")
         
-        if env_udid:
-            desired_caps['udid'] = env_udid
-            
+        # 1. 覆盖 UDID
+        if 'sender' in device_key.lower():
+            if env_udid and env_udid.strip():
+                desired_caps['udid'] = env_udid.strip()
+        elif 'receiver' in device_key.lower():
+            if env_udid2 and env_udid2.strip():
+                desired_caps['udid'] = env_udid2.strip()
+                logger.info(f"[DriverFactory] 使用 REMOTE_UDID2 覆盖 receiver 设备的 UDID: {env_udid2.strip()}")
+            else:
+                receipt_str = os.environ.get("WEB_RECEIPT_DATA")
+                if receipt_str:
+                    try:
+                        import json
+                        web_receipt = json.loads(receipt_str)
+                        receipt_udid = web_receipt.get("设备1")
+                        if receipt_udid and receipt_udid.strip():
+                            desired_caps['udid'] = receipt_udid.strip()
+                            logger.info(f"[DriverFactory] 从 Web 回执中成功提取 '设备1' 覆盖 receiver 设备的 UDID: {receipt_udid.strip()}")
+                    except Exception as e:
+                        logger.warning(f"[DriverFactory] 解析 WEB_RECEIPT_DATA 动态覆盖设备异常: {e}")
+
+        # 2. 覆盖 Appium Server 物理连接地址
         appium_url = device_config.get('appiumServerUrl', 'http://localhost:4723/wd/hub')
-        if env_appium:
-            if not env_appium.startswith("http"):
-                env_appium = f"http://{env_appium}"
-            appium_url = env_appium
+        target_appium = None
+        if 'sender' in device_key.lower():
+            target_appium = env_appium
+        elif 'receiver' in device_key.lower():
+            target_appium = env_appium2
+
+        if target_appium and target_appium.strip():
+            if not target_appium.startswith("http"):
+                target_appium = f"http://{target_appium}"
+            appium_url = target_appium
+            logger.info(f"[DriverFactory] 覆盖 {device_key} Appium 地址为: {appium_url}")
 
         # 5. 处理 Appium 2.0 Options
         options = UiAutomator2Options().load_capabilities(desired_caps)

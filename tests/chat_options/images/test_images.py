@@ -41,13 +41,15 @@ class TestChatImages:
         self.chatListPage.enter_chat(chat_name)
         self.imagePage.open_panel_to_album()
 
-    # ==================== 边界场景 ====================
+
+
+
 
     @allure.story("默认页面加载状态")
+    @allure.title("默认页面加载状态-状态：已完成")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_default_page_load_status(self, strategy):
         """测试进入相册后默认状态：原图未勾选、已选数为空、发送按钮置灰"""
-        allure.dynamic.title(f"默认页面加载状态 - 策略: {strategy.name}")
 
         with allure.step(f"1. 进入与【{strategy.name}】的聊天并打开相册"):
             self._enter_chat_and_open_album(strategy.name)
@@ -56,11 +58,12 @@ class TestChatImages:
             result = self.imagePage.verify_default_page_load_status()
             assert result, "🍎 默认页面加载状态异常"
 
+
     @allure.story("选择图片后取消勾选")
+    @allure.title("选择图片后取消勾选-状态：已完成")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_select_then_cancel(self, strategy):
         """测试勾选后再次点击取消：角标消失，发送按钮恢复置灰"""
-        allure.dynamic.title(f"选择后取消勾选 - 策略: {strategy.name}")
 
         with allure.step(f"1. 进入与【{strategy.name}】的聊天并进入相册"):
             self._enter_chat_and_open_album(strategy.name)
@@ -75,8 +78,10 @@ class TestChatImages:
             result = self.imagePage.verify_default_page_load_status()
             assert result, "🍎 取消勾选后状态未恢复为默认"
 
+
     # ==================== 核心发图流程（策略参数化 3×4×2 = 24 条）====================
     @allure.story("单张图片发送：选图模式 × 发送选项")
+    @allure.title("单张图片发送：选图模式 × 发送选项-状态：已完成")
     @pytest.mark.parametrize("send_option", SEND_OPTIONS, ids=lambda s: s.desc)
     @pytest.mark.parametrize("select_mode", SELECT_MODES, ids=lambda s: s.desc)
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
@@ -111,11 +116,12 @@ class TestChatImages:
             # TODO: 可接入 DOM 快照断言或 ImageComparator 进行视觉验证
             pass
     
-    @allure.story("单张图片发送：选图模式 × 发送选项")
+    
+    @allure.story("单张图片发送-纯发送")
+    @allure.title("单张图片发送-纯发送-状态：已完成")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_send_only_image(self, strategy):
         """核心发图流程：选图模式 × 发送选项 × 聊天策略，零分支全覆盖"""
-        allure.dynamic.title(f"发图测试 | {strategy.desc}")
 
         with allure.step(f"1. 进入与【{strategy.name}】的聊天"):
             self.chatListPage.enter_chat(strategy.name)
@@ -142,10 +148,10 @@ class TestChatImages:
     
     
     @allure.story("发图边界场景：勾选上限测试")
+    @allure.title("发图边界场景：勾选上限测试-状态：已完成")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_max_selection_limit(self, strategy):
         """测试同时勾选超过 9 张图片时的 UI 表现：第 10 张无法选中"""
-        allure.dynamic.title(f"发图边界 - 勾选上限测试 (9张)")
         
         with allure.step(f"1. 进入与【{strategy.name}】的聊天并进入相册"):
             self._enter_chat_and_open_album(strategy.name)
@@ -160,13 +166,14 @@ class TestChatImages:
             check.is_in("你最多只能选择9张照片", toast)
             self.imagePage.click_back_button()
 
+
     # ==================== 批量发图 ====================
     @allure.story("批量多选发图测试")
+    @allure.title("批量多选发图测试-状态：已完成")
     @pytest.mark.parametrize("scenario", BATCH_IMAGE_SCENARIOS, ids=lambda s: s.desc)
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_batch_send_images(self, strategy, scenario: BatchImageScenario):
         """ 测试连续勾选多张图片后批量发送，并覆盖预览/原图/左右滑动能力 """
-        allure.dynamic.title(f"批量发图测试 - {strategy.name} - {scenario.desc}")
 
         with allure.step(f"1. 进入与【{strategy.name}】的聊天"):
             self.chatListPage.enter_chat(strategy.name)

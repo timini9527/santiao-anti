@@ -20,7 +20,7 @@ CHAT_DATA = load_yaml_data("chat/chat.yaml").get("test_data")
 
 @pytest.mark.usefixtures('message_page')
 @allure.epic("IM核心功能测试")
-@allure.feature("聊天模块-单聊基础")
+@allure.feature("聊天模块-单聊基础：已完成")
 @allure.story("发送 Text 消息，验证")
 class TestChat:
 
@@ -51,7 +51,8 @@ class TestChat:
     """ 执行测试函数前需要构造数据 """
 
     """ 测试用例执行 """
-    @allure.story("发送 Text 消息，验证")
+    @allure.story("发送 Text 消息")
+    @allure.title("发送 Text 消息，状态：已完成")
     @pytest.mark.parametrize("text_message", CHAT_DATA.get("text_message"))
     def test_send_text_message(self, text_message):
         """
@@ -69,7 +70,8 @@ class TestChat:
         text = self.chatPage.find_message_content(index=-1, side='sent')
         check.equal(text, expected, f"消息 actual: {text}, expected: {expected} 不匹配")
 
-    @allure.story("发送和接收 Text 消息，验证")
+    @allure.story("发送和接收 Text 消息")
+    @allure.title("发送和接收 Text 消息，状态：TODO：skip")
     @pytest.mark.skip("暂时跳过，待后续优化")
     @pytest.mark.parametrize("text_message", CHAT_DATA.get("text_message"))
     def test_send_and_receive_text_message(self, text_message, driver_receiver):

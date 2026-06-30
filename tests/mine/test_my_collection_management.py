@@ -23,6 +23,7 @@ class TestMyCollectionManagement:
 
 
     @allure.story("我的收藏中删除元素最新一条(文本/图片)")
+    @allure.title("我的收藏中删除元素最新一条-状态：已完成")
     @pytest.mark.parametrize("item_type", ["text", "image"], ids=["删除最新文本", "删除最新图片"])
     def test_delete_collection_first_item(self, item_type):
         self.collPage.enter_my_collection()
@@ -44,7 +45,9 @@ class TestMyCollectionManagement:
             assert data_pre['collected_time'] != data_after['collected_time'], \
                 f"删除失败: 首条数据时间戳未变化 ({data_pre['collected_time']})"
 
+
     @allure.story("我的收藏中删除元素所有(文本/图片)收藏")
+    @allure.title("我的收藏中删除元素所有-状态：已完成")
     @pytest.mark.parametrize("item_type", ["text", "image"], ids=["删除所有文本", "删除所有图片"])
     def test_delete_collection_texts(self, item_type):
         self.collPage.enter_my_collection()
@@ -52,7 +55,9 @@ class TestMyCollectionManagement:
         self.collPage.back()
         assert del_item == 0, f'还有 {del_item} 条 {item_type} 数据未删除'
 
+
     @allure.story("我的收藏中删除所有元素收藏")
+    @allure.title("我的收藏中删除所有元素-状态：已完成")
     def test_delete_collection_all(self, item_type: str = "all"):
         self.collPage.enter_my_collection()
         del_item = self.collPage.del_collection_item("all", 1)

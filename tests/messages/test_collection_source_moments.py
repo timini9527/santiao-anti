@@ -19,34 +19,42 @@ class TestCollectionSourceMoments:
         self.momentsPage = MomentsPage(driver_sender)
 
     @allure.story("朋友圈页面收藏文本消息")
+    @allure.title("朋友圈页面收藏文本消息-状态：未完成")
     def test_collection_friend_text(self):
         pass
 
     @allure.story("朋友圈页面收藏图片消息")
+    @allure.title("朋友圈页面收藏图片消息-状态：未完成")
     def test_collection_friend_image(self):
         pass
 
     @allure.story("收藏中当前页面分享第一条文本消息")
+    @allure.title("收藏中当前页面分享第一条文本消息-状态：未完成")
     def test_share_first_text(self):
         pass
 
     @allure.story("收藏中当前页面随机分享一条文本消息")
+    @allure.title("收藏中当前页面随机分享一条文本消息-状态：未完成")
     def test_share_random_text(self):
         pass
 
     @allure.story("收藏中当前页面分享第一张图片消息")
+    @allure.title("收藏中当前页面分享第一张图片消息-状态：未完成")
     def test_share_first_image(self):
         pass
 
     @allure.story("收藏中当前页面随机分享一张图片消息")
+    @allure.title("收藏中当前页面随机分享一张图片消息-状态：未完成")
     def test_share_random_image(self):
         pass
 
     @allure.story("收藏中分享最后一条文本消息")
+    @allure.title("收藏中分享最后一条文本消息-状态：未完成")
     def test_share_last_text(self):
         pass
 
     @allure.story("收藏中分享最后一张图片消息")
+    @allure.title("收藏中分享最后一张图片消息-状态：未完成")
     def test_share_last_image(self):
         pass
 

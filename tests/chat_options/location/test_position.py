@@ -36,7 +36,11 @@ class TestChatPosition:
         self.chatListPage.enter_chat(chat_name)
         self.chatPositionPage.open_panel_enter_location_page()
     
+
+
+
     @allure.story("搜索位置-无结果异常场景")
+    @allure.title("搜索位置-无结果异常场景-状态：已完成")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_search_location_no_results(self, strategy):
         """测试搜索不存在的地点，验证 UI 空状态处理"""
@@ -59,7 +63,9 @@ class TestChatPosition:
             titles_aft = self.chatPage.get_all_location_titles()
             check.equal(titles_pre, titles_aft, f"❌ 预期返回聊天页面，但实际没有搜索结果")
     
+
     @allure.story("搜索指定位置并发送")
+    @allure.title("搜索指定位置并发送-状态：已完成")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_search_and_send_location(self, strategy):
         """测试搜索特定 POI 并发送"""
@@ -79,7 +85,9 @@ class TestChatPosition:
             actual_bubble = self.chatPage.verify_location_sent_status()
             check.is_in(poi_titles[0], actual_bubble['title'], f"发送的搜索位置标题不匹配 {poi_titles} {actual_bubble['title']}")
 
+
     @allure.story("取消发送位置流程")
+    @allure.title("取消发送位置流程-状态：已完成")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_cancel_send_location(self, strategy):
         """验证进入位置页面后取消发送，不会产生消息"""
@@ -98,8 +106,9 @@ class TestChatPosition:
             final_count = self.chatPage.get_total_message_count()
             check.equal(initial_count, final_count, "点击取消后不应产生新消息")
 
-    # 发送定位消息
-    @allure.story("发送定位消息，验证")
+
+    @allure.story("发送定位消息")
+    @allure.title("发送定位消息-状态：已完成")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_send_location_message(self, strategy):
         # with allure.step("1. 检查获取位置权限没有则开启权限"):
@@ -129,7 +138,9 @@ class TestChatPosition:
             result = self.chatPositionPage.verify_map_location_info(poi_title, poi_detail)
             check.is_true(result, f"发送位置 {poi_title} {poi_detail} 地图显示位置信息不一致")
 
+
     @allure.story("位置消息-详情页返回")
+    @allure.title("位置消息-详情页返回-状态：已完成")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_back_from_map_detail(self, strategy):
         """验证进入地图详情页后，点击返回能正确回到聊天页"""
@@ -144,7 +155,9 @@ class TestChatPosition:
         with allure.step("3. 验证是否回到聊天页"):
             check.is_true(self.chatPage.verify_is_on_chat_page(), "未能正确返回聊天页面")
 
+
     @allure.story("位置消息-长按删除")
+    @allure.title("位置消息-长按删除-状态：未完成")
     @pytest.mark.skip(reason="删除功能未实现")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
     def test_delete_location_message(self, strategy):
@@ -164,7 +177,9 @@ class TestChatPosition:
             count_aft = self.chatPage.get_total_message_count()
             check.equal(count_pre - 1, count_aft, "消息数量未减少，删除可能失败")
 
+
     @allure.story("位置消息-长按转发")
+    @allure.title("位置消息-长按转发-状态：未完成")
     @pytest.mark.skip(reason="转发功能未实现")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
     def test_forward_location_message(self, strategy):
@@ -186,7 +201,9 @@ class TestChatPosition:
             actual_bubble = self.chatPage.verify_location_sent_status()
             check.is_in(title_pre, actual_bubble['title'], "转发后的位置标题不匹配")
 
+
     @allure.story("位置消息-长按撤回")
+    @allure.title("位置消息-长按撤回-状态：未完成")
     @pytest.mark.skip(reason="撤回功能待完善并接入通用交互逻辑")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
     def test_revoke_location_message(self, strategy):
@@ -206,14 +223,18 @@ class TestChatPosition:
             notice_text = self.chatPage.get_revoke_notice_text()
             check.is_in("撤回", notice_text, "未能捕获到预期的撤回提示文字")
 
+
     @allure.story("位置消息-长按收藏")
+    @allure.title("位置消息-长按收藏-状态：未完成")
     @pytest.mark.skip(reason="收藏功能待完善并接入通用交互逻辑")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
     def test_favorite_location_message(self, strategy):
         """验证位置消息可以被长按收藏"""
         pass
 
+
     @allure.story("位置消息-引用回复")
+    @allure.title("位置消息-引用回复-状态：未完成")
     @pytest.mark.skip(reason="回复功能待完善并接入通用交互逻辑")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
     def test_reply_location_message(self, strategy):

@@ -38,26 +38,25 @@ PRIVATE_USER1 = ChatSessionStrategy(
 )
 PRIVATE_USER2 = ChatSessionStrategy(
     desc="私聊模式",
-    name=web_receipt.get("私聊1") or "测试0224"
+    name=web_receipt.get("私聊用户1") or "测试0224"
 )
 PRIVATE_USER3 = ChatSessionStrategy(
     desc="私聊模式",
-    name=web_receipt.get("私聊2") or "测试0225"
+    name=web_receipt.get("私聊用户2") or "测试0225"
 )
 
 PRIVATE_USER4 = ChatSessionStrategy(
     desc="私聊模式",
-    name=web_receipt.get("私聊3") or "测试0229"
+    name=web_receipt.get("私聊用户3") or "测试0229"
 )
-
 # 停用或注销用户
 PRIVATE_DISABLE1 = ChatSessionStrategy(
     desc="私聊模式",
-    name=web_receipt.get("私聊3") or "测试0221"
+    name=web_receipt.get("私聊用户4") or "测试0221"
 )
 PRIVATE_DISABLE2 = ChatSessionStrategy(
     desc="私聊模式",
-    name=web_receipt.get("私聊4") or "ST_FdhwIr7"
+    name=web_receipt.get("私聊用户5") or "ST_FdhwIr7"
 )
 # 2. 群聊策略
 GROUP_STRATEGY = ChatSessionStrategy(
@@ -67,7 +66,7 @@ GROUP_STRATEGY = ChatSessionStrategy(
 )
 GROUP_STRATEGY2 = ChatSessionStrategy(
     desc="群聊模式",
-    name=os.environ.get("GROUP_CHAT_NAME") or "测试群bbbbb",
+    name=web_receipt.get("群聊名称1") or "测试群bbbbb",
     is_admin=True
 )
 # 3.侧滑置顶策略

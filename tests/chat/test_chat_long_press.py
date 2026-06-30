@@ -52,10 +52,10 @@ class TestChatLongPress:
 
 
     @allure.story("不同消息长按菜单的完整性校验")
+    @allure.title("不同消息长按菜单的完整性校验-状态：已完成")
     @pytest.mark.parametrize("msg_type", ["text", "voice", "image", "video", "position", "card", "file", "package"])
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_long_press_display_action(self, strategy, msg_type):
-        allure.dynamic.title(f"测试 {strategy.desc} - 长按消息菜单 ({msg_type})")
 
         with allure.step(f"1. 前置准备：进入聊天页面并发送一条【{msg_type}】消息"):
             self.chatListPage.enter_chat(strategy.name)
@@ -75,11 +75,11 @@ class TestChatLongPress:
 
 
     @allure.story("长按菜单操作专项：复制")
-    @allure.severity(allure.severity_level.CRITICAL)
+    @allure.title("长按菜单操作专项：复制-状态：已完成")
+    @pytest.mark.severity(allure.severity_level.CRITICAL)
     @pytest.mark.parametrize("msg_type", ["text", "emoji", "image", "voice", "video", "position", "card", "file", "package"])
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_long_press_action_copy(self, strategy, msg_type):
-        allure.dynamic.title(f"【复制专项】 {strategy.desc} ({msg_type})")
         
         with allure.step(f"1. 进入聊天页面"):
             self.chatListPage.enter_chat(strategy.name)
@@ -112,11 +112,11 @@ class TestChatLongPress:
                 
 
     @allure.story("长按菜单操作专项：收藏")
-    @allure.severity(allure.severity_level.CRITICAL)
+    @allure.title("长按菜单操作专项：收藏-状态：已完成")
+    @pytest.mark.severity(allure.severity_level.CRITICAL)
     @pytest.mark.parametrize("msg_type", ["text", "emoji", "image", "voice", "video", "position", "card", "file", "package"])
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_long_press_action_collection(self, strategy, msg_type):
-        allure.dynamic.title(f"【收藏专项】 {strategy.desc} ({msg_type})")
         
         with allure.step(f"1. 进入聊天页面"):
             self.chatListPage.enter_chat(strategy.name)
@@ -155,12 +155,13 @@ class TestChatLongPress:
                 is_similar = self.collectionPage.verify_image_similarity(hash1=coll_img_hash, hash2=original_hash, threshold=100)
                 check.is_true(is_similar, f"❌ 收藏夹图片不一致: 列表hash:{coll_img_hash}, 发送hash: {original_hash}")
 
-    @allure.severity(allure.severity_level.CRITICAL)
+
     @allure.story("长按菜单操作专项：转发")
+    @allure.title("长按菜单操作专项：转发-状态：已完成")
+    @pytest.mark.severity(allure.severity_level.CRITICAL)
     @pytest.mark.parametrize("msg_type", ["text", "emoji", "image", "package", "video", "position", "card", "file", "voice"])
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_long_press_action_forward(self, strategy, msg_type):
-        allure.dynamic.title(f"【转发专项】 {strategy.desc} ({msg_type})")
 
         with allure.step(f"1. 进入聊天页面"):
             self.chatListPage.enter_chat(strategy.name)
@@ -209,8 +210,10 @@ class TestChatLongPress:
                     actual_val = re_data.get(key)
                     check.equal(actual_val, expected_val, f"❌ 转发 {key} 不一致: 期望 '{expected_val}', 实际 '{actual_val}'")
 
-    @allure.severity(allure.severity_level.NORMAL)
+
     @allure.story("长按菜单操作专项：多选")
+    @allure.title("长按菜单操作专项：多选-状态：已完成")
+    @pytest.mark.severity(allure.severity_level.NORMAL)
     @pytest.mark.parametrize("msg_list", [
         ["text", "emoji", "image", "voice", "video", "position", "card", "file", "package"]
     ], ids=["全量消息类型"])
@@ -291,12 +294,12 @@ class TestChatLongPress:
                 pass
 
     
-    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story("长按菜单操作专项：添加表情")
+    @allure.title("长按菜单操作专项：添加表情-状态：已完成")
+    @pytest.mark.severity(allure.severity_level.CRITICAL)
     @pytest.mark.parametrize("msg_type", ["text", "emoji", "image", "package", "video", "position", "card", "file", "voice"])
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_long_press_action_add_emoji(self, strategy, msg_type):
-        allure.dynamic.title(f"【添加表情专项】 {strategy.desc} - 类型 {msg_type}")
         
         with allure.step(f"1. 进入聊天页面"):
             self.chatListPage.enter_chat(strategy.name)
@@ -325,12 +328,12 @@ class TestChatLongPress:
             check.is_true(has_pkg, f"❌ 【{msg_type}】消息添加表情失败")
 
 
-    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story("长按菜单操作专项：撤回")
+    @allure.title("长按菜单操作专项：撤回-状态：已完成")
+    @pytest.mark.severity(allure.severity_level.CRITICAL)
     @pytest.mark.parametrize("msg_type", ["text", "emoji", "image", "package", "voice", "video", "position", "card", "file"])
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_long_press_action_recall(self, strategy, msg_type):
-        allure.dynamic.title(f"【撤回专项】 {strategy.desc} - 类型 {msg_type}")
         
         with allure.step(f"1. 进入聊天页面"):
             self.chatListPage.enter_chat(strategy.name)
@@ -357,8 +360,9 @@ class TestChatLongPress:
             check.equal(smsg, base_msg_text, f"❌ 【{msg_type}】消息撤回失败，撤回消息与正常消息不匹配")
         
 
-    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story("长按菜单操作专项：删除")
+    @allure.title("长按菜单操作专项：删除-状态：已完成")
+    @pytest.mark.severity(allure.severity_level.CRITICAL)
     @pytest.mark.parametrize("msg_list", [
         ["text", "emoji", "image", "voice", "video", "position", "card", "file", "package"]
     ], ids=["全量消息类型"])

@@ -39,10 +39,10 @@ class TestChatSetting:
 
 
     @allure.story("单聊设置 - 获取聊天对象昵称")
+    @allure.title("单聊设置 - 获取聊天对象昵称-状态：已完成")
     @pytest.mark.parametrize("chat_strategy", [PRIVATE_USER1])
     def test_get_chat_nickname(self, chat_strategy):
         """获取聊天对象的昵称并校验"""
-        allure.dynamic.title("获取聊天对象的昵称")
 
         with allure.step("1、进入单聊并打开设置"):
             self._enter_setting(chat_strategy.name)
@@ -53,10 +53,10 @@ class TestChatSetting:
 
 
     @allure.story("单聊设置 - 聊天密码开关")
+    @allure.title("单聊设置 - 聊天密码开关-状态：已完成")
     @pytest.mark.parametrize("chat_strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=["单聊-聊天密码开关", "群聊-聊天密码开关"])
     def test_chat_password_switch(self, chat_strategy):
         """切换聊天密码开关并校验状态"""
-        allure.dynamic.title(f"{chat_strategy.name} - 聊天密码开关")
 
         is_single = "群" not in chat_strategy.name
 
@@ -91,11 +91,12 @@ class TestChatSetting:
             self.chatSettingPage.click_switch_chat_pwd()
             check.equal(self.chatSettingPage.get_switch_chat_pwd_status(), init_status, "❌ 聊天密码状态未能成功恢复")
 
+
     @allure.story("单聊设置 - 截屏通知开关")
+    @allure.title("单聊设置 - 截屏通知开关-状态：已完成")
     @pytest.mark.parametrize("chat_strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=["单聊-截屏通知", "群聊-截屏通知"])
     def test_screenshot_notification_switch(self, chat_strategy):
         """切换截屏通知开关并校验状态"""
-        allure.dynamic.title(f"{chat_strategy.name} - 截屏通知开关")
         is_single = "群" not in chat_strategy.name
 
         with allure.step(f"1、进入 {'单聊' if is_single else '群聊'} 并打开设置"):
@@ -124,10 +125,10 @@ class TestChatSetting:
 
 
     @allure.story("单聊设置 - 撤回通知开关")
+    @allure.title("单聊设置 - 撤回通知开关-状态：已完成")
     @pytest.mark.parametrize("chat_strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=["单聊-撤回通知", "群聊-撤回通知"])
     def test_recall_notification_switch(self, chat_strategy):
         """切换撤回通知开关并校验状态"""
-        allure.dynamic.title(f"{chat_strategy.name} - 撤回通知开关")
         is_single = "群" not in chat_strategy.name
 
         with allure.step(f"1、进入 {'单聊' if is_single else '群聊'} 会话"):
@@ -166,10 +167,10 @@ class TestChatSetting:
 
 
     @allure.story("单聊设置 - 清空聊天记录")
+    @allure.title("单聊设置 - 清空聊天记录-状态：已完成")
     @pytest.mark.parametrize("chat_strategy", [PRIVATE_USER2])
     def test_clear_chat_records(self, chat_strategy):
         """点击清空聊天记录"""
-        allure.dynamic.title(f"{chat_strategy.name} - 清空聊天记录")
         
         with allure.step("1、进入特定好友的单聊会话"):
             self.chatListPage.enter_chat(chat_strategy.name)

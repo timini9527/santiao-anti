@@ -46,6 +46,7 @@ class TestOneLogin:
         yield
     
     @allure.story("无卡状态时，首页点击一键登录验证弹窗")
+    @allure.title("无卡状态时，首页点击一键登录验证弹窗-状态：已完成")
     @pytest.mark.no_login_entrance
     def test_login_no_card_one_click(self):
         allure.dynamic.title("无卡状态时，首页点击一键登录验证弹窗")

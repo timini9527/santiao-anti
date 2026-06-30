@@ -56,7 +56,7 @@ class TestGroupManager:
 
     # TODO：
     @allure.story("群管理-升级群组")
-    @allure.title("【升级群组】功能正常使用校验")
+    @allure.title("【升级群组】功能正常使用校验-状态：未完成")
     @pytest.mark.skip("升级群组功能未实现")
     def test_upgrade_group_functionality(self):
         """测试【升级群组】功能是否正常使用"""
@@ -66,7 +66,7 @@ class TestGroupManager:
 
 
     @allure.story("群管理-管理员")
-    @allure.title("【群管理员】功能正常使用校验")
+    @allure.title("【群管理员】功能正常使用校验-状态：已完成")
     def test_group_manager_functionality(self):
         """测试【群管理员】功能是否正常使用"""
         
@@ -97,7 +97,7 @@ class TestGroupManager:
     
     # TODO：
     @allure.story("群管理-群ID搜索开关")
-    @allure.title("切换【群ID搜索】开关状态校验")
+    @allure.title("切换【群ID搜索】开关状态校验-状态：已完成")
     @pytest.mark.skip("群ID搜索功能未实现")
     def test_group_id_search_toggle(self):
         """测试群管理中【群ID搜索】开关的状态切换与校验"""
@@ -116,7 +116,7 @@ class TestGroupManager:
 
 
     @allure.story("群管理-进群验证开关")
-    @allure.title("切换【进群验证】开关状态校验")
+    @allure.title("切换【进群验证】开关状态校验-状态：已完成")
     def test_join_group_verify_toggle(self):
         """测试群管理中【进群验证】开关的状态切换与校验"""
 
@@ -141,7 +141,7 @@ class TestGroupManager:
 
 
     @allure.story("群管理-全员禁言开关")
-    @allure.title("切换【全员禁言】开关状态校验")
+    @allure.title("切换【全员禁言】开关状态校验-状态：已完成")
     def test_all_member_mute_toggle(self):
         """测试群管理中【全员禁言】开关的状态切换与校验"""
 
@@ -165,7 +165,7 @@ class TestGroupManager:
             check.is_in("关闭全员禁言", cmd_texts, "❌ [Action-groupManagerPage] 全员禁言开关未关闭")
 
     @allure.story("群管理-指定成员禁言")
-    @allure.title("指定成员禁言页面初始状态校验")
+    @allure.title("指定成员禁言页面初始状态校验-状态：已完成")
     @pytest.mark.parametrize('mute_type, duration',
                             [(0, 0), (1, '10分钟'), (1, '30分钟'), (1, '2小时'), (1, '1天'), (1, '3天'), (1, '7天'), (1, '30天')],
                             ids=["永久禁言", "临时禁言-10分钟", "临时禁言-30分钟", "临时禁言-2小时", "临时禁言-1天", "临时禁言-3天", "临时禁言-7天", "临时禁言-30天"])
@@ -228,7 +228,7 @@ class TestGroupManager:
             
 
     @allure.story("群管理-禁止群成员互相加好友开关")
-    @allure.title("切换【禁止群成员互相加好友】开关状态校验")
+    @allure.title("切换【禁止群成员互相加好友】开关状态校验-状态：已完成")
     def test_un_add_friend_each_other_toggle(self):
         """测试群管理中【禁止群成员互相加好友】开关的状态切换与校验"""
 
@@ -253,7 +253,7 @@ class TestGroupManager:
 
 
     @allure.story("群管理-群主transfer")
-    @allure.title("转让群主功能校验")
+    @allure.title("转让群主功能校验-状态：已完成")
     def test_transfer_group_owner(self):
         """测试群管理中【转让群主】功能"""
 

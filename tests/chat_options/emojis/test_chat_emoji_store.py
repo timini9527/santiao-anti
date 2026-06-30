@@ -55,6 +55,7 @@ class TestChatEmojiStore:
             logger.error(f"Teardown 失败，未能返回首页: {e}")
 
     @allure.story("表情包商店：添加表情包")
+    @allure.title("表情包商店：添加表情包-状态：已完成")
     @pytest.mark.parametrize("emoji_type, count, desc", [
         ("sequential", 1, "按顺序添加 1 个表情包"),
         ("sequential", 4, "连续添加 4 个表情包"),
@@ -64,7 +65,7 @@ class TestChatEmojiStore:
         ("last_page", 1, "表情商店中最后一个表情"),
     ])
     def test_add_emoji_store(self, emoji_type, count, desc):
-        allure.dynamic.title(f"表情包商店测试 - {desc}")
+
         with allure.step("1. 打开表情面板，进入表情包商店"):
             self.chatListPage.enter_chat(PRIVATE_USER1.name)
             self.chatPage.enter_emoji_page()
@@ -85,10 +86,11 @@ class TestChatEmojiStore:
             verify_status = self.emojiStorePage.verify_added_packages(added_pkg_names)
             check.is_true(verify_status, f"添加的表情包未成功显示在表情面板中！添加的表情包: {added_pkg_names}")
 
+
     @allure.story("发送表情包消息及业务流转验证")
+    @allure.title("发送表情包消息及业务流转验证-状态：已完成")
     @pytest.mark.parametrize("pkg_index, strategy, count, network, post_action, desc", load_emoji_test_cases())
     def test_send_emoji_package_message(self, pkg_index, strategy, count, network, post_action, desc):
-        allure.dynamic.title(f"表情包核心业务 - {desc}")
 
         with allure.step(f"0. 前置条件: 设置网络状态为 {network}"):
             self.emojiPackagePage.set_network_connection(network)
@@ -114,14 +116,15 @@ class TestChatEmojiStore:
                 verify_status = self.chatPage.get_message_send_fail_status()
             check.is_true(verify_status, f"发送表情包后，聊天消息列表中未成功渲染大表情气泡")
 
+
     @allure.story("从表情包商店设置页删除表情包")
+    @allure.title("从表情包商店设置页删除表情包-状态：已完成")
     @pytest.mark.parametrize("emoji_type, count, desc", [
         ("sequential", 1, "删除列表中的第 1 个表情包"),
         ("sequential", 3, "连续删除列表前 3 个表情包"),
         ("all", 0, "清空/删除当前拥有的全部表情包")
     ])
     def test_del_all_emoji_store(self, emoji_type, count, desc):
-        allure.dynamic.title(f"表情包商店删除表情包测试 - {desc}")
 
         with allure.step("1. 打开表情面板，进入表情包商店，进入设置页面进行删除"):
             self.chatListPage.enter_chat(PRIVATE_USER1.name)

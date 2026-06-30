@@ -178,7 +178,7 @@ class TestGroupBotSpeechManage:
         
 
     @allure.story("发言管理-直接发送限制验证")
-    @allure.title("发送能力逐项验证: {item_name}")
+    @allure.title("发送能力逐项验证: {item_name}-状态：已完成")
     @pytest.mark.parametrize("item_name, action_type, action_target, expected_toast", [
         ("文本", "custom", "_verify_text_blocked", "本群已开启禁止发送文本/emoji"),
         ("emoji", "custom", "_verify_emoji_blocked", "本群已开启禁止发送文本/emoji"),
@@ -217,7 +217,7 @@ class TestGroupBotSpeechManage:
 
 
     @allure.story("发言管理-长按消息菜单限制验证")
-    @allure.title("长按能力逐项验证: {item_name}")
+    @allure.title("长按能力逐项验证: {item_name}-状态：已完成")
     @pytest.mark.parametrize("action_type, expected_toast", [
         ("复制", "禁止复制群内消息"),
         ("转发", "禁止转发群内消息"),

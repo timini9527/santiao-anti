@@ -31,6 +31,7 @@ class TestChatBasicEmoji:
             logger.error(f"Teardown 失败，未能返回首页: {e}")
 
     @allure.story("发送全部表情消息并验证")
+    @allure.title("发送全部表情消息并验证-状态：已完成")
     def test_send_all_emoji_message(self):
         with allure.step("1. 发送全部表情"):
             self.chatListPage.enter_chat(PRIVATE_USER1.name)
@@ -43,7 +44,9 @@ class TestChatBasicEmoji:
             active_text = self.chatPage.verify_message_content_by_input(input_text)
             check.equal(active_text, input_text, f"消息 actual: {active_text}, expected: {input_text} 不匹配")
 
+
     @allure.story("发送所有表情中的单个表情消息，验证1，8，当前页面随机一个，当前页面最后一个，最后一个")
+    @allure.title("发送所有表情中的单个表情消息，验证1，8，当前页面随机一个，当前页面最后一个，最后一个-状态：已完成")
     @pytest.mark.parametrize(
         "emoji_type", ["first", "eight", "random", "current_last", "absolute_last"]
     )
@@ -60,7 +63,9 @@ class TestChatBasicEmoji:
             active_text = self.chatPage.verify_message_content_by_input(input_text)
             check.equal(active_text, input_text, f"消息 actual: {active_text}, expected: {input_text} 不匹配")
 
+
     @allure.story("从所有发送新的表情消息，验证最近使用的表情是否添加上：1/8/16")
+    @allure.title("从所有发送新的表情消息，验证最近使用的表情是否添加上：1/8/16-状态：已完成")
     @pytest.mark.parametrize("emoji_type, count, desc", [
         ("sequential", 1, "发送 1 个表情"),
         ("sequential", 8, "连续发送 8 个表情"),

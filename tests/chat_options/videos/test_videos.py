@@ -34,11 +34,15 @@ class TestChatVideos:
         self.chatListPage.enter_chat(chat_name)
         self.videoPage.open_panel_to_album()
 
+
+
     # ==================== 1. 默认状态校验 ====================
     @allure.story("视频相册基础状态")
+    @allure.title("视频相册基础状态-状态：已完成")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_video_page_default_status(self, strategy):
         """验证进入视频选择页后的默认 UI 状态"""
+        
         with allure.step(f"1. 进入与【{strategy.name}】的聊天并打开相册"):
             self._enter_chat_and_open_album(strategy.name)
 
@@ -46,8 +50,10 @@ class TestChatVideos:
             result = self.videoPage.verify_default_page_load_status()
             assert result, "🍎 默认页面加载状态异常"
 
+
     # ==================== 2. 选择后取消勾选 ====================
     @allure.story("选择视频后取消勾选")
+    @allure.title("选择视频后取消勾选-状态：已完成")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_select_then_cancel(self, strategy):
         """测试勾选后再次点击取消：角标消失，发送按钮恢复置灰"""
@@ -66,8 +72,10 @@ class TestChatVideos:
             result = self.videoPage.verify_default_page_load_status()
             assert result, "🍎 取消勾选后状态未恢复为默认"
 
+
     # ==================== 3. 单视频发送流程 (参数化全覆盖) ====================
     @allure.story("单视频发送：模式 × 选项")
+    @allure.title("单视频发送：模式 × 选项-状态：已完成")
     @pytest.mark.parametrize("send_option", VIDEO_SEND_OPTIONS, ids=lambda s: s.desc)
     @pytest.mark.parametrize("select_mode", VIDEO_SELECT_MODES, ids=lambda s: s.desc)
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
@@ -110,7 +118,9 @@ class TestChatVideos:
             video_status = self.videoPage.get_last_message_video_status()
             check.is_true(video_status, "聊天区未加载出视频 Item")
 
+
     @allure.story("单条视频发送并校验")
+    @allure.title("单条视频发送并校验-状态：已完成")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_send_only_video(self, strategy):
         """核心发视频流程：选择单条视频，发送并校验全屏预览指纹"""
@@ -142,8 +152,10 @@ class TestChatVideos:
             # sent_signature = self.videoPage.get_preview_signature()
             # check.equal(preview_signature, sent_signature, "预览视频与发送视频特征不一致")
 
+
     # ==================== 3. 批量视频发送测试 ====================   
     @allure.story("视频发送边界场景：勾选上限测试")
+    @allure.title("视频发送边界场景：勾选上限测试-状态：已完成")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_max_selection_limit(self, strategy):
         """测试同时勾选超过 9 条视频时的 UI 表现：第 10 条触发弹窗并被拦截"""
@@ -162,7 +174,9 @@ class TestChatVideos:
             check.is_in("你最多只能选择9个视频", toast)
             self.videoPage.click_back_button()
             
+
     @allure.story("批量视频发送")
+    @allure.title("批量视频发送-状态：未完成")
     @pytest.mark.parametrize("scenario", BATCH_VIDEO_SCENARIOS, ids=lambda s: s.desc)
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_batch_send_videos(self, strategy, scenario: BatchVideoScenario):

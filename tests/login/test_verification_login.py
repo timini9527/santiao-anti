@@ -78,6 +78,7 @@ class TestVerificationLogin:
 
 
     @allure.story("验证码登录场景回归验证")
+    @allure.title("验证码登录场景-状态：已完成")
     @pytest.mark.parametrize("case_dict", load_verification_login_test_cases(), ids=lambda x: x.get('id', 'TC'))
     def test_verification_login_scenarios(self, case_dict):
         case = VerificationLoginCaseData(**case_dict)

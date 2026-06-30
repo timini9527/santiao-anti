@@ -168,7 +168,7 @@ class TestGroupManagerDouble:
 
 
     @allure.story("群管理-管理员分配")
-    @allure.title("【管理员】是否是管理员身份的分配验证-分配所有权限")
+    @allure.title("【管理员】是否是管理员身份的分配验证-分配所有权限-状态：已完成")
     @pytest.mark.usefixtures("admin_role")
     def test_admin_allocation_double_validation(self):
         """验证群主分配和撤销管理员身份，以及对应的成员端权限同步和CMD通知"""
@@ -188,7 +188,7 @@ class TestGroupManagerDouble:
 
 
     @allure.story("群申请-进群验证")
-    @allure.title("【进群验证】是否是管理员的多重场景")
+    @allure.title("【进群验证】是否是管理员的多重场景-状态：已完成")
     @pytest.mark.usefixtures("admin_role")
     def test_join_verify_admin_scenarios_double_validation(self):
         """验证进群验证是否是管理员的多重场景"""
@@ -207,7 +207,7 @@ class TestGroupManagerDouble:
             
 
     @allure.story("群申请-进群申请双端校验")
-    @allure.title("【进群申请】管理员=是，可以看到进群申请横幅；管理员=否，看不到进群申请横幅")
+    @allure.title("【进群申请】管理员=是，可以看到进群申请横幅；管理员=否，看不到进群申请横幅-状态：已完成")
     @pytest.mark.usefixtures("admin_role")
     def test_add_admin_double_validation(self):
         """验证是否为管理员【进群申请】管理员=是，可以看到进群申请横幅；管理员=否，看不到进群申请横幅"""
@@ -236,7 +236,7 @@ class TestGroupManagerDouble:
         
 
     @allure.story("群禁言-全员禁言双端校验")
-    @allure.title("【全员禁言】开关开启与关闭 - 接收端输入框禁言状态实时同步校验")
+    @allure.title("【全员禁言】开关开启与关闭 - 接收端输入框禁言状态实时同步校验-状态：已完成")
     def test_all_member_mute_double_validation(self):
         """验证群主开启全员禁言后，普通成员的输入框应立即被禁用并展示‘全员禁言中’；群主关闭全员禁言后，普通成员恢复正常发言"""
         
@@ -262,7 +262,7 @@ class TestGroupManagerDouble:
 
 
     @allure.story("群禁言-指定群成员禁言双端校验")
-    @allure.title("【指定群成员禁言】群主开启指定禁言")
+    @allure.title("【指定群成员禁言】群主开启指定禁言-状态：已完成")
     @pytest.mark.parametrize('mute_type, duration',
                             [(0, 0), (1, '10分钟'), (1, '30分钟'), (1, '2小时'), (1, '1天'), (1, '3天'), (1, '7天'), (1, '30天')],
                             ids=["永久禁言", "临时禁言-10分钟", "临时禁言-30分钟", "临时禁言-2小时", "临时禁言-1天", "临时禁言-3天", "临时禁言-7天", "临时禁言-30天"])
@@ -328,7 +328,7 @@ class TestGroupManagerDouble:
 
 
     @allure.story("群管理-添加好友双端校验")
-    @allure.title("【禁止添加好友】开关开启与关闭 - 接收端没有添加好友按钮")
+    @allure.title("【禁止添加好友】开关开启与关闭 - 接收端没有添加好友按钮-状态：已完成")
     def test_forbid_add_friend_double_validation(self):
         """验证群主开启禁止添加好友后，普通群成员的聊天信息栏中没有添加好友按钮；群主关闭禁止添加好友后，普通群成员的聊天信息栏有添加好友按钮"""
         
@@ -359,7 +359,7 @@ class TestGroupManagerDouble:
 
 
     @allure.story("群管理-群黑名单双端校验")
-    @allure.title("【群黑名单】页面加载与返回校验")
+    @allure.title("【群黑名单】页面加载与返回校验-状态：已完成")
     def test_group_blacklist_double_validation(self):
         """双端验证：群主进入【群黑名单】页面并返回"""
 
@@ -408,7 +408,7 @@ class TestGroupManagerDouble:
 
 
     @allure.story("群管理-转让群主双端校验")
-    @allure.title("【转让群主】双端转让与权限移交校验")
+    @allure.title("【转让群主】双端转让与权限移交校验-状态：已完成")
     def test_transfer_group_owner_double_validation(self):
         """双端验证：群主转让群主给成员，双方权限变更，随后再将群主转让回原群主"""
 

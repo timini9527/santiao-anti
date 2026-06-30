@@ -35,7 +35,10 @@ class TestLoginAgreement:
         self.ocr_utils = OcrUtils(driver_sender)
         yield
 
+
+
     @allure.story("验证用户协议、隐私协议和未成年协议三个协议是否正常展示")
+    @allure.title("验证用户协议、隐私协议和未成年协议三个协议是否正常展示-状态：已完成")
     def test_verify_agreements_exist(self):
         """验证三个协议文本是否正常展示"""
         full_text = self.loginPage.get_agreement_text()
@@ -44,7 +47,10 @@ class TestLoginAgreement:
             assert "《隐私协议》" in full_text, "缺少隐私协议"
             assert "《未成年人个人信息保护规则》" in full_text, "缺少未成年人保护规则"
 
+
+
     @allure.story("验证用户协议、隐私协议和未成年协议文本展现及跳转逻辑")
+    @allure.title("验证用户协议、隐私协议和未成年协议文本展现及跳转逻辑-状态：已完成")
     @pytest.mark.parametrize("agreement_name, expected_title, is_popup, click_login_btn", [
         # 主页面直接点击协议验证
         ("《用户协议》", "三条软件许可及服务协议", False, False),

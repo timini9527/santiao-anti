@@ -148,7 +148,7 @@ class TestGroupCreate:
 
 
     @allure.story("发起群聊")
-    @allure.title("选择 1 个正常好友时进入单聊页面")
+    @allure.title("选择 1 个正常好友时进入单聊页面-状态：已完成")
     def test_create_group_with_one_normal_friend(self):
         allure.dynamic.description("通过首页右上角发起群聊 - 选择1个好友")
 
@@ -168,8 +168,9 @@ class TestGroupCreate:
             title = self.chatPage.get_top_name()
             check.is_in(PRIVATE_USER1.name, title, f"❌ 单聊标题不正确，实际标题: {title}")
     
+
     @allure.story("发起群聊")
-    @allure.title("选择 1 或 2 个已停用/已注销好友时提示异常")
+    @allure.title("选择 1 或 2 个已停用/已注销好友时提示异常-状态：已完成")
     @pytest.mark.parametrize("invalid_friends", [
         [PRIVATE_DISABLE1],
         [PRIVATE_DISABLE1, PRIVATE_DISABLE2],
@@ -200,8 +201,9 @@ class TestGroupCreate:
             is_in_chat = self.chatPage.wait_for_chat_page_load(2, False)
             check.is_false(is_in_chat, "❌ 选择非正常好友后不应进入聊天页面")
 
+
     @allure.story("发起群聊")
-    @allure.title("通过首页右上角发起群聊 (小群:2人) - 正常建群流程")
+    @allure.title("通过首页右上角发起群聊 (小群:2人) - 正常建群流程-状态：已完成")
     def test_create_group_success(self):
         allure.dynamic.description(f"通过首页右上角发起群聊 (小群:2人) -正常建群流程")
         friend_list = [PRIVATE_USER1.name, PRIVATE_USER2.name]
@@ -225,7 +227,7 @@ class TestGroupCreate:
             
 
     @allure.story("发起群聊")
-    @allure.title("通过好友发起群聊 (小群:2人) - 正常建群流程")
+    @allure.title("通过好友发起群聊 (小群:2人) - 正常建群流程-状态：已完成")
     def test_create_group_success_by_friend(self):
         allure.dynamic.description(f"通过好友发起群聊 (小群:2人) - 正常建群流程")
         
@@ -253,7 +255,7 @@ class TestGroupCreate:
 
 
     @allure.story("发起群聊")
-    @allure.title("通过首页发起群聊 - 取消建群")
+    @allure.title("通过首页发起群聊 - 取消建群-状态：已完成")
     def test_create_group_cancel_from_home(self):
         allure.dynamic.description(f"通过首页发起群聊 - 取消建群")
         friend_list = [PRIVATE_USER1.name, PRIVATE_USER2.name]
@@ -274,7 +276,7 @@ class TestGroupCreate:
     
 
     @allure.story("发起群聊")
-    @allure.title("通过好友发起群聊 - 取消建群流程")
+    @allure.title("通过好友发起群聊 - 取消建群流程-状态：已完成")
     def test_create_group_cancel(self):
         allure.dynamic.description("通过好友聊天页添加成员后取消建群")
 
@@ -303,7 +305,7 @@ class TestGroupCreate:
 
 
     @allure.story("发起群聊")
-    @allure.title("通过首页右上角发起群聊 - <= 50 - 选择x个好友进行建群")
+    @allure.title("通过首页右上角发起群聊 - <= 50 - 选择x个好友进行建群-状态：已完成")
     @pytest.mark.parametrize("num_friends", [0, 10, 49, 50, 51], ids=["0人", "10人", "49人", "50人", "51人"])
     def test_create_group_success_x(self, num_friends):
         allure.dynamic.description(f"通过首页右上角发起群聊 - 选择x个好友进行建群")
@@ -368,7 +370,7 @@ class TestGroupCreate:
                     check.is_true(is_back, "❌ 建群后未能返回会话选择页")
             
     @allure.story("发起群聊")
-    @allure.title("通过首页右上角发起群聊 - > 200+ - 选择x个好友分批次选择好友建群")
+    @allure.title("通过首页右上角发起群聊 - > 200+ - 选择x个好友分批次选择好友建群-状态：已完成")
     @pytest.mark.parametrize("num_friends", [200, 201, 499, 500, 501], ids=["200人", "201人", "499人", "500人", "501人"])
     def test_create_group_success_x_over_200(self, num_friends):
         allure.dynamic.description(f"通过首页右上角发起群聊 - 选择 {num_friends} 个好友进行建群")

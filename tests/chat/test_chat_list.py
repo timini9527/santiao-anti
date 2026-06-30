@@ -74,6 +74,7 @@ class TestChatList:
         return top_count
 
     @allure.story("进入私聊/群聊会话")
+    @allure.title("进入私聊/群聊会话-状态：已完成")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_enter_chat(self, strategy):
         """
@@ -87,6 +88,7 @@ class TestChatList:
         self._send_and_verify_message(f"{strategy.name}要进行测试了")
 
     @allure.story("单个会话侧滑(静音、取消静音、置顶、取消置顶)功能")
+    @allure.title("单个会话侧滑(静音、取消静音、置顶、取消置顶)功能-状态：已完成")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     @pytest.mark.parametrize("action", SETTING_ACTIONS, ids=lambda a: a.action_desc)
     def test_slide_settings(self, strategy, action):
@@ -112,10 +114,9 @@ class TestChatList:
                 f"状态校验失败！预期: {action.expected_status}, 实际: {remind_status}"
 
     @allure.story("单个会话侧滑置顶，滑到最底部让最后一个会话置顶并验证")
+    @allure.title("单个会话侧滑置顶，滑到最底部让最后一个会话置顶验证-状态：已完成")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
     def test_slide_top_last_session(self, strategy):
-        allure.dynamic.title("单个会话侧滑置顶，滑到最底部让最后一个会话置顶验证")
-
         with allure.step("0. 环境清理：取消所有已置顶会话"):
             fold_count = self.homePage.get_fold_count()
             self._batch_set_top(fold_count if fold_count > 0 else 4, "取消置顶")
@@ -133,6 +134,7 @@ class TestChatList:
             self._batch_set_top(1, "取消置顶")
 
     @allure.story("批量置顶/取消置顶会话")
+    @allure.title("批量置顶/取消置顶会话-状态：已完成")
     @pytest.mark.parametrize("strategy", [SLIDE_STRATEGY], ids=lambda s: s.desc)
     @pytest.mark.parametrize("is_top_action", [True, False], ids=["测试批量置顶", "测试批量取消置顶"])
     def test_batch_slide_top(self, strategy, is_top_action):
@@ -163,11 +165,11 @@ class TestChatList:
                     assert actual_status == expected_status, f"会话【{con_name}】{action_name}状态校验失败"
 
     @allure.story("当前页面一键批量置顶和取消置顶，不需要验证")
+    @allure.title("当前页面一键批量置顶和取消置顶，不需要验证-状态：已完成")
     @pytest.mark.parametrize("strategy", [SLIDE_STRATEGY], ids=lambda s: s.desc)
     @pytest.mark.parametrize("is_top_action", [True, False], ids=["批量置顶", "批量取消置顶"])
     def test_batch_set_top_no_verify(self, strategy, is_top_action):
         action_name = "置顶" if is_top_action else "取消置顶"
-        allure.dynamic.title(f"快速批量{action_name}（不进入详情校验）")
 
         with allure.step(f"执行批量{action_name}操作"):
             pre_con_names = self.homePage.get_conversation_names()
@@ -190,13 +192,9 @@ class TestChatList:
                 check.equal(fold_count, 0, f"折叠数量校验失败！预期: 0, 折叠数量: {fold_count}")
 
     @allure.story("置顶会话折叠验证")
+    @allure.title("置顶会话折叠验证-状态：已完成")
     @pytest.mark.parametrize("scenario", TOP_FOLD_SCENARIOS, ids=lambda s: s.desc)
     def test_top_fold(self, scenario):
-        """置顶折叠验证：批量置顶 → 取消置顶 → 校验折叠状态"""
-        allure.dynamic.story(scenario.story)
-        allure.dynamic.title(f"折叠验证 | {scenario.desc}")
-
-        # TODO: 当折叠入口被隐藏后，后续测试需确保所有会话已取消置顶以重置环境状态
         with allure.step("0. 环境清理：取消所有已置顶会话"):
             fold_count = self.homePage.get_fold_count()
             # fold_count = 0
@@ -227,8 +225,9 @@ class TestChatList:
                 self.homePage.click_fold_entry(con_names_aft[0])
 
     @allure.story("单个会话侧滑删除功能(清空聊天记录/删除会话/取消删除)")
-    @pytest.mark.parametrize("action", DELETE_ACTIONS, ids=lambda a: a.action_desc)
+    @allure.title("单个会话侧滑删除功能(清空聊天记录/删除会话/取消删除)-状态：已完成")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
+    @pytest.mark.parametrize("action", DELETE_ACTIONS, ids=lambda a: a.action_desc)
     def test_slide_delete(self, strategy, action):
         allure.dynamic.story(action.story)
         allure.dynamic.title(f"侧滑删除 | {strategy.desc} - {action.action_desc}")
@@ -259,10 +258,9 @@ class TestChatList:
                     f"会话列表状态不匹配! 期望存在: {action.expected_session_exists}, 实际存在: {is_exist}"
 
     @allure.story("验证会话草稿模式状态")
+    @allure.title("验证会话草稿模式状态-状态：已完成")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
     def test_draft_mode(self, strategy):
-        allure.dynamic.title(f"草稿模式 | {strategy.desc}")
-
         with allure.step(f"1. 进入【{strategy.desc}】会话并发送消息"):
             self.chatListPage.enter_chat(strategy.name)
             self.chatListPage.input_text(f"{strategy.name}要进行测试了")
@@ -280,17 +278,17 @@ class TestChatList:
             input_text = self.chatListPage.get_input_text()
             # assert input_text == f"{strategy.name}要进行测试了", f"输入框中的草稿不匹配, 实际为: {input_text}"
 
-    @allure.story("验证会话未读/已读状态（待完善）")
+    @allure.story("验证会话未读/已读状态")
+    @allure.title("验证会话未读/已读状态-状态：TODO: skip")
+    @pytest.mark.skip(reason="TODO: skip-待完善")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
     @pytest.mark.parametrize("expected_status", ["未读"])
     # @pytest.mark.parametrize("expected_status", ["未读", "已读"])
     def test_unread_mode(self, strategy, expected_status):
-        allure.dynamic.title(f"{expected_status}模式 | {strategy.desc}")
 
         with allure.step(f"1. 进入【{strategy.desc}】会话并发送消息"):
             self.chatListPage.enter_chat(strategy.name)
             self._send_and_verify_message(f"{strategy.name}要进行测试了")
-
 
         # 如果需要测试“已读”，这里可能需要额外的操作使状态变为已读
         # if expected_status == "已读":
@@ -302,9 +300,9 @@ class TestChatList:
             check.is_in(expected_status, tip_status, f"{expected_status}模式状态不匹配, 实际为: {tip_status}")
 
     @allure.story("验证会话停用状态")
+    @allure.title("验证会话停用状态-状态：已完成")
     @pytest.mark.parametrize("strategy", [PRIVATE_DISABLE1], ids=lambda s: s.desc)
     def test_disable_mode(self, strategy):
-        allure.dynamic.title(f"停用模式 | {strategy.desc}")
 
         with allure.step(f"1. 进入【{strategy.desc}】会话并发送消息"):
             self.chatListPage.enter_chat(strategy.name)
@@ -319,11 +317,10 @@ class TestChatList:
             check.is_true(tip_status, f"停用模式状态不匹配, 实际为: {tip_status}")
     
     @allure.story("验证会话封禁状态")
+    @allure.title("验证会话封禁状态-状态：TODO: skip")
+    @pytest.mark.skip(reason="TODO: skip-待完善")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
-    @pytest.mark.skip("待完善")
     def test_ban_mode(self, strategy):
-
-        allure.dynamic.title(f"封禁模式 | {strategy.desc}")
 
         with allure.step(f"1. 进入【{strategy.desc}】会话并发送消息"):
             self.chatListPage.enter_chat(strategy.name)
@@ -339,11 +336,10 @@ class TestChatList:
             assert remind_status == 'true', f"停用模式状态不匹配, 实际为: {remind_status}"
 
     @allure.story("验证会话内容 发送中和发送失败 状态")
+    @allure.title("验证会话内容 发送中和发送失败 状态-状态：TODO: skip")
+    @pytest.mark.skip(reason="TODO: skip-待完善")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
-    @pytest.mark.skip("待完善")
     def test_sending_and_failed_status(self, strategy):
-
-        allure.dynamic.title(f"发送中和发送失败 | {strategy.desc}")
 
         with allure.step(f"1. 进入【{strategy.desc}】会话并发送消息"):
             self.chatListPage.enter_chat(strategy.name)
@@ -358,8 +354,9 @@ class TestChatList:
             remind_status = self.chatListPage.get_remind_status()
             assert remind_status == 'true', f"发送中和发送失败 状态不匹配, 实际为: {remind_status}"
 
-    @pytest.mark.skip("发送消息的具体方法待完善")
-    @allure.story("验证会话会话内容：图片、视频、位置、文件、视频聊天、语音聊天、个人名片、群名片、进群邀请、表情、链接分享")
+    @allure.story("验证会话内容：图片、视频、位置、文件、视频聊天、语音聊天、个人名片、群名片、进群邀请、表情、链接分享")
+    @allure.title("验证会话内容状态-状态：TODO: skip")
+    @pytest.mark.skip(reason="TODO: skip-待完善")
     @pytest.mark.parametrize("session_strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     @pytest.mark.parametrize("content_strategy", CHAT_CONTENT_SCENARIOS, ids=lambda c: c.desc)
     def test_chat_content_status(self, session_strategy, content_strategy):
@@ -384,12 +381,11 @@ class TestChatList:
             check.is_in(content_strategy.expected_text, actual_content, 
                         f"会话内容展示不匹配, 预期包含: {content_strategy.expected_text}, 实际为: {actual_content}")
 
-    @pytest.mark.skip("待完善")
-    @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
     @allure.story("验证会话内容：进群申请（管理员可见）、进群后显示某某某加入群聊、有人@我、查看@人消息消失、@所有人，查看@所有人消息消失、群主/管理员进群申请和@消息同时存在")
+    @allure.title("验证会话内容状态-状态：TODO: skip")
+    @pytest.mark.skip(reason="TODO: skip-待完善")
+    @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
     def test_chat_group_content_status(self, strategy):
-
-        allure.dynamic.title(f"会话内容状态 | {strategy.desc}")
 
         with allure.step(f"1. 进入【{strategy.desc}】会话并发送消息"):
             self.chatListPage.enter_chat(strategy.name)

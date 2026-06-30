@@ -39,12 +39,12 @@ class TestChatEmojiCollection:
             logger.error(f"Teardown 失败，未能返回首页: {e}")
 
     @allure.story("添加单个表情包/图片到收藏夹")
+    @allure.title("添加单个表情包/图片到收藏夹-状态：已完成")
     @pytest.mark.parametrize("pkg_count, add_count, desc", [
         (3, 1, "长按添加聊天列表中第 1 个表情包到收藏"),
         (3, None, "长按添加聊天列表中所有未收藏的表情包"),
     ])
     def test_add_single_emoji_package_to_coll(self, pkg_count, add_count, desc):
-        allure.dynamic.title(f"在聊天页面中添加表情包到收藏夹 - {desc}")
         emoji_type = "single" 
         click_count = 1        
 
@@ -96,7 +96,9 @@ class TestChatEmojiCollection:
             check.not_equal(coll_empkg_count_pre, coll_empkg_count_aft, 
                         f"收藏夹计数未发生变化！前: {coll_empkg_count_pre}, 后: {coll_empkg_count_aft}")
 
+
     @allure.story("从表情管理页面中删除已添加的表情包")
+    @allure.title("从表情管理页面中删除已添加的表情包-状态：已完成")
     @pytest.mark.parametrize("emoji_type, count, desc", [
         ("sequential", 1, "删除列表中的第一个表情包"),
         ("sequential", 3, "连续删除列表前 3 个表情包"),
@@ -104,7 +106,6 @@ class TestChatEmojiCollection:
         ("all", 0, "清空/删除当前拥有的全部收藏表情")
     ])
     def test_delete_emoji_package_from_manage(self, emoji_type, count, desc):
-        allure.dynamic.title(f"表情管理页面删除收藏表情测试 - {desc}")
 
         with allure.step("1. 打开表情面板，进入收藏管理详情页"):
             self.chatListPage.enter_chat(PRIVATE_USER1.name)

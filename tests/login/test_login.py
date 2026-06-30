@@ -73,7 +73,10 @@ class TestLogin:
         self.loginPage = LoginPage(driver_sender)
         yield
 
+
+
     @allure.story("手机账号密码登录场景回归验证")
+    @allure.title("手机账号密码登录场景回归验证-状态：已完成")
     @pytest.mark.parametrize("case_dict", load_login_test_cases(), ids=lambda x: x.get('id', 'TC'))
     def test_login_scenarios(self, case_dict):
         case = LoginCaseData(**case_dict)
@@ -170,7 +173,9 @@ class TestLogin:
                     is_success = self.loginPage.wait_for_login_page()
                     check.is_true(is_success, f"❌ 账号 {case.account} 退出登录失败，未回到登录页")
                 
+
     @allure.story("登录成功新号，手机账号记住功能")
+    @allure.title("连续登录退出不同由于，验证手机号记住功能-状态：已完成")
     def test_login_remember_account(self):
         allure.dynamic.title("连续登录退出不同由于，验证手机号记住功能")
         logger.info("🚀 开始执行专属用例: 连续登录不同账号，验证最后一次账号被准确记住")
@@ -208,8 +213,8 @@ class TestLogin:
                 check.equal(aft_acc, account, f"❌ 预期退出后回显账号为 '{account}'，实际为 '{aft_acc}'")
             
     
-
     @allure.story("登录次数过多时，操作频繁验证")
+    @allure.title("异常行为监控 - 连续多次发起登录请求触发防刷-状态：未完成")
     @pytest.mark.skip
     def test_login_too_frequent(self):
         allure.dynamic.title("异常行为监控 - 连续多次发起登录请求触发防刷")

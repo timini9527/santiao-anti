@@ -43,6 +43,7 @@ class TestExtractReportTree:
             pass
     
     @pytest.mark.skip(reason="已完成提取，用于参考")
+    @allure.title("自动遍历提取全量投诉树结构-状态：已完成")
     def test_extract_report_tree(self):
         """完全按照用户指定的层级遍历逻辑重构"""
         

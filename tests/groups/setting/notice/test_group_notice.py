@@ -114,7 +114,7 @@ class TestGroupNotice:
     
 
     @allure.story("群公告功能")
-    @allure.title("发布群公告限制校验 - {test_id}")
+    @allure.title("发布群公告限制校验 - {test_id}-状态：已完成")
     @pytest.mark.parametrize("test_id, content, should_success, expected_toast, truncate", notice_params, ids=notice_ids)
     def test_publish_group_notice_restrictions(self, test_id, content, should_success, expected_toast, truncate):
         """测试发布群公告的各种限制条件（特殊字符、长度、敏感词）"""
@@ -128,7 +128,6 @@ class TestGroupNotice:
             if desc != "":
                 self.groupNoticePage.click_publish_btn()
                 time.sleep(0.5)
-
 
         expected_content = content[:300] if truncate else content
 
@@ -156,7 +155,7 @@ class TestGroupNotice:
 
 
     @allure.story("群公告功能")
-    @allure.title("发布新群公告 - 取消发布流程")
+    @allure.title("发布新群公告 - 取消发布流程-状态：已完成")
     def test_publish_group_notice_cancel(self):
         """取消发布群公告"""
         with allure.step("1. 进入群聊并打开群公告页面"):

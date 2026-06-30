@@ -135,8 +135,10 @@ class TestGroupQrCode:
             
             check.is_true(time_matched, f"❌ 时间 '{hour:02d}:{minute:02d}' 不在有效期文案 '{validity_text}' 中")
 
+
+
     @allure.story("群二维码功能")
-    @allure.title("保存与分享群二维码功能")
+    @allure.title("保存与分享群二维码功能-状态：已完成")
     @allure.severity("Normal")
     def test_group_qrcode_save_and_share(self):
         with allure.step("1. 进入临时群"):
@@ -179,8 +181,9 @@ class TestGroupQrCode:
             image_data = self.groupQrCodePage.get_image_data()
             check.is_in(group_name, image_data, "❌ 群聊消息列表最后一条消息不是邀请二维码")
 
+
     @allure.story("群二维码功能")
-    @allure.title("更改群二维码有效期功能")
+    @allure.title("更改群二维码有效期功能-状态：已完成")
     @allure.severity("Normal")
     @pytest.mark.parametrize("validity_type, validity_text", [
         ('30m', '30分钟'),
@@ -213,8 +216,9 @@ class TestGroupQrCode:
             validity_text_new = self.groupQrCodePage.get_validity_text()
             self._verify_validity_text(validity_type=validity_type, validity_text=validity_text_new)
 
+
     @allure.story("群二维码功能")
-    @allure.title("识别过期群二维码失效提示校验")
+    @allure.title("识别过期群二维码失效提示校验-状态：未完成")
     @allure.severity("Critical")
     @pytest.mark.skip(reason="等待后端接口")
     def test_expired_qrcode_tips(self):

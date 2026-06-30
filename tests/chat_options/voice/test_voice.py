@@ -36,7 +36,10 @@ class TestChatVoice:
         self.chatListPage.enter_chat(chat_name)
         self.voicePage.click_voice_button()
 
+
+
     @allure.story("基础语音发送测试")
+    @allure.title("基础语音发送测试-状态：已完成")
     @pytest.mark.parametrize("hold_time", [0, 1, 30, 59, 60, 61, 65])
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_basic_voice_send(self, strategy, hold_time):
@@ -72,7 +75,9 @@ class TestChatVoice:
                 )
                 check.is_true(is_success, f"语音气泡显示异常！预期时长应为 {hold_time} 秒")
 
+
     @allure.story("语音录制取消测试")
+    @allure.title("语音录制取消测试-状态：已完成")
     @pytest.mark.parametrize("press_time", [1])
     @pytest.mark.parametrize("hold_time", [5])
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
@@ -104,6 +109,7 @@ class TestChatVoice:
 
 
     @allure.story("语音进阶交互：滑动试听测试并操作(发送/取消)，并验证")
+    @allure.title("语音进阶交互：滑动试听测试并操作(发送/取消)，并验证-状态：已完成")
     @pytest.mark.parametrize("action", ["send", "cancel"], ids=["发送", "取消"])
     @pytest.mark.parametrize("press_time", [1])
     @pytest.mark.parametrize("hold_time", [5])
@@ -151,7 +157,9 @@ class TestChatVoice:
                     )
                     check.is_true(is_success, "❌ 语音取消失败！页面上竟然刷出了新消息！")
 
+
     @allure.story("语音进阶交互：试听模式多场景操作测试 (播放/暂停、听筒/扬声器切换) + 最终发送/取消校验")
+    @allure.title("语音进阶交互：试听模式多场景操作测试 (播放/暂停、听筒/扬声器切换) + 最终发送/取消校验-状态：已完成")
     @pytest.mark.parametrize("press_time", [1])
     @pytest.mark.parametrize("hold_time", [5])
     @pytest.mark.parametrize("action", ["send", "cancel"], ids=["最终发送", "最终取消"])
@@ -225,7 +233,9 @@ class TestChatVoice:
                     expect_sent=False)
                 check.is_true(is_success, "❌ 语音取消失败！页面上竟然刷出了新消息！")
 
+
     @allure.story("识别语音内容，待完善")
+    @allure.title("识别语音内容，待完善-状态：未完成")
     @pytest.mark.skip(reason="识别语音内容功能待完善")
     @pytest.mark.parametrize("press_time", [1])
     @pytest.mark.parametrize("hold_time", [10])
@@ -236,6 +246,7 @@ class TestChatVoice:
 
         
     @allure.story("断网异常测试：无网络下发送语音验证红点提示")
+    @allure.title("断网异常测试：无网络下发送语音验证红点提示-状态：已完成")
     @pytest.mark.skip(reason="断网异常测试功能待完善")
     @pytest.mark.parametrize("hold_time", [2])
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)

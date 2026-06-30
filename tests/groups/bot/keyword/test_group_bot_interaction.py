@@ -178,8 +178,9 @@ class TestGroupBotInteraction:
         self.botS.click_back()
 
 
+
     @allure.story("禁发关键词-仅撤回处置方式")
-    @allure.title("命中违规关键词 - 触发群助手仅撤回")
+    @allure.title("命中违规关键词 - 触发群助手仅撤回-状态：已完成")
     def test_keyword_action_revoke(self):
         """处置方式为【仅撤回】：命中关键词的消息被撤回，群内无额外提示消息。"""
 
@@ -205,7 +206,7 @@ class TestGroupBotInteraction:
 
 
     @allure.story("禁发关键词-警告处置方式")
-    @allure.title("命中违规关键词 - 触发群助手撤回并群内@警告")
+    @allure.title("命中违规关键词 - 触发群助手撤回并群内@警告-状态：已完成")
     def test_keyword_action_warn(self):
         """处置方式为【警告】：命中关键词的消息被撤回，且群助手发送 @ 警告消息。"""
         rule_name = "警告"
@@ -239,7 +240,7 @@ class TestGroupBotInteraction:
 
 
     @allure.story("禁发关键词-禁言处置方式")
-    @allure.title("命中违规关键词 - 触发群助手撤回并禁言发送者")
+    @allure.title("命中违规关键词 - 触发群助手撤回并禁言发送者-状态：已完成")
     @pytest.mark.parametrize("rule_time", GroupBotPage.MUTE_DURATION_OPTIONS,
                              ids=[f"禁言-{t}" for t in GroupBotPage.MUTE_DURATION_OPTIONS])
     @pytest.mark.destructive
@@ -314,7 +315,7 @@ class TestGroupBotInteraction:
 
 
     @allure.story("禁发关键词-移除群聊处置方式")
-    @allure.title("命中违规关键词 - 触发群助手撤回并移除发送者")
+    @allure.title("命中违规关键词 - 触发群助手撤回并移除发送者-状态：已完成")
     @pytest.mark.destructive
     def test_keyword_action_kick(self):
         """处置方式为【移除群聊】：命中关键词的消息被撤回，且群内出现移除系统消息。

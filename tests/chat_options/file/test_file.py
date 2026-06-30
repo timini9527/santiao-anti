@@ -33,6 +33,7 @@ class TestChatFile:
         self.chatFilePage.open_panel_enter_file_page()
 
     @allure.story("发送文件-正向流程")
+    @allure.title("发送文件-正向流程-状态：已完成")
     @pytest.mark.parametrize("sub_menu_item, file_type, dir_name", [
         ("图片", 'image', "santiaoTalk"), 
         ("视频", 'video', "santiaoTalk"), 
@@ -77,11 +78,12 @@ class TestChatFile:
             is_success = self.chatPage.wait_for_last_message_send_status()
             check.is_true(is_success, "❌ 消息未在规定时间内发送完成")
 
+
     @allure.story("发送文件-取消操作")
+    @allure.title("发送文件-取消操作-状态：已完成")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
     def test_cancel_send_file(self, strategy):
         """验证进入文件选择页后取消返回"""
-        allure.title(f"发送文件-取消操作【{strategy.desc}】")
 
         with allure.step(f"1. 进入聊天并打开选择文件页"):
             self._enter_chat_and_open_file_page(strategy.name)
@@ -95,7 +97,9 @@ class TestChatFile:
             result = self.chatPage.verify_is_on_chat_page()
             check.is_true(result, "❌ 取消发送文件后，未能正确回到聊天页面")
 
+
     @allure.story("消息管理-文件撤回")
+    @allure.title("消息管理-文件撤回-状态：未完成")
     @pytest.mark.skip(reason="UI元素匹配异常，待修复")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
     def test_revoke_file_message_success(self, strategy):
@@ -121,12 +125,12 @@ class TestChatFile:
             check.is_in("撤回", notice_text, f"❌ 未能捕获到预期的撤回提示文字")
             logger.info(f"✅ 文件消息撤回验证通过: {notice_text}")
 
+
     @allure.story("发送异常-重试机制")
+    @allure.title("发送异常-重试机制-状态：未完成")
     @pytest.mark.skip(reason="UI元素匹配异常，待修复")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
     def test_resend_file_on_fail(self, strategy):
-        """测试文件发送失败后，点击红点重发成功"""
-        allure.title(f"发送异常-失败重试【{strategy.desc}】")
 
         with allure.step("1. 发送文件（模拟环境异常）"):
             self._enter_chat_and_open_file_page(strategy.name)
@@ -148,28 +152,35 @@ class TestChatFile:
                 # 如果没失败，至少验证消息是成功的
                 check.is_true(self.chatPage.wait_for_last_sent_message_completed(), "❌ 消息发送状态异常")
 
+
     @allure.story("消息管理-文件删除")
+    @allure.title("消息管理-文件删除-状态：未完成")
     @pytest.mark.skip(reason="删除功能待完善并接入通用交互逻辑")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
     def test_delete_file_message(self, strategy):
-        """验证发送文件后可以成功长按删除"""
         pass
 
+
     @allure.story("消息管理-文件转发")
+    @allure.title("消息管理-文件转发-状态：未完成")
     @pytest.mark.skip(reason="转发功能待完善并接入通用交互逻辑")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
     def test_forward_file_message(self, strategy):
         """验证文件消息可以被长按转发"""
         pass
 
+
     @allure.story("消息管理-文件收藏")
+    @allure.title("消息管理-文件收藏-状态：未完成")
     @pytest.mark.skip(reason="收藏功能待完善并接入通用交互逻辑")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
     def test_favorite_file_message(self, strategy):
         """验证文件消息可以被长按收藏"""
         pass
 
+
     @allure.story("消息管理-文件引用回复")
+    @allure.title("消息管理-文件引用回复-状态：未完成")
     @pytest.mark.skip(reason="回复功能待完善并接入通用交互逻辑")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
     def test_reply_file_message(self, strategy):

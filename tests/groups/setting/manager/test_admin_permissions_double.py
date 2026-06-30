@@ -70,8 +70,10 @@ class TestAdminPermissionsDouble:
             except Exception as e:
                 logger.warning(f"⚠️ [Cleanup] 环境复原清理失败: {e}")
 
+
+
     @allure.story("管理员权限集中校验")
-    @allure.title("【管理员权限校验】全量权限入口的可见性与可操作状态校验")
+    @allure.title("【管理员权限校验】全量权限入口的可见性与可操作状态校验-状态：已完成")
     def test_admin_all_permissions_ui_verification(self):
         """采用只读校验策略，一键检查分配给管理员的各项功能入口、开关状态及长按菜单权限（14项权限覆盖）"""
 

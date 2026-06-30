@@ -51,7 +51,7 @@ class TestGroupBotWelcome:
             logger.warning(f"⚠️ [Cleanup] 清理进群欢迎语发生异常: {e}")
 
     @allure.story("进群欢迎语-保存与修改状态更新")
-    @allure.title("保存进群欢迎语 - 输入带变量的文本并成功保存，校验状态更新")
+    @allure.title("保存进群欢迎语 - 输入带变量的文本并成功保存，校验状态更新-状态：未完成")
     @pytest.mark.usefixtures("cleanup_welcome_settings")
     def test_welcome_message_save_and_edit_status(self):
         """配置非空的进群欢迎语并保存，验证界面入口状态从添加欢迎语变更为修改欢迎语"""

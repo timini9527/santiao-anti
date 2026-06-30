@@ -52,7 +52,7 @@ class TestGroupBotAutoClean:
             logger.warning(f"⚠️ [Cleanup] 清理自动清理开关发生异常: {e}")
 
     @allure.story("自动清理-任务开关切换")
-    @allure.title("开启与关闭定时清理任务 - 触发Toast提醒且状态更新")
+    @allure.title("开启与关闭定时清理任务 - 触发Toast提醒且状态更新-状态：未完成")
     @pytest.mark.usefixtures("cleanup_clean_settings")
     def test_auto_clean_switch_toggle(self):
         """开启或关闭自动清理成员的总定时开关，并验证 Toast 提示"""
@@ -79,8 +79,9 @@ class TestGroupBotAutoClean:
             logger.info(f"🔍 关闭任务提示: '{toast_text}'")
             check.is_true("已关闭" in toast_text or "关闭" in toast_text or toast_text == "", f"❌ 关闭定时任务未捕获到正确Toast: {toast_text}")
 
+
     @allure.story("自动清理-清理规则配置")
-    @allure.title("配置清理规则 - 包含未发言/封禁条件，手动模式下成功保存规则")
+    @allure.title("配置清理规则 - 包含未发言/封禁条件，手动模式下成功保存规则-状态：未完成")
     @pytest.mark.usefixtures("cleanup_clean_settings")
     def test_auto_clean_rules_configuration(self):
         """配置详细的自动清理条件与模式并成功保存"""

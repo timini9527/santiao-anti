@@ -1,0 +1,375 @@
+=== 任务启动: task_qtixy6jpt_1782809564079 ===
+[Web Console] 准备拉起 Pytest 进程，命令: ['D:\\data\\Python313\\python.exe', '-u', '-m', 'pytest', 'tests/groups/setting/manager/test_group_manager_double.py::TestGroupManagerDouble::test_admin_allocation_double_validation', '-vs', '--color=yes', '--alluredir=reports\\tmp_task_qtixy6jpt_1782809564079']
+[Web Console] Pytest 进程拉起成功，PID: 27364
+[Web Console] 后台生命周期协程已触发创建
+[Web Console] 开始任务 task_qtixy6jpt_1782809564079 的生命周期监听流程
+[run_task_lifecycle] 启动 gather 并发监听
+[consume_queue] 异步消费协程启动...
+[Pytest Process Out] [1m============================= test session starts =============================[0m
+[consume_queue] 消费并准备广播: [1m============================= test session starts =============================[0m
+[Pytest Process Out] platform win32 -- Python 3.13.5, pytest-9.0.2, pluggy-1.6.0 -- D:\data\Python313\python.exe
+[consume_queue] 消费并准备广播: platform win32 -- Python 3.13.5, pytest-9.0.2, pluggy-1.6.0 -- D:\data\Python313\python.exe
+[Pytest Process Out] cachedir: .pytest_cache
+[consume_queue] 消费并准备广播: cachedir: .pytest_cache
+[Pytest Process Out] metadata: {'Python': '3.13.5', 'Platform': 'Windows-11-10.0.22631-SP0', 'Packages': {'pytest': '9.0.2', 'pluggy': '1.6.0'}, 'Plugins': {'allure-pytest': '2.15.2', 'anyio': '4.12.1', 'check': '2.7.6', 'cov': '7.1.0', 'html': '4.1.1', 'metadata': '3.1.1', 'rerunfailures': '16.1', 'xdist': '3.8.0'}, 'JAVA_HOME': 'D:\\data\\java\\jdk1.8.0_471'}
+[consume_queue] 消费并准备广播: metadata: {'Python': '3.13.5', 'Platform': 'Windows-11-10.0.22631-SP0', 'Packages': {'pytest': '9.0.2', 'pluggy': '1.6.0'}, 'Plugins': {'allure-pytest': '2.15.2', 'anyio': '4.12.1', 'check': '2.7.6', 'cov': '7.1.0', 'html': '4.1.1', 'metadata': '3.1.1', 'rerunfailures': '16.1', 'xdist': '3.8.0'}, 'JAVA_HOME': 'D:\\data\\java\\jdk1.8.0_471'}
+[Pytest Process Out] rootdir: d:\projects\santiao-anti
+[Pytest Process Out] configfile: pytest.ini
+r: d:\projects\santiao-anti
+[Pytest Process Out] plugins: allure-pytest-2.15.2, anyio-4.12.1, check-2.7.6, cov-7.1.0, html-4.1.1, metadata-3.1.1, rerunfailures-16.1, xdist-3.8.0
+[consume_queue] 消费并准备广播: plugins: allure-pytest-2.15.2, anyio-4.12.1, check-2.7.6, cov-7.1.0, html-4.1.1, metadata-3.1.1, rerunfailures-16.1, xdist-3.8.0
+[Pytest Process Out] [1mcollecting ... [0mcollected 1 item
+[Pytest Process Out] 
+[consume_queue] 消费并准备广播: [1mcollecting ... [0mcollected 1 item
+[Pytest Process Out] tests/groups/setting/manager/test_group_manager_double.py::TestGroupManagerDouble::test_admin_allocation_double_validation [1;32m[2026-06-30 17:04:59,017] [INFO] [data_loader.py:30] [find_file] - ✅ 快速定位文件成功：D:\projects\santiao-anti\config\devices.yaml[0m
+[consume_queue] 消费并准备广播: 
+[consume_queue] 消费并准备广播: tests/groups/setting/manager/test_group_manager_double.py::TestGroupManagerDouble::test_admin_allocation_double_validation [1;32m[2026-06-30 17:04:59,017] [INFO] [data_loader.py:30] [find_file] - ✅ 快速定位文件成功：D:\projects\santiao-anti\config\devices.yaml[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:04:59,022] [INFO] [driver_factory.py:21] [get_driver] - [DriverFactory] 当前指定的执行环境为: dev[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:04:59,022] [INFO] [driver_factory.py:21] [get_driver] - [DriverFactory] 当前指定的执行环境为: dev[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:04:59,137] [INFO] [driver_factory.py:52] [get_driver] - 🧹 [DriverFactory] 已清理原始配置端口的 adb 转发规则: tcp:8200[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:04:59,137] [INFO] [driver_factory.py:52] [get_driver] - 🧹 [DriverFactory] 已清理原始配置端口的 adb 转发规则: tcp:8200[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:04:59,566] [INFO] [driver_factory.py:56] [get_driver] - 🧹 [DriverFactory] 已强杀手机端残留的 UiAutomator2 Server 进程 (设备: emulator-5554)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:04:59,566] [INFO] [driver_factory.py:56] [get_driver] - 🧹 [DriverFactory] 已强杀手机端残留的 UiAutomator2 Server 进程 (设备: emulator-5554)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:04:59,600] [INFO] [driver_factory.py:84] [get_driver] - 🔌 [DriverFactory] 动态分配 systemPort: 8200 (原始配置: 8200)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:04:59,600] [INFO] [driver_factory.py:84] [get_driver] - 🔌 [DriverFactory] 动态分配 systemPort: 8200 (原始配置: 8200)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:04:59,600] [INFO] [driver_factory.py:89] [get_driver] - [DriverFactory] 环境变量动态覆盖: emulator-5554 127.0.0.1:4723[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:04:59,600] [INFO] [driver_factory.py:123] [get_driver] - [DriverFactory] 启动设备: sender |
+��量动态覆盖: emulator-5554 127.0.0.1:4723[0m
+[Pytest Process Out] UDID: emulator-5554 |
+2m[2026-06-30 17:04:59,600] [INFO] [driver_factory.py:123] [get_driver] - [DriverFactory] 启动设备: sender |
+[consume_queue] 消费并准备广播: UDID: emulator-5554 |
+[Pytest Process Out] Port: 8200 |
+[consume_queue] 消费并准备广播: Port: 8200 |
+[Pytest Process Out] Appium Server URL: http://127.0.0.1:4723[0m
+[consume_queue] 消费并准备广播: Appium Server URL: http://127.0.0.1:4723[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:04:59,700] [INFO] [driver_factory.py:135] [get_driver] - 🧹 [DriverFactory] 已清理新分配端口的 adb 转发规则: tcp:8200[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:04:59,700] [INFO] [driver_factory.py:135] [get_driver] - 🧹 [DriverFactory] 已清理新分配端口的 adb 转发规则: tcp:8200[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:04:59,701] [INFO] [driver_factory.py:149] [get_driver] - [DriverFactory] 正在对 Appium 进行连接探测: http://127.0.0.1:4723/status[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:04:59,701] [INFO] [driver_factory.py:149] [get_driver] - [DriverFactory] 正在对 Appium 进行连接探测: http://127.0.0.1:4723/status[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:09,001] [INFO] [data_loader.py:30] [find_file] - ✅ 快速定位文件成功：D:\projects\santiao-anti\config\devices.yaml[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:09,001] [INFO] [data_loader.py:30] [find_file] - ✅ 快速定位文件成功：D:\projects\santiao-anti\config\devices.yaml[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:09,008] [INFO] [driver_factory.py:21] [get_driver] - [DriverFactory] 当前指定的执行环境为: dev[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:09,008] [INFO] [driver_factory.py:21] [get_driver] - [DriverFactory] 当前指定的执行环境为: dev[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:09,105] [INFO] [driver_factory.py:52] [get_driver] - 🧹 [DriverFactory] 已清理原始配置端口的 adb 转发规则: tcp:8201[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:09,105] [INFO] [driver_factory.py:52] [get_driver] - 🧹 [DriverFactory] 已清理原始配置端口的 adb 转发规则: tcp:8201[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:09,417] [INFO] [driver_factory.py:56] [get_driver] - 🧹 [DriverFactory] 已强杀手机端残留的 UiAutomator2 Server 进程 (设备: emulator-5560)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:09,417] [INFO] [driver_factory.py:56] [get_driver] - 🧹 [DriverFactory] 已强杀手机端残留的 UiAutomator2 Server 进程 (设备: emulator-5560)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:09,442] [INFO] [driver_factory.py:84] [get_driver] - 🔌 [DriverFactory] 动态分配 systemPort: 8220 (原始配置: 8201)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:09,442] [INFO] [driver_factory.py:84] [get_driver] - 🔌 [DriverFactory] 动态分配 systemPort: 8220 (原始配置: 8201)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:09,443] [INFO] [driver_factory.py:105] [get_driver] - [DriverFactory] 从 Web 回执中成功提取 '设备1' 覆盖 receiver 设备的 UDID: emulator-5560[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:09,443] [INFO] [driver_factory.py:105] [get_driver] - [DriverFactory] 从 Web 回执中成功提取 '设备1' 覆盖 receiver 设备的 UDID: emulator-5560[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:09,443] [INFO] [driver_factory.py:123] [get_driver] - [DriverFactory] 启动设备: receiver |
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:09,443] [INFO] [driver_factory.py:123] [get_driver] - [DriverFactory] 启动设备: receiver |
+[Pytest Process Out] UDID: emulator-5560 |
+[Pytest Process Out] Port: 8220 |
+��: UDID: emulator-5560 |
+[consume_queue] 消费并准备广播: Port: 8220 |
+[Pytest Process Out] Appium Server URL: http://127.0.0.1:4723[0m
+[consume_queue] 消费并准备广播: Appium Server URL: http://127.0.0.1:4723[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:09,541] [INFO] [driver_factory.py:135] [get_driver] - 🧹 [DriverFactory] 已清理新分配端口的 adb 转发规则: tcp:8220[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:09,541] [INFO] [driver_factory.py:135] [get_driver] - 🧹 [DriverFactory] 已清理新分配端口的 adb 转发规则: tcp:8220[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:09,542] [INFO] [driver_factory.py:149] [get_driver] - [DriverFactory] 正在对 Appium 进行连接探测: http://127.0.0.1:4723/status[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:09,542] [INFO] [driver_factory.py:149] [get_driver] - [DriverFactory] 正在对 Appium 进行连接探测: http://127.0.0.1:4723/status[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:13,871] [INFO] [chat_list_page.py:112] [common_enter_chat] - 👉 准备进入会话: 【测试群aaaaa】[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:13,872] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:13,871] [INFO] [chat_list_page.py:112] [common_enter_chat] - 👉 准备进入会话: 【测试群aaaaa】[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:13,872] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:14,378] [INFO] [chat_page.py:60] [wait_for_chat_page_load] - ⏳ [Wait] 等待聊天主页面加载完成，超时时间 10 秒[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:14,378] [INFO] [chat_page.py:60] [wait_for_chat_page_load] - ⏳ [Wait] 等待聊天主页面加载完成，超时时间 10 秒[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:14,379] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/chat_input') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:14,379] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/chat_input') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:15,227] [INFO] [chat_page.py:63] [wait_for_chat_page_load] - ✅ [Wait] 聊天主页面加载完成, 元素个数为 1[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:15,227] [INFO] [chat_list_page.py:98] [enter_session] - ✅ 进入会话: 测试群aaaaa (匹配模式: exact)[0m
+�, 元素个数为 1[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:15,227] [INFO] [chat_list_page.py:98] [enter_session] - ✅ 进入会话: 测试群aaaaa (匹配模式: exact)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:15,228] [INFO] [chat_list_page.py:115] [common_enter_chat] - ✅ 在首页列表中找到并成功进入: 测试群aaaaa[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:15,228] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/chat_input') (模式: visibility)[0m
+[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:15,228] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/chat_input') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:15,299] [INFO] [chat_page.py:63] [wait_for_chat_page_load] - ✅ [Wait] 聊天主页面加载完成, 元素个数为 1[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:15,299] [INFO] [chat_page.py:63] [wait_for_chat_page_load] - ✅ [Wait] 聊天主页面加载完成, 元素个数为 1[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:15,300] [INFO] [chat_list_page.py:112] [common_enter_chat] - 👉 准备进入会话: 【测试群aaaaa】[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:15,300] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:15,300] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:20,783] [INFO] [chat_page.py:60] [wait_for_chat_page_load] - ⏳ [Wait] 等待聊天主页面加载完成，超时时间 10 秒[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:20,784] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/chat_input') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:20,783] [INFO] [chat_page.py:60] [wait_for_chat_page_load] - ⏳ [Wait] 等待聊天主页面加载完成，超时时间 10 秒[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:20,784] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/chat_input') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:21,613] [INFO] [chat_page.py:63] [wait_for_chat_page_load] - ✅ [Wait] 聊天主页面加载完成, 元素个数为 1[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:21,613] [INFO] [chat_list_page.py:98] [enter_session] - ✅ 进入会话: 测试群aaaaa (匹配模式: exact)[0m
+�, 元素个数为 1[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:21,613] [INFO] [chat_list_page.py:98] [enter_session] - ✅ 进入会话: 测试群aaaaa (匹配模式: exact)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:21,614] [INFO] [chat_list_page.py:115] [common_enter_chat] - ✅ 在首页列表中找到并成功进入: 测试群aaaaa[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:21,614] [INFO] [chat_list_page.py:115] [common_enter_chat] - ✅ 在首页列表中找到并成功进入: 测试群aaaaa[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:21,614] [INFO] [chat_page.py:60] [wait_for_chat_page_load] - ⏳ [Wait] 等待聊天主页面加载完成，超时时间 10 秒[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:21,614] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/chat_input') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:21,614] [INFO] [chat_page.py:60] [wait_for_chat_page_load] - ⏳ [Wait] 等待聊天主页面加载完成，超时时间 10 秒[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:21,614] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/chat_input') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:21,720] [INFO] [chat_page.py:63] [wait_for_chat_page_load] - ✅ [Wait] 聊天主页面加载完成, 元素个数为 1[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:21,721] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'right_bnt') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:21,720] [INFO] [chat_page.py:63] [wait_for_chat_page_load] - ✅ [Wait] 聊天主页面加载完成, 元素个数为 1[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:21,721] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'right_bnt') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:21,759] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'right_bnt')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:21,759] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'right_bnt')[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:21,819] [INFO] [chat_page.py:121] [click_more_button] - 🚀[Action-chat] - chat 点击更多按钮[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:21,819] [INFO] [chat_page.py:121] [click_more_button] - 🚀[Action-chat] - chat 点击更多按钮[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:22,121] [INFO] [base_page.py:273] [get_attribute] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_title') -> attr='text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:22,121] [INFO] [base_page.py:273] [get_attribute] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_title') -> attr='text'[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:22,121] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_title') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:22,121] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_title') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:22,173] [INFO] [base_page.py:277] [get_attribute] - ✅ base - 属性获取成功: text = 群详情[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:22,173] [INFO] [base_page.py:277] [get_attribute] - ✅ base - 属性获取成功: text = 群详情[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:22,174] [INFO] [group_setting_page.py:16] [wait_for_setting_page_load] - ⏳ [Action-groupSettingPage] 群聊 setting 页 - 页面加载成功[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:22,174] [INFO] [group_setting_page.py:16] [wait_for_setting_page_load] - ⏳ [Action-groupSettingPage] 群聊 setting 页 - 页面加载成功[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:22,675] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/setting_chat_groupManager') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:22,675] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/setting_chat_groupManager') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:22,736] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'com.santiaotalk.im:id/setting_chat_groupManager')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:22,736] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'com.santiaotalk.im:id/setting_chat_groupManager')[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:22,782] [INFO] [group_setting_page.py:132] [click_group_manager] - ✅ [Action-groupSettingPage] 群聊设置页 - 点击【群管理】[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:22,782] [INFO] [group_setting_page.py:132] [click_group_manager] - ✅ [Action-groupSettingPage] 群聊设置页 - 点击【群管理】[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:22,783] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_title') (模式: visibility)[0m
+r='text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:22,783] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_title') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:23,422] [INFO] [base_page.py:277] [get_attribute] - ✅ base - 属性获取成功: text = 群管理[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:23,423] [INFO] [group_manager_page.py:15] [wait_for_page_load] - ⏳ [Action-groupManagerPage] 群管理页面 - 加载成功[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:23,423] [INFO] [group_manager_page.py:15] [wait_for_page_load] - ⏳ [Action-groupManagerPage] 群管理页面 - 加载成功[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:23,924] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/it_group_manager') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:23,924] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/it_group_manager') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:23,963] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'com.santiaotalk.im:id/it_group_manager')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:23,963] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'com.santiaotalk.im:id/it_group_manager')[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:24,017] [INFO] [group_manager_page.py:47] [click_administrators] - ⚙️ [Action-groupManagerPage] 点击【管理员】[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:24,017] [INFO] [group_manager_page.py:47] [click_administrators] - ⚙️ [Action-groupManagerPage] 点击【管理员】[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:24,018] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_title') (模式: visibility)[0m
+r='text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:24,018] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_title') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:24,607] [INFO] [base_page.py:277] [get_attribute] - ✅ base - 属性获取成功: text = 群管理员[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:24,607] [INFO] [base_page.py:277] [get_attribute] - ✅ base - 属性获取成功: text = 群管理员[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:24,607] [INFO] [group_manager_page.py:87] [wait_for_admin_page_load] - ⏳ [Action-groupManagerPage] 管理员列表页面 - 加载成功[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:24,607] [INFO] [group_manager_page.py:87] [wait_for_admin_page_load] - ⏳ [Action-groupManagerPage] 管理员列表页面 - 加载成功[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:25,107] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/lt_add_friend') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:25,107] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/lt_add_friend') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:25,141] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'com.santiaotalk.im:id/lt_add_friend')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:25,141] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'com.santiaotalk.im:id/lt_add_friend')[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:25,201] [INFO] [group_manager_page.py:95] [click_add_admin] - ⚙️ [Action-groupManagerPage] 点击【新增管理员】按钮[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:25,201] [INFO] [group_manager_page.py:95] [click_add_admin] - ⚙️ [Action-groupManagerPage] 点击【新增管理员】按钮[0m
+�试0222']") (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:25,202] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('xpath', "//*[@resource-id='com.santiaotalk.im:id/friend_name' and @text='测试0222']") (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:25,432] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('xpath', "//*[@resource-id='com.santiaotalk.im:id/friend_name' and @text='测试0222']")[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:25,432] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('xpath', "//*[@resource-id='com.santiaotalk.im:id/friend_name' and @text='测试0222']")[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:25,488] [INFO] [group_manager_page.py:125] [click_member_by_name] - ⚙️ [Action-groupManagerPage] 点击列表中姓名为【测试0222】的成员[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:25,488] [INFO] [group_manager_page.py:125] [click_member_by_name] - ⚙️ [Action-groupManagerPage] 点击列表中姓名为【测试0222】的成员[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:26,073] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('xpath', "//*[@resource-id='com.santiaotalk.im:id/switch_btn' and @checked='false']") (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:26,073] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('xpath', "//*[@resource-id='com.santiaotalk.im:id/switch_btn' and @checked='false']") (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:26,257] [INFO] [group_manager_page.py:245] [get_switch_items] - ✅ [Action-groupManagerPage] 获取【未开启】的 switch item 列表, 共找到 6 个[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:26,257] [INFO] [group_manager_page.py:245] [get_switch_items] - ✅ [Action-groupManagerPage] 获取【未开启】的 switch item 列表, 共找到 6 个[0m
+lity)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:26,257] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('xpath', "//*[@resource-id='com.santiaotalk.im:id/switch_btn' and @checked='false']") (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:26,445] [INFO] [group_manager_page.py:245] [get_switch_items] - ✅ [Action-groupManagerPage] 获取【未开启】的 switch item 列表, 共找到 6 个[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:26,445] [INFO] [group_manager_page.py:245] [get_switch_items] - ✅ [Action-groupManagerPage] 获取【未开启】的 switch item 列表, 共找到 6 个[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:26,501] [INFO] [group_manager_page.py:271] [click_all_switch] - ⚙️ [Action-groupManagerPage] 已点击切换【未开启】开关[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:26,501] [INFO] [group_manager_page.py:271] [click_all_switch] - ⚙️ [Action-groupManagerPage] 已点击切换【未开启】开关[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:27,002] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('xpath', "//*[@resource-id='com.santiaotalk.im:id/switch_btn' and @checked='false']") (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:27,002] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('xpath', "//*[@resource-id='com.santiaotalk.im:id/switch_btn' and @checked='false']") (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:27,142] [INFO] [group_manager_page.py:245] [get_switch_items] - ✅ [Action-groupManagerPage] 获取【未开启】的 switch item 列表, 共找到 5 个[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:27,142] [INFO] [group_manager_page.py:245] [get_switch_items] - ✅ [Action-groupManagerPage] 获取【未开启】的 switch item 列表, 共找到 5 个[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:27,198] [INFO] [group_manager_page.py:271] [click_all_switch] - ⚙️ [Action-groupManagerPage] 已点击切换【未开启】开关[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:27,198] [INFO] [group_manager_page.py:271] [click_all_switch] - ⚙️ [Action-groupManagerPage] 已点击切换【未开启】开关[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:27,699] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('xpath', "//*[@resource-id='com.santiaotalk.im:id/switch_btn' and @checked='false']") (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:27,699] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('xpath', "//*[@resource-id='com.santiaotalk.im:id/switch_btn' and @checked='false']") (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:27,820] [INFO] [group_manager_page.py:245] [get_switch_items] - ✅ [Action-groupManagerPage] 获取【未开启】的 switch item 列表, 共找到 4 个[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:27,820] [INFO] [group_manager_page.py:245] [get_switch_items] - ✅ [Action-groupManagerPage] 获取【未开启】的 switch item 列表, 共找到 4 个[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:27,864] [INFO] [group_manager_page.py:271] [click_all_switch] - ⚙️ [Action-groupManagerPage] 已点击切换【未开启】开关[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:27,864] [INFO] [group_manager_page.py:271] [click_all_switch] - ⚙️ [Action-groupManagerPage] 已点击切换【未开启】开关[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:28,365] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('xpath', "//*[@resource-id='com.santiaotalk.im:id/switch_btn' and @checked='false']") (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:28,365] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('xpath', "//*[@resource-id='com.santiaotalk.im:id/switch_btn' and @checked='false']") (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:28,482] [INFO] [group_manager_page.py:245] [get_switch_items] - ✅ [Action-groupManagerPage] 获取【未开启】的 switch item 列表, 共找到 3 个[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:28,482] [INFO] [group_manager_page.py:245] [get_switch_items] - ✅ [Action-groupManagerPage] 获取【未开启】的 switch item 列表, 共找到 3 个[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:28,536] [INFO] [group_manager_page.py:271] [click_all_switch] - ⚙️ [Action-groupManagerPage] 已点击切换【未开启】开关[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:28,536] [INFO] [group_manager_page.py:271] [click_all_switch] - ⚙️ [Action-groupManagerPage] 已点击切换【未开启】开关[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:29,037] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('xpath', "//*[@resource-id='com.santiaotalk.im:id/switch_btn' and @checked='false']") (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:29,037] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('xpath', "//*[@resource-id='com.santiaotalk.im:id/switch_btn' and @checked='false']") (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:29,128] [INFO] [group_manager_page.py:245] [get_switch_items] - ✅ [Action-groupManagerPage] 获取【未开启】的 switch item 列表, 共找到 2 个[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:29,128] [INFO] [group_manager_page.py:245] [get_switch_items] - ✅ [Action-groupManagerPage] 获取【未开启】的 switch item 列表, 共找到 2 个[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:29,183] [INFO] [group_manager_page.py:271] [click_all_switch] - ⚙️ [Action-groupManagerPage] 已点击切换【未开启】开关[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:29,183] [INFO] [group_manager_page.py:271] [click_all_switch] - ⚙️ [Action-groupManagerPage] 已点击切换【未开启】开关[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:29,685] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('xpath', "//*[@resource-id='com.santiaotalk.im:id/switch_btn' and @checked='false']") (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:29,685] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('xpath', "//*[@resource-id='com.santiaotalk.im:id/switch_btn' and @checked='false']") (模式: visibility)[0m
+[Pytest Process Out] [1;33m[2026-06-30 17:05:31,985] [WARNING] [except_utils.py:128] [wrapper] - ⚠️ 未找到元素列表 (静默模式): ('xpath', "//*[@resource-id='com.santiaotalk.im:id/switch_btn' and @checked='false']")， 详情: Message:
+[Pytest Process Out] [0m
+[Pytest Process Out] [1;33m[2026-06-30 17:05:31,986] [WARNING] [group_manager_page.py:243] [get_switch_items] - ⚠️ [Action-groupManagerPage] 未找到【未开启】的 switch item[0m
+[consume_queue] 消费并准备广播: [1;33m[2026-06-30 17:05:31,985] [WARNING] [except_utils.py:128] [wrapper] - ⚠️ 未找到元素列表 (静默模式): ('xpath', "//*[@resource-id='com.santiaotalk.im:id/switch_btn' and @checked='false']")， 详情: Message:
+[Pytest Process Out] [1;32m[2026-06-30 17:05:31,986] [INFO] [group_manager_page.py:278] [click_all_switch] - ⚙️ [Action-groupManagerPage] 向下滚动寻找更多开关... (当前已滑动 0 次)[0m
+[consume_queue] 消费并准备广播: [0m
+[consume_queue] 消费并准备广播: [1;33m[2026-06-30 17:05:31,986] [WARNING] [group_manager_page.py:243] [get_switch_items] - ⚠️ [Action-groupManagerPage] 未找到【未开启】的 switch item[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:31,986] [INFO] [group_manager_page.py:278] [click_all_switch] - ⚙️ [Action-groupManagerPage] 向下滚动寻找更多开关... (当前已滑动 0 次)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:32,082] [INFO] [base_page.py:665] [swipe] - 滑动轨迹: (270, 992) -> (270, 248) | 时长: 500ms[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:32,082] [INFO] [base_page.py:665] [swipe] - 滑动轨迹: (270, 992) -> (270, 248) | 时长: 500ms[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:34,261] [INFO] [base_page.py:601] [is_page_source_changed] - 页面 DOM 是否发生变化: True[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:34,262] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('xpath', "//*[@resource-id='com.santiaotalk.im:id/switch_btn' and @checked='false']") (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:34,262] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('xpath', "//*[@resource-id='com.santiaotalk.im:id/switch_btn' and @checked='false']") (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:34,336] [INFO] [group_manager_page.py:245] [get_switch_items] - ✅ [Action-groupManagerPage] 获取【未开启】的 switch item 列表, 共找到 1 个[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:34,336] [INFO] [group_manager_page.py:245] [get_switch_items] - ✅ [Action-groupManagerPage] 获取【未开启】的 switch item 列表, 共找到 1 个[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:34,336] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('xpath', "//*[@resource-id='com.santiaotalk.im:id/switch_btn' and @checked='false']") (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:34,336] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('xpath', "//*[@resource-id='com.santiaotalk.im:id/switch_btn' and @checked='false']") (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:34,392] [INFO] [group_manager_page.py:245] [get_switch_items] - ✅ [Action-groupManagerPage] 获取【未开启】的 switch item 列表, 共找到 1 个[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:34,392] [INFO] [group_manager_page.py:245] [get_switch_items] - ✅ [Action-groupManagerPage] 获取【未开启】的 switch item 列表, 共找到 1 个[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:34,431] [INFO] [group_manager_page.py:271] [click_all_switch] - ⚙️ [Action-groupManagerPage] 已点击切换【未开启】开关[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:34,431] [INFO] [group_manager_page.py:271] [click_all_switch] - ⚙️ [Action-groupManagerPage] 已点击切换【未开启】开关[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:34,932] [INFO] [group_manager_page.py:278] [click_all_switch] - ⚙️ [Action-groupManagerPage] 向下滚动寻找更多开关... (当前已滑动 1 次)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:34,932] [INFO] [group_manager_page.py:278] [click_all_switch] - ⚙️ [Action-groupManagerPage] 向下滚动寻找更多开关... (当前已滑动 1 次)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:35,009] [INFO] [base_page.py:665] [swipe] - 滑动轨迹: (270, 992) -> (270, 248) | 时长: 500ms[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:35,009] [INFO] [base_page.py:665] [swipe] - 滑动轨迹: (270, 992) -> (270, 248) | 时长: 500ms[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:37,190] [INFO] [base_page.py:601] [is_page_source_changed] - 页面 DOM 是否发生变化: False[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:37,190] [INFO] [base_page.py:603] [is_page_source_changed] - ✅ 页面 DOM 已无变化，认定已至边界！[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:37,190] [INFO] [base_page.py:601] [is_page_source_changed] - 页面 DOM 是否发生变化: False[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:37,190] [INFO] [group_manager_page.py:258] [click_all_switch] - ⚙️ [Action-groupManagerPage] 滑动后页面 DOM 无变化，已达底部边界，退出切换[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:37,190] [INFO] [base_page.py:603] [is_page_source_changed] - ✅ 页面 DOM 已无变化，认定已至边界！[0m
+)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:37,190] [INFO] [group_manager_page.py:258] [click_all_switch] - ⚙️ [Action-groupManagerPage] 滑动后页面 DOM 无变化，已达底部边界，退出切换[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:37,191] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/fb_action') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:37,225] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'com.santiaotalk.im:id/fb_action')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:37,225] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'com.santiaotalk.im:id/fb_action')[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:37,282] [INFO] [group_manager_page.py:29] [click_confirm_button] - ⚙️ [Action-groupManagerPage] 点击顶部【确定】按钮[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:37,283] [INFO] [base_page.py:118] [wait_until_element_disappear] - ⏳ [Wait] 等待元素消失: ('id', 'com.santiaotalk.im:id/tv_preview')[0m
+��[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:37,283] [INFO] [base_page.py:118] [wait_until_element_disappear] - ⏳ [Wait] 等待元素消失: ('id', 'com.santiaotalk.im:id/tv_preview')[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:37,329] [INFO] [chat_page.py:1380] [wait_banner_message_disappear] - ✅ [Action] ChatPage 聊天页 - 横幅消息已消失[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:37,329] [INFO] [chat_page.py:1380] [wait_banner_message_disappear] - ✅ [Action] ChatPage 聊天页 - 横幅消息已消失[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:38,330] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/friend_name') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:38,330] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/friend_name') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:38,938] [INFO] [group_manager_page.py:117] [get_member_names] - ✅ [Action-groupManagerPage] 获取成员姓名成功: ['1234567890', '测试0222'][0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:38,938] [INFO] [group_manager_page.py:117] [get_member_names] - ✅ [Action-groupManagerPage] 获取成员姓名成功: ['1234567890', '测试0222'][0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:38,940] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/message_layout"]//*[@resource-id="com.santiaotalk.im:id/message_content"]/android.widget.TextView') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:38,940] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/message_layout"]//*[@resource-id="com.santiaotalk.im:id/message_content"]/android.widget.TextView') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:39,692] [INFO] [chat_page.py:503] [get_all_cmd_notifications] - [Assert] 获取聊天界面所有CMD通知消息[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:39,692] [INFO] [chat_page.py:503] [get_all_cmd_notifications] - [Assert] 获取聊天界面所有CMD通知消息[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:39,931] [INFO] [chat_page.py:513] [get_cmd_notification_texts] - [Assert] 获取聊天界面所有CMD通知消息texts内容: ['“1234567890”开启全员禁言', '“1234567890”关闭全员禁言', '群主“1234567890”将您添加为管理员', '群主“1234567890”将您移除管理员身份', '“1234567890”开启全员禁言', '“1234567890”关闭全员禁言', '“1234567890”开启群内禁止添加好友', '“1234567890”关闭群内禁止添加好友', '你已被1234567890移除群聊', '1234567890把您加入群聊', '测试0222已成为新群主', '1234567890已成为新群主', '你已被1234567890移除群聊', '1234567890把您加入群聊', '群主“1234567890”将您添加为管理员'][0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:39,932] [INFO] [chat_page.py:533] [is_cmd_notification_matching] - ✅ [Assert] 找到匹配 of CMD 通知: '群主“1234567890”将您添加为管理员' 匹配模式 '.*将您添加为管理员'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:39,931] [INFO] [chat_page.py:513] [get_cmd_notification_texts] - [Assert] 获取聊天界面所有CMD通知消息texts内容: ['“1234567890”开启全员禁言', '“1234567890”关闭全员禁言', '群主“1234567890”将您添加为管理员', '群主“1234567890”将您移除管理员身份', '“1234567890”开启全员禁言', '“1234567890”关闭全员禁言', '“1234567890”开启群内禁止添加好友', '“1234567890”关闭群内禁止添加好友', '你已被1234567890移除群聊', '1234567890把您加入群聊', '测试0222已成为新群主', '1234567890已成为新群主', '你已被1234567890移除群聊', '1234567890把您加入群聊', '群主“1234567890”将您添加为管理员'][0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:39,932] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'right_bnt') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:39,932] [INFO] [chat_page.py:533] [is_cmd_notification_matching] - ✅ [Assert] 找到匹配 of CMD 通知: '群主“1234567890”将您添加为管理员' 匹配模式 '.*将您添加为管理员'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:39,932] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'right_bnt') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:39,978] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'right_bnt')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:39,978] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'right_bnt')[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:40,086] [INFO] [chat_page.py:121] [click_more_button] - 🚀[Action-chat] - chat 点击更多按钮[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:40,086] [INFO] [chat_page.py:121] [click_more_button] - 🚀[Action-chat] - chat 点击更多按钮[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:40,388] [INFO] [base_page.py:273] [get_attribute] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_title') -> attr='text'[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:40,388] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_title') (模式: visibility)[0m
+r='text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:40,388] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_title') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:40,514] [INFO] [base_page.py:277] [get_attribute] - ✅ base - 属性获取成功: text = 群详情[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:40,515] [INFO] [group_setting_page.py:16] [wait_for_setting_page_load] - ⏳ [Action-groupSettingPage] 群聊 setting 页 - 页面加载成功[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:40,515] [INFO] [group_setting_page.py:16] [wait_for_setting_page_load] - ⏳ [Action-groupSettingPage] 群聊 setting 页 - 页面加载成功[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:41,016] [INFO] [base_page.py:257] [is_element_exist] - 🔎 探查元素状态: ('id', 'com.santiaotalk.im:id/setting_chat_groupManager') (模式: visibility, 超时: 1s)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:41,016] [INFO] [base_page.py:257] [is_element_exist] - 🔎 探查元素状态: ('id', 'com.santiaotalk.im:id/setting_chat_groupManager') (模式: visibility, 超时: 1s)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:41,075] [INFO] [group_setting_page.py:139] [is_group_manager_visible] - ✅ [Action-groupSettingPage] 群聊设置页 - 群管理存在[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:41,075] [INFO] [group_setting_page.py:139] [is_group_manager_visible] - ✅ [Action-groupSettingPage] 群聊设置页 - 群管理存在[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:41,075] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/iv_back') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:41,075] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/iv_back') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:41,107] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'com.santiaotalk.im:id/iv_back')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:41,107] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'com.santiaotalk.im:id/iv_back')[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:41,182] [INFO] [group_manager_page.py:23] [click_iv_back_button] - ⚙️ [Action-groupManagerPage] 点击顶部【返回】按钮[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:41,184] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('xpath', "//*[@resource-id='com.santiaotalk.im:id/friend_name' and @text='测试0222']") (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:41,184] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('xpath', "//*[@resource-id='com.santiaotalk.im:id/friend_name' and @text='测试0222']") (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:41,244] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('xpath', "//*[@resource-id='com.santiaotalk.im:id/friend_name' and @text='测试0222']")[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:41,244] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('xpath', "//*[@resource-id='com.santiaotalk.im:id/friend_name' and @text='测试0222']")[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:41,303] [INFO] [group_manager_page.py:125] [click_member_by_name] - ⚙️ [Action-groupManagerPage] 点击列表中姓名为【测试0222】的成员[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:41,303] [INFO] [group_manager_page.py:125] [click_member_by_name] - ⚙️ [Action-groupManagerPage] 点击列表中姓名为【测试0222】的成员[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:41,805] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/sure') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:41,805] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/sure') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:41,851] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'com.santiaotalk.im:id/sure')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:41,851] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'com.santiaotalk.im:id/sure')[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:41,900] [INFO] [group_manager_page.py:146] [click_sure_button] - ⚙️ [Action-groupManagerPage] 点击【移除管理员】按钮[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:41,901] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_content') (模式: visibility)[0m
+��钮[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:41,901] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_content') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:42,488] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'com.santiaotalk.im:id/tv_content')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:42,488] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'com.santiaotalk.im:id/tv_content')[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:42,538] [INFO] [group_manager_page.py:152] [click_sure_content_button] - ⚙️ [Action-groupManagerPage] 点击【移除】按钮[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:42,538] [INFO] [group_manager_page.py:152] [click_sure_content_button] - ⚙️ [Action-groupManagerPage] 点击【移除】按钮[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:42,538] [INFO] [base_page.py:118] [wait_until_element_disappear] - ⏳ [Wait] 等待元素消失: ('id', 'com.santiaotalk.im:id/tv_preview')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:42,538] [INFO] [base_page.py:118] [wait_until_element_disappear] - ⏳ [Wait] 等待元素消失: ('id', 'com.santiaotalk.im:id/tv_preview')[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:42,604] [INFO] [chat_page.py:1380] [wait_banner_message_disappear] - ✅ [Action] ChatPage 聊天页 - 横幅消息已消失[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:42,604] [INFO] [chat_page.py:1380] [wait_banner_message_disappear] - ✅ [Action] ChatPage 聊天页 - 横幅消息已消失[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:43,605] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/friend_name') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:43,605] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/friend_name') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:44,275] [INFO] [group_manager_page.py:117] [get_member_names] - ✅ [Action-groupManagerPage] 获取成员姓名成功: ['1234567890'][0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:44,275] [INFO] [base_page.py:118] [wait_until_element_disappear] - ⏳ [Wait] 等待元素消失: ('id', 'com.santiaotalk.im:id/tv_preview')[0m
+7890'][0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:44,275] [INFO] [base_page.py:118] [wait_until_element_disappear] - ⏳ [Wait] 等待元素消失: ('id', 'com.santiaotalk.im:id/tv_preview')[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:45,358] [INFO] [chat_page.py:1380] [wait_banner_message_disappear] - ✅ [Action] ChatPage 聊天页 - 横幅消息已消失[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:45,358] [INFO] [chat_page.py:1380] [wait_banner_message_disappear] - ✅ [Action] ChatPage 聊天页 - 横幅消息已消失[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:46,359] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/iv_back') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:46,359] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/iv_back') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:46,388] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'com.santiaotalk.im:id/iv_back')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:46,388] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'com.santiaotalk.im:id/iv_back')[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:46,433] [INFO] [group_manager_page.py:23] [click_iv_back_button] - ⚙️ [Action-groupManagerPage] 点击顶部【返回】按钮[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:46,433] [INFO] [group_manager_page.py:23] [click_iv_back_button] - ⚙️ [Action-groupManagerPage] 点击顶部【返回】按钮[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:46,434] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/iv_back') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:46,434] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/iv_back') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:46,526] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'com.santiaotalk.im:id/iv_back')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:46,526] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'com.santiaotalk.im:id/iv_back')[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:46,586] [INFO] [group_manager_page.py:23] [click_iv_back_button] - ⚙️ [Action-groupManagerPage] 点击顶部【返回】按钮[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:46,588] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/iv_back') (模式: visibility)[0m
+�按钮[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:46,588] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/iv_back') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:46,725] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'com.santiaotalk.im:id/iv_back')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:46,725] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'com.santiaotalk.im:id/iv_back')[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:46,787] [INFO] [group_manager_page.py:23] [click_iv_back_button] - ⚙️ [Action-groupManagerPage] 点击顶部【返回】按钮[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:46,788] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/message_layout"]//*[@resource-id="com.santiaotalk.im:id/message_content"]/android.widget.TextView') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:46,788] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/message_layout"]//*[@resource-id="com.santiaotalk.im:id/message_content"]/android.widget.TextView') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:47,144] [INFO] [chat_page.py:503] [get_all_cmd_notifications] - [Assert] 获取聊天界面所有CMD通知消息[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:47,144] [INFO] [chat_page.py:503] [get_all_cmd_notifications] - [Assert] 获取聊天界面所有CMD通知消息[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:47,382] [INFO] [chat_page.py:513] [get_cmd_notification_texts] - [Assert] 获取聊天界面所有CMD通知消息texts内容: ['“1234567890”关闭全员禁言', '群主“1234567890”将您添加为管理员', '群主“1234567890”将您移除管理员身份', '“1234567890”开启全员禁言', '“1234567890”关闭全员禁言', '“1234567890”开启群内禁止添加好友', '“1234567890”关闭群内禁止添加好友', '你已被1234567890移除群聊', '1234567890把您加入群聊', '测试0222已成为新群主', '1234567890已成为新群主', '你已被1234567890移除群聊', '1234567890把您加入群聊', '群主“1234567890”将您添加为管理员', '群主“1234567890”将您移除管理员身份'][0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:47,383] [INFO] [chat_page.py:533] [is_cmd_notification_matching] - ✅ [Assert] 找到匹配 of CMD 通知: '群主“1234567890”将您移除管理员身份' 匹配模式 '.*移除管理员身份'[0m
+��将您添加为管理员', '群主“1234567890”将您移除管理员身份', '“1234567890”开启全员禁言', '“1234567890”关闭全员禁言', '“1234567890”开启群内禁止添加好友', '“1234567890”关闭群内禁止添加好友', '你已被1234567890移除群聊', '1234567890把您加入群聊', '测试0222已成为新群主', '1234567890已成为新群主', '你已被1234567890移除群聊', '1234567890把您加入群聊', '群主“1234567890”将您添加为管理员', '群主“1234567890”将您移除管理员身份'][0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:47,383] [INFO] [chat_page.py:533] [is_cmd_notification_matching] - ✅ [Assert] 找到匹配 of CMD 通知: '群主“1234567890”将您移除管理员身份' 匹配模式 '.*移除管理员身份'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:47,383] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'right_bnt') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:47,417] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'right_bnt')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:47,417] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'right_bnt')[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:47,518] [INFO] [chat_page.py:121] [click_more_button] - 🚀[Action-chat] - chat 点击更多按钮[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:47,518] [INFO] [chat_page.py:121] [click_more_button] - 🚀[Action-chat] - chat 点击更多按钮[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:47,819] [INFO] [base_page.py:273] [get_attribute] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_title') -> attr='text'[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:47,820] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_title') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:47,819] [INFO] [base_page.py:273] [get_attribute] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_title') -> attr='text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:47,820] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_title') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:47,875] [INFO] [base_page.py:277] [get_attribute] - ✅ base - 属性获取成功: text = 群详情[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:47,875] [INFO] [base_page.py:277] [get_attribute] - ✅ base - 属性获取成功: text = 群详情[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:47,875] [INFO] [group_setting_page.py:16] [wait_for_setting_page_load] - ⏳ [Action-groupSettingPage] 群聊 setting 页 - 页面加载成功[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:47,875] [INFO] [group_setting_page.py:16] [wait_for_setting_page_load] - ⏳ [Action-groupSettingPage] 群聊 setting 页 - 页面加载成功[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:48,376] [INFO] [base_page.py:257] [is_element_exist] - 🔎 探查元素状态: ('id', 'com.santiaotalk.im:id/setting_chat_groupManager') (模式: visibility, 超时: 1s)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:48,376] [INFO] [base_page.py:257] [is_element_exist] - 🔎 探查元素状态: ('id', 'com.santiaotalk.im:id/setting_chat_groupManager') (模式: visibility, 超时: 1s)[0m
+[Pytest Process Out] [1;33m[2026-06-30 17:05:49,487] [WARNING] [except_utils.py:160] [wrapper] - ⏱️ 元素不存在 (正常超时): ('id', 'com.santiaotalk.im:id/setting_chat_groupManager')[0m
+[consume_queue] 消费并准备广播: [1;33m[2026-06-30 17:05:49,487] [WARNING] [except_utils.py:160] [wrapper] - ⏱️ 元素不存在 (正常超时): ('id', 'com.santiaotalk.im:id/setting_chat_groupManager')[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:49,489] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/iv_back') (模式: visibility)[0m
+ - 群管理不存在[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:49,489] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/iv_back') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:49,519] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'com.santiaotalk.im:id/iv_back')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:49,519] [INFO] [base_page.py:294] [click] - 🖱️ 以 visibility 模式点击元素: ('id', 'com.santiaotalk.im:id/iv_back')[0m
+[Pytest Process Out] [1;32m[2026-06-30 17:05:49,619] [INFO] [group_setting_page.py:24] [click_iv_back_button] - 通用 Common 点击返回按钮[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 17:05:49,619] [INFO] [group_setting_page.py:24] [click_iv_back_button] - 通用 Common 点击返回按钮[0m
+[Pytest Process Out] 
+[consume_queue] 消费并准备广播: 
+收方驱动
+[consume_queue] 消费并准备广播: [Teardown] 关闭接收方驱动
+[Pytest Process Out] 
+[consume_queue] 消费并准备广播: 
+送方驱动
+[consume_queue] 消费并准备广播: [Teardown] 关闭发送方驱动
+[Pytest Process Out] [32mPASSED[0m
+[consume_queue] 消费并准备广播: [32mPASSED[0m
+[consume_queue] 消费并准备广播: 
+[Pytest Process Out] =========================== 重跑统计摘要 (Rerun Summary) ============================
+[Pytest Process Out] 📊 本次 Session 共触发 1 次重跑 (上限: 20)
+[consume_queue] 消费并准备广播: =========================== 重跑统计摘要 (Rerun Summary) ============================
+[Pytest Process Out] ======================================  =======================================
+[consume_queue] 消费并准备广播: 📊 本次 Session 共触发 1 次重跑 (上限: 20)
+[Pytest Process Out] [32m============================= [32m[1m1 passed[0m[32m in 52.17s[0m[32m ==============================[0m
+[consume_queue] 消费并准备广播: ======================================  =======================================
+[consume_queue] 消费并准备广播: [32m============================= [32m[1m1 passed[0m[32m in 52.17s[0m[32m ==============================[0m
+[read_to_queue] 线程读取结束，放置 None 哨兵
+[consume_queue] 收到 None 哨兵，退出消费循环
+[run_task_lifecycle] gather 结束，等待子进程退出状态...
+[run_task_lifecycle] 子进程已退出，退出码: 0
+[run_task_lifecycle] 准备触发 Allure 生成
+[run_task_lifecycle] Allure 报告生成完毕

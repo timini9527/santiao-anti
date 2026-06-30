@@ -28,7 +28,7 @@ class TestGroupBotTimedMsg:
         yield
 
     @allure.story("定时消息-增删生命周期")
-    @allure.title("定时消息周期管理 - 成功添加一条定时消息并成功删除，校验列表刷新")
+    @allure.title("定时消息周期管理 - 成功添加一条定时消息并成功删除，校验列表刷新-状态：未完成")
     def test_timed_msg_lifecycle(self):
         """测试定时消息任务的创建与删除"""
         

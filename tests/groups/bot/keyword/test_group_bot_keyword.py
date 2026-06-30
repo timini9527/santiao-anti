@@ -86,7 +86,7 @@ class TestGroupBotKeyword:
 
     # TODO：特殊字符未正确拦截，待修复
     @allure.story("禁发关键词-添加关键词验证，合规与拦截规则")
-    @allure.title("校验关键词输入限制与有效性: {description}")
+    @allure.title("校验关键词输入限制与有效性: {description}-状态：已完成")
     @pytest.mark.parametrize("keyword, expected_action, expected_text, description", keyword_params, ids=keyword_ids)
     def test_keyword_add_with_various_char_types(self, keyword, expected_action, expected_text, description):
         """验证关键词输入规则：最多10字，且不支持邮箱和特殊符号的组合测试"""
@@ -134,7 +134,7 @@ class TestGroupBotKeyword:
 
 
     @allure.story("禁发关键词-添加关键词验证")
-    @allure.title("校验最多添加 50 个关键词上限")
+    @allure.title("校验最多添加 50 个关键词上限-状态：已完成")
     @pytest.mark.parametrize("length", [0, 1, 50, 51], ids=["添加 0 个关键词", "添加第1个关键词", "添加第50个关键词", "添加第51个关键词"])
     def test_keyword_max_limit(self, length):
         """验证关键词最多只能添加 50 个的边界及上限提示"""
@@ -184,7 +184,7 @@ class TestGroupBotKeyword:
 
 
     @allure.story("禁发关键词-删除/清空关键词")
-    @allure.title("校验删除关键词成功")
+    @allure.title("校验删除关键词成功-状态：已完成")
     @pytest.mark.parametrize("del_index", (1, 0), ids=["删除第1个关键词", "清空所有关键词"])
     def test_keyword_delete(self, del_index):
         """验证删除关键词功能"""
@@ -227,7 +227,7 @@ class TestGroupBotKeyword:
     
     
     @allure.story("禁发关键词-输入规则限制")
-    @allure.title("校验删除关键词二次确认流程: {confirm_action}")
+    @allure.title("校验删除关键词二次确认流程-状态：已完成: {confirm_action}")
     @pytest.mark.parametrize("confirm_action", ["confirm", "cancel"], ids=["确认删除", "取消删除"])
     def test_keyword_delete_flow(self, confirm_action):
         """验证删除关键词时的二次确认弹窗的取消和确定逻辑"""
@@ -269,7 +269,7 @@ class TestGroupBotKeyword:
 
     
     @allure.story("禁发关键词-警告语设置-添加")
-    @allure.title("自定义警告语 - 配置校验与上限测试")
+    @allure.title("自定义警告语 - 配置校验与上限测试-状态：已完成")
     @pytest.mark.parametrize("warning_count, warning_msg", [
         (0, None), 
         (1, ["第一条警告语"]),
@@ -330,7 +330,7 @@ class TestGroupBotKeyword:
         
 
     @allure.story("禁发关键词-警告语设置 - 删除")
-    @allure.title("删除自定义警告语")
+    @allure.title("删除自定义警告语-状态：已完成")
     @pytest.mark.parametrize("action, target_index, is_confirm", [
         ("delete_custom", 1, True),    
         ("delete_custom", 1, False),  

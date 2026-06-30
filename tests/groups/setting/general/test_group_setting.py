@@ -59,7 +59,7 @@ class TestGroupSetting:
             self.groupManagerPage.click_dismiss_group()
 
     @allure.story("群聊详情设置")
-    @allure.title("切换显示群成员昵称开关并校验状态")
+    @allure.title("切换显示群成员昵称开关并校验状态-状态：已完成")
     def test_group_show_member_nickname_toggle(self):
         """测试显示群成员昵称开关"""
         friend_list = [PRIVATE_USER1.name, PRIVATE_USER2.name]
@@ -84,7 +84,7 @@ class TestGroupSetting:
 
 
     @allure.story("群聊详情设置")
-    @allure.title("修改‘我在本群昵称’并校验修改成功")
+    @allure.title("修改‘我在本群昵称’并校验修改成功-状态：已完成")
     def test_modify_my_group_nickname(self):
         """测试修改我在本群的昵称"""
         friend_list = [PRIVATE_USER1.name, PRIVATE_USER2.name]
@@ -112,7 +112,7 @@ class TestGroupSetting:
 
     
     @allure.story("解散群聊")
-    @allure.title("通过群聊聊天页面解散群聊 - 正常解散流程")
+    @allure.title("通过群聊聊天页面解散群聊 - 正常解散流程-状态：已完成")
     def test_delete_group_success(self):
         allure.dynamic.description(f"通过群聊聊天页面解散群聊")
         friend_list = [PRIVATE_USER1.name, PRIVATE_USER2.name]
@@ -134,7 +134,7 @@ class TestGroupSetting:
             pass
 
     @allure.story("解散群聊")
-    @allure.title("通过群聊聊天页面解散群聊 - 取消解散流程")
+    @allure.title("通过群聊聊天页面解散群聊 - 取消解散流程-状态：已完成")
     def test_delete_group_cancel(self):
         allure.dynamic.description(f"通过群聊聊天页面解散群聊")
         friend_list = [PRIVATE_USER1.name, PRIVATE_USER2.name]
@@ -154,6 +154,7 @@ class TestGroupSetting:
 
 
     @allure.story("群聊设置 - 清空聊天记录")
+    @allure.title("清空聊天记录-状态：已完成")
     @pytest.mark.parametrize("chat_strategy", [GROUP_STRATEGY2], ids=["群聊-清空聊天记录"])
     def test_clear_group_chat_records(self, chat_strategy):
         """点击清空聊天记录"""
@@ -182,7 +183,7 @@ class TestGroupSetting:
 
 
     @allure.story("群备注功能")
-    @allure.title("群备注修改校验 - {test_id}")
+    @allure.title("群备注修改校验 - {test_id}-状态：已完成")
     @pytest.mark.parametrize("test_id, input_content, action, expect_truncated", [
         ("正常修改并保存", "测试群备注1", "confirm", False),
         ("修改并取消", "企图修改备注但取消", "cancel", False),

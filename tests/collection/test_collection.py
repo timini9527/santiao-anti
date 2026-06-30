@@ -28,14 +28,15 @@ class TestCollection:
 
 
     @allure.story("收藏管理-删除")
+    @allure.title("删除收藏条目流程-状态：未完成")
     @pytest.mark.skip(reason="从聊天页面发送收藏功能待完善")
-    @allure.title("删除收藏条目流程")
     def test_delete_collection_success(self):
         """测试从收藏夹中成功删除条目的流程"""
         pass
 
 
     @allure.story("从聊天页面中的收藏发送消息")
+    @allure.title("从聊天页面中的收藏发送消息-状态：已完成")
     @pytest.mark.parametrize("index", [0, -1], ids=["First_Item", "Absolute_Last_Item"])
     @pytest.mark.parametrize("col_type", ["text","image"])
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)

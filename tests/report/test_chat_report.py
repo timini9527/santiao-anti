@@ -35,7 +35,8 @@ class TestChatReport:
             except Exception as e:
                 pass
 
-    @allure.title("投诉分类列表结构验证")
+    @allure.story("投诉分类列表结构验证")
+    @allure.title("投诉分类列表结构验证-状态：已完成")
     def test_report_categories_layout(self):
         """动态加载 report_tree_output.yaml，校验投诉首屏一级大类及二级分类是否渲染完整"""
         report_tree = load_yaml_data('report/report_tree_output.yaml')
@@ -71,7 +72,9 @@ class TestChatReport:
                     # 校验完毕子菜单，返回至投诉首屏
                     self.reportPage.click_back()
 
-    @allure.title("投诉流程随机路径冒烟测试")
+
+    @allure.story("投诉流程随机路径冒烟测试")
+    @allure.title("投诉流程随机路径冒烟测试-状态：已完成")
     def test_submit_report_smoke(self):
         """随机选取投诉路径进行端到端提交的冒烟测试"""
         report_tree = load_yaml_data('report/report_tree_output.yaml')
