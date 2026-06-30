@@ -81,7 +81,7 @@ class TestChatFile:
 
     @allure.story("发送文件-取消操作")
     @allure.title("发送文件-取消操作-状态：已完成")
-    @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
+    @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_cancel_send_file(self, strategy):
         """验证进入文件选择页后取消返回"""
 
@@ -101,7 +101,7 @@ class TestChatFile:
     @allure.story("消息管理-文件撤回")
     @allure.title("消息管理-文件撤回-状态：未完成")
     @pytest.mark.skip(reason="UI元素匹配异常，待修复")
-    @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
+    @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_revoke_file_message_success(self, strategy):
         """测试发送文件后 2 分钟内成功撤回"""
         allure.title(f"文件管理-成功撤回消息【{strategy.desc}】")
@@ -129,7 +129,7 @@ class TestChatFile:
     @allure.story("发送异常-重试机制")
     @allure.title("发送异常-重试机制-状态：未完成")
     @pytest.mark.skip(reason="UI元素匹配异常，待修复")
-    @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
+    @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_resend_file_on_fail(self, strategy):
 
         with allure.step("1. 发送文件（模拟环境异常）"):
@@ -156,7 +156,7 @@ class TestChatFile:
     @allure.story("消息管理-文件删除")
     @allure.title("消息管理-文件删除-状态：未完成")
     @pytest.mark.skip(reason="删除功能待完善并接入通用交互逻辑")
-    @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
+    @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_delete_file_message(self, strategy):
         pass
 
@@ -164,7 +164,7 @@ class TestChatFile:
     @allure.story("消息管理-文件转发")
     @allure.title("消息管理-文件转发-状态：未完成")
     @pytest.mark.skip(reason="转发功能待完善并接入通用交互逻辑")
-    @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
+    @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_forward_file_message(self, strategy):
         """验证文件消息可以被长按转发"""
         pass
@@ -173,7 +173,7 @@ class TestChatFile:
     @allure.story("消息管理-文件收藏")
     @allure.title("消息管理-文件收藏-状态：未完成")
     @pytest.mark.skip(reason="收藏功能待完善并接入通用交互逻辑")
-    @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
+    @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_favorite_file_message(self, strategy):
         """验证文件消息可以被长按收藏"""
         pass
@@ -182,7 +182,7 @@ class TestChatFile:
     @allure.story("消息管理-文件引用回复")
     @allure.title("消息管理-文件引用回复-状态：未完成")
     @pytest.mark.skip(reason="回复功能待完善并接入通用交互逻辑")
-    @pytest.mark.parametrize("strategy", [PRIVATE_USER1], ids=lambda s: s.desc)
+    @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     def test_reply_file_message(self, strategy):
         """验证文件消息可以被长按引用回复"""
         pass

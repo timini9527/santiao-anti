@@ -167,14 +167,17 @@ class TestContactCard:
             self.chatListPage.click_more_button()
             self.contactSelectPage.click_action_button()
             self.sessionSelectPage.select_session_by_name(strategy.name)
-            self.sessionSelectPage.click_finish_button()
+            self.sessionSelectPage.click_finish_button(msg_type=1)
 
             # TODO：这里需要添加二次确认操作，待功能完善后移除
             
         with allure.step(f"3. 在选择会话页点击返回（取消分享）"):
-            self.sessionSelectPage.click_back_button()
+            # self.sessionSelectPage.click_back_button()
+            pass
         
         with allure.step(f"4. 验证成功返回并清理环境"):
+            toast = self.contactSelectPage.get_toast("发送成功")
+            check.is_in("发送成功", toast, "❌ 未能成功发送群聊名片")
             self.contactSelectPage.click_iv_back_button()
             result = self.chatPage.verify_is_on_chat_page()
             check.is_true(result, "❌ 取消群名片分享后，未能正确回到聊天页")

@@ -14,7 +14,7 @@ class ChatContactCardPage(ChatPage):
     def open_panel_enter_contact_card_page(self):
         """打开加号面板并点击名片按钮"""
         self.click_add_button()
-        self.click(ChatContactCardLocator.CONTACT_CARD_SELECT_BTN)
+        self.click(ChatContactCardLocator.CONTACT_CARD_ROOT)
         logger.info("🚀 进入联系人选择页面")
         time.sleep(2)
 

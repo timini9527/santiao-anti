@@ -27,22 +27,23 @@ class ChatFilePage(ChatPage):
         except Exception:
             logger.error(f"❌ [Wait] 文件选择页加载超时")
             return False
+    
+    # 文件-寻找文件入口并点击
+    def enter_file_page(self):
+        """寻找文件入口并点击，如当前页未找到则向左滑动面板后点击"""
+        if not self.is_element_exist(ChatFileLocator.FILE_ROOT, timeout=2):
+            logger.info("🔍 [Action] 当前面板未找到文件按钮，尝试向左滑动快捷面板...")
+            self.swip_input_more_page('left')
+        self.click(ChatFileLocator.FILE_ROOT, timeout=2)
+        logger.info("🚀 [Action] 进入系统文件选择页面")
+
 
     # 打开加号面板并点击文件按钮
     def open_panel_enter_file_page(self):
         """打开加号面板并进入文件选择页面"""
         self.click_add_button()
-        file_elem = self.find_element(ChatFileLocator.FILE_SELECT_BTN, timeout=2)
-        if not file_elem:
-            if self.has_input_more_scrollable_indicator():
-                self.swip_input_more_page('left')
-                self.click(ChatFileLocator.FILE_SELECT_BTN)
-                logger.info("🚀 [Action] 进入系统文件选择页面")
-                return
-            logger.error("❌ [Action] 未获取到文件按钮")
-            return
-        file_elem.click()
-        logger.info("🚀 [Action] 进入系统文件选择页面")
+        self.enter_file_page()
+
 
     # 点击文件左上角菜单按钮
     def click_file_menu_button(self):

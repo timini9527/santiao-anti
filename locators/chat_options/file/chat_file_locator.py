@@ -10,6 +10,10 @@ class ChatFileLocator:
     # +号面板中的“文件”按钮
     FILE_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/imFileIcon')
 
+    FILE_ROOT_ID = f'{PACKAGE_ID}/more_action_root'
+    FILE_CONTENT_ID = f'{PACKAGE_ID}/more_action_content'
+    FILE_ROOT = (AppiumBy.XPATH, f'//*[@resource-id="{FILE_ROOT_ID}" and .//*[@text="文件"]]')
+
     # ==================== 顶部元素 ====================
     # 文档选择器的包名（标准版）
     DOC_PACKAGE_ID = 'com.android.documentsui:id'

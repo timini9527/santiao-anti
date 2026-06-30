@@ -43,86 +43,21 @@ async def api_get_tests():
     catalog = collect_all_tests("tests")
     return catalog
 
-def get_task_test_results(task_id: str) -> dict[str, str]:
-    """扫描指定任务的临时目录，解析 Allure 结果文件以提取每个用例的最终执行状态"""
-    results = {}
-    tmp_dir = os.path.join("reports", f"tmp_{task_id}")
-    if not os.path.exists(tmp_dir):
-        return results
-    try:
-        for file in os.listdir(tmp_dir):
-            if file.endswith("-result.json"):
-                file_path = os.path.join(tmp_dir, file)
-                try:
-                    with open(file_path, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                    
-                    full_name = data.get("fullName", "")
-                    name = data.get("name", "")
-                    status = data.get("status", "unknown")
-                    
-                    if not full_name:
-                        continue
-                    
-                    # 转换逻辑：将 fullName 中的 python module 路径转为文件路径加上类与用例名，
-                    # 用真正的 name（包含参数化后缀）替换方法名，以精确匹配前端树节点的 nodeid
-                    if "#" in full_name:
-                        parts = full_name.split("#")
-                        package_path = parts[0]
-                        pkg_parts = package_path.split(".")
-                        test_file_idx = -1
-                        for idx, p in enumerate(pkg_parts):
-                            if p.startswith("test_"):
-                                test_file_idx = idx
-                                break
-                        if test_file_idx != -1:
-                            file_rel = "/".join(pkg_parts[:test_file_idx+1]) + ".py"
-                            cls_path = "::".join(pkg_parts[test_file_idx+1:])
-                            nodeid = f"{file_rel}"
-                            if cls_path:
-                                nodeid += f"::{cls_path}::{name}"
-                            else:
-                                nodeid += f"::{name}"
-                        else:
-                            nodeid = package_path.replace(".", "/") + ".py::" + name
-                    else:
-                        pkg_parts = full_name.split(".")
-                        test_file_idx = -1
-                        for idx, p in enumerate(pkg_parts):
-                            if p.startswith("test_"):
-                                test_file_idx = idx
-                                break
-                        if test_file_idx != -1:
-                            file_rel = "/".join(pkg_parts[:test_file_idx+1]) + ".py"
-                            nodeid = f"{file_rel}::{name}"
-                        else:
-                            nodeid = full_name.replace(".", "/") + ".py"
-                            
-                    results[nodeid] = status
-                except Exception:
-                    pass
-    except Exception:
-        pass
-    return results
-
 @app.get("/api/status")
 async def api_get_status(task_id: str):
-    """获取指定任务的执行状态，并包含实时的用例树级结果"""
+    """获取指定任务的执行状态"""
     async with tasks_lock:
         task = active_tasks.get(task_id)
         if task:
-            results = get_task_test_results(task_id)
             return {
                 "status": task["status"],
                 "current_test": task["current_test"],
-                "exit_code": task["exit_code"],
-                "results": results
+                "exit_code": task["exit_code"]
             }
         return {
             "status": "idle",
             "current_test": None,
-            "exit_code": None,
-            "results": {}
+            "exit_code": None
         }
 
 @app.post("/api/run")

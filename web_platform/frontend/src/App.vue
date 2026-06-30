@@ -23,23 +23,6 @@ const privateChatName = ref('')
 const groupChatName = ref('')
 const debugMode = ref(false)
 
-// 用例执行状态映射
-const caseResults = ref({}) 
-
-function getTagType(status) {
-  if (status === 'passed') return 'success'
-  if (status === 'failed' || status === 'broken') return 'danger'
-  if (status === 'running') return 'warning'
-  return 'info'
-}
-
-function getTagLabel(status) {
-  if (status === 'passed') return '通过'
-  if (status === 'failed' || status === 'broken') return '失败'
-  if (status === 'running') return '运行中'
-  return '就绪'
-}
-
 // Allure 报告相关
 const reportUrl = ref('')
 const selectedRole = ref('business')
@@ -399,20 +382,8 @@ async function detectConnectedDevices() {
 
 // ==================== 5. 用例执行控制 ====================
 
-function markNodesRunning(n) {
-  if (n.isTest || n.isTestParam) {
-    caseResults.value[n.nodeid] = 'running'
-  }
-  if (n.children && n.children.length) {
-    n.children.forEach(markNodesRunning)
-  }
-}
-
 async function startTestExecution(node) {
   if (isRunning.value) return
-
-  // 递归把被测节点及其子节点标记为运行中
-  markNodesRunning(node)
 
   isRunning.value = true
   globalStatus.value = 'running'
@@ -527,13 +498,6 @@ function startStatusPolling() {
     try {
       const res = await fetch(`/api/status?task_id=${taskId.value}`)
       const data = await res.json()
-      
-      // 合并实时的用例执行结果
-      if (data.results) {
-        for (const key in data.results) {
-          caseResults.value[key] = data.results[key]
-        }
-      }
       
       if (data.status === 'finished') {
         isRunning.value = false
@@ -819,15 +783,6 @@ function clearTerminal() {
                     🚀 [{{ data.label }}]
                   </span>
                   <div class="test-item-actions" @click.stop>
-                    <el-tag
-                      v-if="caseResults[data.nodeid]"
-                      :type="getTagType(caseResults[data.nodeid])"
-                      size="small"
-                      effect="dark"
-                      style="margin-right: 4px;"
-                    >
-                      {{ getTagLabel(caseResults[data.nodeid]) }}
-                    </el-tag>
                     <el-button
                       type="primary"
                       size="small"
@@ -844,15 +799,6 @@ function clearTerminal() {
                 <div v-else-if="data.isTest" class="test-item-row">
                   <span class="node-label">⚙️ {{ data.label }}</span>
                   <div class="test-item-actions" @click.stop>
-                    <el-tag
-                      v-if="caseResults[data.nodeid]"
-                      :type="getTagType(caseResults[data.nodeid])"
-                      size="small"
-                      effect="dark"
-                      style="margin-right: 4px;"
-                    >
-                      {{ getTagLabel(caseResults[data.nodeid]) }}
-                    </el-tag>
                     <el-button
                       type="primary"
                       size="small"
@@ -1438,16 +1384,5 @@ function clearTerminal() {
   0% { opacity: 0.5; }
   50% { opacity: 1; }
   100% { opacity: 0.5; }
-}
-
-/* 运行中状态标签带呼吸动画 */
-.el-tag--warning.el-tag--dark {
-  animation: tagBlink 1.5s infinite;
-}
-
-@keyframes tagBlink {
-  0% { opacity: 0.6; }
-  50% { opacity: 1; }
-  100% { opacity: 0.6; }
 }
 </style>

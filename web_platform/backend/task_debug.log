@@ -1,248 +1,392 @@
-=== 任务启动: task_vwm0rs0x2_1782812989946 ===
-[Web Console] 准备拉起 Pytest 进程，命令: ['D:\\data\\Python313\\python.exe', '-u', '-m', 'pytest', 'tests/chat_options/contact/test_contact_card.py::TestContactCard::test_send_contact_card_success[私聊模式-测试0222]', '-vs', '--color=yes', '--alluredir=reports\\tmp_task_vwm0rs0x2_1782812989946']
-[Web Console] Pytest 进程拉起成功，PID: 12392
+=== 任务启动: task_lirs8yw5q_1782814674516 ===
+[Web Console] 准备拉起 Pytest 进程，命令: ['D:\\data\\Python313\\python.exe', '-u', '-m', 'pytest', 'tests/groups/bot/join_verify/test_group_bot_join_verify.py::TestGroupBotJoinVerify::test_join_verify_toggle_and_save', '-vs', '--color=yes', '--alluredir=reports\\tmp_task_lirs8yw5q_1782814674516']
+[Web Console] Pytest 进程拉起成功，PID: 6048
 [Web Console] 后台生命周期协程已触发创建
-[Web Console] 开始任务 task_vwm0rs0x2_1782812989946 的生命周期监听流程
+[Web Console] 开始任务 task_lirs8yw5q_1782814674516 的生命周期监听流程
 [run_task_lifecycle] 启动 gather 并发监听
-[read_to_queue] 线程读取开始...
 [consume_queue] 异步消费协程启动...
 [Pytest Process Out] [1m============================= test session starts =============================[0m
 [Pytest Process Out] platform win32 -- Python 3.13.5, pytest-9.0.2, pluggy-1.6.0 -- D:\data\Python313\python.exe
-========[0m
+[consume_queue] 消费并准备广播: [1m============================= test session starts =============================[0m
 [consume_queue] 消费并准备广播: platform win32 -- Python 3.13.5, pytest-9.0.2, pluggy-1.6.0 -- D:\data\Python313\python.exe
 [Pytest Process Out] cachedir: .pytest_cache
 [consume_queue] 消费并准备广播: cachedir: .pytest_cache
 [Pytest Process Out] metadata: {'Python': '3.13.5', 'Platform': 'Windows-11-10.0.22631-SP0', 'Packages': {'pytest': '9.0.2', 'pluggy': '1.6.0'}, 'Plugins': {'allure-pytest': '2.15.2', 'anyio': '4.12.1', 'check': '2.7.6', 'cov': '7.1.0', 'html': '4.1.1', 'metadata': '3.1.1', 'rerunfailures': '16.1', 'xdist': '3.8.0'}, 'JAVA_HOME': 'D:\\data\\java\\jdk1.8.0_471'}
-[consume_queue] 消费并准备广播: metadata: {'Python': '3.13.5', 'Platform': 'Windows-11-10.0.22631-SP0', 'Packages': {'pytest': '9.0.2', 'pluggy': '1.6.0'}, 'Plugins': {'allure-pytest': '2.15.2', 'anyio': '4.12.1', 'check': '2.7.6', 'cov': '7.1.0', 'html': '4.1.1', 'metadata': '3.1.1', 'rerunfailures': '16.1', 'xdist': '3.8.0'}, 'JAVA_HOME': 'D:\\data\\java\\jdk1.8.0_471'}
+[Pytest Process Out] rootdir: d:\projects\santiao-anti
+n': '3.13.5', 'Platform': 'Windows-11-10.0.22631-SP0', 'Packages': {'pytest': '9.0.2', 'pluggy': '1.6.0'}, 'Plugins': {'allure-pytest': '2.15.2', 'anyio': '4.12.1', 'check': '2.7.6', 'cov': '7.1.0', 'html': '4.1.1', 'metadata': '3.1.1', 'rerunfailures': '16.1', 'xdist': '3.8.0'}, 'JAVA_HOME': 'D:\\data\\java\\jdk1.8.0_471'}
 [Pytest Process Out] configfile: pytest.ini
-[consume_queue] 消费并准备广播: rootdir: d:\projects\santiao-anti
-[Pytest Process Out] plugins: allure-pytest-2.15.2, anyio-4.12.1, check-2.7.6, cov-7.1.0, html-4.1.1, metadata-3.1.1, rerunfailures-16.1, xdist-3.8.0
+r: d:\projects\santiao-anti
 [consume_queue] 消费并准备广播: configfile: pytest.ini
+[Pytest Process Out] plugins: allure-pytest-2.15.2, anyio-4.12.1, check-2.7.6, cov-7.1.0, html-4.1.1, metadata-3.1.1, rerunfailures-16.1, xdist-3.8.0
 [consume_queue] 消费并准备广播: plugins: allure-pytest-2.15.2, anyio-4.12.1, check-2.7.6, cov-7.1.0, html-4.1.1, metadata-3.1.1, rerunfailures-16.1, xdist-3.8.0
 [Pytest Process Out] [1mcollecting ... [0mcollected 1 item
 [Pytest Process Out] 
 ��准备广播: [1mcollecting ... [0mcollected 1 item
 [consume_queue] 消费并准备广播: 
-[Pytest Process Out] tests/chat_options/contact/test_contact_card.py::TestContactCard::test_send_contact_card_success[私聊模式-测试0222] [1;32m[2026-06-30 18:13:18,995] [INFO] [data_loader.py:30] [find_file] - ✅ 快速定位文件成功：D:\projects\santiao-anti\config\devices.yaml[0m
-[consume_queue] 消费并准备广播: tests/chat_options/contact/test_contact_card.py::TestContactCard::test_send_contact_card_success[私聊模式-测试0222] [1;32m[2026-06-30 18:13:18,995] [INFO] [data_loader.py:30] [find_file] - ✅ 快速定位文件成功：D:\projects\santiao-anti\config\devices.yaml[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:18,998] [INFO] [driver_factory.py:21] [get_driver] - [DriverFactory] 当前指定的执行环境为: dev[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:18,998] [INFO] [driver_factory.py:21] [get_driver] - [DriverFactory] 当前指定的执行环境为: dev[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:19,092] [INFO] [driver_factory.py:52] [get_driver] - 🧹 [DriverFactory] 已清理原始配置端口的 adb 转发规则: tcp:8200[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:19,092] [INFO] [driver_factory.py:52] [get_driver] - 🧹 [DriverFactory] 已清理原始配置端口的 adb 转发规则: tcp:8200[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:19,261] [INFO] [driver_factory.py:56] [get_driver] - 🧹 [DriverFactory] 已强杀手机端残留的 UiAutomator2 Server 进程 (设备: daccd58aaff4)[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:19,261] [INFO] [driver_factory.py:56] [get_driver] - 🧹 [DriverFactory] 已强杀手机端残留的 UiAutomator2 Server 进程 (设备: daccd58aaff4)[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:19,282] [INFO] [driver_factory.py:84] [get_driver] - 🔌 [DriverFactory] 动态分配 systemPort: 8200 (原始配置: 8200)[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:19,282] [INFO] [driver_factory.py:84] [get_driver] - 🔌 [DriverFactory] 动态分配 systemPort: 8200 (原始配置: 8200)[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:19,282] [INFO] [driver_factory.py:91] [get_driver] - [DriverFactory] 环境变量动态覆盖：UDID1=daccd58aaff4, UDID2=None, Appium1=127.0.0.1:4723, Appium2=127.0.0.1:4724[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:19,282] [INFO] [driver_factory.py:91] [get_driver] - [DriverFactory] 环境变量动态覆盖：UDID1=daccd58aaff4, UDID2=None, Appium1=127.0.0.1:4723, Appium2=127.0.0.1:4724[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:19,282] [INFO] [driver_factory.py:126] [get_driver] - [DriverFactory] 覆盖 sender Appium 地址为: http://127.0.0.1:4723[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:19,282] [INFO] [driver_factory.py:126] [get_driver] - [DriverFactory] 覆盖 sender Appium 地址为: http://127.0.0.1:4723[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:19,282] [INFO] [driver_factory.py:136] [get_driver] - [DriverFactory] 启动设备: sender |
+[Pytest Process Out] tests/groups/bot/join_verify/test_group_bot_join_verify.py::TestGroupBotJoinVerify::test_join_verify_toggle_and_save [1;32m[2026-06-30 18:18:09,046] [INFO] [data_loader.py:30] [find_file] - ✅ 快速定位文件成功：D:\projects\santiao-anti\config\devices.yaml[0m
+[consume_queue] 消费并准备广播: tests/groups/bot/join_verify/test_group_bot_join_verify.py::TestGroupBotJoinVerify::test_join_verify_toggle_and_save [1;32m[2026-06-30 18:18:09,046] [INFO] [data_loader.py:30] [find_file] - ✅ 快速定位文件成功：D:\projects\santiao-anti\config\devices.yaml[0m
+[Pytest Process Out] [1;32m[2026-06-30 18:18:09,050] [INFO] [driver_factory.py:21] [get_driver] - [DriverFactory] 当前指定的执行环境为: dev[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:18:09,050] [INFO] [driver_factory.py:21] [get_driver] - [DriverFactory] 当前指定的执行环境为: dev[0m
+[Pytest Process Out] [1;32m[2026-06-30 18:18:09,137] [INFO] [driver_factory.py:52] [get_driver] - 🧹 [DriverFactory] 已清理原始配置端口的 adb 转发规则: tcp:8200[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:18:09,137] [INFO] [driver_factory.py:52] [get_driver] - 🧹 [DriverFactory] 已清理原始配置端口的 adb 转发规则: tcp:8200[0m
+[Pytest Process Out] [1;32m[2026-06-30 18:18:09,304] [INFO] [driver_factory.py:56] [get_driver] - 🧹 [DriverFactory] 已强杀手机端残留的 UiAutomator2 Server 进程 (设备: daccd58aaff4)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:18:09,304] [INFO] [driver_factory.py:56] [get_driver] - 🧹 [DriverFactory] 已强杀手机端残留的 UiAutomator2 Server 进程 (设备: daccd58aaff4)[0m
+[Pytest Process Out] [1;32m[2026-06-30 18:18:09,326] [INFO] [driver_factory.py:84] [get_driver] - 🔌 [DriverFactory] 动态分配 systemPort: 8200 (原始配置: 8200)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:18:09,326] [INFO] [driver_factory.py:84] [get_driver] - 🔌 [DriverFactory] 动态分配 systemPort: 8200 (原始配置: 8200)[0m
+[Pytest Process Out] [1;32m[2026-06-30 18:18:09,326] [INFO] [driver_factory.py:91] [get_driver] - [DriverFactory] 环境变量动态覆盖：UDID1=None, UDID2=None, Appium1=127.0.0.1:4723, Appium2=127.0.0.1:4724[0m
+[Pytest Process Out] [1;32m[2026-06-30 18:18:09,326] [INFO] [driver_factory.py:126] [get_driver] - [DriverFactory] 覆盖 sender Appium 地址为: http://127.0.0.1:4723[0m
+D2=None, Appium1=127.0.0.1:4723, Appium2=127.0.0.1:4724[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:18:09,326] [INFO] [driver_factory.py:126] [get_driver] - [DriverFactory] 覆盖 sender Appium 地址为: http://127.0.0.1:4723[0m
+[Pytest Process Out] [1;32m[2026-06-30 18:18:09,327] [INFO] [driver_factory.py:136] [get_driver] - [DriverFactory] 启动设备: sender |
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:18:09,327] [INFO] [driver_factory.py:136] [get_driver] - [DriverFactory] 启动设备: sender |
 [Pytest Process Out] UDID: daccd58aaff4 |
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:19,282] [INFO] [driver_factory.py:136] [get_driver] - [DriverFactory] 启动设备: sender |
 [Pytest Process Out] Port: 8200 |
 [consume_queue] 消费并准备广播: UDID: daccd58aaff4 |
 [Pytest Process Out] Appium Server URL: http://127.0.0.1:4723[0m
-[consume_queue] 消费并准备广播: Port: 8200 |
 [consume_queue] 消费并准备广播: Appium Server URL: http://127.0.0.1:4723[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:19,363] [INFO] [driver_factory.py:148] [get_driver] - 🧹 [DriverFactory] 已清理新分配端口的 adb 转发规则: tcp:8200[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:19,363] [INFO] [driver_factory.py:148] [get_driver] - 🧹 [DriverFactory] 已清理新分配端口的 adb 转发规则: tcp:8200[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:19,364] [INFO] [driver_factory.py:162] [get_driver] - [DriverFactory] 正在对 Appium 进行连接探测: http://127.0.0.1:4723/status[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:19,364] [INFO] [driver_factory.py:162] [get_driver] - [DriverFactory] 正在对 Appium 进行连接探测: http://127.0.0.1:4723/status[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:32,799] [INFO] [chat_list_page.py:112] [common_enter_chat] - 👉 准备进入会话: 【测试0222】[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:32,799] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:32,799] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:34,589] [INFO] [chat_page.py:60] [wait_for_chat_page_load] - ⏳ [Wait] 等待聊天主页面加载完成，超时时间 10 秒[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:34,589] [INFO] [chat_page.py:60] [wait_for_chat_page_load] - ⏳ [Wait] 等待聊天主页面加载完成，超时时间 10 秒[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:34,589] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/chat_input') (模式: visibility)[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:34,589] [INFO] [base_page.py:75] [find_elements] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/chat_input') (模式: visibility)[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:36,243] [INFO] [chat_page.py:63] [wait_for_chat_page_load] - ✅ [Wait] 聊天主页面加载完成, 元素个数为 1[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:36,243] [INFO] [chat_list_page.py:98] [enter_session] - ✅ 进入会话: 测试0222 (匹配模式: exact)[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:36,243] [INFO] [chat_page.py:63] [wait_for_chat_page_load] - ✅ [Wait] 聊天主页面加载完成, 元素个数为 1[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:36,243] [INFO] [chat_list_page.py:115] [common_enter_chat] - ✅ 在首页列表中找到并成功进入: 测试0222[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:36,243] [INFO] [chat_list_page.py:98] [enter_session] - ✅ 进入会话: 测试0222 (匹配模式: exact)[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:36,244] [INFO] [base_page.py:273] [get_attribute] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/input_more_bnt') -> attr='checked'[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:36,243] [INFO] [chat_list_page.py:115] [common_enter_chat] - ✅ 在首页列表中找到并成功进入: 测试0222[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:36,244] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/input_more_bnt') (模式: visibility)[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:36,244] [INFO] [base_page.py:273] [get_attribute] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/input_more_bnt') -> attr='checked'[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:36,244] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/input_more_bnt') (模式: visibility)[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:36,574] [INFO] [base_page.py:277] [get_attribute] - ✅ base - 属性获取成功: checked = false[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:36,574] [INFO] [base_page.py:277] [get_attribute] - ✅ base - 属性获取成功: checked = false[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:36,575] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/input_more_bnt') (模式: clickable)[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:36,575] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/input_more_bnt') (模式: clickable)[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:36,949] [INFO] [base_page.py:294] [click] - 🖱️ 以 clickable 模式点击元素: ('id', 'com.santiaotalk.im:id/input_more_bnt')[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:36,949] [INFO] [base_page.py:294] [click] - 🖱️ 以 clickable 模式点击元素: ('id', 'com.santiaotalk.im:id/input_more_bnt')[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:37,123] [INFO] [chat_page.py:201] [click_add_button] - 🚀[Action-chat] - chat 点击 + 号按钮，展开其它功能元素[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:37,123] [INFO] [chat_page.py:201] [click_add_button] - 🚀[Action-chat] - chat 点击 + 号按钮，展开其它功能元素[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:38,688] [INFO] [base_page.py:273] [get_attribute] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:38,688] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
-r='text'[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:38,688] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:41,005] [INFO] [except_utils.py:87] [wrapper] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:41,005] [INFO] [except_utils.py:87] [wrapper] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:41,275] [INFO] [base_page.py:320] [back] - 🔙 [Action] 系统返回[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:41,275] [INFO] [base_page.py:320] [back] - 🔙 [Action] 系统返回[0m
-[Pytest Process Out] [1;33m[2026-06-30 18:13:42,776] [WARNING] [main_page.py:49] [go_to_main_page] -  🍎 未找到会话列表标题或标题不匹配，继续返回，剩余尝试次数：9[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:42,776] [INFO] [base_page.py:273] [get_attribute] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
-��，剩余尝试次数：9[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:42,776] [INFO] [base_page.py:273] [get_attribute] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:42,777] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:42,777] [INFO] [base_page.py:46] [find_element] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:43,066] [INFO] [base_page.py:277] [get_attribute] - ✅ base - 属性获取成功: text = 三条[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:43,066] [INFO] [base_page.py:277] [get_attribute] - ✅ base - 属性获取成功: text = 三条[0m
-[Pytest Process Out] [1;32m[2026-06-30 18:13:43,066] [INFO] [main_page.py:39] [go_to_main_page] -  🍏 已找到会话列表标题 三条，回到主页面会话列表[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:13:43,066] [INFO] [main_page.py:39] [go_to_main_page] -  🍏 已找到会话列表标题 三条，回到主页面会话列表[0m
+[Pytest Process Out] [1;32m[2026-06-30 18:18:09,414] [INFO] [driver_factory.py:148] [get_driver] - 🧹 [DriverFactory] 已清理新分配端口的 adb 转发规则: tcp:8200[0m
+[Pytest Process Out] [1;32m[2026-06-30 18:18:09,414] [INFO] [driver_factory.py:162] [get_driver] - [DriverFactory] 正在对 Appium 进行连接探测: http://127.0.0.1:4723/status[0m
+p:8200[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-06-30 18:18:09,414] [INFO] [driver_factory.py:162] [get_driver] - [DriverFactory] 正在对 Appium 进行连接探测: http://127.0.0.1:4723/status[0m
+[Pytest Process Out] [31mERROR[0m
 [Pytest Process Out] 
-[Pytest Process Out] [Teardown] 关闭发送方驱动
+[consume_queue] 消费并准备广播: [31mERROR[0m
+[Pytest Process Out] =================================== ERRORS ====================================
 [consume_queue] 消费并准备广播: 
-[consume_queue] 消费并准备广播: [Teardown] 关闭发送方驱动
-[Pytest Process Out] [31mFAILED[0m
+[consume_queue] 消费并准备广播: =================================== ERRORS ====================================
+[Pytest Process Out] [31m[1m__ ERROR at setup of TestGroupBotJoinVerify.test_join_verify_toggle_and_save __[0m
 [Pytest Process Out] 
-[consume_queue] 消费并准备广播: [31mFAILED[0m
+[consume_queue] 消费并准备广播: [31m[1m__ ERROR at setup of TestGroupBotJoinVerify.test_join_verify_toggle_and_save __[0m
 [consume_queue] 消费并准备广播: 
-============== FAILURES ===================================
-[consume_queue] 消费并准备广播: ================================== FAILURES ===================================
-_[0m
-[consume_queue] 消费并准备广播: [31m[1m_________ TestContactCard.test_send_contact_card_success[私聊模式-测试0222] _________[0m
-[Pytest Process Out] self = <tests.chat_options.contact.test_contact_card.TestContactCard object at 0x000001FFB5D007D0>
-[Pytest Process Out] strategy = ChatSessionStrategy(desc='私聊模式', name='测试0222', is_admin=False, notice_locator=('id', 'com.santiaotalk.im:id/tv_swipe_...r=('id', 'com.santiaotalk.im:id/tv_swipe_top'), delete_locator=('-android uiautomator', 'new UiSelector().text("删除")'))
-[Pytest Process Out] cardName = '测试0222'
+[Pytest Process Out] [0m[37m@pytest[39;49;00m.fixture(scope=[33m"[39;49;00m[33msession[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[Pytest Process Out] [94mdef[39;49;00m[90m [39;49;00m[92mdriver_sender[39;49;00m():[90m[39;49;00m
+ion[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mdef[39;49;00m[90m [39;49;00m[92mdriver_sender[39;49;00m():[90m[39;49;00m
+[Pytest Process Out] [90m    [39;49;00m[33m""" 启动发送方设备 (Session 级别，整个测试过程只启动一次) """[39;49;00m[90m[39;49;00m
+[Pytest Process Out] >       driver = DriverFactory.get_driver([33m'[39;49;00m[33msender[39;49;00m[33m'[39;49;00m)[90m[39;49;00m
+次) """[39;49;00m[90m[39;49;00m
+[consume_queue] 消费并准备广播: >       driver = DriverFactory.get_driver([33m'[39;49;00m[33msender[39;49;00m[33m'[39;49;00m)[90m[39;49;00m
 [Pytest Process Out] 
-[consume_queue] 消费并准备广播: self = <tests.chat_options.contact.test_contact_card.TestContactCard object at 0x000001FFB5D007D0>
-[consume_queue] 消费并准备广播: strategy = ChatSessionStrategy(desc='私聊模式', name='测试0222', is_admin=False, notice_locator=('id', 'com.santiaotalk.im:id/tv_swipe_...r=('id', 'com.santiaotalk.im:id/tv_swipe_top'), delete_locator=('-android uiautomator', 'new UiSelector().text("删除")'))
-[consume_queue] 消费并准备广播: cardName = '测试0222'
-[consume_queue] 消费并准备广播: 
-[Pytest Process Out] [0m[37m@allure[39;49;00m.story([33m"[39;49;00m[33m发送好友名片-正向流程[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
-[consume_queue] 消费并准备广播: [0m[37m@allure[39;49;00m.story([33m"[39;49;00m[33m发送好友名片-正向流程[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
-[Pytest Process Out] [37m@allure[39;49;00m.title([33m"[39;49;00m[33m发送好友名片-正向流程-状态：已完成[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
-[consume_queue] 消费并准备广播: [37m@allure[39;49;00m.title([33m"[39;49;00m[33m发送好友名片-正向流程-状态：已完成[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
-[Pytest Process Out] [37m@pytest[39;49;00m.mark.parametrize([33m"[39;49;00m[33mcardName[39;49;00m[33m"[39;49;00m, [[33m"[39;49;00m[33m测试0222[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33m0223OiO[39;49;00m[33m"[39;49;00m])[90m[39;49;00m
-[Pytest Process Out] [37m@pytest[39;49;00m.mark.parametrize([33m"[39;49;00m[33mstrategy[39;49;00m[33m"[39;49;00m, [PRIVATE_USER1, GROUP_STRATEGY], ids=[94mlambda[39;49;00m s: s.desc)[90m[39;49;00m
-[39;49;00m[33m0223OiO[39;49;00m[33m"[39;49;00m])[90m[39;49;00m
-[consume_queue] 消费并准备广播: [37m@pytest[39;49;00m.mark.parametrize([33m"[39;49;00m[33mstrategy[39;49;00m[33m"[39;49;00m, [PRIVATE_USER1, GROUP_STRATEGY], ids=[94mlambda[39;49;00m s: s.desc)[90m[39;49;00m
-[Pytest Process Out] [94mdef[39;49;00m[90m [39;49;00m[92mtest_send_contact_card_success[39;49;00m([96mself[39;49;00m, strategy, cardName):[90m[39;49;00m
-[consume_queue] 消费并准备广播: [94mdef[39;49;00m[90m [39;49;00m[92mtest_send_contact_card_success[39;49;00m([96mself[39;49;00m, strategy, cardName):[90m[39;49;00m
-[Pytest Process Out] [90m    [39;49;00m[33m"""测试搜索并发送好友名片"""[39;49;00m[90m[39;49;00m
-[consume_queue] 消费并准备广播: [90m    [39;49;00m[33m"""测试搜索并发送好友名片"""[39;49;00m[90m[39;49;00m
-[Pytest Process Out] [94mwith[39;49;00m allure.step([33mf[39;49;00m[33m"[39;49;00m[33m1. 进入聊天并打开名片页[39;49;00m[33m"[39;49;00m):[90m[39;49;00m
-[consume_queue] 消费并准备广播: [94mwith[39;49;00m allure.step([33mf[39;49;00m[33m"[39;49;00m[33m1. 进入聊天并打开名片页[39;49;00m[33m"[39;49;00m):[90m[39;49;00m
-[Pytest Process Out] >           [96mself[39;49;00m._enter_chat_and_open_card(strategy.name)[90m[39;49;00m
-[consume_queue] 消费并准备广播: >           [96mself[39;49;00m._enter_chat_and_open_card(strategy.name)[90m[39;49;00m
-[Pytest Process Out] 
-[consume_queue] 消费并准备广播: 
-[Pytest Process Out] [1m[31mtests\chat_options\contact\test_contact_card.py[0m:50:
-[consume_queue] 消费并准备广播: [1m[31mtests\chat_options\contact\test_contact_card.py[0m:50:
+[consume_queue] 消费并准备广播: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[Pytest Process Out] [1m[31mconftest.py[0m:178:
 [Pytest Process Out] _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+[consume_queue] 消费并准备广播: [1m[31mconftest.py[0m:178:
+river
 [consume_queue] 消费并准备广播: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-[Pytest Process Out] [1m[31mtests\chat_options\contact\test_contact_card.py[0m:39: in _enter_chat_and_open_card
-[Pytest Process Out] [0m[96mself[39;49;00m.chatContactCardPage.open_panel_enter_contact_card_page()[90m[39;49;00m
-nd_open_card
+[Pytest Process Out] [0mdriver = webdriver.Remote(command_executor=appium_url, options=options)[90m[39;49;00m
+[consume_queue] 消费并准备广播: [1m[31mcore\driver_factory.py[0m:176: in get_driver
+[Pytest Process Out] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[consume_queue] 消费并准备广播: [0mdriver = webdriver.Remote(command_executor=appium_url, options=options)[90m[39;49;00m
+[Pytest Process Out] [1m[31mD:\data\Python313\Lib\site-packages\appium\webdriver\webdriver.py[0m:251: in __init__
+[consume_queue] 消费并准备广播: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[Pytest Process Out] [0m[96msuper[39;49;00m().[92m__init__[39;49;00m([90m[39;49;00m
+[consume_queue] 消费并准备广播: [1m[31mD:\data\Python313\Lib\site-packages\appium\webdriver\webdriver.py[0m:251: in __init__
+[consume_queue] 消费并准备广播: [0m[96msuper[39;49;00m().[92m__init__[39;49;00m([90m[39;49;00m
+[Pytest Process Out] [1m[31mD:\data\Python313\Lib\site-packages\selenium\webdriver\remote\webdriver.py[0m:271: in __init__
+[consume_queue] 消费并准备广播: [1m[31mD:\data\Python313\Lib\site-packages\selenium\webdriver\remote\webdriver.py[0m:271: in __init__
+[Pytest Process Out] [0m[96mself[39;49;00m.start_session(capabilities)[90m[39;49;00m
+[consume_queue] 消费并准备广播: [0m[96mself[39;49;00m.start_session(capabilities)[90m[39;49;00m
+tart_session
+[consume_queue] 消费并准备广播: [1m[31mD:\data\Python313\Lib\site-packages\appium\webdriver\webdriver.py[0m:344: in start_session
+[Pytest Process Out] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+eCommand.NEW_SESSION, w3c_caps)[90m[39;49;00m
+[consume_queue] 消费并准备广播: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[Pytest Process Out] [1m[31mD:\data\Python313\Lib\site-packages\selenium\webdriver\remote\webdriver.py[0m:446: in execute
+[consume_queue] 消费并准备广播: [1m[31mD:\data\Python313\Lib\site-packages\selenium\webdriver\remote\webdriver.py[0m:446: in execute
 [Pytest Process Out] _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-ontact_card_page()[90m[39;49;00m
-[Pytest Process Out] 
+[90m[39;49;00m
 [consume_queue] 消费并准备广播: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 [consume_queue] 消费并准备广播: 
-[Pytest Process Out] self = <pages.chat_options.contact.chat_contact_card_page.ChatContactCardPage object at 0x000001FF8B47B4D0>
-[consume_queue] 消费并准备广播: self = <pages.chat_options.contact.chat_contact_card_page.ChatContactCardPage object at 0x000001FF8B47B4D0>
-[Pytest Process Out] [0m[94mdef[39;49;00m[90m [39;49;00m[92mopen_panel_enter_contact_card_page[39;49;00m([96mself[39;49;00m):[90m[39;49;00m
-[consume_queue] 消费并准备广播: [0m[94mdef[39;49;00m[90m [39;49;00m[92mopen_panel_enter_contact_card_page[39;49;00m([96mself[39;49;00m):[90m[39;49;00m
-[Pytest Process Out] [90m    [39;49;00m[33m"""打开加号面板并点击名片按钮"""[39;49;00m[90m[39;49;00m
-[consume_queue] 消费并准备广播: [90m    [39;49;00m[33m"""打开加号面板并点击名片按钮"""[39;49;00m[90m[39;49;00m
-[Pytest Process Out] [96mself[39;49;00m.click_add_button()[90m[39;49;00m
-[consume_queue] 消费并准备广播: [96mself[39;49;00m.click_add_button()[90m[39;49;00m
-[Pytest Process Out] >       [96mself[39;49;00m.click(ChatContactCardLocator.CONTACT_CARD_SELECT_BTN)[90m[39;49;00m
-[Pytest Process Out] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
-CardLocator.CONTACT_CARD_SELECT_BTN)[90m[39;49;00m
-[consume_queue] 消费并准备广播: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
-[Pytest Process Out] [1m[31mE       AttributeError: type object 'ChatContactCardLocator' has no attribute 'CONTACT_CARD_SELECT_BTN'. Did you mean: 'CONTACT_CARD_BTN'?[0m
+driver.remote.errorhandler.ErrorHandler object at 0x0000021BC93B4980>
+[Pytest Process Out] response = {'status': 500, 'value': '{"value":{"error":"unknown error","message":"Error getting device API level. Original error:...iumDriver.createSession (D:\\\\data\\\\nodejs\\\\node_global\\\\node_modules\\\\appium\\\\lib\\\\appium.js:360:35)"}}'}
 [Pytest Process Out] 
-[consume_queue] 消费并准备广播: [1m[31mE       AttributeError: type object 'ChatContactCardLocator' has no attribute 'CONTACT_CARD_SELECT_BTN'. Did you mean: 'CONTACT_CARD_BTN'?[0m
-[Pytest Process Out] [1m[31mpages\chat_options\contact\chat_contact_card_page.py[0m:17: AttributeError
+��准备广播: response = {'status': 500, 'value': '{"value":{"error":"unknown error","message":"Error getting device API level. Original error:...iumDriver.createSession (D:\\\\data\\\\nodejs\\\\node_global\\\\node_modules\\\\appium\\\\lib\\\\appium.js:360:35)"}}'}
 [consume_queue] 消费并准备广播: 
+[Pytest Process Out] [0m[94mdef[39;49;00m[90m [39;49;00m[92mcheck_response[39;49;00m([96mself[39;49;00m, response: [96mdict[39;49;00m[[96mstr[39;49;00m, Any]) -> [94mNone[39;49;00m:[90m[39;49;00m
+[consume_queue] 消费并准备广播: [0m[94mdef[39;49;00m[90m [39;49;00m[92mcheck_response[39;49;00m([96mself[39;49;00m, response: [96mdict[39;49;00m[[96mstr[39;49;00m, Any]) -> [94mNone[39;49;00m:[90m[39;49;00m
+[Pytest Process Out] [33m[39;49;00m
+[consume_queue] 消费并准备广播: [90m    [39;49;00m[33m"""Check that a JSON response from the WebDriver does not have an error.[39;49;00m
+[consume_queue] 消费并准备广播: [33m[39;49;00m
+[consume_queue] 消费并准备广播: [33m    Args:[39;49;00m
+[Pytest Process Out] [33m        response: The JSON response from the WebDriver server as a dictionary[39;49;00m
+[consume_queue] 消费并准备广播: [33m        response: The JSON response from the WebDriver server as a dictionary[39;49;00m
+[Pytest Process Out] [33m            object.[39;49;00m
+[Pytest Process Out] [33m[39;49;00m
+[consume_queue] 消费并准备广播: [33m            object.[39;49;00m
+[Pytest Process Out] [33m    Raises:[39;49;00m
+[consume_queue] 消费并准备广播: [33m[39;49;00m
+[Pytest Process Out] [33m        WebDriverException: If the response contains an error message.[39;49;00m
+[consume_queue] 消费并准备广播: [33m    Raises:[39;49;00m
+[Pytest Process Out] [33m    """[39;49;00m[90m[39;49;00m
+[consume_queue] 消费并准备广播: [33m        WebDriverException: If the response contains an error message.[39;49;00m
+[Pytest Process Out] status = response.get([33m"[39;49;00m[33mstatus[39;49;00m[33m"[39;49;00m, [94mNone[39;49;00m)[90m[39;49;00m
+[consume_queue] 消费并准备广播: [33m    """[39;49;00m[90m[39;49;00m
+[Pytest Process Out] [94mif[39;49;00m [95mnot[39;49;00m status [95mor[39;49;00m status == ErrorCode.SUCCESS:[90m[39;49;00m
+[consume_queue] 消费并准备广播: status = response.get([33m"[39;49;00m[33mstatus[39;49;00m[33m"[39;49;00m, [94mNone[39;49;00m)[90m[39;49;00m
+[Pytest Process Out] [94mreturn[39;49;00m[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mif[39;49;00m [95mnot[39;49;00m status [95mor[39;49;00m status == ErrorCode.SUCCESS:[90m[39;49;00m
+[Pytest Process Out] value = [94mNone[39;49;00m[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mreturn[39;49;00m[90m[39;49;00m
+[Pytest Process Out] message = response.get([33m"[39;49;00m[33mmessage[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[Pytest Process Out] screen: [96mstr[39;49;00m = response.get([33m"[39;49;00m[33mscreen[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[consume_queue] 消费并准备广播: message = response.get([33m"[39;49;00m[33mmessage[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[Pytest Process Out] stacktrace = [94mNone[39;49;00m[90m[39;49;00m
+[consume_queue] 消费并准备广播: screen: [96mstr[39;49;00m = response.get([33m"[39;49;00m[33mscreen[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[Pytest Process Out] [94mif[39;49;00m [96misinstance[39;49;00m(status, [96mint[39;49;00m):[90m[39;49;00m
+[Pytest Process Out] value_json = response.get([33m"[39;49;00m[33mvalue[39;49;00m[33m"[39;49;00m, [94mNone[39;49;00m)[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mif[39;49;00m [96misinstance[39;49;00m(status, [96mint[39;49;00m):[90m[39;49;00m
+[Pytest Process Out] [94mif[39;49;00m value_json [95mand[39;49;00m [96misinstance[39;49;00m(value_json, [96mstr[39;49;00m):[90m[39;49;00m
+[consume_queue] 消费并准备广播: value_json = response.get([33m"[39;49;00m[33mvalue[39;49;00m[33m"[39;49;00m, [94mNone[39;49;00m)[90m[39;49;00m
+[Pytest Process Out] [94mtry[39;49;00m:[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mif[39;49;00m value_json [95mand[39;49;00m [96misinstance[39;49;00m(value_json, [96mstr[39;49;00m):[90m[39;49;00m
+[Pytest Process Out] value = json.loads(value_json)[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mtry[39;49;00m:[90m[39;49;00m
+[Pytest Process Out] [94mif[39;49;00m [96misinstance[39;49;00m(value, [96mdict[39;49;00m):[90m[39;49;00m
+[consume_queue] 消费并准备广播: value = json.loads(value_json)[90m[39;49;00m
+[Pytest Process Out] [94mif[39;49;00m [96mlen[39;49;00m(value) == [94m1[39;49;00m:[90m[39;49;00m
+[Pytest Process Out] value = value[[33m"[39;49;00m[33mvalue[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+00m):[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mif[39;49;00m [96mlen[39;49;00m(value) == [94m1[39;49;00m:[90m[39;49;00m
+[Pytest Process Out] status = value.get([33m"[39;49;00m[33merror[39;49;00m[33m"[39;49;00m, [94mNone[39;49;00m)[90m[39;49;00m
+[consume_queue] 消费并准备广播: value = value[[33m"[39;49;00m[33mvalue[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+[Pytest Process Out] [94mif[39;49;00m [95mnot[39;49;00m status:[90m[39;49;00m
+[consume_queue] 消费并准备广播: status = value.get([33m"[39;49;00m[33merror[39;49;00m[33m"[39;49;00m, [94mNone[39;49;00m)[90m[39;49;00m
+[Pytest Process Out] status = value.get([33m"[39;49;00m[33mstatus[39;49;00m[33m"[39;49;00m, ErrorCode.UNKNOWN_ERROR)[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mif[39;49;00m [95mnot[39;49;00m status:[90m[39;49;00m
+[Pytest Process Out] message = value.get([33m"[39;49;00m[33mvalue[39;49;00m[33m"[39;49;00m) [95mor[39;49;00m value.get([33m"[39;49;00m[33mmessage[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[consume_queue] 消费并准备广播: status = value.get([33m"[39;49;00m[33mstatus[39;49;00m[33m"[39;49;00m, ErrorCode.UNKNOWN_ERROR)[90m[39;49;00m
+[Pytest Process Out] [94mif[39;49;00m [95mnot[39;49;00m [96misinstance[39;49;00m(message, [96mstr[39;49;00m):[90m[39;49;00m
+[consume_queue] 消费并准备广播: message = value.get([33m"[39;49;00m[33mvalue[39;49;00m[33m"[39;49;00m) [95mor[39;49;00m value.get([33m"[39;49;00m[33mmessage[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[Pytest Process Out] value = message[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mif[39;49;00m [95mnot[39;49;00m [96misinstance[39;49;00m(message, [96mstr[39;49;00m):[90m[39;49;00m
+[Pytest Process Out] message = message.get([33m"[39;49;00m[33mmessage[39;49;00m[33m"[39;49;00m) [94mif[39;49;00m [96misinstance[39;49;00m(message, [96mdict[39;49;00m) [94melse[39;49;00m [94mNone[39;49;00m[90m[39;49;00m
+[consume_queue] 消费并准备广播: value = message[90m[39;49;00m
+[Pytest Process Out] [94melse[39;49;00m:[90m[39;49;00m
+[consume_queue] 消费并准备广播: message = message.get([33m"[39;49;00m[33mmessage[39;49;00m[33m"[39;49;00m) [94mif[39;49;00m [96misinstance[39;49;00m(message, [96mdict[39;49;00m) [94melse[39;49;00m [94mNone[39;49;00m[90m[39;49;00m
+[Pytest Process Out] message = value.get([33m"[39;49;00m[33mmessage[39;49;00m[33m"[39;49;00m, [94mNone[39;49;00m)[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94melse[39;49;00m:[90m[39;49;00m
+[Pytest Process Out] [94mexcept[39;49;00m [96mValueError[39;49;00m:[90m[39;49;00m
+[consume_queue] 消费并准备广播: message = value.get([33m"[39;49;00m[33mmessage[39;49;00m[33m"[39;49;00m, [94mNone[39;49;00m)[90m[39;49;00m
+[Pytest Process Out] [94mpass[39;49;00m[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mexcept[39;49;00m [96mValueError[39;49;00m:[90m[39;49;00m
+[Pytest Process Out] [90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mpass[39;49;00m[90m[39;49;00m
+[Pytest Process Out] exception_class: [96mtype[39;49;00m[WebDriverException][90m[39;49;00m
+[consume_queue] 消费并准备广播: [90m[39;49;00m
+[Pytest Process Out] e = ErrorCode()[90m[39;49;00m
+[consume_queue] 消费并准备广播: exception_class: [96mtype[39;49;00m[WebDriverException][90m[39;49;00m
+[Pytest Process Out] error_codes = [item [94mfor[39;49;00m item [95min[39;49;00m [96mdir[39;49;00m(e) [94mif[39;49;00m [95mnot[39;49;00m item.startswith([33m"[39;49;00m[33m__[39;49;00m[33m"[39;49;00m)][90m[39;49;00m
+[consume_queue] 消费并准备广播: e = ErrorCode()[90m[39;49;00m
+[Pytest Process Out] [94mfor[39;49;00m error_code [95min[39;49;00m error_codes:[90m[39;49;00m
+[consume_queue] 消费并准备广播: error_codes = [item [94mfor[39;49;00m item [95min[39;49;00m [96mdir[39;49;00m(e) [94mif[39;49;00m [95mnot[39;49;00m item.startswith([33m"[39;49;00m[33m__[39;49;00m[33m"[39;49;00m)][90m[39;49;00m
+[Pytest Process Out] error_info = [96mgetattr[39;49;00m(ErrorCode, error_code)[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mfor[39;49;00m error_code [95min[39;49;00m error_codes:[90m[39;49;00m
+[Pytest Process Out] [94mif[39;49;00m [96misinstance[39;49;00m(error_info, [96mlist[39;49;00m) [95mand[39;49;00m status [95min[39;49;00m error_info:[90m[39;49;00m
+[consume_queue] 消费并准备广播: error_info = [96mgetattr[39;49;00m(ErrorCode, error_code)[90m[39;49;00m
+[Pytest Process Out] exception_class = [96mgetattr[39;49;00m(ExceptionMapping, error_code, WebDriverException)[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mif[39;49;00m [96misinstance[39;49;00m(error_info, [96mlist[39;49;00m) [95mand[39;49;00m status [95min[39;49;00m error_info:[90m[39;49;00m
+[Pytest Process Out] [94mbreak[39;49;00m[90m[39;49;00m
+[consume_queue] 消费并准备广播: exception_class = [96mgetattr[39;49;00m(ExceptionMapping, error_code, WebDriverException)[90m[39;49;00m
+[Pytest Process Out] [94melse[39;49;00m:[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mbreak[39;49;00m[90m[39;49;00m
+[Pytest Process Out] exception_class = WebDriverException[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94melse[39;49;00m:[90m[39;49;00m
+[Pytest Process Out] [94mif[39;49;00m [95mnot[39;49;00m value:[90m[39;49;00m
+;49;00m
+[consume_queue] 消费并准备广播: [90m[39;49;00m
+[Pytest Process Out] value = response[[33m"[39;49;00m[33mvalue[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mif[39;49;00m [95mnot[39;49;00m value:[90m[39;49;00m
+[Pytest Process Out] [94mif[39;49;00m [96misinstance[39;49;00m(value, [96mstr[39;49;00m):[90m[39;49;00m
+[consume_queue] 消费并准备广播: value = response[[33m"[39;49;00m[33mvalue[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+[Pytest Process Out] [94mraise[39;49;00m exception_class(value)[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mif[39;49;00m [96misinstance[39;49;00m(value, [96mstr[39;49;00m):[90m[39;49;00m
+[Pytest Process Out] [94mif[39;49;00m message == [33m"[39;49;00m[33m"[39;49;00m [95mand[39;49;00m [33m"[39;49;00m[33mmessage[39;49;00m[33m"[39;49;00m [95min[39;49;00m value:[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mraise[39;49;00m exception_class(value)[90m[39;49;00m
+[Pytest Process Out] message = value[[33m"[39;49;00m[33mmessage[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mif[39;49;00m message == [33m"[39;49;00m[33m"[39;49;00m [95mand[39;49;00m [33m"[39;49;00m[33mmessage[39;49;00m[33m"[39;49;00m [95min[39;49;00m value:[90m[39;49;00m
+[Pytest Process Out] [90m[39;49;00m
+[consume_queue] 消费并准备广播: message = value[[33m"[39;49;00m[33mmessage[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+[Pytest Process Out] screen = [94mNone[39;49;00m  [90m# type: ignore[assignment][39;49;00m[90m[39;49;00m
+[consume_queue] 消费并准备广播: [90m[39;49;00m
+[Pytest Process Out] [94mif[39;49;00m [33m"[39;49;00m[33mscreen[39;49;00m[33m"[39;49;00m [95min[39;49;00m value:[90m[39;49;00m
+[consume_queue] 消费并准备广播: screen = [94mNone[39;49;00m  [90m# type: ignore[assignment][39;49;00m[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mif[39;49;00m [33m"[39;49;00m[33mscreen[39;49;00m[33m"[39;49;00m [95min[39;49;00m value:[90m[39;49;00m
+[consume_queue] 消费并准备广播: screen = value[[33m"[39;49;00m[33mscreen[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+[consume_queue] 消费并准备广播: [90m[39;49;00m
+[Pytest Process Out] st_value = value.get([33m"[39;49;00m[33mstackTrace[39;49;00m[33m"[39;49;00m) [95mor[39;49;00m value.get([33m"[39;49;00m[33mstacktrace[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[Pytest Process Out] [94mif[39;49;00m st_value:[90m[39;49;00m
+[consume_queue] 消费并准备广播: stacktrace = [94mNone[39;49;00m[90m[39;49;00m
+[Pytest Process Out] [94mif[39;49;00m [96misinstance[39;49;00m(st_value, [96mstr[39;49;00m):[90m[39;49;00m
+[consume_queue] 消费并准备广播: st_value = value.get([33m"[39;49;00m[33mstackTrace[39;49;00m[33m"[39;49;00m) [95mor[39;49;00m value.get([33m"[39;49;00m[33mstacktrace[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[Pytest Process Out] stacktrace = st_value.split([33m"[39;49;00m[33m\n[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mif[39;49;00m st_value:[90m[39;49;00m
+[Pytest Process Out] [94melse[39;49;00m:[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mif[39;49;00m [96misinstance[39;49;00m(st_value, [96mstr[39;49;00m):[90m[39;49;00m
+[Pytest Process Out] stacktrace = [][90m[39;49;00m
+[consume_queue] 消费并准备广播: stacktrace = st_value.split([33m"[39;49;00m[33m\n[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[Pytest Process Out] [94mtry[39;49;00m:[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94melse[39;49;00m:[90m[39;49;00m
+[Pytest Process Out] [94mfor[39;49;00m frame [95min[39;49;00m st_value:[90m[39;49;00m
+[consume_queue] 消费并准备广播: stacktrace = [][90m[39;49;00m
+[Pytest Process Out] line = frame.get([33m"[39;49;00m[33mlineNumber[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mtry[39;49;00m:[90m[39;49;00m
+[Pytest Process Out] file = frame.get([33m"[39;49;00m[33mfileName[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33m<anonymous>[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mfor[39;49;00m frame [95min[39;49;00m st_value:[90m[39;49;00m
+[Pytest Process Out] [94mif[39;49;00m line:[90m[39;49;00m
+[consume_queue] 消费并准备广播: line = frame.get([33m"[39;49;00m[33mlineNumber[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[Pytest Process Out] file = [33mf[39;49;00m[33m"[39;49;00m[33m{[39;49;00mfile[33m}[39;49;00m[33m:[39;49;00m[33m{[39;49;00mline[33m}[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+[consume_queue] 消费并准备广播: file = frame.get([33m"[39;49;00m[33mfileName[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33m<anonymous>[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[Pytest Process Out] meth = frame.get([33m"[39;49;00m[33mmethodName[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33m<anonymous>[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mif[39;49;00m line:[90m[39;49;00m
+[Pytest Process Out] [94mif[39;49;00m [33m"[39;49;00m[33mclassName[39;49;00m[33m"[39;49;00m [95min[39;49;00m frame:[90m[39;49;00m
+[consume_queue] 消费并准备广播: file = [33mf[39;49;00m[33m"[39;49;00m[33m{[39;49;00mfile[33m}[39;49;00m[33m:[39;49;00m[33m{[39;49;00mline[33m}[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+[consume_queue] 消费并准备广播: meth = frame.get([33m"[39;49;00m[33mmethodName[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33m<anonymous>[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[Pytest Process Out] meth = [33mf[39;49;00m[33m"[39;49;00m[33m{[39;49;00mframe[[33m'[39;49;00m[33mclassName[39;49;00m[33m'[39;49;00m][33m}[39;49;00m[33m.[39;49;00m[33m{[39;49;00mmeth[33m}[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mif[39;49;00m [33m"[39;49;00m[33mclassName[39;49;00m[33m"[39;49;00m [95min[39;49;00m frame:[90m[39;49;00m
+[Pytest Process Out] msg = [33m"[39;49;00m[33m    at [39;49;00m[33m%s[39;49;00m[33m ([39;49;00m[33m%s[39;49;00m[33m)[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+[consume_queue] 消费并准备广播: meth = [33mf[39;49;00m[33m"[39;49;00m[33m{[39;49;00mframe[[33m'[39;49;00m[33mclassName[39;49;00m[33m'[39;49;00m][33m}[39;49;00m[33m.[39;49;00m[33m{[39;49;00mmeth[33m}[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+[Pytest Process Out] msg = msg % (meth, file)[90m[39;49;00m
+[consume_queue] 消费并准备广播: msg = [33m"[39;49;00m[33m    at [39;49;00m[33m%s[39;49;00m[33m ([39;49;00m[33m%s[39;49;00m[33m)[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+[consume_queue] 消费并准备广播: msg = msg % (meth, file)[90m[39;49;00m
+[Pytest Process Out] [94mexcept[39;49;00m [96mTypeError[39;49;00m:[90m[39;49;00m
+[Pytest Process Out] [94mpass[39;49;00m[90m[39;49;00m
+g)[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mexcept[39;49;00m [96mTypeError[39;49;00m:[90m[39;49;00m
+[Pytest Process Out] [94mif[39;49;00m exception_class == UnexpectedAlertPresentException:[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mpass[39;49;00m[90m[39;49;00m
+[Pytest Process Out] alert_text = [94mNone[39;49;00m[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mif[39;49;00m exception_class == UnexpectedAlertPresentException:[90m[39;49;00m
+[Pytest Process Out] [94mif[39;49;00m [33m"[39;49;00m[33mdata[39;49;00m[33m"[39;49;00m [95min[39;49;00m value:[90m[39;49;00m
+[consume_queue] 消费并准备广播: alert_text = [94mNone[39;49;00m[90m[39;49;00m
+[Pytest Process Out] alert_text = value[[33m"[39;49;00m[33mdata[39;49;00m[33m"[39;49;00m].get([33m"[39;49;00m[33mtext[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mif[39;49;00m [33m"[39;49;00m[33mdata[39;49;00m[33m"[39;49;00m [95min[39;49;00m value:[90m[39;49;00m
+[Pytest Process Out] [94melif[39;49;00m [33m"[39;49;00m[33malert[39;49;00m[33m"[39;49;00m [95min[39;49;00m value:[90m[39;49;00m
+[consume_queue] 消费并准备广播: alert_text = value[[33m"[39;49;00m[33mdata[39;49;00m[33m"[39;49;00m].get([33m"[39;49;00m[33mtext[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[Pytest Process Out] alert_text = value[[33m"[39;49;00m[33malert[39;49;00m[33m"[39;49;00m].get([33m"[39;49;00m[33mtext[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94melif[39;49;00m [33m"[39;49;00m[33malert[39;49;00m[33m"[39;49;00m [95min[39;49;00m value:[90m[39;49;00m
+[Pytest Process Out] [94mraise[39;49;00m exception_class(message, screen, stacktrace, alert_text)  [90m# type: ignore[call-arg]  # mypy is not smart enough here[39;49;00m[90m[39;49;00m
+[consume_queue] 消费并准备广播: alert_text = value[[33m"[39;49;00m[33malert[39;49;00m[33m"[39;49;00m].get([33m"[39;49;00m[33mtext[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[Pytest Process Out] >       [94mraise[39;49;00m exception_class(message, screen, stacktrace)[90m[39;49;00m
+[consume_queue] 消费并准备广播: [94mraise[39;49;00m exception_class(message, screen, stacktrace, alert_text)  [90m# type: ignore[call-arg]  # mypy is not smart enough here[39;49;00m[90m[39;49;00m
+[consume_queue] 消费并准备广播: >       [94mraise[39;49;00m exception_class(message, screen, stacktrace)[90m[39;49;00m
+[Pytest Process Out] [1m[31mE       selenium.common.exceptions.WebDriverException: Message: Error getting device API level. Original error: Error executing adbExec. Original error: 'Command ''D:\data\Android\android-sdk\platform-tools\adb.exe' -P 5037 -s daccd58aaff4 shell getprop ro.build.version.sdk' exited with code 1'; Command output: adb.exe: device unauthorized.[0m
+[consume_queue] 消费并准备广播: [1m[31mE       selenium.common.exceptions.WebDriverException: Message: Error getting device API level. Original error: Error executing adbExec. Original error: 'Command ''D:\data\Android\android-sdk\platform-tools\adb.exe' -P 5037 -s daccd58aaff4 shell getprop ro.build.version.sdk' exited with code 1'; Command output: adb.exe: device unauthorized.[0m
+[Pytest Process Out] [1m[31mE       This adb server's $ADB_VENDOR_KEYS is not set[0m
+[Pytest Process Out] [1m[31mE       Try 'adb kill-server' if that seems wrong.[0m
+EYS is not set[0m
+[consume_queue] 消费并准备广播: [1m[31mE       Try 'adb kill-server' if that seems wrong.[0m
+[Pytest Process Out] [1m[31mE       [0m
+[31mE       Otherwise check for a confirmation dialog on your device.[0m
+[Pytest Process Out] [1m[31mE       Stacktrace:[0m
+ [0m
+[consume_queue] 消费并准备广播: [1m[31mE       Stacktrace:[0m
+[Pytest Process Out] [1m[31mE       UnknownError: Error getting device API level. Original error: Error executing adbExec. Original error: 'Command ''D:\data\Android\android-sdk\platform-tools\adb.exe' -P 5037 -s daccd58aaff4 shell getprop ro.build.version.sdk' exited with code 1'; Command output: adb.exe: device unauthorized.[0m
+[consume_queue] 消费并准备广播: [1m[31mE       UnknownError: Error getting device API level. Original error: Error executing adbExec. Original error: 'Command ''D:\data\Android\android-sdk\platform-tools\adb.exe' -P 5037 -s daccd58aaff4 shell getprop ro.build.version.sdk' exited with code 1'; Command output: adb.exe: device unauthorized.[0m
+[Pytest Process Out] [1m[31mE       Try 'adb kill-server' if that seems wrong.[0m
+EYS is not set[0m
+[Pytest Process Out] [1m[31mE       Otherwise check for a confirmation dialog on your device.[0m
+m
+[consume_queue] 消费并准备广播: [1m[31mE       Otherwise check for a confirmation dialog on your device.[0m
+[consume_queue] 消费并准备广播: [1m[31mE       [0m
+[Pytest Process Out] [1m[31mE           at getResponseForW3CError (D:\data\nodejs\node_global\node_modules\appium\node_modules\@appium\base-driver\lib\protocol\errors.ts:1103:34)[0m
+[consume_queue] 消费并准备广播: [1m[31mE           at getResponseForW3CError (D:\data\nodejs\node_global\node_modules\appium\node_modules\@appium\base-driver\lib\protocol\errors.ts:1103:34)[0m
+[Pytest Process Out] [1m[31mE           at asyncHandler (D:\data\nodejs\node_global\node_modules\appium\node_modules\@appium\base-driver\lib\protocol\protocol.ts:507:57)[0m
+[Pytest Process Out] [1m[31mE       The above error is caused by[0m
+ler (D:\data\nodejs\node_global\node_modules\appium\node_modules\@appium\base-driver\lib\protocol\protocol.ts:507:57)[0m
+[consume_queue] 消费并准备广播: [1m[31mE       The above error is caused by[0m
+[Pytest Process Out] [1m[31mE       Error: Error getting device API level. Original error: Error executing adbExec. Original error: 'Command ''D:\data\Android\android-sdk\platform-tools\adb.exe' -P 5037 -s daccd58aaff4 shell getprop ro.build.version.sdk' exited with code 1'; Command output: adb.exe: device unauthorized.[0m
+[consume_queue] 消费并准备广播: [1m[31mE       Error: Error getting device API level. Original error: Error executing adbExec. Original error: 'Command ''D:\data\Android\android-sdk\platform-tools\adb.exe' -P 5037 -s daccd58aaff4 shell getprop ro.build.version.sdk' exited with code 1'; Command output: adb.exe: device unauthorized.[0m
+[Pytest Process Out] [1m[31mE       This adb server's $ADB_VENDOR_KEYS is not set[0m
+[Pytest Process Out] [1m[31mE       Try 'adb kill-server' if that seems wrong.[0m
+EYS is not set[0m
+[Pytest Process Out] [1m[31mE       Otherwise check for a confirmation dialog on your device.[0m
+m
+[Pytest Process Out] [1m[31mE       [0m
+[31mE       Otherwise check for a confirmation dialog on your device.[0m
+[consume_queue] 消费并准备广播: [1m[31mE       [0m
+[Pytest Process Out] [1m[31mE           at ADB.getApiLevel (C:\Users\25689\.appium\node_modules\appium-uiautomator2-driver\node_modules\appium-adb\lib\tools\general-commands.ts:90:13)[0m
+[consume_queue] 消费并准备广播: [1m[31mE           at ADB.getApiLevel (C:\Users\25689\.appium\node_modules\appium-uiautomator2-driver\node_modules\appium-adb\lib\tools\general-commands.ts:90:13)[0m
+[Pytest Process Out] [1m[31mE           at AndroidUiautomator2Driver.deleteSession (C:\Users\25689\.appium\node_modules\appium-uiautomator2-driver\lib\driver.ts:928:12)[0m
+[consume_queue] 消费并准备广播: [1m[31mE           at AndroidUiautomator2Driver.deleteSession (C:\Users\25689\.appium\node_modules\appium-uiautomator2-driver\lib\driver.ts:928:12)[0m
+[Pytest Process Out] [1m[31mE           at AndroidUiautomator2Driver.createSession (C:\Users\25689\.appium\node_modules\appium-uiautomator2-driver\lib\driver.ts:416:7)[0m
+[consume_queue] 消费并准备广播: [1m[31mE           at AndroidUiautomator2Driver.createSession (C:\Users\25689\.appium\node_modules\appium-uiautomator2-driver\lib\driver.ts:416:7)[0m
+[Pytest Process Out] [1m[31mE           at AppiumDriver.createSession (D:\data\nodejs\node_global\node_modules\appium\lib\appium.js:360:35)[0m
+[consume_queue] 消费并准备广播: [1m[31mE           at AppiumDriver.createSession (D:\data\nodejs\node_global\node_modules\appium\lib\appium.js:360:35)[0m
+[consume_queue] 消费并准备广播: 
+hon313\Lib\site-packages\selenium\webdriver\remote\errorhandler.py[0m:232: WebDriverException
 [Pytest Process Out] ----------------------------- Captured log setup ------------------------------
-0m:17: AttributeError
-[consume_queue] 消费并准备广播: ----------------------------- Captured log setup ------------------------------
-i\config\devices.yaml
+\remote\errorhandler.py[0m:232: WebDriverException
+[Pytest Process Out] [32mINFO    [0m AutoTest:data_loader.py:30 ✅ 快速定位文件成功：D:\projects\santiao-anti\config\devices.yaml
 [Pytest Process Out] [32mINFO    [0m AutoTest:driver_factory.py:21 [DriverFactory] 当前指定的执行环境为: dev
 ects\santiao-anti\config\devices.yaml
-[consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:driver_factory.py:21 [DriverFactory] 当前指定的执行环境为: dev
 [Pytest Process Out] [32mINFO    [0m AutoTest:driver_factory.py:52 🧹 [DriverFactory] 已清理原始配置端口的 adb 转发规则: tcp:8200
 [consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:driver_factory.py:52 🧹 [DriverFactory] 已清理原始配置端口的 adb 转发规则: tcp:8200
 [Pytest Process Out] [32mINFO    [0m AutoTest:driver_factory.py:56 🧹 [DriverFactory] 已强杀手机端残留的 UiAutomator2 Server 进程 (设备: daccd58aaff4)
 [consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:driver_factory.py:56 🧹 [DriverFactory] 已强杀手机端残留的 UiAutomator2 Server 进程 (设备: daccd58aaff4)
 [Pytest Process Out] [32mINFO    [0m AutoTest:driver_factory.py:84 🔌 [DriverFactory] 动态分配 systemPort: 8200 (原始配置: 8200)
-[consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:driver_factory.py:84 🔌 [DriverFactory] 动态分配 systemPort: 8200 (原始配置: 8200)
-[Pytest Process Out] [32mINFO    [0m AutoTest:driver_factory.py:91 [DriverFactory] 环境变量动态覆盖：UDID1=daccd58aaff4, UDID2=None, Appium1=127.0.0.1:4723, Appium2=127.0.0.1:4724
-[Pytest Process Out] [32mINFO    [0m AutoTest:driver_factory.py:126 [DriverFactory] 覆盖 sender Appium 地址为: http://127.0.0.1:4723
-58aaff4, UDID2=None, Appium1=127.0.0.1:4723, Appium2=127.0.0.1:4724
-[consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:driver_factory.py:126 [DriverFactory] 覆盖 sender Appium 地址为: http://127.0.0.1:4723
+[Pytest Process Out] [32mINFO    [0m AutoTest:driver_factory.py:91 [DriverFactory] 环境变量动态覆盖：UDID1=None, UDID2=None, Appium1=127.0.0.1:4723, Appium2=127.0.0.1:4724
+[consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:driver_factory.py:91 [DriverFactory] 环境变量动态覆盖：UDID1=None, UDID2=None, Appium1=127.0.0.1:4723, Appium2=127.0.0.1:4724
 [Pytest Process Out] [32mINFO    [0m AutoTest:driver_factory.py:136 [DriverFactory] 启动设备: sender |
-[Pytest Process Out] UDID: daccd58aaff4 |
-mINFO    [0m AutoTest:driver_factory.py:136 [DriverFactory] 启动设备: sender |
+ sender Appium 地址为: http://127.0.0.1:4723
+[consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:driver_factory.py:136 [DriverFactory] 启动设备: sender |
+[Pytest Process Out] Port: 8200 |
 [consume_queue] 消费并准备广播: UDID: daccd58aaff4 |
 [Pytest Process Out] Appium Server URL: http://127.0.0.1:4723
-[consume_queue] 消费并准备广播: Appium Server URL: http://127.0.0.1:4723
+[consume_queue] 消费并准备广播: Port: 8200 |
 [Pytest Process Out] [32mINFO    [0m AutoTest:driver_factory.py:148 🧹 [DriverFactory] 已清理新分配端口的 adb 转发规则: tcp:8200
-[consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:driver_factory.py:148 🧹 [DriverFactory] 已清理新分配端口的 adb 转发规则: tcp:8200
+[consume_queue] 消费并准备广播: Appium Server URL: http://127.0.0.1:4723
 [Pytest Process Out] [32mINFO    [0m AutoTest:driver_factory.py:162 [DriverFactory] 正在对 Appium 进行连接探测: http://127.0.0.1:4723/status
-[Pytest Process Out] ------------------------------ Captured log call ------------------------------
-] 正在对 Appium 进行连接探测: http://127.0.0.1:4723/status
-[consume_queue] 消费并准备广播: ------------------------------ Captured log call ------------------------------
-[Pytest Process Out] [32mINFO    [0m AutoTest:chat_list_page.py:112 👉 准备进入会话: 【测试0222】
-[consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:chat_list_page.py:112 👉 准备进入会话: 【测试0222】
-[Pytest Process Out] [32mINFO    [0m AutoTest:base_page.py:75 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)
-[Pytest Process Out] [32mINFO    [0m AutoTest:chat_page.py:60 ⏳ [Wait] 等待聊天主页面加载完成，超时时间 10 秒
-[consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:base_page.py:75 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)
-[Pytest Process Out] [32mINFO    [0m AutoTest:base_page.py:75 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/chat_input') (模式: visibility)
-[consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:base_page.py:75 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/chat_input') (模式: visibility)
-[Pytest Process Out] [32mINFO    [0m AutoTest:chat_page.py:63 ✅ [Wait] 聊天主页面加载完成, 元素个数为 1
-[consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:chat_page.py:63 ✅ [Wait] 聊天主页面加载完成, 元素个数为 1
-[Pytest Process Out] [32mINFO    [0m AutoTest:chat_list_page.py:98 ✅ 进入会话: 测试0222 (匹配模式: exact)
-[consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:chat_list_page.py:98 ✅ 进入会话: 测试0222 (匹配模式: exact)
-[Pytest Process Out] [32mINFO    [0m AutoTest:chat_list_page.py:115 ✅ 在首页列表中找到并成功进入: 测试0222
-[Pytest Process Out] [32mINFO    [0m AutoTest:base_page.py:273 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/input_more_bnt') -> attr='checked'
-[consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:chat_list_page.py:115 ✅ 在首页列表中找到并成功进入: 测试0222
-[consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:base_page.py:273 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/input_more_bnt') -> attr='checked'
-[Pytest Process Out] [32mINFO    [0m AutoTest:base_page.py:46 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/input_more_bnt') (模式: visibility)
-[Pytest Process Out] [32mINFO    [0m AutoTest:base_page.py:277 ✅ base - 属性获取成功: checked = false
- 'com.santiaotalk.im:id/input_more_bnt') (模式: visibility)
-[consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:base_page.py:277 ✅ base - 属性获取成功: checked = false
-[Pytest Process Out] [32mINFO    [0m AutoTest:base_page.py:46 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/input_more_bnt') (模式: clickable)
-[consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:base_page.py:46 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/input_more_bnt') (模式: clickable)
-[Pytest Process Out] [32mINFO    [0m AutoTest:base_page.py:294 🖱️ 以 clickable 模式点击元素: ('id', 'com.santiaotalk.im:id/input_more_bnt')
-[consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:base_page.py:294 🖱️ 以 clickable 模式点击元素: ('id', 'com.santiaotalk.im:id/input_more_bnt')
-[Pytest Process Out] [32mINFO    [0m AutoTest:chat_page.py:201 🚀[Action-chat] - chat 点击 + 号按钮，展开其它功能元素
-[consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:chat_page.py:201 🚀[Action-chat] - chat 点击 + 号按钮，展开其它功能元素
-[Pytest Process Out] ---------------------------- Captured log teardown ----------------------------
-[Pytest Process Out] [32mINFO    [0m AutoTest:base_page.py:273 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'
-[consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:base_page.py:273 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'
-[Pytest Process Out] [32mINFO    [0m AutoTest:base_page.py:46 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)
-[consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:base_page.py:46 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)
-[Pytest Process Out] [32mINFO    [0m AutoTest:except_utils.py:87 ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')
-[consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:except_utils.py:87 ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')
-[Pytest Process Out] [32mINFO    [0m AutoTest:base_page.py:320 🔙 [Action] 系统返回
-[consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:base_page.py:320 🔙 [Action] 系统返回
-[Pytest Process Out] [33mWARNING [0m AutoTest:main_page.py:49  🍎 未找到会话列表标题或标题不匹配，继续返回，剩余尝试次数：9
-[consume_queue] 消费并准备广播: [33mWARNING [0m AutoTest:main_page.py:49  🍎 未找到会话列表标题或标题不匹配，继续返回，剩余尝试次数：9
-[Pytest Process Out] [32mINFO    [0m AutoTest:base_page.py:46 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)
-attr='text'
-[Pytest Process Out] [32mINFO    [0m AutoTest:base_page.py:277 ✅ base - 属性获取成功: text = 三条
-', 'com.santiaotalk.im:id/tv_state') (模式: visibility)
-[consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:base_page.py:277 ✅ base - 属性获取成功: text = 三条
-[Pytest Process Out] [32mINFO    [0m AutoTest:main_page.py:39  🍏 已找到会话列表标题 三条，回到主页面会话列表
-[consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:main_page.py:39  🍏 已找到会话列表标题 三条，回到主页面会话列表
-[Pytest Process Out] =========================== 重跑统计摘要 (Rerun Summary) ============================
-[Pytest Process Out] 📊 本次 Session 共触发 1 次重跑 (上限: 20)
-��摘要 (Rerun Summary) ============================
-[consume_queue] 消费并准备广播: 📊 本次 Session 共触发 1 次重跑 (上限: 20)
-[Pytest Process Out] ======================================  =======================================
 [Pytest Process Out] [36m[1m=========================== short test summary info ===========================[0m
-===
+理新分配端口的 adb 转发规则: tcp:8200
+[consume_queue] 消费并准备广播: [32mINFO    [0m AutoTest:driver_factory.py:162 [DriverFactory] 正在对 Appium 进行连接探测: http://127.0.0.1:4723/status
+[Pytest Process Out] [31mERROR[0m tests/groups/bot/join_verify/test_group_bot_join_verify.py::[1mTestGroupBotJoinVerify::test_join_verify_toggle_and_save[0m - selenium.common.exceptions.WebDriverException: Message: Error getting device API level. Original error: Error executing adbExec. Original error: 'Command ''D:\data\Android\android-sdk\platform-tools\adb.exe' -P 5037 -s daccd58aaff4 shell getprop ro.build.version.sdk' exited with code 1'; Command output: adb.exe: device unauthorized.
 [consume_queue] 消费并准备广播: [36m[1m=========================== short test summary info ===========================[0m
-[Pytest Process Out] [31mFAILED[0m tests/chat_options/contact/test_contact_card.py::[1mTestContactCard::test_send_contact_card_success[私聊模式-测试0222][0m - AttributeError: type object 'ChatContactCardLocator' has no attribute 'CONTACT_CARD_SELECT_BTN'. Did you mean: 'CONTACT_CARD_BTN'?
-[Pytest Process Out] [31m============================= [31m[1m1 failed[0m[31m in 26.36s[0m[31m ==============================[0m
-tact_card_success[私聊模式-测试0222][0m - AttributeError: type object 'ChatContactCardLocator' has no attribute 'CONTACT_CARD_SELECT_BTN'. Did you mean: 'CONTACT_CARD_BTN'?
-[consume_queue] 消费并准备广播: [31m============================= [31m[1m1 failed[0m[31m in 26.36s[0m[31m ==============================[0m
+[Pytest Process Out] This adb server's $ADB_VENDOR_KEYS is not set
+[consume_queue] 消费并准备广播: [31mERROR[0m tests/groups/bot/join_verify/test_group_bot_join_verify.py::[1mTestGroupBotJoinVerify::test_join_verify_toggle_and_save[0m - selenium.common.exceptions.WebDriverException: Message: Error getting device API level. Original error: Error executing adbExec. Original error: 'Command ''D:\data\Android\android-sdk\platform-tools\adb.exe' -P 5037 -s daccd58aaff4 shell getprop ro.build.version.sdk' exited with code 1'; Command output: adb.exe: device unauthorized.
+[Pytest Process Out] Try 'adb kill-server' if that seems wrong.
+[consume_queue] 消费并准备广播: This adb server's $ADB_VENDOR_KEYS is not set
+[Pytest Process Out] Otherwise check for a confirmation dialog on your device.
+[Pytest Process Out] 
+��准备广播: Try 'adb kill-server' if that seems wrong.
+[consume_queue] 消费并准备广播: Otherwise check for a confirmation dialog on your device.
+[Pytest Process Out] Stacktrace:
+[consume_queue] 消费并准备广播: 
+[Pytest Process Out] UnknownError: Error getting device API level. Original error: Error executing adbExec. Original error: 'Command ''D:\data\Android\android-sdk\platform-tools\adb.exe' -P 5037 -s daccd58aaff4 shell getprop ro.build.version.sdk' exited with code 1'; Command output: adb.exe: device unauthorized.
+[consume_queue] 消费并准备广播: Stacktrace:
+[Pytest Process Out] This adb server's $ADB_VENDOR_KEYS is not set
+[consume_queue] 消费并准备广播: UnknownError: Error getting device API level. Original error: Error executing adbExec. Original error: 'Command ''D:\data\Android\android-sdk\platform-tools\adb.exe' -P 5037 -s daccd58aaff4 shell getprop ro.build.version.sdk' exited with code 1'; Command output: adb.exe: device unauthorized.
+[Pytest Process Out] Try 'adb kill-server' if that seems wrong.
+[consume_queue] 消费并准备广播: This adb server's $ADB_VENDOR_KEYS is not set
+[Pytest Process Out] Otherwise check for a confirmation dialog on your device.
+[consume_queue] 消费并准备广播: Try 'adb kill-server' if that seems wrong.
+[Pytest Process Out] 
+[Pytest Process Out] at getResponseForW3CError (D:\data\nodejs\node_global\node_modules\appium\node_modules\@appium\base-driver\lib\protocol\errors.ts:1103:34)
+[consume_queue] 消费并准备广播: 
+[Pytest Process Out] at asyncHandler (D:\data\nodejs\node_global\node_modules\appium\node_modules\@appium\base-driver\lib\protocol\protocol.ts:507:57)
+[Pytest Process Out] The above error is caused by
+seForW3CError (D:\data\nodejs\node_global\node_modules\appium\node_modules\@appium\base-driver\lib\protocol\errors.ts:1103:34)
+[consume_queue] 消费并准备广播: at asyncHandler (D:\data\nodejs\node_global\node_modules\appium\node_modules\@appium\base-driver\lib\protocol\protocol.ts:507:57)
+[Pytest Process Out] Error: Error getting device API level. Original error: Error executing adbExec. Original error: 'Command ''D:\data\Android\android-sdk\platform-tools\adb.exe' -P 5037 -s daccd58aaff4 shell getprop ro.build.version.sdk' exited with code 1'; Command output: adb.exe: device unauthorized.
+[consume_queue] 消费并准备广播: The above error is caused by
+[Pytest Process Out] This adb server's $ADB_VENDOR_KEYS is not set
+[Pytest Process Out] Try 'adb kill-server' if that seems wrong.
+e API level. Original error: Error executing adbExec. Original error: 'Command ''D:\data\Android\android-sdk\platform-tools\adb.exe' -P 5037 -s daccd58aaff4 shell getprop ro.build.version.sdk' exited with code 1'; Command output: adb.exe: device unauthorized.
+[consume_queue] 消费并准备广播: This adb server's $ADB_VENDOR_KEYS is not set
+[Pytest Process Out] Otherwise check for a confirmation dialog on your device.
+[Pytest Process Out] 
+��准备广播: Try 'adb kill-server' if that seems wrong.
+[consume_queue] 消费并准备广播: Otherwise check for a confirmation dialog on your device.
+[Pytest Process Out] at ADB.getApiLevel (C:\Users\25689\.appium\node_modules\appium-uiautomator2-driver\node_modules\appium-adb\lib\tools\general-commands.ts:90:13)
+[consume_queue] 消费并准备广播: 
+[Pytest Process Out] at AndroidUiautomator2Driver.deleteSession (C:\Users\25689\.appium\node_modules\appium-uiautomator2-driver\lib\driver.ts:928:12)
+[consume_queue] 消费并准备广播: at ADB.getApiLevel (C:\Users\25689\.appium\node_modules\appium-uiautomator2-driver\node_modules\appium-adb\lib\tools\general-commands.ts:90:13)
+[Pytest Process Out] at AndroidUiautomator2Driver.createSession (C:\Users\25689\.appium\node_modules\appium-uiautomator2-driver\lib\driver.ts:416:7)
+[consume_queue] 消费并准备广播: at AndroidUiautomator2Driver.deleteSession (C:\Users\25689\.appium\node_modules\appium-uiautomator2-driver\lib\driver.ts:928:12)
+[Pytest Process Out] at AppiumDriver.createSession (D:\data\nodejs\node_global\node_modules\appium\lib\appium.js:360:35)
+[consume_queue] 消费并准备广播: at AndroidUiautomator2Driver.createSession (C:\Users\25689\.appium\node_modules\appium-uiautomator2-driver\lib\driver.ts:416:7)
+[Pytest Process Out] [31m============================== [31m[1m1 error[0m[31m in 1.90s[0m[31m ===============================[0m
+[consume_queue] 消费并准备广播: at AppiumDriver.createSession (D:\data\nodejs\node_global\node_modules\appium\lib\appium.js:360:35)
+[consume_queue] 消费并准备广播: [31m============================== [31m[1m1 error[0m[31m in 1.90s[0m[31m ===============================[0m
 [read_to_queue] 线程读取结束，放置 None 哨兵
 [consume_queue] 收到 None 哨兵，退出消费循环
 [run_task_lifecycle] gather 结束，等待子进程退出状态...
