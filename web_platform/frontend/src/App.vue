@@ -22,6 +22,7 @@ const remoteUdid2 = ref('')
 const privateChatName = ref('')
 const groupChatName = ref('')
 const debugMode = ref(false)
+const caseStates = ref({}) // 用例状态映射：{ nodeid: 'passed' | 'failed' }
 
 // Allure 报告相关
 const reportUrl = ref('')
@@ -385,6 +386,9 @@ async function detectConnectedDevices() {
 async function startTestExecution(node) {
   if (isRunning.value) return
 
+  // 重置执行状态记录
+  caseStates.value = {}
+
   isRunning.value = true
   globalStatus.value = 'running'
   globalStatusText.value = '运行中'
@@ -461,6 +465,15 @@ function connectSseStream() {
   activeSse.onmessage = (event) => {
     const logMsg = JSON.parse(event.data)
     logsBuffer.value += logMsg
+    
+    // 实时提取已执行测试节点的结果状态
+    const resultRegex = /(tests\/[^\s]+?(?:\[[^\]]+\])?)\s+(PASSED|FAILED|ERROR)/gi
+    let match
+    while ((match = resultRegex.exec(logMsg)) !== null) {
+      const nodeid = match[1]
+      const status = match[2].toUpperCase()
+      caseStates.value[nodeid] = (status === 'PASSED') ? 'passed' : 'failed'
+    }
     
     // 自动滚动终端到底部
     if (terminalScreenRef.value) {
@@ -781,6 +794,8 @@ function clearTerminal() {
                 <div v-else-if="data.isTestParam" class="test-item-row">
                   <span class="node-label" style="font-size: 12px; color: #94a3b8; padding-left: 6px;">
                     🚀 [{{ data.label }}]
+                    <span v-if="caseStates[data.nodeid] === 'passed'" class="status-tag tag-passed">通过</span>
+                    <span v-else-if="caseStates[data.nodeid] === 'failed'" class="status-tag tag-failed">失败</span>
                   </span>
                   <div class="test-item-actions" @click.stop>
                     <el-button
@@ -797,7 +812,11 @@ function clearTerminal() {
 
                 <!-- 6. 普通独立 Test 用例 -->
                 <div v-else-if="data.isTest" class="test-item-row">
-                  <span class="node-label">⚙️ {{ data.label }}</span>
+                  <span class="node-label">
+                    ⚙️ {{ data.label }}
+                    <span v-if="caseStates[data.nodeid] === 'passed'" class="status-tag tag-passed">通过</span>
+                    <span v-else-if="caseStates[data.nodeid] === 'failed'" class="status-tag tag-failed">失败</span>
+                  </span>
                   <div class="test-item-actions" @click.stop>
                     <el-button
                       type="primary"
@@ -1384,5 +1403,31 @@ function clearTerminal() {
   0% { opacity: 0.5; }
   50% { opacity: 1; }
   100% { opacity: 0.5; }
+}
+
+/* 用例运行状态标志标签 */
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  line-height: 1.1;
+  vertical-align: middle;
+  transform: translateY(-1px);
+}
+
+.tag-passed {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.tag-failed {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 </style>
