@@ -232,5 +232,109 @@ class TestGroupSetting:
             self.groupSettingPage.click_remark_confirm()
 
 
+    @allure.story("群设置-群头像")
+    @allure.title("通过群聊聊天页面修改群头像")
+    def test_change_group_avatar(self):
+        """通过群聊聊天页面修改群头像"""
+        with allure.step("1. 进入群设置页面"):
+            self.chatListPage.enter_chat(GROUP_STRATEGY.name)
+            self.chatPage.click_more_button()
+            self.groupSettingPage.wait_for_setting_page_load()
+            
+        with allure.step("2. 修改群头像"):
+            self.groupSettingPage.click_group_avatar()
+            self.groupSettingPage.click_group_avatar_confirm()
+            self.groupSettingPage.click_group_avatar_confirm()
+            self.groupSettingPage.click_iv_back_button()
+            self.groupSettingPage.click_iv_back_button()
+            
+        with allure.step("3. 校验群头像是否修改"):
+            new_avatar = self.groupSettingPage.get_group_avatar()
+            check.equal(new_avatar, GROUP_STRATEGY.avatar, f"❌ 群头像修改后不一致")
 
 
+    @allure.story("群设置-群名称")
+    @allure.title("通过群聊聊天页面修改群名称")
+    @pytest.mark.parametrize("test_id, input_content, action, expect_truncated", [
+        ("正常修改并保存", "测试群名称1", "confirm", False),
+        ("修改并取消", "企图修改群名称但取消", "cancel", False),
+        ("超长20字限制截断", "一二三四五六七八九十一二三四五六七八九十加", "confirm", True),
+    ], ids=["正常修改并保存", "修改并取消", "超长20字限制截断"])
+    @pytest.mark.parametrize("chat_strategy", [GROUP_STRATEGY], ids=["群聊-群名称"])
+    def test_group_name_validation(self, test_id, input_content, action, expect_truncated, chat_strategy):
+        """测试不同场景下的群名称修改逻辑（保存、取消、超长限制）"""
+        
+        with allure.step("1. 进入群设置页面"):
+            self.chatListPage.enter_chat(chat_strategy.name)
+            self.chatPage.click_more_button()
+            self.groupSettingPage.wait_for_setting_page_load()
+            
+        with allure.step("2. 获取修改前的群名称"):
+            old_name = self.groupSettingPage.get_group_name()
+            
+        with allure.step(f"3. 点击群名称，输入待测内容: '{input_content}'并执行【{action}】"):
+            self.groupSettingPage.click_group_name()
+            self.groupSettingPage.wait_for_name_dialog_load()
+            
+            self.groupSettingPage.input_name_content(input_content)
+            if action == "confirm":
+                self.groupSettingPage.click_name_confirm()
+            else:
+                self.groupSettingPage.click_name_cancel()
+            
+        with allure.step("4. 校验修改后的群名称结果"):
+            new_name = self.groupSettingPage.get_group_name()
+            if action == "confirm":
+                expected_name = input_content[:20] if expect_truncated else input_content
+                check.equal(new_name, expected_name, f"❌ 群名称确认修改后保存内容不一致")
+            else:
+                check.equal(new_name, old_name, f"❌ 取消修改后群名称被变更了")
+
+        with allure.step("5. 恢复初始群名称值"):
+            self.groupSettingPage.click_group_name()
+            self.groupSettingPage.wait_for_name_dialog_load()
+            self.groupSettingPage.input_name_content("")
+            self.groupSettingPage.click_name_confirm()
+
+
+    @allure.story("群设置-我在本群昵称")
+    @allure.title("通过群聊聊天页面修改我在本群昵称")
+    def test_group_nickname_validation(self):
+        """测试修改我在本群昵称功能"""
+        
+        with allure.step("1. 进入群设置页面"):
+            self.chatListPage.enter_chat(GROUP_STRATEGY.name)
+            self.chatPage.click_more_button()
+            self.groupSettingPage.wait_for_setting_page_load()
+            
+        with allure.step("2. 修改我在本群昵称"):
+            self.groupSettingPage.click_group_nickname()
+            self.groupSettingPage.wait_for_nickname_dialog_load()
+            
+            self.groupSettingPage.input_nickname_content("测试群昵称")
+            self.groupSettingPage.click_nickname_confirm()
+            
+        with allure.step("3. 校验我在本群昵称"):
+            new_nickname = self.groupSettingPage.get_group_nickname()
+            check.equal(new_nickname, "测试群昵称", f"❌ 我在本群昵称修改后不一致")
+
+    @allure.story("群设置-显示群成员昵称")
+    @allure.title("通过群聊聊天页面修改群设置-显示群成员昵称")
+    def test_group_display_member_nickname(self):
+        """测试修改群设置-显示群成员昵称功能"""
+        
+        with allure.step("1. 进入群设置页面"):
+            self.chatListPage.enter_chat(GROUP_STRATEGY.name)
+            self.chatPage.click_more_button()
+            self.groupSettingPage.wait_for_setting_page_load()
+            
+        with allure.step("2. 修改群设置-显示群成员昵称"):
+            self.groupSettingPage.click_display_member_nickname()
+            self.groupSettingPage.click_display_member_nickname_confirm()
+            self.groupSettingPage.click_iv_back_button()
+            self.groupSettingPage.click_iv_back_button()
+            
+        with allure.step("3. 校验群设置-显示群成员昵称"):
+            new_display_member_nickname = self.groupSettingPage.get_display_member_nickname()
+            check.equal(new_display_member_nickname, "开启" if GROUP_STRATEGY.display_member_nickname else "关闭", f"❌ 群设置-显示群成员昵称修改后不一致")
+            
