@@ -83,8 +83,10 @@ const receiptFields = ref([
 // 拖拽宽度与高度
 const sidebarWidth = ref(380)
 const reportHeight = ref(450)
+const paramsPanelHeight = ref(420) // 默认提供 420px 容纳多个输入框
 const isResizingH = ref(false)
 const isResizingV = ref(false)
+const isResizingParams = ref(false)
 
 // ==================== 2. 页面加载初始化 ====================
 onMounted(() => {
@@ -633,6 +635,34 @@ function handlePointerDownV(e) {
   window.addEventListener('pointerup', onPointerUp)
 }
 
+function handlePointerDownParams(e) {
+  e.preventDefault()
+  isResizingParams.value = true
+  document.body.style.cursor = 'ns-resize'
+  
+  const startY = e.clientY
+  const startHeight = paramsPanelHeight.value
+  
+  const onPointerMove = (moveEvent) => {
+    const deltaY = moveEvent.clientY - startY
+    let height = startHeight - deltaY
+    // 最小高度为 50px (只展示标题/折叠状态)，最大高度取决于视口大小
+    if (height < 50) height = 50
+    if (height > window.innerHeight - 200) height = window.innerHeight - 200
+    paramsPanelHeight.value = height
+  }
+  
+  const onPointerUp = () => {
+    isResizingParams.value = false
+    document.body.style.cursor = 'default'
+    window.removeEventListener('pointermove', onPointerMove)
+    window.removeEventListener('pointerup', onPointerUp)
+  }
+  
+  window.addEventListener('pointermove', onPointerMove)
+  window.addEventListener('pointerup', onPointerUp)
+}
+
 function resetParams() {
   remoteAppium.value = '127.0.0.1:4723'
   remoteAppium2.value = '127.0.0.1:4724'
@@ -650,7 +680,7 @@ function clearTerminal() {
 </script>
 
 <template>
-  <div class="app-layout" :class="{ 'is-resizing': isResizingH || isResizingV }">
+  <div class="app-layout" :class="{ 'is-resizing': isResizingH || isResizingV || isResizingParams }">
     <!-- 主操作界面 -->
     <main class="app-main">
       <!-- 左边栏：包含 Logo 区域、用例搜索、用例树与调试参数 -->
@@ -785,8 +815,11 @@ function clearTerminal() {
           </el-tree>
         </div>
 
+        <!-- 参数拖拽调整分割线 -->
+        <div class="resize-bar-params" @pointerdown="handlePointerDownParams"></div>
+
         <!-- 参数配置区 -->
-        <div class="params-panel">
+        <div class="params-panel" :style="{ height: paramsPanelHeight + 'px' }">
           <div class="panel-header">
             <span>🔌 远程调试与参数配置</span>
             <el-button link type="info" @click="resetParams">重置</el-button>
@@ -1133,6 +1166,27 @@ function clearTerminal() {
 /* 参数面板 */
 .params-panel {
   padding: 16px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  flex-shrink: 0;
+  border-top: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-sidebar-bottom, rgba(0, 0, 0, 0.015));
+}
+
+/* 参数拖拽调整分割线 */
+.resize-bar-params {
+  height: 6px;
+  cursor: ns-resize;
+  background: transparent;
+  transition: background 0.3s;
+  z-index: 10;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.resize-bar-params:hover,
+.app-layout.is-resizing .resize-bar-params {
+  background: var(--el-color-primary-light-3, #409eff);
 }
 
 .panel-header {
