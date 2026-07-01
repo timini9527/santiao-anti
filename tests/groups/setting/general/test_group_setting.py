@@ -322,3 +322,23 @@ class TestGroupSetting:
                 self.groupSettingPage.input_remark_content(old_group_name)
                 self.groupSettingPage.click_remark_confirm()
 
+    @allure.story("群设置-群头像")
+    @allure.title("通过群聊聊天页面修改群头像")
+    def test_change_group_avatar(self):
+        """通过群聊聊天页面修改群头像"""
+        with allure.step("1. 进入群设置页面"):
+            self.chatListPage.enter_chat(GROUP_STRATEGY.name)
+            self.chatPage.click_more_button()
+            self.groupSettingPage.wait_for_setting_page_load()
+            
+        with allure.step("2. 修改群头像"):
+            self.groupSettingPage.click_group_avatar()
+            self.groupSettingPage.click_group_avatar_confirm()
+            self.groupSettingPage.click_group_avatar_confirm()
+            self.groupSettingPage.click_iv_back_button()
+            self.groupSettingPage.click_iv_back_button()
+            
+        with allure.step("3. 校验群头像是否修改"):
+            new_avatar = self.groupSettingPage.get_group_avatar()
+            check.equal(new_avatar, GROUP_STRATEGY.avatar, f"❌ 群头像修改后不一致")
+            
