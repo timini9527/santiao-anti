@@ -46,5 +46,5 @@ class MediaSelectLocator:
     PHOTO_PREVIEW_CHECK_BOX  = (AppiumBy.ID, f'{PACKAGE_ID}/ps_tv_selected')     # 预览页右上角勾选按钮
 
     # 选中超过10张的弹窗
-    TV_CONTENT = (AppiumBy.ID, f'{PACKAGE_ID}/tv_content')     # 选中超过10张的弹窗内容
-    BTN_OK = (AppiumBy.ID, f'{PACKAGE_ID}/btnOk')     # 确认按钮
+    TV_CONTENT = (AppiumBy.ID, f'{PACKAGE_ID}/tv_content')      # 选中超过10张的弹窗内容
+    BTN_OK = (AppiumBy.ID, f'{PACKAGE_ID}/btnOk')               # 确认按钮

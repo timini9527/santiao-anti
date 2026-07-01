@@ -338,6 +338,17 @@ class GroupSettingPage(BasePage):
         logger.info(f"✅ [Action-groupSettingPage] 群聊设置页 - 获取群名称弹窗内容: {res}")
         return res
     
+    # 群聊设置页面群聊名称
+    def get_nva_group_name(self) -> str:
+        """群聊设置页面群聊名称"""
+        res = self.get_attribute(GroupSettingLocator.NVA_TV_NAME, 'text', timeout=2)
+        if not res:
+            logger.warning(f"❌ [Action-groupSettingPage] 群聊设置页 - 获取群聊名称失败")
+            return ""
+        logger.info(f"✅ [Action-groupSettingPage] 群聊设置页 - 获取群聊名称: {res}")
+        return res
+    
+    
 
     # ===============================================================================
     # 群公告-弹窗操作
@@ -370,9 +381,9 @@ class GroupSettingPage(BasePage):
     # 群备注弹窗操作与信息获取
     # ===============================================================================
     # 群备注 - 等待群备注弹窗加载
-    def wait_for_remark_dialog_load(self, timeout=5) -> bool:
+    def wait_for_remark_dialog_load(self, nva_text, timeout=5) -> bool:
         """群备注 - 等待群备注弹窗加载"""
-        res = self.get_attribute(GroupSettingLocator.REMARK_DIALOG_TITLE, 'text') == '群备注'
+        res = self.get_attribute(GroupSettingLocator.REMARK_DIALOG_TITLE, 'text') == nva_text
         if res:
             logger.info(f"✅ [Action-groupSettingPage] 群备注弹窗加载成功")
             return True
@@ -401,7 +412,7 @@ class GroupSettingPage(BasePage):
     
     def get_group_remark(self) -> str:
         """群备注 - 获取当前显示的群备注"""
-        res = self.get_attribute(GroupSettingLocator.NVA_TV, "text", raise_exception=False)
+        res = self.get_attribute(GroupSettingLocator.NVA_TV_REMARK, "text", raise_exception=False)
         if res:
             logger.info(f"📖 [Action-groupSettingPage] 获取当前【群备注】文本: '{res}'")
             return res

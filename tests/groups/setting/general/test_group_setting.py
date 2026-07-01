@@ -17,9 +17,11 @@ from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, GROUP_STRA
 class TestGroupSetting:
     """群聊设置/群管理相关测试用例"""
 
+    _has_entered_setting_page = False
+
     @pytest.fixture(autouse=True)
-    def setup_class(self, driver_sender):
-        """初始化页面对象"""
+    def setup_class(self, request, driver_sender):
+        """初始化页面对象并控制 Teardown 时机"""
         self.mainPage = MainPage(driver_sender)
         self.homePage = HomePage(driver_sender)
         self.groupCreatePage = GroupCreatePage(driver_sender)
@@ -31,8 +33,29 @@ class TestGroupSetting:
         
         yield
         
-        # 测试结束后返回首页，保证下一个用例有个干净的前置状态
-        self.mainPage.go_to_main_page()
+        current_test_name = request.node.name
+        should_go_home = False
+        
+        # 针对单次运行且执行完毕后停留在其他子页面、必须退回首页的用例
+        single_test_need_home = [
+            "test_group_show_member_nickname_toggle",
+            "test_modify_my_group_nickname",
+            "test_delete_group_cancel",
+            "test_clear_group_chat_records"
+        ]
+        
+        if any(name in current_test_name for name in single_test_need_home):
+            should_go_home = True
+        elif "test_group_remark_validation" in current_test_name and "超长20字限制截断" in current_test_name:
+            should_go_home = True
+        elif "test_group_name_validation" in current_test_name and "群名称包含敏感词" in current_test_name:
+            should_go_home = True
+            
+        if should_go_home:
+            logger.info(f"🧹 [Teardown] 用例满足退回首页条件，执行 go_to_main_page: {current_test_name}")
+            self.mainPage.go_to_main_page()
+        else:
+            logger.info(f"⏭️ [Teardown] 用例无需/已自行完成退回首页，略过 Teardown 回收: {current_test_name}")
 
     def _create_temp_group(self, friend_list):
         """内部辅助方法：快速创建一个用于测试的临时群聊"""
@@ -44,7 +67,6 @@ class TestGroupSetting:
                 self.contactSelectPage.click_contact_by_name(contact)
             self.contactSelectPage.click_action_button()
             
-            # 等待进群横幅消失，保证页面稳定
             self.chatPage.wait_banner_message_disappear()
             self.chatPage.wait_for_chat_page_load()
 
@@ -57,6 +79,22 @@ class TestGroupSetting:
             self.groupSettingPage.wait_for_setting_page_load()
             self.groupSettingPage.click_group_manager()
             self.groupManagerPage.click_dismiss_group()
+        
+    
+    # 
+    def _enter_group_setting_page(self, group_name):
+        """进入群设置页面 (使用内存 Flag 限制全局仅进入一次)"""
+        if getattr(self.__class__, "_has_entered_setting_page", False):
+            logger.info("⚡ [Setup] 当前已在群聊设置页，跳过重复进入流程")
+            return
+            
+        with allure.step("1. 进入群设置页面"):
+            self.chatListPage.enter_chat(group_name)
+            self.chatPage.click_more_button()
+            self.groupSettingPage.wait_for_setting_page_load()
+            self.__class__._has_entered_setting_page = True
+
+
 
     @allure.story("群聊详情设置")
     @allure.title("切换显示群成员昵称开关并校验状态-状态：已完成")
@@ -184,27 +222,25 @@ class TestGroupSetting:
 
     @allure.story("群备注功能")
     @allure.title("群备注修改校验 - {test_id}-状态：已完成")
-    @pytest.mark.parametrize("test_id, input_content, action, expect_truncated", [
-        ("正常修改并保存", "测试群备注1", "confirm", False),
-        ("修改并取消", "企图修改备注但取消", "cancel", False),
-        ("超长20字限制截断", "一二三四五六七八九十一二三四五六七八九十加", "confirm", True),
-    ], ids=["正常修改并保存", "修改并取消", "超长20字限制截断"])
+    @pytest.mark.parametrize("test_id, input_content, action, expect_truncated, last_case", [
+        ("正常修改并保存", "测试群备注1", "confirm", False, False),
+        ("敏感词", "习近平", "confirm", False, False),
+        ("修改并取消", "企图修改备注但取消", "cancel", False, False),
+        ("超长20字限制截断", "一二三四五六七八九十一二三四五六七八九十加", "confirm", True, True),
+    ], ids=["正常修改并保存", "敏感词", "修改并取消", "超长20字限制截断"])
     @pytest.mark.parametrize("chat_strategy", [GROUP_STRATEGY], ids=["群聊-群备注功能"])
-    def test_group_remark_validation(self, test_id, input_content, action, expect_truncated, chat_strategy):
+    def test_group_remark_validation(self, test_id, input_content, action, expect_truncated, last_case, chat_strategy):
         """测试不同场景下的群备注修改逻辑（保存、取消、超长限制）"""
         
         with allure.step("1. 进入群设置页面"):
-            self.chatListPage.enter_chat(chat_strategy.name)
-            self.chatPage.click_more_button()
-            self.groupSettingPage.wait_for_setting_page_load()
+            self._enter_group_setting_page(chat_strategy.name)
             
         with allure.step("2. 获取修改前的群备注"):
             old_remark = self.groupSettingPage.get_group_remark()
             
         with allure.step(f"3. 点击群备注，输入待测内容: '{input_content}'并执行【{action}】"):
             self.groupSettingPage.click_group_remark()
-            self.groupSettingPage.wait_for_remark_dialog_load()
-            
+            self.groupSettingPage.wait_for_remark_dialog_load(nva_text="群备注")
             self.groupSettingPage.input_remark_content(input_content)
             if action == "confirm":
                 self.groupSettingPage.click_remark_confirm()
@@ -212,12 +248,18 @@ class TestGroupSetting:
                 self.groupSettingPage.click_remark_cancel()
             
         with allure.step("4. 校验修改后的群备注结果"):
-            new_remark = self.groupSettingPage.get_group_remark()
-            if action == "confirm":
-                expected_remark = input_content[:20] if expect_truncated else input_content
-                check.equal(new_remark, expected_remark, f"❌ 群备注确认修改后保存内容不一致")
+            if test_id == "敏感词":
+                toast = self.groupSettingPage.get_toast()
+                check.is_in("群备注名不合法，请换个群备注名", toast, "❌ 群备注包含敏感词后未弹出提示")
+                new_remark = self.groupSettingPage.get_group_remark()
+                check.equal(new_remark, old_remark, f"❌ 敏感词被拦截后，群备注发生意外变更")
             else:
-                check.equal(new_remark, old_remark, f"❌ 取消修改后群备注被变更了")
+                new_remark = self.groupSettingPage.get_group_remark()
+                if action == "confirm":
+                    expected_remark = input_content[:20] if expect_truncated else input_content
+                    check.equal(new_remark, expected_remark, f"❌ 群备注确认修改后保存内容不一致")
+                else:
+                    check.equal(new_remark, old_remark, f"❌ 取消修改后群备注被变更了")
 
         # TODO：BUG待修复，群聊不展示群备注
         # with allure.step("5. 校验群名称是否修改"):
@@ -226,11 +268,57 @@ class TestGroupSetting:
         #     check.is_in(expected_remark, title, f"❌ 群名称校验失败")
  
         with allure.step("6. 恢复初始群备注值"):
-            self.groupSettingPage.click_group_remark()
-            self.groupSettingPage.wait_for_remark_dialog_load()
-            self.groupSettingPage.input_remark_content("")
+            if last_case:
+                self.groupSettingPage.click_group_remark()
+                self.groupSettingPage.wait_for_remark_dialog_load(nva_text="群备注")
+                self.groupSettingPage.input_remark_content("")
+                self.groupSettingPage.click_remark_confirm()
+
+
+    @allure.story("群名称功能")
+    @allure.title("群聊名称修改校验-状态：已完成")
+    @pytest.mark.parametrize(
+        "scenario, input_name, expected_toast, expected_result, should_change", 
+        [
+            ("empty", "", "群名称不能为空", "", False),
+            ("success", "新群聊名称", "", "新群聊名称", True),
+            ("limit_10", "一二三四五六七八九十", "", "一二三四五六七八九十", True),
+            ("limit_over", "一二三四五六七八九十一二", "", "一二三四五六七八九十", True),
+            ("sensitive", "习近平", "操作不成功，请换个名称！", "", False)
+        ],
+        ids=["群名称设置为空", "群名称正常修改", "群名称上限10个字", "群名称超限10字截断", "群名称包含敏感词"]
+    )
+    @pytest.mark.parametrize("chat_strategy", [GROUP_STRATEGY], ids=["群聊-群名称功能"])
+    def test_group_name_validation(self, scenario, input_name, expected_toast, expected_result, should_change, chat_strategy):
+        """验证群聊名称的修改规则，包含空输入、字数上限10个字截断、敏感词拦截等边界与异常场景"""
+
+        self._enter_group_setting_page(chat_strategy.name)
+
+        with allure.step("2. 获取修改前的群名称"):
+            old_group_name = self.groupSettingPage.get_nva_group_name()
+        
+        with allure.step(f"3. 触发修改群名称，输入: '{input_name}'"):
+            self.groupSettingPage.click_group_name()
+            self.groupSettingPage.wait_for_remark_dialog_load(nva_text="群名称")
+            self.groupSettingPage.input_remark_content(input_name)
             self.groupSettingPage.click_remark_confirm()
 
+        with allure.step("4. 校验修改后的结果与提示"):
+            if expected_toast:
+                toast_text = self.groupSettingPage.get_toast()
+                check.is_in(expected_toast, toast_text, f"❌ 未能监测到预期的 Toast 提示: '{expected_toast}', 实际: '{toast_text}'")
+            
+            if not should_change:
+                current_name = self.groupSettingPage.get_nva_group_name()
+                check.equal(old_group_name, current_name, f"❌ 异常输入后，群聊名称意外发生了改变")
+            else:
+                current_name = self.groupSettingPage.get_nva_group_name()
+                check.equal(expected_result, current_name, f"❌ 修改后的群聊名称与预期不符。预期: '{expected_result}', 实际: '{current_name}'")
 
-
+        with allure.step("5. 恢复初始群名称值"):
+            if should_change and old_group_name != expected_result:
+                self.groupSettingPage.click_group_name()
+                self.groupSettingPage.wait_for_remark_dialog_load(nva_text="群名称")
+                self.groupSettingPage.input_remark_content(old_group_name)
+                self.groupSettingPage.click_remark_confirm()
 

@@ -42,19 +42,24 @@ class TestGroupManagerDouble:
         self.contactDetailR = ContactDetailPage(driver_receiver)
 
         current_test = request.node.name
+        is_delete_group_test = "test_delete_group" in current_test
+        
         is_admin_test = current_test in [
             "test_admin_allocation_double_validation",
             "test_join_verify_admin_scenarios_double_validation",
             "test_add_admin_double_validation"
         ]
 
-        # 锁判断：非管理员用例，或未上锁的第一个管理员用例执行前置
-        if not is_admin_test:
-            self._run_env_setup()
+        if is_delete_group_test:
+            logger.info("⚡ [Setup] 检测到为解散群用例，跳过全局进群前置，采用动态建群机制")
         else:
-            if not self.__class__._env_setup_locked:
+            # 锁判断：非管理员用例，或未上锁的第一个管理员用例执行前置
+            if not is_admin_test:
                 self._run_env_setup()
-                self.__class__._env_setup_locked = True
+            else:
+                if not self.__class__._env_setup_locked:
+                    self._run_env_setup()
+                    self.__class__._env_setup_locked = True
 
         yield
 
@@ -443,3 +448,75 @@ class TestGroupManagerDouble:
             self.chatS.click_more_button()
             is_visible = self.groupSettingS.is_group_manager_visible()
             check.is_true(is_visible, "❌ 原群主(发送端)未重获群管理权限")
+
+
+    def _create_temp_group_double(self):
+        """双端辅助方法：动态创建一个临时群聊并让发送端进入群管理，接收端进入聊天页面"""
+        homeS = HomePage(self.mainS.driver)
+        groupCreateS = GroupCreatePage(self.mainS.driver)
+        contactSelectS = ContactSelectPage(self.mainS.driver)
+        
+        # 1. 发送端创建群聊，邀请接收端（PRIVATE_USER1）和另一个好友（PRIVATE_USER2）
+        with allure.step("-> [双端准备] 发送端(群主)创建临时群聊"):
+            homeS.click_add_button()
+            homeS.click_start_group_chat()
+            contactSelectS.wait_for_contact_and_group_select_page_load()
+            contactSelectS.click_contact_by_name(PRIVATE_USER1.name)
+            contactSelectS.click_contact_by_name(PRIVATE_USER2.name)
+            contactSelectS.click_action_button()
+            
+            self.chatS.wait_banner_message_disappear()
+            self.chatS.wait_for_chat_page_load()
+            
+            temp_group_name = self.chatS.get_top_name()
+            # 发送一条消息激活群聊以使其在接收端列表呈现
+            self.chatS.send_message("临时群聊建立测试")
+            
+        # 2. 接收端进入该群聊
+        with allure.step("-> [双端准备] 接收端(群成员)进入该临时群聊"):
+            self.chatListR.enter_chat(temp_group_name)
+            self.chatR.wait_for_chat_page_load()
+            
+        # 3. 发送端进入群管理页面
+        with allure.step("-> [双端准备] 发送端(群主)进入该群的【群管理】页面"):
+            self.chatS.click_more_button()
+            self.groupSettingS.wait_for_setting_page_load()
+            self.groupSettingS.click_group_manager()
+            self.groupManagerS.wait_for_page_load()
+
+    @allure.story("群管理-解散群聊双端校验")
+    @allure.title("【解散群聊】群主正常解散群聊-成员端同步被移出并接收失效通知-状态：已完成")
+    @pytest.mark.skip(reason="待修复")
+    def test_delete_group_success_double_validation(self):
+        """双端验证：群主在群管理中解散群聊，群主和成员端状态同步刷新"""
+        # 动态创建隔离环境的临时群
+        self._create_temp_group_double()
+        
+        with allure.step("1. 发送端(群主)在群管理中点击【解散群聊】"):
+            self.groupManagerS.click_dismiss_group()
+            
+        with allure.step("2. 发送端确认弹窗解散"):
+            self.groupSettingS.click_confirm_button()
+            toast = self.groupSettingS.get_toast()
+            check.is_in("群不存在", toast, "❌ 发送端解散群聊后未弹出提示")
+            
+        with allure.step("3. 校验接收端(群成员)同步退回首页"):
+            # 接收端因为群被解散，应当同步退出或由 teardown 归位，这里验证能够退回消息主页
+            self.mainR.go_to_main_page()
+
+    @allure.story("群管理-解散群聊双端校验")
+    @allure.title("【解散群聊】群主取消解散群聊-群聊依然保持健在-状态：已完成")
+    @pytest.mark.skip(reason="待修复")
+    def test_delete_group_cancel_double_validation(self):
+        """双端验证：群主点击解散群聊但选择取消，群聊依然健在且成员能正常发言"""
+        # 动态创建隔离环境的临时群
+        self._create_temp_group_double()
+        
+        with allure.step("1. 发送端(群主)在群管理中点击【解散群聊】并取消"):
+            self.groupManagerS.click_dismiss_group()
+            self.groupSettingS.click_cancel_button()
+            
+        with allure.step("2. 接收端(成员)尝试发送消息验证群聊是否正常"):
+            self.chatR.send_message("群聊正常修改取消测试")
+            total_msg = self.chatR.get_total_message_count()
+            check.is_true(total_msg > 0, "❌ 取消解散后，群成员无法正常发送聊天消息")

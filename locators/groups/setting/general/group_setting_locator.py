@@ -24,7 +24,8 @@ class GroupSettingLocator(ChatSettingLocator):
     SETTING_CHAT_GROUP_REMARKS = (AppiumBy.ID, f"{SETTING_CHAT_GROUP_REMARKS_ID}")                      # 群备注
     SETTING_CHAT_GROUP_MANAGER = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_groupManager")               # 群管理
     SETTING_CHAT_GROUP_HEADER = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_groupHeader")                 # 群头像
-    SETTING_CHAT_GROUP_NAME = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_groupName")                     # 群聊名称
+    SETTING_CHAT_GROUP_NAME_ID = f"{PACKAGE_ID}/setting_chat_groupName"                                 # 群聊名称ID
+    SETTING_CHAT_GROUP_NAME = (AppiumBy.ID, f"{SETTING_CHAT_GROUP_NAME_ID}")                            # 群聊名称
     SETTING_SEARCH_GROUPCHATMESSAGE = (AppiumBy.ID, f"{PACKAGE_ID}/setting_search_groupChatMessage")    # 查找聊天记录
     
     # 其他设置项
@@ -50,8 +51,8 @@ class GroupSettingLocator(ChatSettingLocator):
     TV_CANCEL = CommonLocator.TEXT_CANCEL_BTN                                                            # 取消按钮 
 
     # 群备注弹窗
-    NVA_TV = (AppiumBy.XPATH, f"//*[contains(@resource-id, '{SETTING_CHAT_GROUP_REMARKS_ID}')]//*[contains(@resource-id, 'nva_tv')]")  # 群备注名称
-
+    # 群备注名称
+    NVA_TV_REMARK = (AppiumBy.XPATH, f"//*[contains(@resource-id, '{SETTING_CHAT_GROUP_REMARKS_ID}')]//*[contains(@resource-id, 'nva_tv')]") 
     REMARK_DIALOG_TITLE = (AppiumBy.ID, f"{PACKAGE_ID}/tv_main")                                        # 弹窗标题
     REMARK_DIALOG_INPUT = (AppiumBy.ID, f"{PACKAGE_ID}/update_name")                                    # 输入框 
 
@@ -65,7 +66,9 @@ class GroupSettingLocator(ChatSettingLocator):
     # 群名称：
     TV_MESSAGE = (AppiumBy.ID, f"{PACKAGE_ID}/tv_message")                                              # 无权限弹窗内容提示
     TV_SECOND = (AppiumBy.ID, f"{PACKAGE_ID}/tv_second")                                                # 修改群公告弹窗内容提示
-    
+    # 群聊设置页面群聊名称
+    NVA_TV_NAME = (AppiumBy.XPATH, f"//*[contains(@resource-id, '{SETTING_CHAT_GROUP_NAME_ID}')]//*[contains(@resource-id, 'nva_tv')]")
+
 
     # @所有人按钮
     LL_AT_ALL = (AppiumBy.ID, f"{PACKAGE_ID}/ll_at_all")                                                # @所有人按钮
