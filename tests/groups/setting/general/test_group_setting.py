@@ -401,6 +401,7 @@ class TestGroupSetting:
             new_nickname = self.groupSettingPage.get_group_nickname()
             check.equal(new_nickname, "测试群昵称", f"❌ 我在本群昵称修改后不一致")
 
+
     @allure.story("群设置-显示群成员昵称")
     @allure.title("通过群聊聊天页面修改群设置-显示群成员昵称")
     def test_group_display_member_nickname(self):
