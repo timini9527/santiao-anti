@@ -336,8 +336,6 @@ class TestGroupSetting:
             check.equal(new_avatar, GROUP_STRATEGY.avatar, f"❌ 群头像修改后不一致")
 
 
-
-
     @allure.story("群设置-我在本群昵称")
     @allure.title("通过群聊聊天页面修改我在本群昵称")
     def test_group_nickname_validation(self):
