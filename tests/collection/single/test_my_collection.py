@@ -2,9 +2,8 @@ import allure
 import pytest
 import pytest_check as check
 from pytest_check import equal
-
 from pages.main.main_page import MainPage
-from pages.mine.collection_page import CollectionPage
+from pages.collection.collection_page import CollectionPage
 from core.logger_utils import logger
 
 

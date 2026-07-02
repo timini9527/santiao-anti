@@ -2,8 +2,8 @@ import allure
 import pytest
 import pytest_check as check
 
-from pages.chat.chat_list_page import ChatListPage
-from pages.chat.chat_page import ChatPage
+from pages.chat.list.chat_list_page import ChatListPage
+from pages.chat.core.chat_page import ChatPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2
 from pages.chat_options.images.chat_image_page import ChatImagePage
 from pages.chat_options.emojis.chat_emoji_page import ChatEmojiPage

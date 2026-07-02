@@ -3,9 +3,9 @@ import allure
 import pytest
 import pytest_check as check
 from core.logger_utils import logger
-from pages.chat.chat_collection_source_page import ChatCollectionSourcePage
-from pages.chat.chat_list_page import ChatListPage
-from pages.chat.chat_setting_page import ChatSettingPage
+from pages.collection.chat_collection_source_page import ChatCollectionSourcePage
+from pages.chat.list.chat_list_page import ChatListPage
+from pages.chat.setting.chat_setting_page import ChatSettingPage
 from pages.home.home_page import HomePage
 from pages.main.main_page import MainPage
 from strategy.chat.chat_strategy import (

@@ -332,56 +332,85 @@ function handleNodeExpand(data, node) {
 // ==================== 4. 移动端与 Appium 自动探测 ====================
 
 async function initDeviceDetectors() {
-  detectAppiumStatus()
-  detectConnectedDevices()
+  detectAppiumStatus(4723)
+  detectAppiumStatus(4724)
+  detectConnectedDevices(1)
 }
 
-async function detectAppiumStatus() {
+async function detectAppiumStatus(port = 4723) {
   try {
-    const res = await fetch('/api/detect_appium', { method: 'POST' })
+    const res = await fetch('/api/detect_appium', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ port })
+    })
     const data = await res.json()
     if (data.appium) {
-      remoteAppium.value = data.appium
+      if (port === 4723) {
+        remoteAppium.value = data.appium
+      } else if (port === 4724) {
+        remoteAppium2.value = data.appium
+      }
+      ElMessage.success(`探测端口 ${port} 成功，Appium 服务可用`)
+    } else {
+      ElMessage.warning(`端口 ${port} 探测完毕：当前未运行 Appium 监听`)
     }
   } catch (e) {
-    console.warn("探测 Appium 失败", e)
+    console.warn(`探测 Appium 端口 ${port} 失败`, e)
   }
 }
 
-async function triggerStartAppium() {
+async function triggerStartAppium(port = 4723) {
   try {
     const res = await fetch('/api/start_appium', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ os: osSelect.value })
+      body: JSON.stringify({ os: osSelect.value, port })
     })
     const data = await res.json()
     if (data.success) {
-      ElMessage.success("已请求后台拉起 Appium 进程，正在监听 4723 端口...")
+      ElMessage.success(`已请求后台拉起 Appium 进程，正在监听 ${port} 端口...`)
       setTimeout(() => {
-        detectAppiumStatus()
+        detectAppiumStatus(port)
       }, 3000)
     }
   } catch (e) {
-    ElMessage.error("调起 Appium 异常: " + e.message)
+    ElMessage.error(`调起 Appium (端口 ${port}) 异常: ` + e.message)
   }
 }
 
-async function detectConnectedDevices() {
+async function detectConnectedDevices(targetIndex = 1) {
   try {
     const res = await fetch('/api/detect_udid', { method: 'POST' })
     const data = await res.json()
-    if (data.udid) {
-      remoteUdid.value = data.udid.split(' ')[0]
-      ElMessage({ message: `自动探测到已连接设备: ${data.udid}`, type: 'success' })
+    
+    if (data.devices && data.devices.length > 0) {
+      if (targetIndex === 1) {
+        // 第一个检测按钮：严格获取第一个设备的 UDID
+        const device = data.devices[0]
+        remoteUdid.value = device.split(' ')[0]
+        ElMessage.success(`已成功检测并映射第一部设备: ${remoteUdid.value}`)
+      } else {
+        // 第二个检测按钮：严格获取第二个设备的 UDID
+        if (data.devices.length >= 2) {
+          const device = data.devices[1]
+          remoteUdid2.value = device.split(' ')[0]
+          ElMessage.success(`已成功检测并映射第二部设备: ${remoteUdid2.value}`)
+        } else {
+          // 设备数少于 2 台，说明无法满足第二个按钮获取第二个设备的需求
+          ElMessage.warning("未检测到对应的第二部手机设备！请确保已接入至少两部手机且都已开启 USB 调试。")
+        }
+      }
+    } else {
+      ElMessage.error("未检测到任何已连接的手机设备，请检查 USB 数据线连通性并开启开发者模式。")
     }
   } catch (e) {
-    console.warn("探测 UDID 失败", e)
+    ElMessage.error("检测手机 UDID 失败: " + e.message)
   }
 }
 
-// ==================== 5. 用例执行控制 ====================
 
+// ==================== 5. 用例执行控制 ====================
 async function startTestExecution(node) {
   if (isRunning.value) return
 
@@ -825,79 +854,110 @@ function clearTerminal() {
             <el-button link type="info" @click="resetParams">重置</el-button>
           </div>
 
-          <el-form label-position="top" size="small">
-            <el-form-item label="Appium 1 地址 (发送端)">
-              <div class="appium-group">
-                <el-select v-model="osSelect" style="width: 100px;" placeholder="系统">
-                  <el-option label="Win" value="windows" />
-                  <el-option label="Mac" value="mac" />
-                </el-select>
-                <el-select
-                  v-model="remoteAppium"
-                  filterable
-                  allow-create
-                  default-first-option
-                  placeholder="选择或输入 Appium 地址"
-                  style="flex: 1;"
-                >
-                  <el-option label="127.0.0.1:4723 (本地)" value="127.0.0.1:4723" />
-                  <el-option label="192.168.1.212:4723" value="192.168.1.212:4723" />
-                  <el-option label="192.168.1.135:4723" value="192.168.1.135:4723" />
-                </el-select>
-                <el-button type="info" @click="triggerStartAppium">启动</el-button>
-                <el-button type="primary" plain @click="detectAppiumStatus">探测</el-button>
-              </div>
-            </el-form-item>
+            <el-form label-position="top" size="small">
+              <el-form-item>
+                <template #label>
+                  <div class="form-label-with-actions">
+                    <span>Appium 1 地址 (发送端)</span>
+                    <div class="label-actions">
+                      <el-button class="label-btn label-btn-info" size="small" @click="triggerStartAppium(4723)">启动</el-button>
+                      <el-button class="label-btn label-btn-primary" size="small" @click="detectAppiumStatus(4723)">探测</el-button>
+                    </div>
+                  </div>
+                </template>
+                <div class="appium-group">
+                  <el-select v-model="osSelect" style="width: 100px; margin-right: 8px;" placeholder="系统">
+                    <el-option label="Win" value="windows" />
+                    <el-option label="Mac" value="mac" />
+                  </el-select>
+                  <el-select
+                    v-model="remoteAppium"
+                    filterable
+                    allow-create
+                    default-first-option
+                    placeholder="选择或输入 Appium 地址"
+                    style="flex: 1;"
+                  >
+                    <el-option label="127.0.0.1:4723 (本地)" value="127.0.0.1:4723" />
+                    <el-option label="192.168.1.212:4723" value="192.168.1.212:4723" />
+                    <el-option label="192.168.1.135:4723" value="192.168.1.135:4723" />
+                  </el-select>
+                </div>
+              </el-form-item>
 
-            <el-form-item label="Appium 2 地址 (接收端)">
-              <div class="appium-group">
-                <el-select
-                  v-model="remoteAppium2"
-                  filterable
-                  allow-create
-                  default-first-option
-                  placeholder="选择或输入 Appium 2 地址"
-                  style="flex: 1;"
-                >
-                  <el-option label="127.0.0.1:4724 (本地)" value="127.0.0.1:4724" />
-                  <el-option label="192.168.1.212:4724" value="192.168.1.212:4724" />
-                  <el-option label="192.168.1.135:4724" value="192.168.1.135:4724" />
-                </el-select>
-              </div>
-            </el-form-item>
+              <el-form-item>
+                <template #label>
+                  <div class="form-label-with-actions">
+                    <span>Appium 2 地址 (接收端)</span>
+                    <div class="label-actions">
+                      <el-button class="label-btn label-btn-info" size="small" @click="triggerStartAppium(4724)">启动</el-button>
+                      <el-button class="label-btn label-btn-primary" size="small" @click="detectAppiumStatus(4724)">探测</el-button>
+                    </div>
+                  </div>
+                </template>
+                <div class="appium-group">
+                  <el-select
+                    v-model="remoteAppium2"
+                    filterable
+                    allow-create
+                    default-first-option
+                    placeholder="选择或输入 Appium 2 地址"
+                    style="width: 100%;"
+                  >
+                    <el-option label="127.0.0.1:4724 (本地)" value="127.0.0.1:4724" />
+                    <el-option label="192.168.1.212:4724" value="192.168.1.212:4724" />
+                    <el-option label="192.168.1.135:4724" value="192.168.1.135:4724" />
+                  </el-select>
+                </div>
+              </el-form-item>
 
-            <el-form-item label="第一部手机 UDID (发送端)">
-              <div class="udid-group">
-                <el-select
-                  v-model="remoteUdid"
-                  filterable
-                  allow-create
-                  default-first-option
-                  placeholder="自动检测、输入或选择UDID"
-                  style="flex: 1;"
-                >
-                  <el-option label="华为 (QFF0219A11009305)" value="QFF0219A11009305" />
-                  <el-option label="小米 (20a5fa17)" value="20a5fa17" />
-                </el-select>
-                <el-button type="primary" plain @click="detectConnectedDevices">检测真机</el-button>
-              </div>
-            </el-form-item>
+              <el-form-item>
+                <template #label>
+                  <div class="form-label-with-actions">
+                    <span>第一部手机 UDID (发送端)</span>
+                    <div class="label-actions">
+                      <el-button class="label-btn label-btn-success" size="small" @click="detectConnectedDevices(1)">检测真机</el-button>
+                    </div>
+                  </div>
+                </template>
+                <div class="udid-group">
+                  <el-select
+                    v-model="remoteUdid"
+                    filterable
+                    allow-create
+                    default-first-option
+                    placeholder="自动检测、输入或选择UDID"
+                    style="width: 100%;"
+                  >
+                    <el-option label="华为 (QFF0219A11009305)" value="QFF0219A11009305" />
+                    <el-option label="小米 (20a5fa17)" value="20a5fa17" />
+                  </el-select>
+                </div>
+              </el-form-item>
 
-            <el-form-item label="第二部手机 UDID (接收端)">
-              <div class="udid-group">
-                <el-select
-                  v-model="remoteUdid2"
-                  filterable
-                  allow-create
-                  default-first-option
-                  placeholder="输入或选择第二部手机UDID"
-                  style="flex: 1;"
-                >
-                  <el-option label="华为 (QFF0219A11009305)" value="QFF0219A11009305" />
-                  <el-option label="小米 (20a5fa17)" value="20a5fa17" />
-                </el-select>
-              </div>
-            </el-form-item>
+              <el-form-item>
+                <template #label>
+                  <div class="form-label-with-actions">
+                    <span>第二部手机 UDID (接收端)</span>
+                    <div class="label-actions">
+                      <el-button class="label-btn label-btn-success" size="small" @click="detectConnectedDevices(2)">检测真机</el-button>
+                    </div>
+                  </div>
+                </template>
+                <div class="udid-group">
+                  <el-select
+                    v-model="remoteUdid2"
+                    filterable
+                    allow-create
+                    default-first-option
+                    placeholder="输入或选择第二部手机UDID"
+                    style="width: 100%;"
+                  >
+                    <el-option label="华为 (QFF0219A11009305)" value="QFF0219A11009305" />
+                    <el-option label="小米 (20a5fa17)" value="20a5fa17" />
+                  </el-select>
+                </div>
+              </el-form-item>
 
             <el-form-item label="业务调试变量 (私聊 / 群聊)">
               <div class="chat-vars-group">
@@ -1379,6 +1439,67 @@ function clearTerminal() {
 .receipt-row {
   display: flex;
   align-items: center;
+}
+
+.form-label-with-actions {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  width: 100%;
+}
+
+.label-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: 16px; /* 增加与标题的横向间隔 */
+}
+
+/* 科技感药丸胶囊按钮美化 */
+.label-btn {
+  padding: 1px 8px !important;
+  height: 18px !important;
+  font-size: 10px !important;
+  border-radius: 10px !important; /* 药丸弧度 */
+  font-weight: 600 !important;
+  border: none !important;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.label-btn-info {
+  background: linear-gradient(135deg, #64748b, #475569) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 5px rgba(100, 116, 139, 0.3) !important;
+}
+.label-btn-info:hover {
+  background: linear-gradient(135deg, #78889b, #5a6a7f) !important;
+  transform: translateY(-1px) scale(1.04) !important;
+  box-shadow: 0 4px 10px rgba(100, 116, 139, 0.5) !important;
+}
+
+.label-btn-primary {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 5px rgba(59, 130, 246, 0.35) !important;
+}
+.label-btn-primary:hover {
+  background: linear-gradient(135deg, #60a5fa, #2563eb) !important;
+  transform: translateY(-1px) scale(1.04) !important;
+  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.55) !important;
+}
+
+.label-btn-success {
+  background: linear-gradient(135deg, #10b981, #047857) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 5px rgba(16, 185, 129, 0.35) !important;
+}
+.label-btn-success:hover {
+  background: linear-gradient(135deg, #34d399, #059669) !important;
+  transform: translateY(-1px) scale(1.04) !important;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.55) !important;
 }
 
 @keyframes blink {

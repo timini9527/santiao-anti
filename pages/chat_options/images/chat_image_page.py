@@ -4,9 +4,9 @@ from selenium.common import NoSuchElementException
 from common.base_page import BasePage
 from core.logger_utils import logger
 from appium.webdriver.common.appiumby import AppiumBy
-from locators.chat.chat_locator import ChatLocator
+from locators.chat.core.chat_locator import ChatLocator
 from locators.chat_options.images.chat_image_locator import ChatImageLocator
-from pages.chat.chat_page import ChatPage
+from pages.chat.core.chat_page import ChatPage
 from utils.cv_recognition.screenshot_utils import ScreenshotUtils, CropRect
 
 class ChatImagePage(ChatPage):

@@ -3,8 +3,8 @@ import pytest
 import pytest_check as check
 from core.logger_utils import logger
 from pages.main.main_page import MainPage
-from pages.chat.chat_list_page import ChatListPage 
-from pages.chat.chat_page import ChatPage
+from pages.chat.list.chat_list_page import ChatListPage 
+from pages.chat.core.chat_page import ChatPage
 from pages.common.contact_select_page import ContactSelectPage
 from pages.chat_options.contact.chat_contact_card_page import ChatContactCardPage
 from pages.personal.contact_detail_page import ContactDetailPage

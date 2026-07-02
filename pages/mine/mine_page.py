@@ -3,6 +3,8 @@ from common.base_page import BasePage
 from core.logger_utils import logger
 from appium.webdriver.common.appiumby import AppiumBy
 
+
+
 #   我的
 class MinePage(BasePage):
 

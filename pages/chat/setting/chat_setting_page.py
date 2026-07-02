@@ -1,7 +1,7 @@
 from core.logger_utils import logger
-from locators.chat.chat_setting_locator import ChatSettingLocator
+from locators.chat.setting.chat_setting_locator import ChatSettingLocator
 from locators.common.common_locator import CommonLocator
-from pages.chat.chat_page import ChatPage
+from pages.chat.core.chat_page import ChatPage
 
 
 class ChatSettingPage(ChatPage):

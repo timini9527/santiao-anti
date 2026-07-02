@@ -2,7 +2,7 @@ import allure
 import time
 from appium.webdriver.common.appiumby import AppiumBy
 from selenium.webdriver.remote.webelement import WebElement
-from pages.chat.chat_page import ChatPage
+from pages.chat.core.chat_page import ChatPage
 from core.logger_utils import logger
 from locators.chat_options.contact.chat_contact_card_locator import ChatContactCardLocator
 from locators.common.contact_select_locator import ContactSelectLocator

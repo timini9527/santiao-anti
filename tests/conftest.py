@@ -1,7 +1,7 @@
 import pytest
 
-from pages.chat.chat_collection_source_page import ChatCollectionSourcePage
-from pages.chat.chat_list_page import ChatListPage
+from pages.collection.chat_collection_source_page import ChatCollectionSourcePage
+from pages.chat.list.chat_list_page import ChatListPage
 from pages.main.main_page import MainPage
 from pages.home.side_slip_page import SideSlipPage
 from pages.home.home_page import HomePage

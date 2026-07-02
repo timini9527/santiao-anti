@@ -340,7 +340,7 @@ class ChatEmojiPackagePage(ChatEmojiPanelBase):
         :param count: 期望添加的数量
         :return: (成功添加的个数, 每个 index 的状态字典 {"item_1": True, "item_2": False})
         """
-        from pages.chat.chat_page import ChatPage
+        from pages.chat.core.chat_page import ChatPage
         from pages.common.common_page import CommonPage
         
         target_elems = emoji_pkg_elems[:count]

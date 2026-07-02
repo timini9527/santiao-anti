@@ -3,7 +3,7 @@ from selenium.webdriver import ActionChains
 from appium.webdriver.common.appiumby import AppiumBy
 from common.base_page import BasePage
 from core.logger_utils import logger
-from pages.chat.chat_page import ChatPage
+from pages.chat.core.chat_page import ChatPage
 from locators.chat_options.voice.chat_voice_locator import ChatVoiceLocator
 
 

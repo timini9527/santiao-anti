@@ -35,7 +35,7 @@ def get_imports(filepath):
                 elif os.path.exists(possible_path_2):
                     local_imports.add(possible_path_2)
                 else:
-                    # 也可能是 from pages.chat.chat_page import ChatPage
+                    # 也可能是 from pages.chat.core.chat_page import ChatPage
                     for name_node in node.names:
                         possible_path_3 = os.path.join(*parts, name_node.name) + '.py'
                         possible_path_4 = os.path.join(*parts, name_node.name, '__init__.py')

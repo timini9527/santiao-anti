@@ -1,6 +1,6 @@
 import time
 from common.base_page import BasePage
-from locators.chat.chat_search_locator import ChatSearchLocator
+from locators.chat.search.chat_search_locator import ChatSearchLocator
 from core.logger_utils import logger
 from appium.webdriver.webelement import WebElement
 from utils.cv_recognition.screenshot_utils import ScreenshotUtils

@@ -1,7 +1,7 @@
 from appium.webdriver.common.appiumby import AppiumBy
 from locators.common.common_locator import CommonLocator
 from locators.chat_options.media_select_locator import MediaSelectLocator
-from locators.chat.chat_locator import ChatLocator
+from locators.chat.core.chat_locator import ChatLocator
 
 
 class ChatImageLocator(MediaSelectLocator):

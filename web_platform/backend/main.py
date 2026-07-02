@@ -34,6 +34,10 @@ class StopParams(BaseModel):
 
 class StartAppiumParams(BaseModel):
     os: Optional[str] = "windows"
+    port: Optional[int] = 4723
+
+class DetectAppiumParams(BaseModel):
+    port: Optional[int] = 4723
 
 # ==================== REST API 接口 ====================
 
@@ -90,9 +94,10 @@ async def api_stop_test(params: StopParams):
     return {"success": True, "message": msg}
 
 @app.post("/api/detect_appium")
-async def api_detect_appium():
+async def api_detect_appium(params: Optional[DetectAppiumParams] = None):
     """探测本机 Appium 服务状态"""
-    url = detect_appium_status()
+    port = params.port if params else 4723
+    url = detect_appium_status(port)
     return {"success": True, "appium": url}
 
 @app.post("/api/detect_udid")
@@ -105,7 +110,7 @@ async def api_detect_udid():
 @app.post("/api/start_appium")
 async def api_start_appium(params: StartAppiumParams):
     """自动调起服务端的 Appium"""
-    success = start_appium_server(params.os)
+    success = start_appium_server(params.os, params.port)
     if not success:
         raise HTTPException(status_code=500, detail="调起 Appium 失败")
     return {"success": True}

@@ -1,8 +1,8 @@
 import allure
 import pytest
 import pytest_check as check
-from pages.chat.chat_list_page import ChatListPage
-from pages.chat.chat_page import ChatPage
+from pages.chat.list.chat_list_page import ChatListPage
+from pages.chat.core.chat_page import ChatPage
 from strategy.chat.chat_strategy import (PRIVATE_USER1)
 from pages.main.main_page import MainPage
 from core.logger_utils import logger

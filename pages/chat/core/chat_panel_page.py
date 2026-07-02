@@ -1,6 +1,6 @@
 import time
 from common.base_page import BasePage
-from locators.chat.chat_locaotr_panel import ChatLocatorPanel
+from locators.chat.core.chat_panel_locator import ChatLocatorPanel
 from core.logger_utils import logger
 from appium.webdriver.webelement import WebElement
 

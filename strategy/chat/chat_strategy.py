@@ -3,7 +3,7 @@ import json
 from dataclasses import dataclass
 from typing import List, Optional
 
-from locators.chat.chat_locator import ChatLocator
+from locators.chat.core.chat_locator import ChatLocator
 from locators.home.home_locator import HomeLocator
 
 @dataclass

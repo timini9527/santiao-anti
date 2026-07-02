@@ -1,6 +1,6 @@
 from appium.webdriver.common.appiumby import AppiumBy
 from locators.common.common_locator import CommonLocator
-from locators.chat.chat_locator import ChatLocator
+from locators.chat.core.chat_locator import ChatLocator
 
 class CollectionLocator(CommonLocator):
     PACKAGE_ID = CommonLocator.PACKAGE_ID

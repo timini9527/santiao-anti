@@ -4,16 +4,15 @@ import pytest_check as check
 from pytest_check import equal
 
 from pages.main.main_page import MainPage
-from pages.chat.chat_collection_source_page import ChatCollectionSourcePage
-from pages.mine.MyCollectionPage import MyCollectionPage
+from pages.collection.chat_collection_source_page import ChatCollectionSourcePage
+from pages.collection.collection_page import CollectionPage
 from core.logger_utils import logger
 
 
-@pytest.mark.usefixtures('message_page', 'go_to_message_list')
 @allure.epic("IM核心功能测试")
-@allure.feature("我的模块-收藏夹")
-@allure.story("进入我的收藏页面")
-class TestCollectionSourceChat:
+@allure.feature("我的收藏-聊天页面收藏")
+class TestChatCollection:
+    """聊天页面发送收藏的测试类"""
 
     @pytest.fixture(autouse=True)
     def setup(self, driver_sender):
@@ -22,10 +21,9 @@ class TestCollectionSourceChat:
         这样下面的方法就不需要反复传参了
         """
         self.chatCollectionPage = ChatCollectionSourcePage(driver_sender)
-        self.collPage = MyCollectionPage(driver_sender)
+        self.collPage = CollectionPage(driver_sender)
         self.mainPage = MainPage(driver_sender)
 
-    """ 执行测试函数前需要构造数据 """
 
     # 收藏第一条消息通用断言
     @allure.step("私聊聊天页面收藏一条消息通用断言")
@@ -209,6 +207,8 @@ class TestCollectionSourceChat:
         assert diff <= threshold, (f"❌ 时间校验失败！误差 {diff}s 超过了 {threshold}s 限制。"
                                    f"操作时间: {dt2}"
                                    f"UI显示: {dt1}")
+
+
 
     @allure.story("私聊聊天页面收藏第一条(发送/接收)的文本消息")
     @pytest.mark.parametrize("msg_source", ["sent", "received"], ids=["发送的文本消息", "接收的文本消息"])

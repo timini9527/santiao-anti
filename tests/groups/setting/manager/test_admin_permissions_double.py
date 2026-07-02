@@ -6,9 +6,9 @@ from core.logger_utils import logger
 from pages.main.main_page import MainPage
 from pages.groups.setting.general.group_setting_page import GroupSettingPage
 from pages.groups.setting.manager.group_manager_page import GroupManagerPage
-from pages.chat.chat_page import ChatPage
-from pages.chat.chat_list_page import ChatListPage
-from pages.chat.chat_long_press_page import ChatLongPressPage
+from pages.chat.core.chat_page import ChatPage
+from pages.chat.list.chat_list_page import ChatListPage
+from pages.chat.core.chat_long_press_page import ChatLongPressPage
 from pages.groups.bot.group_bot_page import GroupBotPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
 from locators.groups.setting.general.group_setting_locator import GroupSettingLocator

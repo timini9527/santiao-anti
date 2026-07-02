@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import List
 import time
 from core.logger_utils import logger
-from pages.chat.chat_page import ChatPage
+from pages.chat.core.chat_page import ChatPage
 
 
 

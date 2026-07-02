@@ -8,8 +8,8 @@ from pages.home.home_page import HomePage
 from pages.groups.create.group_create_page import GroupCreatePage
 from pages.groups.setting.general.group_setting_page import GroupSettingPage
 from pages.groups.setting.manager.group_manager_page import GroupManagerPage
-from pages.chat.chat_page import ChatPage
-from pages.chat.chat_list_page import ChatListPage
+from pages.chat.core.chat_page import ChatPage
+from pages.chat.list.chat_list_page import ChatListPage
 from pages.common.contact_select_page import ContactSelectPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, GROUP_STRATEGY
 

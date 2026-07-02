@@ -1,407 +1,496 @@
+import io
+import os
 import time
+from datetime import datetime
+import imagehash
+from PIL import Image
+from appium.webdriver.common.appiumby import AppiumBy
+from dateutil import parser
+from selenium.common import StaleElementReferenceException
+from selenium.webdriver.remote.webelement import WebElement
+
 from common.base_page import BasePage
-from appium.webdriver.webelement import WebElement
-from locators.collection.collection_locator import CollectionLocator
+from pages.mine.mine_page import MinePage
 from core.logger_utils import logger
-from pages.chat.chat_page import ChatPage
-from utils.cv_recognition.screenshot_utils import ScreenshotUtils, ImageComparator
 
-class CollectionPage(ChatPage):
-    
-    # 等待收藏选择页面加载
-    def wait_for_collection_page_load(self, timeout: int = 10) -> bool:
-        """
-        等待收藏选择页加载完成
-        Args:
-            timeout: 超时时间
-        Returns:
-            bool: True 表示加载成功，False 表示超时
-        """
-        logger.info(f"⏳ [Wait] 等待收藏选择页加载完成，超时时间 {timeout} 秒")
-        try:
-            title = self.get_attribute(CollectionLocator.TOP_TV_TITLE, 'text')
-            logger.info(f"✅ [Wait] 收藏选择页加载完成，标题为：{title}")
-            if "收藏" not in title:
-                logger.error(f"❌ [Wait] 收藏选择页标题不是“收藏”，当前标题为：{title}")
-                return False
-            return True
-        except Exception as e:
-            logger.error(f"❌ [Wait] 收藏选择页加载超时: {e}")
-            return False
 
-    # 打开面板进入收藏页面
-    def open_panel_enter_collection_page(self):
-        """打开面板进入收藏页面"""
-        logger.info("🚀 [Action] - 打开面板进入收藏页面")
-        self.click_add_button()
-        self.click(CollectionLocator.COLLECTION_SELECT_BTN)
-        self.wait_for_collection_page_load()
+class CollectionPage(BasePage):
+    PACKAGE_ID = 'com.santiaotalk.im:id'
 
-    # 获取收藏列表容器
-    def get_collection_list_container(self) -> WebElement:
-        """获取收藏列表容器"""
-        list_elem = self.find_element(CollectionLocator.COLL_RECYCLER_VIEW)
-        if not list_elem:
-            logger.error("❌ [Action] - 未找到收藏列表容器")
-            return None
-        logger.info(f"✅ [Action] - 获取到收藏列表容器")
-        return list_elem
+    CONTENT_ID = f'{PACKAGE_ID}/content'
+    CONTENT_ITEM = (AppiumBy.ID, CONTENT_ID)  # 消息页面每个对话框
 
-    # 获取收藏Item
-    def get_collection_items(self) -> list[WebElement]:
-        """获取收藏Item"""
-        items = self.find_elements(CollectionLocator.COLL_CONTENT_CONTAINER)
-        if not items and len(items) == 0:
-            logger.error("❌ [Action] - 未找到收藏Item")
-            return []
-        logger.info(f"✅ [Action] - 获取到 {len(items)} 个收藏Item")
-        return items
+    # 接收消息
+    RECEIVED_GROUP_ID = f'{PACKAGE_ID}/group'
+    RECEIVED_GROUP_ITEM = (AppiumBy.ID, RECEIVED_GROUP_ID)
+    RECEIVED_GROUP_TEXT_ID = f'{PACKAGE_ID}/received_text'
+    RECEIVED_GROUP_TEXT_ITEM = (AppiumBy.ID, RECEIVED_GROUP_TEXT_ID)
+    RECEIVED_IMAGE_ID = f'{PACKAGE_ID}/received_image'
+    RECEIVED_IMAGE_ITEM = (AppiumBy.ID, RECEIVED_IMAGE_ID)
 
-    # 获取收藏的文本列表
-    def get_collection_texts(self) -> list[WebElement]:
-        """获取收藏的文本列表"""
-        texts = self.find_elements(CollectionLocator.COLL_CONTENT_TEXT)
-        if not texts:
-            logger.error("❌ [Action] - 未找到任何收藏的文本")
-            return []
-        logger.info(f"✅ [Action] - 获取到 {len(texts)} 个收藏的文本")
-        return texts 
+    # 发送消息
+    SENT_GROUP_ID = f'{PACKAGE_ID}/sent_group'
+    SENT_GROUP_ITEM = (AppiumBy.ID, SENT_GROUP_ID)
+    SENT_GROUP_TEXT_ID = f'{PACKAGE_ID}/sent_text'
+    SENT_GROUP_TEXT_ITEM = (AppiumBy.ID, SENT_GROUP_TEXT_ID)
+    SENT_IMAGE_ID = f'{PACKAGE_ID}/sent_image'
+    SENT_IMAGE_ITEM = (AppiumBy.ID, SENT_IMAGE_ID)
 
-    # 根据索引获取收藏的文本 Element
-    def get_collection_text_element(self, index: int = 0) -> WebElement | None:
-        """根据索引获取收藏的文本 Element"""
-        text_list = self.get_collection_texts()
-        if not text_list:
-            return None
-        if index >= len(text_list):
-            logger.error(f"❌ [Action] - 索引 {index} 越界，当前仅有 {len(text_list)} 条文本")
-            return None
-        text_elem = text_list[index]
-        logger.info(f"✅ [Action] - 获取到收藏的第 {index} 条文本 Element")
-        return text_elem
-    
-    # 获取收藏的第 {index} 条文本内容
-    def get_collection_text_content(self, index: int = 0) -> str:
-        """获取收藏的第 {index} 条文本内容"""
-        text_elem = self.get_collection_text_element(index)
-        if not text_elem:
-            logger.error(f"❌ [Action] - 无法获取第 {index} 条文本内容，Element 为 None")
-            return ""
-        return text_elem.get_attribute('text')
-    
-    # 点击收藏的第 {index} 条文本
-    def get_collection_text_and_click(self, index: int = 0):
-        """点击收藏的第 {index} 条文本"""
-        text_elem = self.get_collection_text_element(index)
-        if not text_elem:
-            logger.error(f"❌ [Action] - 无法点击第 {index} 条文本，Element 为 None")
-            return
-        text_elem.click()
-        logger.info(f"✅ [Action] - 点击了收藏的第 {index} 条文本")
+    # 长按消息弹窗
+    PREE_ALERT_ID = (AppiumBy.ID, 'gv_menu')
+    COLLECTION_TEXT = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("收藏")')
+    FORWARD_TEXT = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("转发")')
+    MULTI_SELECT_TEXT = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("多选")')
+    REPLY_TEXT = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("回复")')
+    DELETE_TEXT = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("删除")')
 
-    # 获取收藏图片列表
-    def get_collection_images(self) -> list[WebElement]:
-        """获取收藏图片列表"""
-        images = self.find_elements(CollectionLocator.COLL_CONTENT_IMAGE)
-        if not images:
-            logger.error("❌ [Action] - 未找到任何收藏图片")
-            return []
-        logger.info(f"✅ [Action] - 获取到 {len(images)} 个收藏图片")
-        return images 
-    
-    # 根据索引获取收藏的图片 Element
-    def get_collection_image_element(self, index: int = 0) -> WebElement | None:
-        """根据索引获取收藏的图片 Element"""
-        images = self.get_collection_images()
-        if not images:
-            return None
-        if index >= len(images):
-            logger.error(f"❌ [Action] - 索引 {index} 越界，当前仅有 {len(images)} 张图片")
-            return None
-        image = images[index]
-        logger.info(f"✅ [Action] - 获取到收藏的第 {index} 张图片 Element")
-        return image
-    
-    # 点击收藏的第 {index} 张图片
-    def get_collection_image_and_click(self, index: int = 0):
-        """点击收藏的第 {index} 张图片"""
-        image = self.get_collection_image_element(index)
-        if not image:
-            logger.error(f"❌ [Action] - 无法点击第 {index} 张图片，Element 为 None")
-            return
-        image.click()
-        logger.info(f"✅ [Action] - 点击了收藏的第 {index} 张图片")
+    # 我的收藏
+    MINE_COLLECTION = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("我的收藏")')
+    LAYOUT_ID = (AppiumBy.ID, f'{PACKAGE_ID}/fLayout')  # text和image公用元素
+    SWIPE_CONTENT_ID = f'{PACKAGE_ID}/swipe_content'
+    SWIPE_CONTENT_ITEM = (AppiumBy.ID, SWIPE_CONTENT_ID)
+    COLLECTION_ITEM_TEXT = (AppiumBy.ID, f'{PACKAGE_ID}/collet_content')
+    COLLECTION_ITEM_IMAGE_ID = f'{PACKAGE_ID}/collect_img'
+    COLLECTION_ITEM_IMAGE = (AppiumBy.ID, f'{PACKAGE_ID}/collect_img')
+    COLLECTION_DETAILS = (AppiumBy.ID, f'{PACKAGE_ID}/collect_details')
+    SWIPE_RIGHT = f'//*[@resource-id="{PACKAGE_ID}/swipe_right"]'
+    SWIPE_RIGHT_SHARE_ITEM = (AppiumBy.XPATH, f'{SWIPE_RIGHT}/*[1]')  # 分享
+    SWIPE_RIGHT_DELETE_ITEM = (AppiumBy.XPATH, f'{SWIPE_RIGHT}/*[2]')  # 删除
 
-    
-    # 获取收藏的用户昵称
-    def get_collection_user_nicknames(self) -> list[WebElement]:
-        """获取收藏的用户昵称"""
-        nicknames = self.find_elements(CollectionLocator.COLL_USER_NICKNAME)
-        if not nicknames and len(nicknames) == 0:
-            logger.error("❌ [Action] - 未找到收藏的用户昵称")
-            return []
-        logger.info(f"✅ [Action] - 获取到 {len(nicknames)} 个收藏的用户昵称")
-        return nicknames 
-    
-    # 获取收藏的时间
-    def get_collection_times(self) -> list[WebElement]:
-        """获取收藏的时间"""
-        times = self.find_elements(CollectionLocator.COLL_TIME)
-        if not times and len(times) == 0:
-            logger.error("❌ [Action] - 未找到收藏的时间")
-            return []
-        logger.info(f"✅ [Action] - 获取到 {len(times)} 个收藏的时间")
-        return times 
-    
+    REACHED_BOTTOM_ID = (AppiumBy.ID, 'refreshlistview_footer_hint_textview')  # 已经到达底部
 
-    # 获取发送收藏面板
-    def get_send_collection_panel(self) -> WebElement:
-        """获取发送收藏面板"""
-        panel = self.find_element(CollectionLocator.CONTENT)
-        if not panel:
-            logger.error("❌ [Action] - 未找到发送收藏面板")
-            return None
-        logger.info(f"✅ [Action] - 获取到发送收藏面板")
-        return panel 
-    
-    # 等待确认发送面板
-    def wait_for_send_collection_panel(self, timeout: int = 10) -> bool:
-        """等待确认发送面板"""
-        panel = self.find_element(CollectionLocator.CONTENT_SEND, timeout=timeout)
-        if not panel:
-            logger.error("❌ [Wait] - 未找到发送面板")
-            return False
-        logger.info(f"✅ [Wait] - 发送面板加载完成")
-        return True
-    
-    # 获取面板头像
-    def get_send_collection_panel_avatar(self) -> WebElement:
-        """获取面板头像"""
-        ava = self.find_element(CollectionLocator.CONTENT_AVATAR)
-        if not ava:
-            logger.error("❌ [Action] - 未找到面板头像")
-            return None
-        logger.info(f"✅ [Action] - 获取到面板头像")
-        return ava 
-    
-    # 获取面板昵称
-    def get_send_collection_panel_nickname(self) -> WebElement:
-        """获取面板昵称"""
-        nickname = self.find_element(CollectionLocator.CONTENT_NICKNAME_ITEM)
-        if not nickname:
-            logger.error("❌ [Action] - 未找到面板昵称")
-            return None
-        logger.info(f"✅ [Action] - 获取到面板昵称")
-        return nickname 
-    
-    # 获取面板气泡内容
-    def get_send_collection_panel_content(self, col_type: str = "text") -> WebElement:
-        """获取面板气泡内容"""
-        if col_type == "text":
-            locator = CollectionLocator.CONTENT_TEXT_BUBBLE
-        elif col_type == "image":
-            locator = CollectionLocator.CONTENT_IMAGE_BUBBLE
+    # 消息页面查询有多少个对话框, 发送、接收, 图片, 视频消息条数
+    def query_content_count(self, locator: tuple) -> int:
+        contents = self.find_elements(locator)
+        count = len(contents)
+        logger.info(f" 💬 查询数据数量: {count}")
+        return count
+
+    # 点击第一个对话框进入消息页面
+    def click_enter_first_content(self):
+        count = self.query_content_count(self.CONTENT_ITEM)
+        if count == 1:
+            logger.info(f" 💬 进入只有一个对话框: {count}")
+            self.click(self.CONTENT_ITEM)
+        elif count > 1:
+            logger.info(f" 💬 进入有多个对话框: {count}")
+            self.click_by_id_instance(self.CONTENT_ID, 0)
         else:
-            logger.error(f"❌ [Action] - 未找到面板气泡内容, col_type: {col_type}")
-            return None
-        
-        content_bubble = self.find_element(locator)
+            logger.info(" 💬 没有对话框", count)
+            raise Exception("没有对话框")
 
-        if not content_bubble:
-            logger.error(f"❌ [Action] - 未找到面板{col_type}气泡内容")
-            return None
-        logger.info(f"✅ [Action] - 获取到面板{col_type}气泡内容")
-        return content_bubble 
+    # 长按点击收藏
+    def click_collection(self, ele: WebElement):
+        self.long_press_action(ele)
+        self.click(self.COLLECTION_TEXT)  # 点击收藏
+        logger.info(" 💬 点击收藏")
 
-    # 获取面板输入框并输入内容
-    def send_collection_panel_input(self, text: str):
-        """获取面板输入框并输入内容"""
-        self.send_keys(CollectionLocator.CONTENT_INPUT, text)
-        logger.info(f"✅ [Action] - collection_page 输入内容: {text}") 
-    
-    # 点击面板表情按钮
-    def click_send_collection_panel_emoji(self):
-        """点击面板表情按钮"""
-        self.click(CollectionLocator.CONTENT_EMOJI, force_wait=True) 
-        logger.info("✅ [Action] - 点击面板表情按钮")
-    
-    # 点击面板发送按钮
-    def click_send_collection_panel_send(self):
-        """点击面板发送按钮"""
-        self.click(CollectionLocator.CONTENT_SEND, force_wait=True) 
-        logger.info("✅ [Action] - 点击面板发送按钮")
+    # 获取消息页面文本
+    def get_message_common(self, locator: tuple, index: int = 0, return_all: bool = False) \
+            -> tuple[WebElement | None, str | None] | tuple[list[WebElement], list[str]]:
+        elements = self.find_elements(locator)
 
+        if not elements or len(elements) == 0:
+            logger.error(f"❌ 未找到消息元素: {locator}")
+            return None, None
 
-    # ==================================================================================================
-    # 逻辑相关
-    # ==================================================================================================
+        if return_all:
+            texts = [ele.text for ele in elements]
+            logger.info(f" 💬 找到 {len(texts)} 条消息: {texts}")
+            return elements, texts
 
-    # 获取收藏图片->Hash
-    def get_collection_image_hash(self, index: int = 0) -> str:
-        """获取收藏图片->Hash"""
-        image_eles = self.find_elements(CollectionLocator.COLL_CONTENT_IMAGE)
-        if index >= len(image_eles) or index < 0:
-            logger.error(f"❌ [Action] - 未找到索引为 {index} 的收藏图片")
-            return None
+        if index > len(elements):
+            error_msg = f"❌ 索引越界: 共找到 {len(elements)} 条, 无法获取索引 {index}"
+            logger.error(error_msg)
+            raise IndexError(error_msg)
 
-        image_ele = image_eles[index]
-        logger.info(f"✅ [Action] - 获取到索引为 {index} 的收藏图片,准备进行hash计算")
-        return ScreenshotUtils.dhash_auto(element=image_ele)
+        elem = elements[index]
+        text = elem.get_attribute("text")
 
-    # 根据传入的index来选择并点击收藏项
-    def select_and_click_collection_item(self, col_type: str = "text", index: int = 0, max_swipes: int = 10) -> str:
-        """
-        根据类型选择并点击收藏项，支持滑动查找（增强版：支持负数索引、滑动查找、去重、索引兜底）
-        :param col_type: 收藏类型 ('text', 'image')
-        :param index: 目标索引（0代表第1个，-1代表最后一个）
-        :param max_swipes: 最大滑动次数
-        :return: 选中项的内容（文本或哈希）
-        """
-        logger.info(f"🚀 [Action] - 准备寻找索引为 {index} 的【{col_type}】类型收藏项 (支持滑动)")
-        
-        found_items_data = []  
-        seen_keys = set()  
-        swipes = 0
-        last_source = ""
-        is_negative_index = index < 0
-        
-        while swipes <= max_swipes:
-            # 1. 检查页面源码是否发生变化（触底判定）
-            is_changed, last_source = self.is_page_source_changed(last_source)
-            if not is_changed:
-                logger.info("✅ 页面 DOM 已无变化，认定已至边界！")
+        if text is None:
+            text = elem.text
+
+        logger.info(f"✅ 找到第 {index + 1} 条消息 : {text}")
+        return elem, text
+
+    # 获取发送消息当前页面的文本条数
+    def get_sent_text_count(self) -> int:
+        return self.query_content_count(self.SENT_GROUP_ITEM)
+
+    # 发送消息: 文本
+    def get_sent_text(self, index: int = 0, return_all: bool = False) \
+            -> tuple[WebElement, str | None] | tuple[list[WebElement], list[str]]:
+        return self.get_message_common(self.SENT_GROUP_TEXT_ITEM, index, return_all)
+
+    # 发送消息: 图片
+    def get_sent_image(self, index: int = 0, return_all: bool = False) \
+            -> tuple[WebElement, str | None] | tuple[list[WebElement], list[str]]:
+        return self.get_message_common(self.SENT_IMAGE_ITEM, index, return_all)
+
+    # 接收消息: 文本
+    def get_received_text(self, index: int = 0, return_all: bool = False) \
+            -> tuple[WebElement, str | None] | tuple[list[WebElement], list[str]]:
+        return self.get_message_common(self.RECEIVED_GROUP_TEXT_ITEM, index, return_all)
+
+    # 接收消息: 图片
+    def get_received_image(self, index: int = 0, return_all: bool = False) \
+            -> tuple[WebElement, str | None] | tuple[list[WebElement], list[str]]:
+        return self.get_message_common(self.RECEIVED_IMAGE_ITEM, index, return_all)
+
+    IMG_PRE = "data/images/collection_pre/collect_pre_"
+    IMG_AFT = "data/images/collection_aft/"
+
+    # 截图片：通过坐标
+    def get_image_screenshot_coord(self, image_name_path: str, rect: dict):
+        x, y, w, h = rect["x"], rect["y"], rect["width"], rect["height"]
+        logger.info(f" 💬 获取图片坐标: {x, y, w, h}")
+        img = Image.open(image_name_path)
+        screen = img.crop((x, y, x + w, y + h))
+        screen.save(image_name_path)
+
+    # 截图接收消息的图片：通过坐标
+    def get_received_image_screenshot(self, index: int = 0):
+        image_name_time = int(time.time())
+        logger.info(f" 💬 获取图片名称: {image_name_time}")
+        image_name_path = f"{self.IMG_PRE}{image_name_time}.png"
+        self.driver.get_screenshot_as_file(image_name_path)
+
+        receive_image = self.find_element(self.RECEIVED_IMAGE_ITEM)
+        receive_rect = receive_image.rect
+        self.get_image_screenshot_coord(image_name_path, receive_rect)
+        return image_name_time
+
+    # 获取长按弹窗坐标
+    def get_long_press_alert_coordinate(self) -> tuple[dict, dict]:
+        long_press_bounds = self.find_element(self.PREE_ALERT_ID)
+        long_press_rect = long_press_bounds.rect
+        logger.info(f" 💬 获取长按弹窗 bounds: {long_press_rect}")
+        forward_bounds = self.find_element(self.FORWARD_TEXT)
+        forward_rect = forward_bounds.rect
+        return long_press_rect, forward_rect
+
+    # 获取第一个长按弹窗项
+    def get_first_collection_item(self, elem: WebElement) -> str:
+        self.long_press_action(elem)
+        long_press_rect, forward_rect = self.get_long_press_alert_coordinate()
+        first_x = long_press_rect['x'] + forward_rect['width'] * 0.5
+        first_y = long_press_rect['y'] + forward_rect['height'] * 0.5
+        logger.info(f" 💬 获取第一个长按弹窗项坐标: {first_x, first_y}")
+        self.driver.tap([(first_x, first_y)])
+        click_time = self.driver.get_device_time(format="YYYY/MM/DD HH:mm:ss")
+        logger.info(f" ✅ 获取点击前的设备时间: {click_time}")
+        return click_time
+
+    def get_clicked_time(self) -> str:
+        click_time = self.driver.get_device_time(format="YYYY/MM/DD HH:mm:ss")
+        return click_time
+
+    # 将字符串转换成时间戳
+    def str_to_dtime(self, dt_str: str, index: int = 0) -> datetime:
+        dt_coll = parser.parse(dt_str)
+        logger.info(f" ✅ 将字符串转换成时间戳: {dt_coll}")
+        return dt_coll
+
+    # 回到主页面
+    def back_to_main(self):
+        self.back()
+
+    # 进入我的收藏页面
+    def enter_my_collection(self):
+        self.click(MinePage.MENU_MINE)
+        self.click(self.MINE_COLLECTION, True)
+
+    # 获取收藏页面最新 collect_details() 数据
+    def get_collection_details_data(self, item_type: str = 'text', index: int = 0, max_scrolls: int = 100) \
+            -> list[dict] | dict | None:
+        locator_map = {
+            'text': self.COLLECTION_ITEM_TEXT,
+            'image': self.COLLECTION_ITEM_IMAGE,
+            'all': self.SWIPE_CONTENT_ITEM
+        }
+        search_locator = locator_map.get(item_type)
+        if not search_locator:
+            raise ValueError("无效类型")
+
+        logger.info(f"🔎 开始查找 {item_type} 类型的详情 (目标数量: {index+1})...")
+
+        details_results = []
+        for i in range(max_scrolls):
+            swipe_elems = self.find_elements(self.SWIPE_CONTENT_ITEM)
+            logger.info(f" 🔎 滚动查找第 {i + 1} 页...")
+            if not swipe_elems:
+                logger.info(f"⚠️ 第 {i+1} 屏未找到任何列表元素")
+                return None
+
+            for sw, swipe_elem in enumerate(swipe_elems):
+                elem_count = swipe_elem.find_elements(*search_locator)
+                if elem_count and len(elem_count) > 0:
+                    try:
+                        detail_elem = swipe_elem.find_element(*self.COLLECTION_DETAILS)
+                        text_content = detail_elem.text
+                        if not text_content:
+                            logger.warning("详情元素文本为空")
+                            continue
+                        text_lists = text_content.split('  ')
+                        if len(text_lists) < 2:
+                            collected_details = {
+                                "collected_person": "Unknown",
+                                "collected_time": text_content
+                            }
+                        else:
+                            collected_details = {
+                                "collected_person": text_lists[0],
+                                "collected_time": text_lists[1]
+                            }
+                            logger.info(f" 💬 找到数据: {collected_details}")
+                        details_results.append(collected_details)
+                        logger.info(f" ✅ 找到第 {i} 条数据: {collected_details}")
+
+                        if index != -1 and len(details_results) >= index:
+                            logger.info(f"🎉 目标数量 {index} 已达成，停止查找")
+                            if index == 0:
+                                return details_results[0]
+                            return details_results
+                    except Exception as e:
+                        logger.error(f" ❌ 获取详情元素文本失败: {e}")
+
+            logger.info(f"🔄 当前屏未满足条件，上滑查找... ({i + 1}/{max_scrolls})")
+            source_before = self.driver.page_source
+            self.swipe_page('up', duration=500)
+            time.sleep(0.5)
+            if source_before == self.driver.page_source:
+                logger.warning("🛑 已滑到底部，未找到指定元素")
                 break
+        if index == 1:
+            logger.info(f" 🎉 没有找到数据: {details_results}")
+            return None
+        return details_results
 
-            current_items = self.get_collection_items()
-            current_screen_keys = []
+    # 获取当前页面时间及被收藏人 重构排序
+    def get_sort_time(self, detail_list: list[dict[str, str]]):
+        pastimes = []
+        for i, detail in enumerate(detail_list):
+            pastimes.append(detail["collected_time"])
+        pastimes = sorted(pastimes, reverse=True)
+        print(f" 💬 获取当前页面时间及被收藏人 重构排序: {pastimes}")
+        return pastimes
 
-            for item in current_items:
-                nickname = ""
-                ctime = ""
-                try:
-                    nick_el = item.find_elements(*CollectionLocator.COLL_META)
-                    time_el = item.find_elements(*CollectionLocator.COLL_TIME)
-                    nickname = nick_el[0].get_attribute("text") if nick_el else ""
-                    ctime = time_el[0].get_attribute("text") if time_el else ""
-                except: pass
-                
-                target_content = None
-                if col_type == "text":
-                    res = item.find_elements(*CollectionLocator.COLL_CONTENT_TEXT)
-                    if res:
-                        target_content = res[0].get_attribute("text")
-                elif col_type == "image":
-                    res = item.find_elements(*CollectionLocator.COLL_CONTENT_IMAGE)
-                    if res:
-                        target_content = ScreenshotUtils.dhash_auto(element=res[0])
-                
-                if target_content is not None:
-                    item_key = f"{target_content}_{nickname}_{ctime}"
-                    current_screen_keys.append(item_key)
-                    
-                    if item_key not in seen_keys:
-                        seen_keys.add(item_key)
-                        found_items_data.append((item, target_content))
-                        
-                        if not is_negative_index and len(found_items_data) > index:
-                            break
-            
-            if not is_negative_index and len(found_items_data) > index:
-                break
-                
-            logger.info(f"向下翻页中... (当前累计找到: {len(found_items_data)})")
+    # 获取收藏当前页面所有 text 数据
+    def get_collection_text_data(self, index: int = 0) -> list[str]:
+        elems = self.find_elements(self.COLLECTION_ITEM_TEXT)
+        texts = [elem.text for elem in elems]
+        if index == 0:
+            return texts
+        elif index <= len(texts):
+            return texts[0:index:1]
+        else:
+            texts = self.get_all_my_collection_text_data(index)
+            logger.info(f" 💬 获取收藏页面的数据: {texts[0:index:1]}")
+            return texts[0:index:1]
 
-            self.swipe_page(slid_type="up", duration=800)
-            swipes += 1
+    @staticmethod
+    def calculate_overlap(list_a: list, list_b: list) -> int:
+        max_possible_overlap = min(len(list_a), len(list_b))
+        for size in range(max_possible_overlap, 0, -1):
+            suffix_a = list_a[-size:]
+            prefix_b = list_b[:size]
+            if suffix_a == prefix_b:
+                return size
+        return 0
+
+    # 获取我的收藏页面所有 text 数据
+    def get_all_my_collection_text_data(self, index: int = 0, max_scrolls: int = 10) -> list[str]:
+        all_data_texts = []
+        prev_page_texts = []
+
+        for i in range(max_scrolls):
+            elems = self.find_elements(self.COLLECTION_ITEM_TEXT)
+            curr_page_texts = [elem.text for elem in elems]
+            logger.info(f"🔄 第 {i + 1} 次扫描，当前屏数据: {curr_page_texts}")
+
+            if i == 0:
+                all_data_texts.extend(curr_page_texts)
+            else:
+                overlap_count = self.calculate_overlap(prev_page_texts, curr_page_texts)
+                if overlap_count == len(curr_page_texts):
+                    logger.info("🛑 数据与上一页完全重叠，判定已到底部")
+                    break
+
+                new_data = curr_page_texts[overlap_count:]
+                if not new_data:
+                    logger.info("🛑 未检测到新数据序列，停止滑动")
+                    break
+
+                logger.info(f"   ↳ 识别重叠 {overlap_count} 条，新增: {new_data}")
+                all_data_texts.extend(new_data)
+
+            prev_page_texts = curr_page_texts
+            self.swipe_page('up', 500)
             time.sleep(0.5)
 
-        if not found_items_data:
-            logger.error(f"❌ [Action] - 未找到任何【{col_type}】条目")
-            return None
-        
-        if is_negative_index:
-            if abs(index) > len(found_items_data):
-                logger.warning(f"⚠️ 负数索引 {index} 超出范围，选取第一个条目")
-                final_idx = 0
-            else:
-                final_idx = index
+        logger.info(f"✅ 最终获取全量数据 ({len(all_data_texts)}条): {all_data_texts}")
+        if index == 0:
+            return all_data_texts
+        elif index <= len(all_data_texts):
+            return all_data_texts[:index]
         else:
-            if index >= len(found_items_data):
-                logger.warning(f"⚠️ 索引 {index} 超出范围，选取最后一个条目(Index {len(found_items_data)-1})")
-                final_idx = -1
-            else:
-                final_idx = index
+            return all_data_texts
 
-        target_item, result_content = found_items_data[final_idx]
-        logger.info(f"🎯 [Final] 成功定位并点击目标项 (实际列表位置: {final_idx if final_idx >=0 else len(found_items_data)+final_idx})")
-        
-        target_item.click()
-        time.sleep(0.5)
-        if self.wait_for_send_collection_panel(timeout=3):
-            logger.info(f"✅ [Action] - 成功弹出确认发送面板")
+    # 获取收藏当前页面所有 chat_option 数据
+    def get_all_collection_image_data(self, max_scrolls=10) -> tuple[int, list[str]]:
+        saved_hashes = set()
+        images_names = []
+
+        logger.info(f"📸 开始全量抓取图片，保存至: {self.IMG_AFT}")
+        total_captures = 0
+
+        for i in range(max_scrolls):
+            logger.info(f"🔄 正在扫描第 {i + 1} 屏 ...")
+            screen_png = self.driver.get_screenshot_as_png()
+            full_screen_img = Image.open(io.BytesIO(screen_png))
+
+            elems = self.find_elements(self.COLLECTION_ITEM_IMAGE)
+            if not elems:
+                logger.warning("❌ 找不到图片元素，请检查页面元素是否正确")
+
+            current_page_count = 0
+            for idx, elem in enumerate(elems):
+                try:
+                    rect = elem.rect
+                    if rect['height'] < 10 or rect['width'] < 10:
+                        continue
+
+                    left, top, right, bottom = rect["x"], rect["y"], rect["x"] + rect["width"], rect["y"] + rect["height"]
+                    elem_img = full_screen_img.crop((left, top, right, bottom))
+
+                    img_hash = imagehash.phash(elem_img)
+                    if img_hash in saved_hashes:
+                        logger.debug(f"   ↳ 图片已存在，跳过 (Hash: {img_hash})")
+                        continue
+
+                    saved_hashes.add(img_hash)
+                    timestamp = int(time.time() * 1000)
+                    filename = f"{timestamp}_{total_captures}.png"
+                    save_path = os.path.join(self.IMG_AFT, filename)
+
+                    images_names.append(filename)
+                    elem_img.save(save_path)
+
+                    total_captures += 1
+                    current_page_count += 1
+                    logger.info(f"   ✅ 捕获第 {total_captures} 张图片: {filename}")
+                except Exception as e:
+                    logger.warning(f"   ❌ 裁剪第 {idx} 个元素失败: {e}")
+
+            source_before = self.driver.page_source
+            self.swipe_page('up', 800)
+            source_after = self.driver.page_source
+            if source_before == source_after:
+                logger.info("   ✅ 页面已滑动到底")
+                break
+        logger.info(f"🎉 抓取完成! 共保存 {total_captures} 张图片")
+        return total_captures, images_names
+
+    # 左滑只针对我的收藏中的左滑操作
+    def swipe_on_element_collection(self, rect, slider_type: str = "left", duration: int = 500,
+                                    collection_type: str = ""):
+        rect = rect.copy()
+        center_y = rect['y'] + rect['height'] * 0.5
+
+        if collection_type == "image":
+            rect['width'] = rect['width'] * 2
+
+        if slider_type.lower() == "left":
+            start_x = rect['x'] + rect['width'] * 0.8
+            end_x = rect['x'] + rect['width'] * 0.2
         else:
-            logger.error("❌ [Action] - 确认发送面板仍未弹出")
-            
-        return result_content
-    
-    # 获取打开 item 后，其面板的内容
-    def get_selected_item_panel_content(self, col_type: str = "text") -> str:
-        """
-        获取打开面板的内容
-        :param col_type: 收藏类型，'text', 'image', 'file', 'voice', 'video', 'link'
-        :return: 包含面板内容信息的字典
-        """
-        content = self.get_send_collection_panel_content(col_type=col_type)
-        if not content:
-            logger.error(f"❌ [Action] - 未找到面板{col_type}气泡内容")
-            return None
+            raise ValueError(f"不支持滑动方向: {slider_type}")
+        self.swipe(start_x, center_y, end_x, center_y, duration)
 
-        if col_type == "text":
-            content_text = content.get_attribute("text")
-            logger.info(f"✅ [Action] - 提取面板文本内容: {content_text}")
-            return content_text
-        elif col_type == "image":
-            content_image = ScreenshotUtils.dhash_auto(element=content)
-            logger.info(f"✅ [Action] - 提取面板图片哈希: {content_image}")
-            return content_image
+    # 删除收藏页面进行一个文本、图片删除
+    def del_collection_item(self, del_type: str = 'text', index: int = 0) -> int | None:
+        locator_map = {
+            'text': self.COLLECTION_ITEM_TEXT,
+            'image': self.COLLECTION_ITEM_IMAGE,
+            'all': self.SWIPE_CONTENT_ITEM
+        }
+        locator = locator_map.get(del_type)
+        if not locator:
+            raise ValueError("无效的删除类型")
 
-    # 选择并发送收藏项
-    def select_and_send_collection_item(self, index: int = 0, comment: str = None) -> bool:
-        """
-        选择并发送一个收藏项
-        :param index: 收藏项的索引（从0开始）
-        :param comment: 留言内容 (可选)
-        :return: 是否成功触发发送
-        """
-        logger.info(f"🚀 [Action] - 准备发送第 {index + 1} 个收藏项")
-        
-        # 1. 获取并点击收藏项
-        items = self.get_collection_items()
-        if not items or len(items) <= index:
-            logger.error(f"❌ [Action] - 列表中没有索引为 {index} 的条目")
-            return False
-        
-        items[index].click()
-        
-        if comment:
-            self.send_collection_panel_input(comment)
-        
-        self.click_send_collection_panel_send()
-        logger.info("✅ [Action] - 收藏项发送指令已提交")
-        return True
+        if index == 0:
+            elem = self.find_element(locator)
+            if not elem:
+                logger.warning(f"⚠️ 未找到 {del_type} 类型的元素，无法执行删除")
+                return None
+            try:
+                self.swipe_on_element_collection(elem.rect, slider_type='left', duration=200,
+                                                 collection_type=del_type)
+                self.click(self.SWIPE_RIGHT_DELETE_ITEM)
+                logger.info(f"✅ 第 {index} 条数据 删除成功")
+            except StaleElementReferenceException as e:
+                logger.warning("⚠️ 元素引用过期，重试...")
+            except Exception as e:
+                logger.error(f"❌ 第 {index} 条数据 删除失败: {e}")
+                self.back()
+                raise
+        else:
+            return self.del_collection_all_item(del_type=del_type, locator=locator)
 
-    # 验证图片相似度
-    def verify_image_similarity(self, hash1: str, hash2: str, threshold: int = 10) -> bool:
-        """
-        验证两个图片的相似度
-        :param hash1: 图片1的哈希值
-        :param hash2: 图片2的哈希值
-        :param threshold: 相似度阈值
-        :return: True 表示相似，False 表示不相似
-        """
-        return ImageComparator.is_hash_similar(hash1, hash2, threshold)
+    # 删除收藏页面进行所有文本、图片匹配
+    def del_collection_all_item(self, del_type: str = 'text', locator=None, max_items: int = 1000) -> int | None:
+        logger.info(f"🗑️ 开始全量清空操作 (类型: {del_type})")
 
+        index = 0
+        has_refresh = False
+        re_enter_retries = 1
 
-
-
-    
+        while max_items > 0:
+            elems = self.find_elements(locator)
+            if elems:
+                try:
+                    self.swipe_on_element_collection(elems[0].rect, slider_type='left', duration=100,
+                                                     collection_type=del_type)
+                    self.click(self.SWIPE_RIGHT_DELETE_ITEM)
+                    index += 1
+                    max_items -= 1
+                    has_refresh = False
+                    logger.info(f"✅ 第 {index} 条数据 删除成功")
+                    continue
+                except StaleElementReferenceException as e:
+                    logger.warning("⚠️ 元素引用过期 (Stale)，DOM 已刷新，重新扫描...")
+                    continue
+                except Exception as e:
+                    logger.error(f"❌ 第 {index} 条数据 删除失败: {e}")
+                    raise e
+            else:
+                try:
+                    logger.info("👀 当前屏已清空，尝试上滑查找更多...")
+                    source_page = self.driver.page_source
+                    self.swipe_page('up', duration=300)
+                    time.sleep(0.5)
+                    source_after = self.driver.page_source
+                    if source_page != source_after:
+                        logger.info("🔄 页面已滚动，重新扫描...")
+                        continue
+                    else:
+                        logger.warning("🛑 页面已滑到底部 (源码未变)")
+                        if not has_refresh:
+                            logger.info("⚠️ 尝试执行【下拉刷新】以同步数据...")
+                            self.swipe_page_quickly()
+                            has_refresh = True
+                            self.find_elements(locator)
+                            continue
+                        elif re_enter_retries > 0:
+                            self.back()
+                            self.enter_my_collection()
+                            re_enter_retries -= 1
+                            logger.info("🔄 已重新进入页面，开始最终扫描...")
+                            continue
+                        else:
+                            logger.info("✅ 列表已彻底清空")
+                            return len(elems)
+                except Exception as e:
+                    logger.warning(f"⚠️ 刷新失败: {e}")
+                    raise e
+        return None

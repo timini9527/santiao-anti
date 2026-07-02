@@ -2,15 +2,15 @@ import allure
 import pytest
 import pytest_check as check
 from pages.main.main_page import MainPage
-from pages.chat.chat_list_page import ChatListPage
-from pages.collection.collection_page import CollectionPage
+from pages.chat.list.chat_list_page import ChatListPage
+from pages.collection.chat_collection_page import ChatCollectionPage
 from core.logger_utils import logger
 from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
 import time
 
 
 @allure.epic("IM核心功能测试")
-@allure.feature("我的模块-收藏夹")
+@allure.feature("我的收藏-收藏夹")
 @allure.story("初始化页面对象")
 class TestCollection:
 
@@ -19,7 +19,7 @@ class TestCollection:
         """初始化页面对象"""
         self.mainPage = MainPage(driver_sender)
         self.chatListPage = ChatListPage(driver_sender)
-        self.collectionPage = CollectionPage(driver_sender)
+        self.collectionPage = ChatCollectionPage(driver_sender)
         
         yield
 
@@ -73,5 +73,3 @@ class TestCollection:
                 msg=desc
             )
             check.is_true(flag, f"❌ {col_type} 消息发送上屏验证失败！")
-    
-

@@ -1,7 +1,6 @@
 import allure
 import pytest
-
-from pages.mine.MyCollectionPage import MyCollectionPage
+from pages.collection.collection_page import CollectionPage
 from core.logger_utils import logger
 
 
@@ -10,7 +9,6 @@ from core.logger_utils import logger
 @pytest.mark.usefixtures('message_page')
 @allure.epic("IM核心功能测试")
 @allure.feature("我的模块-收藏夹")
-@allure.story("我的收藏中删除元素最新一条(文本/图片)")
 class TestMyCollectionManagement:
 
     @pytest.fixture(autouse=True)
@@ -19,7 +17,7 @@ class TestMyCollectionManagement:
         每个测试类开始前，自动获取 self.collPage 实例并绑定到 self
         这样下面的方法就不需要反复传参了
         """
-        self.collPage = MyCollectionPage(driver_sender)
+        self.collPage = CollectionPage(driver_sender)
 
 
     @allure.story("我的收藏中删除元素最新一条(文本/图片)")

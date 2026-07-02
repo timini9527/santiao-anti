@@ -3,8 +3,8 @@ import pytest
 import allure
 import pytest_check as check
 from pages.main.main_page import MainPage
-from pages.chat.chat_page import ChatPage
-from pages.chat.chat_list_page import ChatListPage
+from pages.chat.core.chat_page import ChatPage
+from pages.chat.list.chat_list_page import ChatListPage
 from pages.groups.setting.general.group_avatar_page import GroupAvatarPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, GROUP_STRATEGY
 from utils.cv_recognition.screenshot_utils import ImageComparator

@@ -3,16 +3,16 @@ import pytest
 import allure
 import pytest_check as check
 from pages.main.main_page import MainPage
-from pages.chat.chat_list_page import ChatListPage
-from pages.chat.chat_page import ChatPage
-from pages.chat.chat_long_press_page import ChatLongPressPage
+from pages.chat.list.chat_list_page import ChatListPage
+from pages.chat.core.chat_page import ChatPage
+from pages.chat.core.chat_long_press_page import ChatLongPressPage
 from core.logger_utils import logger
 from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
 from strategy.chat.chat_message_strategy import MessageTypeStrategy, ChatMessageBuilder
-from locators.chat.chat_locator import ChatLocator
+from locators.chat.core.chat_locator import ChatLocator
 from pages.home.side_slip_page import SideSlipPage
 from pages.home.home_page import HomePage
-from pages.collection.collection_page import CollectionPage
+from pages.collection.chat_collection_page import ChatCollectionPage
 from pages.common.contact_select_page import ContactSelectPage
 from pages.common.session_select_page import SessionSelectPage
 from pages.chat_options.emojis.chat_emoji_package_page import ChatEmojiPackagePage
@@ -31,7 +31,7 @@ class TestChatLongPress:
         self.chatPage = ChatPage(driver_sender)
         self.longPressPage = ChatLongPressPage(driver_sender)
         self.messageBuilder = ChatMessageBuilder(driver_sender)
-        self.collectionPage = CollectionPage(driver_sender)
+        self.collectionPage = ChatCollectionPage(driver_sender)
         self.homePage = HomePage(driver_sender)
         self.sideSlipPage = SideSlipPage(driver_sender)
         self.contactSelectPage = ContactSelectPage(driver_sender)

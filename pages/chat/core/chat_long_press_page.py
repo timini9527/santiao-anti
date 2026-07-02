@@ -1,9 +1,9 @@
 import allure
 import time
 from core.logger_utils import logger
-from pages.chat.chat_page import ChatPage
-from locators.chat.chat_locator import ChatLocator
-from locators.chat.chat_long_press_locator import ChatLongPressLocator
+from pages.chat.core.chat_page import ChatPage
+from locators.chat.core.chat_locator import ChatLocator
+from locators.chat.core.chat_long_press_locator import ChatLongPressLocator
 from utils.cv_recognition.ocr_utils import OcrUtils
 
 class ChatLongPressPage(ChatPage):

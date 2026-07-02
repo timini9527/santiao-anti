@@ -1,6 +1,6 @@
 from appium.webdriver.common.appiumby import AppiumBy
 from locators.common.common_locator import CommonLocator
-from locators.chat.chat_setting_locator import ChatSettingLocator
+from locators.chat.setting.chat_setting_locator import ChatSettingLocator
 
 
 class GroupSettingLocator(ChatSettingLocator):

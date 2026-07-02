@@ -6,8 +6,8 @@ from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.groups.setting.general.group_setting_page import GroupSettingPage
 from pages.groups.bot.group_bot_page import GroupBotPage
-from pages.chat.chat_page import ChatPage
-from pages.chat.chat_list_page import ChatListPage
+from pages.chat.core.chat_page import ChatPage
+from pages.chat.list.chat_list_page import ChatListPage
 from strategy.chat.chat_strategy import GROUP_STRATEGY
 
 @allure.epic("IM核心功能测试")

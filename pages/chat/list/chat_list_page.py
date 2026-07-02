@@ -4,7 +4,7 @@ from selenium.webdriver.common.by import By
 from common.base_page import BasePage 
 from pages.home.home_page import HomePage
 from locators.home.home_locator import HomeLocator as HL
-from pages.chat.chat_page import ChatPage
+from pages.chat.core.chat_page import ChatPage
 import allure
 from core.logger_utils import logger
 

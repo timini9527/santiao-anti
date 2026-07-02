@@ -6,7 +6,7 @@ from dateutil import parser
 from selenium.webdriver.remote.webelement import WebElement
 
 from common.base_page import BasePage
-from pages.chat.chat_page import ChatPage
+from pages.chat.core.chat_page import ChatPage
 from core.logger_utils import logger
 
 

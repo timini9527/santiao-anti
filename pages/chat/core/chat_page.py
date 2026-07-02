@@ -5,7 +5,7 @@ from typing import Optional, Literal
 from selenium.common import NoSuchElementException
 from common.base_page import BasePage
 from core.logger_utils import logger
-from locators.chat.chat_locator import ChatLocator
+from locators.chat.core.chat_locator import ChatLocator
 from utils.cv_recognition.screenshot_utils import ScreenshotUtils, CropRect, ImageComparator
 from selenium.webdriver.remote.webelement import WebElement
 

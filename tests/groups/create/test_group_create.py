@@ -4,14 +4,14 @@ import time
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.groups.create.group_create_page import GroupCreatePage
-from pages.chat.chat_page import ChatPage
-from pages.chat.chat_list_page import ChatListPage
+from pages.chat.core.chat_page import ChatPage
+from pages.chat.list.chat_list_page import ChatListPage
 from pages.common.session_select_page import SessionSelectPage
 from pages.common.contact_select_page import ContactSelectPage
 from pages.home.home_page import HomePage
 import pytest_check as check
 from core.logger_utils import logger
-from pages.chat.chat_setting_page import ChatSettingPage
+from pages.chat.setting.chat_setting_page import ChatSettingPage
 from strategy.chat.chat_strategy import (
     PRIVATE_USER1, 
     PRIVATE_USER2, 
