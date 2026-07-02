@@ -19,7 +19,7 @@ class TestGroupQrCode:
     """群二维码保存、分享与有效期修改测试"""
 
     @pytest.fixture(autouse=True)
-    def setup_method(self, driver_sender):
+    def setup_method(self, request, driver_sender):
         """初始化页面对象并在用例结束时自动返回首页"""
         self.mainPage = MainPage(driver_sender)
         self.homePage = HomePage(driver_sender)
@@ -32,10 +32,25 @@ class TestGroupQrCode:
         
         yield
         
-        try:
-            self.mainPage.go_to_main_page()
-        except Exception as e:
-            logger.error(f"Teardown 失败，未能返回首页: {e}")
+        current_test = request.node.name
+        is_validity_test = "test_group_qrcode_change_validity" in current_test
+        is_last_validity_branch = "永久" in current_test
+
+        if is_validity_test:
+            if is_last_validity_branch:
+                logger.info("🧹 [Teardown] 二维码修改最后一个分支执行完毕，开始清理返回主页")
+                try:
+                    self.mainPage.go_to_main_page()
+                    self.__class__._enter_group_setting_state = False
+                except Exception as e:
+                    logger.error(f"Teardown 失败，未能返回首页: {e}")
+            else:
+                logger.info("⚡ [Teardown] 二维码修改参数化中间分支，保持当前页面用于复用")
+        else:
+            try:
+                self.mainPage.go_to_main_page()
+            except Exception as e:
+                logger.error(f"Teardown 失败，未能返回首页: {e}")
 
     @pytest.fixture
     def restore_qrcode_validity(self):
