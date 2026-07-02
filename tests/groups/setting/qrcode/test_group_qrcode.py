@@ -61,7 +61,6 @@ class TestGroupQrCode:
             self._ensure_on_qrcode_page()
             current_validity = self.groupQrCodePage.get_validity_text()
             
-            # 计算 7天 后的预期日期
             now = datetime.now()
             expire_time = now + timedelta(days=7)
             expected_month_day = f"{expire_time.month}月{expire_time.day}日"
@@ -69,7 +68,6 @@ class TestGroupQrCode:
             
             is_7d = (expected_month_day in current_validity) or (expected_month_day_alt in current_validity)
             
-            # 如果当前二维码有效期不是 7d，则将其重置为 7d
             if not is_7d:
                 self.groupQrCodePage.click_change_date_row()
                 self.groupQrCodePage.select_validity_option('7d')
@@ -234,7 +232,8 @@ class TestGroupQrCode:
         ('90d', '90天'),
         ('forever', '永久')
     ], ids=["30分钟", "2小时", "24小时", "7天", "30天", "90天", "永久"])
-    def test_group_qrcode_change_validity(self, restore_qrcode_validity, validity_type, validity_text):
+    @pytest.mark.usefixtures("restore_qrcode_validity")
+    def test_group_qrcode_change_validity(self, validity_type, validity_text):
         """测试更改群二维码有效截止日期"""
 
         with allure.step("1. 进入群聊设置"):

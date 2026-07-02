@@ -43,8 +43,8 @@ class LoggerUtils:
         # %(lineno)d      -> 行号整数 (注意是 d)
         # %(funcName)s     -> 函数名字符串
         # %(message)s     -> 消息内容
-        log_fmt_str = '[%(asctime)s] - [%(levelname)s] - [%(filename)s:%(lineno)d] - [%(funcName)s] - %(message)s'
-        formatter = logging.Formatter(log_fmt_str )
+        log_fmt_str = '[%(asctime)s] - [%(levelname)-7s] - [%(filename)-22s:%(lineno)-4d] - [%(funcName)-20s] - %(message)s'
+        formatter = logging.Formatter(log_fmt_str)
 
         # 获取当前日期，用于文件名
         date_time = time.strftime('%Y-%m-%d')
@@ -95,7 +95,7 @@ class LoggerUtils:
             console_handler.setLevel(logging.DEBUG)
 
             # 定义颜色格式
-            color_fmt = '%(log_color)s[%(asctime)s] [%(levelname)s] [%(filename)s:%(lineno)d] [%(funcName)s] - %(message)s'
+            color_fmt = '%(log_color)s[%(asctime)s] [%(levelname)-7s] [%(filename)-22s:%(lineno)-4d] [%(funcName)-20s] - %(message)s'
             color_formatter = colorlog.ColoredFormatter(
                 color_fmt,
                 log_colors={
