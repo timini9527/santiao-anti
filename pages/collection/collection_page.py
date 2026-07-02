@@ -15,33 +15,12 @@ from core.logger_utils import logger
 
 
 class CollectionPage(BasePage):
-    PACKAGE_ID = 'com.santiaotalk.im:id'
-
-    # 我的收藏定位器
-    MINE_COLLECTION = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("我的收藏")')
-    LAYOUT_ID = (AppiumBy.ID, f'{PACKAGE_ID}/fLayout')  # text和image公用元素
-    SWIPE_CONTENT_ID = f'{PACKAGE_ID}/swipe_content'
-    SWIPE_CONTENT_ITEM = (AppiumBy.ID, SWIPE_CONTENT_ID)
-    COLLECTION_ITEM_TEXT = (AppiumBy.ID, f'{PACKAGE_ID}/collet_content')
-    COLLECTION_ITEM_IMAGE_ID = f'{PACKAGE_ID}/collect_img'
-    COLLECTION_ITEM_IMAGE = (AppiumBy.ID, f'{PACKAGE_ID}/collect_img')
-    COLLECTION_DETAILS = (AppiumBy.ID, f'{PACKAGE_ID}/collect_details')
-    SWIPE_RIGHT = f'//*[@resource-id="{PACKAGE_ID}/swipe_right"]'
-    SWIPE_RIGHT_SHARE_ITEM = (AppiumBy.XPATH, f'{SWIPE_RIGHT}/*[1]')  # 分享
-    SWIPE_RIGHT_DELETE_ITEM = (AppiumBy.XPATH, f'{SWIPE_RIGHT}/*[2]')  # 删除
-
-    REACHED_BOTTOM_ID = (AppiumBy.ID, 'refreshlistview_footer_hint_textview')  # 已经到达底部
 
     # 将字符串转换成时间戳
     def str_to_dtime(self, dt_str: str, index: int = 0) -> datetime:
         dt_coll = parser.parse(dt_str)
         logger.info(f" ✅ 将字符串转换成时间戳: {dt_coll}")
         return dt_coll
-
-    # 进入我的收藏页面
-    def enter_my_collection(self):
-        self.click(MinePage.MENU_MINE)
-        self.click(self.MINE_COLLECTION, True)
 
     # 获取收藏页面最新 collect_details() 数据
     def get_collection_details_data(self, item_type: str = 'text', index: int = 0, max_scrolls: int = 100) \

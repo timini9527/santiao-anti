@@ -1,8 +1,8 @@
-from common.base_page import BasePage
 from locators.home.side_slip_locator import SideSlipLocator
 from core.logger_utils import logger
+from pages.home.home_page import HomePage
 
-class SideSlipPage(BasePage):
+class SideSlipPage(HomePage):
 
     # 通过头像 进入个人信息页面
     def click_INFO(self):
@@ -26,7 +26,7 @@ class SideSlipPage(BasePage):
         logger.info("[Action] 点击动态")
 
     # 点击我的收藏
-    def click_collection(self):
+    def click_my_collection(self):
         self.click(SideSlipLocator.ME_COLLECTION)
         logger.info("[Action] 点击我的收藏")
 

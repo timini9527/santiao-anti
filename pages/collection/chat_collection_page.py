@@ -238,7 +238,7 @@ class ChatCollectionPage(ChatPage):
     # ==================================================================================================
     # 逻辑相关
     # ==================================================================================================
- 
+
     # 获取收藏图片->Hash
     def get_collection_image_hash(self, index: int = 0) -> str:
         """获取收藏图片->Hash"""
@@ -403,3 +403,25 @@ class ChatCollectionPage(ChatPage):
         :return: True 表示相似，False 表示不相似
         """
         return ImageComparator.is_hash_similar(hash1, hash2, threshold)
+
+    
+    # ================================================================
+    # 收藏页面相关
+    # ================================================================
+    # 收藏页面-收藏页面时间
+    def get_collection_page_time(self) -> str:
+        """  获取收藏页面时间  """
+        from dateutil import parser
+        try:
+            device_time = self.driver.get_device_time()
+            dt = parser.parse(device_time)
+            formatted_time = dt.strftime("%Y/%m/%d%H:%M:%S")
+            logger.info(f"⏳ [Action] 获取设备时间并格式化成功: {formatted_time}")
+            return formatted_time
+        except Exception as e:
+            logger.error(f"❌ [Action] 获取或解析设备时间失败: {e}")
+            import datetime
+            formatted_time = datetime.datetime.now().strftime("%Y/%m/%d%H:%M:%S")
+            logger.info(f"⏳ [Action] 采用本地时间格式化降级: {formatted_time}")
+            return formatted_time
+

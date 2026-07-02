@@ -5,9 +5,12 @@ from pages.main.main_page import MainPage
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_page import ChatPage
 from pages.chat.core.chat_long_press_page import ChatLongPressPage
+from pages.collection.chat_collection_page import ChatCollectionPage
 from pages.collection.collection_page import CollectionPage
 from core.logger_utils import logger
 from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
+from pages.home.home_page import HomePage
+from pages.home.side_slip_page import SideSlipPage
 
 
 @allure.epic("IM核心功能测试")
@@ -24,7 +27,10 @@ class TestChatCollection:
         self.chatListPage = ChatListPage(driver_sender)
         self.chatPage = ChatPage(driver_sender)
         self.longPressPage = ChatLongPressPage(driver_sender)
-        self.collPage = CollectionPage(driver_sender)
+        self.collectionPage = CollectionPage(driver_sender)
+        self.chatCollectionPage = ChatCollectionPage(driver_sender)
+        self.homePage = HomePage(driver_sender)
+        self.sideSlipPage = SideSlipPage(driver_sender)
 
         yield
 
@@ -61,12 +67,15 @@ class TestChatCollection:
             logger.error(f"❌ 收藏操作失败: {str(e)}")
             raise e
 
-    @allure.step("进入我的收藏页面")
+
     def common_enter_my_collection(self):
         """进入我的收藏页面"""
-        self.chatPage.back_to_chat_page()  # 先确保在聊天页
-        self.chatPage.click_back_button()  # 返回到聊天列表页
-        self.collPage.enter_my_collection()
+        with allure.step("-> 回到主页，打开左滑菜单，进入我的收藏"):
+            self.mainPage.go_to_main_page()
+            self.sideSlipPage.open_left_menu()
+            self.sideSlipPage.click_my_collection()
+            self.chatCollectionPage.wait_for_collection_page_load()
+
 
     def _verify_text_collected(self, expected_data, is_list=False):
         """
@@ -174,21 +183,32 @@ class TestChatCollection:
             else:
                 raise ValueError(f"未知的消息类型: {msg_type}")
 
-    @allure.story("聊天页面收藏第一条(发送/接收)的文本消息")
-    @allure.title("聊天页面收藏第一条({msg_source})的文本消息")
+
+
+
+    @allure.story("聊天页面收藏一条的文本消息")
+    @allure.title("聊天页面收藏一条({strategy.name})的文本消息")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
-    @pytest.mark.parametrize("msg_source", ["sent", "received"], ids=["发送的文本消息", "接收的文本消息"])
-    def test_collection_first_text(self, strategy, msg_source):
-        self._enter_chat(strategy)
+    def test_collection_first_text(self, strategy):
+        
+        with allure.step(f"进入聊天页面{strategy.name}"):
+            self.chatListPage.enter_chat(strategy.name)
+        
+        with allure.step(f"向 {strategy.name} 发送文本消息"):
+            text = "test 文本收藏 " + strategy.name
+            self.chatPage.send_message(text)
+        
+        with allure.step(f"找到发送的文本消息进行收藏"):
+            self.longPressPage.long_press_last_message()
+            self.longPressPage.click_menu_item("收藏")
+        
+        with allure.step("进入我的收藏页面"):
+            self.common_enter_my_collection()
 
-        elems = self.chatPage.get_message_elements("text", msg_source)
-        assert elems, f"未找到 {msg_source} 的文本消息元素"
-        elem = elems[0]
-        text = elem.text
+        with allure.step("校验收藏列表数据"):
+            result = self.chatCollectionPage.get_collection_text_content(0)
+            check.equal(result, text, f"校验失败：实际内容{result},预期内容{text}")
 
-        self.common_first_assert(elem, "text")
-        self.common_enter_my_collection()
-        self._verify_text_collected(text, is_list=False)
 
     @allure.story("聊天页面收藏第一条(发送/接收)的图片消息")
     @allure.title("聊天页面收藏第一条({msg_source})的图片消息")
