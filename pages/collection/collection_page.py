@@ -5,20 +5,108 @@ from dateutil import parser
 from datetime import datetime
 import imagehash
 from PIL import Image
-from locators.collection.collection_locator import CollectionLocator
+from appium.webdriver.common.appiumby import AppiumBy
 from selenium.common import StaleElementReferenceException
 from selenium.webdriver.remote.webelement import WebElement
 from pages.collection.chat_collection_page import ChatCollectionPage
+from locators.collection.collection_locator import CollectionLocator
 from core.logger_utils import logger
 
 
 class CollectionPage(ChatCollectionPage):
+
+    IMG_PRE = "data/images/collection_pre/collect_pre_"
+    IMG_AFT = "data/images/collection_aft/"
 
     # 将字符串转换成时间戳
     def str_to_dtime(self, dt_str: str, index: int = 0) -> datetime:
         dt_coll = parser.parse(dt_str)
         logger.info(f" ✅ 将字符串转换成时间戳: {dt_coll}")
         return dt_coll
+
+    # 获取消息页面文本/图片/等元素的通用方法
+    def get_message_common(self, msg_type: str, side: str, index: int = 0, return_all: bool = False):
+        elements = self.get_message_elements(msg_type, side, expect_missing=True)
+
+        if not elements or len(elements) == 0:
+            logger.error(f" Lomb: 未找到 {side} {msg_type} 消息元素")
+            if return_all:
+                return [], []
+            return None, None
+
+        if return_all:
+            texts = [ele.text if msg_type == 'text' else ele.get_attribute("text") for ele in elements]
+            logger.info(f" 💬 找到 {len(texts)} 条消息: {texts}")
+            return elements, texts
+
+        if index >= len(elements):
+            error_msg = f"❌ 索引越界: 共找到 {len(elements)} 条, 无法获取索引 {index}"
+            logger.error(error_msg)
+            raise IndexError(error_msg)
+
+        elem = elements[index]
+        text = elem.get_attribute("text")
+        if text is None:
+            text = elem.text
+
+        logger.info(f"✅ 找到第 {index + 1} 条消息 : {text}")
+        return elem, text
+
+    # 获取发送消息当前页面的文本条数
+    def get_sent_text_count(self) -> int:
+        return self.get_message_count('text', 'sent')
+
+    # 发送消息: 文本
+    def get_sent_text(self, index: int = 0, return_all: bool = False):
+        return self.get_message_common('text', 'sent', index, return_all)
+
+    # 发送消息: 图片
+    def get_sent_image(self, index: int = 0, return_all: bool = False):
+        return self.get_message_common('image', 'sent', index, return_all)
+
+    # 接收消息: 文本
+    def get_received_text(self, index: int = 0, return_all: bool = False):
+        return self.get_message_common('text', 'received', index, return_all)
+
+    # 接收消息: 图片
+    def get_received_image(self, index: int = 0, return_all: bool = False):
+        return self.get_message_common('image', 'received', index, return_all)
+
+    # 点击第一个对话框进入消息页面
+    def click_enter_first_content(self):
+        from locators.home.home_locator import HomeLocator
+        logger.info("👉 点击第一个会话进入消息页面")
+        self.click(HomeLocator.CONVERSATION_ITEM)
+
+    # 长按点击收藏
+    def click_collection(self, ele: WebElement):
+        self.long_press_action(ele)
+        from locators.chat.core.chat_long_press_locator import ChatLongPressLocator
+        self.click(ChatLongPressLocator.COLLECTION)
+        logger.info(" 💬 点击收藏")
+
+    # 获取第一个长按弹窗项并执行收藏，返回设备时间
+    def get_first_collection_item(self, elem: WebElement) -> str:
+        self.long_press_action(elem)
+        from locators.chat.core.chat_long_press_locator import ChatLongPressLocator
+        self.click(ChatLongPressLocator.COLLECTION)
+        click_time = self.driver.get_device_time(format="YYYY/MM/DD HH:mm:ss")
+        logger.info(f" ✅ 获取点击前的设备时间: {click_time}")
+        return click_time
+
+    # 获取 Toast 消息
+    def toast_message(self) -> str:
+        return self.get_toast()
+
+    # 回到主页面
+    def back_to_main(self):
+        self.back()
+
+    # 进入我的收藏页面
+    def enter_my_collection(self):
+        from pages.mine.mine_page import MinePage
+        self.click(MinePage.MENU_MINE)
+        self.click(CollectionLocator.MINE_COLLECTION_ENTRANCE, force_wait=True)
 
     # 获取收藏页面最新 collect_details() 数据
     def get_collection_details_data(self, item_type: str = 'text', index: int = 0, max_scrolls: int = 100) \
@@ -36,7 +124,7 @@ class CollectionPage(ChatCollectionPage):
 
         details_results = []
         for i in range(max_scrolls):
-            swipe_elems = self.find_elements(self.SWIPE_CONTENT_ITEM)
+            swipe_elems = self.find_elements(CollectionLocator.COLL_CONTENT_CONTAINER)
             logger.info(f" 🔎 滚动查找第 {i + 1} 页...")
             if not swipe_elems:
                 logger.info(f"⚠️ 第 {i+1} 屏未找到任何列表元素")
@@ -46,7 +134,7 @@ class CollectionPage(ChatCollectionPage):
                 elem_count = swipe_elem.find_elements(*search_locator)
                 if elem_count and len(elem_count) > 0:
                     try:
-                        detail_elem = swipe_elem.find_element(*self.COLLECTION_DETAILS)
+                        detail_elem = swipe_elem.find_element(*CollectionLocator.COLL_META)
                         text_content = detail_elem.text
                         if not text_content:
                             logger.warning("详情元素文本为空")
@@ -97,7 +185,7 @@ class CollectionPage(ChatCollectionPage):
 
     # 获取收藏当前页面所有 text 数据
     def get_collection_text_data(self, index: int = 0) -> list[str]:
-        elems = self.find_elements(CollectionLocator.COLLECTION_ITEM_TEXT)
+        elems = self.find_elements(CollectionLocator.COLL_CONTENT_TEXT)
         texts = [elem.text for elem in elems]
         if index == 0:
             return texts
@@ -124,7 +212,7 @@ class CollectionPage(ChatCollectionPage):
         prev_page_texts = []
 
         for i in range(max_scrolls):
-            elems = self.find_elements(self.COLLECTION_ITEM_TEXT)
+            elems = self.find_elements(CollectionLocator.COLL_CONTENT_TEXT)
             curr_page_texts = [elem.text for elem in elems]
             logger.info(f"🔄 第 {i + 1} 次扫描，当前屏数据: {curr_page_texts}")
 
@@ -169,7 +257,7 @@ class CollectionPage(ChatCollectionPage):
             screen_png = self.driver.get_screenshot_as_png()
             full_screen_img = Image.open(io.BytesIO(screen_png))
 
-            elems = self.find_elements(self.COLLECTION_ITEM_IMAGE)
+            elems = self.find_elements(CollectionLocator.COLL_CONTENT_IMAGE)
             if not elems:
                 logger.warning("❌ 找不到图片元素，请检查页面元素是否正确")
 
@@ -230,9 +318,9 @@ class CollectionPage(ChatCollectionPage):
     # 删除收藏页面进行一个文本、图片删除
     def del_collection_item(self, del_type: str = 'text', index: int = 0) -> int | None:
         locator_map = {
-            'text': self.COLLECTION_ITEM_TEXT,
-            'image': self.COLLECTION_ITEM_IMAGE,
-            'all': self.SWIPE_CONTENT_ITEM
+            'text': CollectionLocator.COLL_CONTENT_TEXT,
+            'image': CollectionLocator.COLL_CONTENT_IMAGE,
+            'all': CollectionLocator.COLL_CONTENT_CONTAINER
         }
         locator = locator_map.get(del_type)
         if not locator:
@@ -246,7 +334,7 @@ class CollectionPage(ChatCollectionPage):
             try:
                 self.swipe_on_element_collection(elem.rect, slider_type='left', duration=200,
                                                  collection_type=del_type)
-                self.click(self.SWIPE_RIGHT_DELETE_ITEM)
+                self.click(CollectionLocator.SWIPE_RIGHT_DELETE_ITEM)
                 logger.info(f"✅ 第 {index} 条数据 删除成功")
             except StaleElementReferenceException as e:
                 logger.warning("⚠️ 元素引用过期，重试...")
@@ -271,7 +359,7 @@ class CollectionPage(ChatCollectionPage):
                 try:
                     self.swipe_on_element_collection(elems[0].rect, slider_type='left', duration=100,
                                                      collection_type=del_type)
-                    self.click(self.SWIPE_RIGHT_DELETE_ITEM)
+                    self.click(CollectionLocator.SWIPE_RIGHT_DELETE_ITEM)
                     index += 1
                     max_items -= 1
                     has_refresh = False
@@ -315,10 +403,6 @@ class CollectionPage(ChatCollectionPage):
                     raise e
         return None
 
-
-
-
-
     # ================================================================
     # 收藏页面相关
     # ================================================================
@@ -333,7 +417,7 @@ class CollectionPage(ChatCollectionPage):
             return formatted_time
         except Exception as e:
             logger.error(f"❌ [Action] 获取或解析设备时间失败: {e}")
-            formatted_time = datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")
+            formatted_time = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
             logger.info(f"⏳ [Action] 采用本地时间格式化降级: {formatted_time}")
             return formatted_time
 
@@ -374,7 +458,4 @@ class CollectionPage(ChatCollectionPage):
             return True
         except Exception as e:
             logger.error(f"❌ 收藏时间验证发生异常: {e}")
-            raise e    
-
-
-
+            raise e

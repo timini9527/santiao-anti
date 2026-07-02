@@ -34,5 +34,10 @@ class CollectionLocator(CommonLocator):
     CONTENT_EMOJI = (AppiumBy.ID, f'{PACKAGE_ID}/input_expression_bnt')             # 表情按钮
     CONTENT_SEND = (AppiumBy.ID, f'{PACKAGE_ID}/send_bnt')                          # 发送按钮
 
+    # 右滑/左滑菜单项
+    SWIPE_RIGHT = f'//*[@resource-id="{PACKAGE_ID}/swipe_right"]'
+    SWIPE_RIGHT_SHARE_ITEM = (AppiumBy.XPATH, f'{SWIPE_RIGHT}/*[1]')  # 分享
+    SWIPE_RIGHT_DELETE_ITEM = (AppiumBy.XPATH, f'{SWIPE_RIGHT}/*[2]')  # 删除
+
 
 
