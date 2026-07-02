@@ -345,17 +345,17 @@ class CollectionPage(ChatCollectionPage):
         logger.info(f"⏳ [Action] 获取收藏的用户+时间: {content}")
         return content
 
-    # 收藏页面-获取收藏的时间
-    def get_collection_time(self, index: int = 0) -> str:
-        """  获取收藏的时间  """
+    # 收藏页面-获取收藏的时间与用户昵称
+    def get_collection_time(self, index: int = 0) -> tuple[str, str]:
+        """  获取收藏的用户昵称和时间  """
         content = self.get_collection_user_time(index)
         if not content:
             logger.warning("⚠️ 收藏的用户与时间内容为空")
-            return ""
-        # 提取时间部分：时间格式固定为 'YYYY/MM/DD HH:mm:ss'，长度为 19 位，且位于最右侧
+            return "", ""
+        user_part = content[:-19].strip()
         time_part = content[-19:].strip()
-        logger.info(f"⏳ [Action] 从内容 '{content}' 中分离出时间: '{time_part}'")
-        return time_part
+        logger.info(f"⏳ [Action] 从内容 '{content}' 中分离出用户昵称: '{user_part}', 时间: '{time_part}'")
+        return user_part, time_part
 
     # 收藏页面-验证收藏的时间
     def verify_collection_time(self, now_time: str, coll_time: str, max_diff_seconds: float = 60.0) -> bool:
