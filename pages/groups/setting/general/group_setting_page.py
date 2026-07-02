@@ -253,39 +253,6 @@ class GroupSettingPage(BasePage):
         logger.info(f"✅ [Action-groupSettingPage] 群聊设置页 - 获取显示群成员昵称开关状态: {res}")
         return str(res).lower() == 'true'
 
-    # 本群昵称 - 文本输入操作
-    def change_my_group_nickname(self, nickname: str):
-        """本群昵称 - 文本输入操作"""
-        # 点击“我在本群昵称”行
-        self.click_chat_name_forme()
-        # 使用 CommonPage/BasePage 继承的方法清空并输入
-        # 我们假设输入框是页面的 EditText，可以使用 common 的 EDITING_INPUT_FIELD
-        from locators.personal.other_locator import OtherLocator
-        self.send_keys(OtherLocator.EDIT_NICKNAME, nickname)
-        try:
-            self.driver.hide_keyboard()
-        except Exception:
-            pass
-        # 点击完成 (DONE)
-        from locators.personal.personal_locator import PersonalLocator
-        self.click(PersonalLocator.DONE)
-        logger.info(f"✅ [Action-groupSettingPage] 修改【我在本群昵称】为: {nickname}")
-
-    # 本群昵称 - 获取当前“我在本群昵称”右侧显示的昵称文本
-    def get_my_group_nickname(self) -> str:
-        """本群昵称 - 获取当前【我在本群昵称】的值"""
-        locator = (AppiumBy.XPATH, "//*[contains(@resource-id, 'setting_chat_name_forMe')]//*[contains(@resource-id, 'tv_value') or @class='android.widget.TextView']")
-        res = self.get_attribute(locator, "text")
-        logger.info(f"✅ [Action-groupSettingPage] 获取当前【我在本群昵称】文本: {res}")
-        return res
-    
-    # switch - 点击switch_btn
-    def click_switch_btn(self):
-        """switch - 点击switch_btn"""
-        self.click(GroupSettingLocator.SWITCH_BTN)
-        logger.info("✅ [Action-groupSettingPage] 群聊设置页 - 点击【switch_btn】")
-
-
     # ===============================================================================
     # 群头像-弹窗操作
     # ===============================================================================
@@ -381,7 +348,7 @@ class GroupSettingPage(BasePage):
     # 群备注弹窗操作与信息获取
     # ===============================================================================
     # 群备注 - 等待群备注弹窗加载
-    def wait_for_remark_dialog_load(self, nva_text, timeout=5) -> bool:
+    def wait_for_remark_dialog_load(self, nva_text: str = "群备注") -> bool:
         """群备注 - 等待群备注弹窗加载"""
         res = self.get_attribute(GroupSettingLocator.REMARK_DIALOG_TITLE, 'text') == nva_text
         if res:
@@ -418,5 +385,41 @@ class GroupSettingPage(BasePage):
             return res
         logger.warning(f"❌ [Action-groupSettingPage] 获取当前【群备注】文本失败")
         return ""
+
+
+    # ===============================================================================
+    # 群设置-我在本群昵称
+    # ===============================================================================
+    # 本群昵称 - 文本输入操作
+    def change_my_group_nickname(self, nickname: str):
+        """本群昵称 - 文本输入操作"""
+        # 点击“我在本群昵称”行
+        self.click_chat_name_forme()
+        # 使用 CommonPage/BasePage 继承的方法清空并输入
+        # 我们假设输入框是页面的 EditText，可以使用 common 的 EDITING_INPUT_FIELD
+        from locators.personal.other_locator import OtherLocator
+        self.send_keys(OtherLocator.EDIT_NICKNAME, nickname)
+        try:
+            self.driver.hide_keyboard()
+        except Exception:
+            pass
+        # 点击完成 (DONE)
+        from locators.personal.personal_locator import PersonalLocator
+        self.click(PersonalLocator.DONE)
+        logger.info(f"✅ [Action-groupSettingPage] 修改【我在本群昵称】为: {nickname}")
+
+    # 本群昵称 - 获取当前“我在本群昵称”右侧显示的昵称文本
+    def get_my_group_nickname(self) -> str:
+        """本群昵称 - 获取当前【我在本群昵称】的值"""
+        locator = (AppiumBy.XPATH, "//*[contains(@resource-id, 'setting_chat_name_forMe')]//*[contains(@resource-id, 'tv_value') or @class='android.widget.TextView']")
+        res = self.get_attribute(locator, "text")
+        logger.info(f"✅ [Action-groupSettingPage] 获取当前【我在本群昵称】文本: {res}")
+        return res
+    
+    # switch - 点击switch_btn
+    def click_switch_btn(self):
+        """switch - 点击switch_btn"""
+        self.click(GroupSettingLocator.SWITCH_BTN)
+        logger.info("✅ [Action-groupSettingPage] 群聊设置页 - 点击【switch_btn】")
 
 

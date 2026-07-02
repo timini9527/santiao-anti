@@ -455,8 +455,9 @@ class TestGroupManagerDouble:
         homeS = HomePage(self.mainS.driver)
         groupCreateS = GroupCreatePage(self.mainS.driver)
         contactSelectS = ContactSelectPage(self.mainS.driver)
+
+        temp_name = "测试解散群聊"
         
-        # 1. 发送端创建群聊，邀请接收端（PRIVATE_USER1）和另一个好友（PRIVATE_USER2）
         with allure.step("-> [双端准备] 发送端(群主)创建临时群聊"):
             homeS.click_add_button()
             homeS.click_start_group_chat()
@@ -467,17 +468,22 @@ class TestGroupManagerDouble:
             
             self.chatS.wait_banner_message_disappear()
             self.chatS.wait_for_chat_page_load()
-            
-            temp_group_name = self.chatS.get_top_name()
-            # 发送一条消息激活群聊以使其在接收端列表呈现
+
+        with allure.step("-> [双端准备] 发送端(群主)修改群名称"):
+            self.chatS.click_more_button()
+            self.groupSettingS.wait_for_setting_page_load()
+            self.groupSettingS.click_group_name()
+            self.groupSettingS.wait_for_remark_dialog_load(nva_text="群名称")
+            self.groupSettingS.input_remark_content(temp_name)
+            self.groupSettingS.click_remark_confirm()
+            self.chatS.wait_banner_message_disappear()
+            self.groupSettingS.click_iv_back_button()
             self.chatS.send_message("临时群聊建立测试")
             
-        # 2. 接收端进入该群聊
         with allure.step("-> [双端准备] 接收端(群成员)进入该临时群聊"):
-            self.chatListR.enter_chat(temp_group_name)
+            self.chatListR.enter_chat(temp_name)
             self.chatR.wait_for_chat_page_load()
             
-        # 3. 发送端进入群管理页面
         with allure.step("-> [双端准备] 发送端(群主)进入该群的【群管理】页面"):
             self.chatS.click_more_button()
             self.groupSettingS.wait_for_setting_page_load()
@@ -486,10 +492,9 @@ class TestGroupManagerDouble:
 
     @allure.story("群管理-解散群聊双端校验")
     @allure.title("【解散群聊】群主正常解散群聊-成员端同步被移出并接收失效通知-状态：已完成")
-    @pytest.mark.skip(reason="待修复")
     def test_delete_group_success_double_validation(self):
         """双端验证：群主在群管理中解散群聊，群主和成员端状态同步刷新"""
-        # 动态创建隔离环境的临时群
+        
         self._create_temp_group_double()
         
         with allure.step("1. 发送端(群主)在群管理中点击【解散群聊】"):
@@ -500,16 +505,25 @@ class TestGroupManagerDouble:
             toast = self.groupSettingS.get_toast()
             check.is_in("群不存在", toast, "❌ 发送端解散群聊后未弹出提示")
             
-        with allure.step("3. 校验接收端(群成员)同步退回首页"):
-            # 接收端因为群被解散，应当同步退出或由 teardown 归位，这里验证能够退回消息主页
-            self.mainR.go_to_main_page()
+        with allure.step("-> [发送端Teardown] 解散群聊并退出"):
+            self.chatS.wait_banner_message_disappear()
+            self.groupSettingS.click_delete_and_out()
+            self.groupSettingS.click_confirm_button()
+            time.sleep(1)
+        
+        with allure.step("-> [接收端Teardown] 解散群聊并退出"):
+            self.chatR.click_more_button()
+            toast = self.groupSettingR.get_toast()
+            check.is_in("群不存在", toast, "❌ 接收端点击解散群聊后未弹出提示")
+            self.groupSettingR.click_delete_and_out()
+            self.groupSettingR.click_confirm_button()
+
 
     @allure.story("群管理-解散群聊双端校验")
     @allure.title("【解散群聊】群主取消解散群聊-群聊依然保持健在-状态：已完成")
-    @pytest.mark.skip(reason="待修复")
     def test_delete_group_cancel_double_validation(self):
         """双端验证：群主点击解散群聊但选择取消，群聊依然健在且成员能正常发言"""
-        # 动态创建隔离环境的临时群
+        
         self._create_temp_group_double()
         
         with allure.step("1. 发送端(群主)在群管理中点击【解散群聊】并取消"):
