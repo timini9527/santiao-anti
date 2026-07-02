@@ -1145,15 +1145,15 @@ function clearTerminal() {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: flex-start;
+  gap: 8px;
 }
 
 .node-label {
-  flex: 1;
   min-width: 0;
-  white-space: normal;
-  word-break: break-all;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
   line-height: 1.5;
 }
 
@@ -1161,6 +1161,7 @@ function clearTerminal() {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 /* 参数面板 */
