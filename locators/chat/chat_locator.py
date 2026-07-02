@@ -46,6 +46,7 @@ class ChatLocator:
                                                  f'and .//*[@text="[哼][哈哈][嘘][哼]"]]'
                                                  f'//*[@text="已读" or @text="未读"]")]')
        
+
     # ==================================================================================================================
     # 聊天页面相关
     # ==================================================================================================================
@@ -66,12 +67,19 @@ class ChatLocator:
     RECEIVED_MESSAGE_CONTENT_ITEM = _BUBBLE_XPATH("following-sibling", f"{PACKAGE_ID}/message_content")
 
     AVATAR_ID = f'{PACKAGE_ID}/iv_avatar'
-    AVATAR_ITEM = (AppiumBy.ID, AVATAR_ID)                      # 头像
+    AVATAR_ITEM = (AppiumBy.ID, AVATAR_ID)                                      # 头像
+
+    # 群聊页面显示用户昵称
+    GROUP_CHAT_USER_NAME_ID = f'{PACKAGE_ID}/userName'
+    GROUP_CHAT_USER_NAME_ITEM = (AppiumBy.ID, GROUP_CHAT_USER_NAME_ID)                                # 用户名
+    GROUP_CHAT_USER_NAME_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{GROUP_CHAT_USER_NAME_ID}"]/android.widget.TextView')
+
+
 
     # ==================================================================================================================
     # 文本消息相关
     # ==================================================================================================================
-    TEXT_MESSAGE_VIEW_ID = f'{PACKAGE_ID}/text_message_view'    # 文本消息
+    TEXT_MESSAGE_VIEW_ID = f'{PACKAGE_ID}/text_message_view'                    # 文本消息
     TEXT_MESSAGE_VIEW_ITEM = (AppiumBy.ID, TEXT_MESSAGE_VIEW_ID)    
     TEXT_MESSAGE_VIEW_CLASS = (AppiumBy.CLASS_NAME, "android.widget.TextView")
     TEXT_MESSAGE_VIEW_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{TEXT_MESSAGE_VIEW_ID}"]/android.widget.TextView')
@@ -84,7 +92,8 @@ class ChatLocator:
     # 已读/未读角标元素
     READ_FOOTER_STATUS_ID = f'{PACKAGE_ID}/message_footer_status'
     READ_FOOTER_STATUS_ITEM = (AppiumBy.ID, READ_FOOTER_STATUS_ID) 
-    READ_FOOTER_READ_TEXT = (AppiumBy.ID, f'{PACKAGE_ID}/tv_unRead') # 已读/未读角标文本
+    READ_FOOTER_READ_TEXT = (AppiumBy.ID, f'{PACKAGE_ID}/tv_unRead')            # 已读/未读角标文本
+
 
     # ==================================================================================================================
     # 图片/视频相关
@@ -102,7 +111,6 @@ class ChatLocator:
     # 下载图标
     IV_DOWNLOAD_ID = f'{PACKAGE_ID}/iv_download'
     IV_DOWNLOAD_ITEM = (AppiumBy.ID, IV_DOWNLOAD_ID)
-    
 
 
     # 视频播放按钮
@@ -128,6 +136,7 @@ class ChatLocator:
                                             f'/following-sibling::*[@resource-id="{PACKAGE_ID}/message_layout"]'
                                             f'//*[@resource-id="{FAIL_MSG_ID}"]')
     
+
     # ==================================================================================================================
     # 定位消息相关
     # ==================================================================================================================
@@ -146,6 +155,7 @@ class ChatLocator:
     RECEIVE_LOCATION_MESSAGE_TITLE = _BUBBLE_XPATH("following-sibling", LOCATION_MESSAGE_TITLE_ID)
     RECEIVE_LOCATION_MESSAGE_SUBTITLE = _BUBBLE_XPATH("following-sibling", LOCATION_MESSAGE_SUBTITLE_ID)
     RECEIVE_LOCATION_MESSAGE_MAP = _BUBBLE_XPATH("following-sibling", LOCATION_MESSAGE_MAP_ID)
+
 
     # ==================================================================================================================
     # 名片消息相关
@@ -263,6 +273,7 @@ class ChatLocator:
     TV_CANCEL = CommonLocator.TEXT_CANCEL_BTN                                                                   # 取消按钮
     MULIT_TOAST_MESSAGE = (AppiumBy.XPATH, f'//*[@resource-id="{PACKAGE_ID}/toast_message" and @text="发送中"]') # 发送中
     LEFT_TEXT = (AppiumBy.XPATH, f'//*[@resource-id="{PACKAGE_ID}/left_text"]')                                 # 聊天记录（合并转发）消息内容
+
 
     # ==================================================================================================================
     # 聊天页面【聊天记录】内部元素定位

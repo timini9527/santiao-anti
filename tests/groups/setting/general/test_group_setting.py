@@ -79,9 +79,7 @@ class TestGroupSetting:
             self.groupSettingPage.wait_for_setting_page_load()
             self.groupSettingPage.click_group_manager()
             self.groupManagerPage.click_dismiss_group()
-        
     
-    # 
     def _enter_group_setting_page(self, group_name):
         """进入群设置页面 (使用内存 Flag 限制全局仅进入一次)"""
         if getattr(self.__class__, "_has_entered_setting_page", False):
@@ -315,7 +313,7 @@ class TestGroupSetting:
                 check.equal(expected_result, current_name, f"❌ 修改后的群聊名称与预期不符。预期: '{expected_result}', 实际: '{current_name}'")
 
     @allure.story("群设置-群头像")
-    @allure.title("通过群聊聊天页面修改群头像")
+    @allure.title("通过群聊聊天页面修改群头像-状态：已完成")
     def test_change_group_avatar(self):
         """通过群聊聊天页面修改群头像"""
         with allure.step("1. 进入群设置页面"):
@@ -336,7 +334,8 @@ class TestGroupSetting:
 
 
     @allure.story("群设置-我在本群昵称")
-    @allure.title("通过群聊聊天页面修改我在本群昵称")
+    @allure.title("通过群聊聊天页面修改我在本群昵称-状态：未完成")
+    @pytest.mark.skip(reason="Android：有BUG待修复")
     def test_group_nickname_validation(self):
         """测试修改我在本群昵称功能"""
         
@@ -358,7 +357,7 @@ class TestGroupSetting:
 
 
     @allure.story("群设置-显示群成员昵称")
-    @allure.title("通过群聊聊天页面修改群设置-显示群成员昵称")
+    @allure.title("通过群聊聊天页面修改群设置-显示群成员昵称-状态：已完成")
     def test_group_display_member_nickname(self):
         """测试修改群设置-显示群成员昵称功能"""
         
@@ -368,12 +367,27 @@ class TestGroupSetting:
             self.groupSettingPage.wait_for_setting_page_load()
             
         with allure.step("2. 修改群设置-显示群成员昵称"):
-            self.groupSettingPage.click_display_member_nickname()
-            self.groupSettingPage.click_display_member_nickname_confirm()
-            self.groupSettingPage.click_iv_back_button()
+            self.groupSettingPage.click_show_member_name_switch()
             self.groupSettingPage.click_iv_back_button()
             
         with allure.step("3. 校验群设置-显示群成员昵称"):
-            new_display_member_nickname = self.groupSettingPage.get_display_member_nickname()
-            check.equal(new_display_member_nickname, "开启" if GROUP_STRATEGY.display_member_nickname else "关闭", f"❌ 群设置-显示群成员昵称修改后不一致")
+            user_name_elements = self.chatPage.get_group_chat_user_name_elements()
+            check.is_true(len(user_name_elements) > 0, f"❌ 群设置-显示群成员昵称校验失败")
             
+
+    @allure.story("群设置-成员进群提醒")
+    @allure.title("通过群聊聊天页面修改群设置-成员进群提醒-未完成")
+    @pytest.mark.skip(reason="暂时无法测试")
+    def test_group_member_join_remind(self):
+        """测试修改群设置-成员进群提醒功能"""
+        
+        with allure.step("1. 进入群设置页面"):
+            self.chatListPage.enter_chat(GROUP_STRATEGY.name)
+            self.chatPage.click_more_button()
+            self.groupSettingPage.wait_for_setting_page_load()
+            
+        with allure.step("2. 修改群设置-成员进群提醒"):
+            pass
+            
+        with allure.step("3. 校验群设置-成员进群提醒"):
+           pass

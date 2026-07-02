@@ -218,6 +218,10 @@ class GroupSettingPage(BasePage):
         self.click(GroupSettingLocator.TV_CANCEL)
         logger.info("✅ [Action-groupSettingPage] 群聊设置页 - 点击弹窗【取消】")
     
+
+    # ===============================================================================
+    # switch 相关操作
+    # ===============================================================================
     # switch - 获取switch_btn状态
     def get_switch_btn_state(self) -> bool:
         """switch - 获取switch_btn状态"""
@@ -246,12 +250,41 @@ class GroupSettingPage(BasePage):
         logger.info(f"✅ [Action-groupSettingPage] 群聊设置页 - 获取聊天密码开关状态: {res}")
         return str(res).lower() == 'true'
 
+    # switch - 获取显示群昵称 element
+    def get_show_group_name_element(self) -> WebElement:
+        """switch - 获取显示群昵称 element"""
+        element = self.find_element(GroupSettingLocator.SETTING_CHAT_SHOW_MEMBER_NAME_SWITCH, timeout=1, raise_exception=False)
+        if not element:
+            max_swipe = 5
+            while max_swipe > 0:
+                self.swipe_page_quickly(slid_type='up', duration=400)
+                max_swipe -= 1
+                element = self.find_element(GroupSettingLocator.SETTING_CHAT_SHOW_MEMBER_NAME_SWITCH, timeout=1, raise_exception=False)
+                if element:
+                    break
+                if max_swipe == 0:
+                    logger.warning("⚠️ [Action-groupSettingPage] 群聊设置页 - 未找到显示群昵称 element")
+                    break
+        logger.info(f"✅ [Action-groupSettingPage] 群聊设置页 - 获取显示群昵称 element")
+        return element
+
     # switch - 获取显示群成员昵称开关状态
     def get_show_member_name_switch_state(self) -> bool:
         """switch - 获取显示群成员昵称开关状态"""
-        res = self.get_attribute(GroupSettingLocator.SETTING_CHAT_SHOW_MEMBER_NAME_SWITCH, "checked")
+        res = self.get_show_group_name_element().get_attribute("checked")
         logger.info(f"✅ [Action-groupSettingPage] 群聊设置页 - 获取显示群成员昵称开关状态: {res}")
         return str(res).lower() == 'true'
+    
+    # switch - 切换显示群成员昵称开关状态
+    def click_show_member_name_switch(self):
+        """switch - 切换显示群成员昵称开关状态"""
+        current_state = self.get_show_member_name_switch_state()
+        if current_state:
+            logger.info("✅ [Action-groupSettingPage] 群聊设置页 - 显示群成员昵称开关状态已经是开启状态，无需切换")
+            return
+        self.click(GroupSettingLocator.SETTING_CHAT_SHOW_MEMBER_NAME_SWITCH)
+        logger.info(f"✅ [Action-groupSettingPage] 群聊设置页 - 切换显示群成员昵称开关状态")
+    
 
     # ===============================================================================
     # 群头像-弹窗操作

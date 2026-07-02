@@ -535,7 +535,27 @@ class ChatPage(BasePage):
         logger.warning(f"❌ [Assert] CMD 通知不匹配: '{text}' 不匹配模式 '{pattern}'")
         return False
 
+    # 群聊页面-获取群聊页面显示用户昵称
+    def get_group_chat_user_name_elements(self) -> list[WebElement]:
+        """群聊页面-获取群聊页面显示用户昵称"""
+        user_names = self.find_elements(ChatLocator.GROUP_CHAT_USER_NAME_XPATH)
+        if not user_names or len(user_names) == 0:
+            logger.error(f"没有找到群聊页面显示用户昵称")
+            return []
+        logger.info(f"[Assert] 获取群聊页面显示用户昵称")
+        return user_names
     
+    # 群聊页面-获取群聊页面某个用户的昵称
+    def get_group_chat_user_name_by_index(self, index: int = -1) -> str:
+        """群聊页面-获取群聊页面某个用户的昵称"""
+        user_names = self.get_group_chat_user_name_elements()
+        if not user_names or len(user_names) == 0:
+            logger.error(f"没有找到群聊页面显示用户昵称")
+            return ""
+        user_name = user_names[index].text
+        logger.info(f"[Assert] 获取群聊页面显示用户昵称: {user_name}")
+        return user_name
+
 
     # =========================================================================================
     # 聊天页面【长按操作】文本消息相关
