@@ -352,9 +352,10 @@ class CollectionPage(ChatCollectionPage):
         if not content:
             logger.warning("⚠️ 收藏的用户与时间内容为空")
             return "", ""
-        user_part = content[:-19].strip()
-        time_part = content[-19:].strip()
-        logger.info(f"⏳ [Action] 从内容 '{content}' 中分离出用户昵称: '{user_part}', 时间: '{time_part}'")
+        parts = content.split(' ')
+        user_part = parts[0]
+        time_part = " ".join(parts[1:])
+        logger.info(f"⏳ [Action] 从内容中分割出用户昵称: '{user_part}', 时间: '{time_part}'")
         return user_part, time_part
 
     # 收藏页面-验证收藏的时间
