@@ -5,11 +5,10 @@ from dateutil import parser
 from datetime import datetime
 import imagehash
 from PIL import Image
-from appium.webdriver.common.appiumby import AppiumBy
+from locators.collection.collection_locator import CollectionLocator
 from selenium.common import StaleElementReferenceException
 from selenium.webdriver.remote.webelement import WebElement
 from pages.collection.chat_collection_page import ChatCollectionPage
-from locators.collection.collection_locator import CollectionLocator
 from core.logger_utils import logger
 
 
@@ -190,6 +189,7 @@ class CollectionPage(ChatCollectionPage):
         if index == 0:
             return texts
         elif index <= len(texts):
+            logger.info(f" 💬 获取收藏页面的数据: {texts[0:index:1]}")
             return texts[0:index:1]
         else:
             texts = self.get_all_my_collection_text_data(index)
@@ -403,6 +403,10 @@ class CollectionPage(ChatCollectionPage):
                     raise e
         return None
 
+
+
+
+
     # ================================================================
     # 收藏页面相关
     # ================================================================
@@ -459,3 +463,6 @@ class CollectionPage(ChatCollectionPage):
         except Exception as e:
             logger.error(f"❌ 收藏时间验证发生异常: {e}")
             raise e
+
+
+
