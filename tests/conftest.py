@@ -1,6 +1,6 @@
 import pytest
 
-from pages.collection.chat_collection_source_page import ChatCollectionSourcePage
+from common.base_page import BasePage
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.main.main_page import MainPage
 from pages.home.side_slip_page import SideSlipPage
@@ -49,7 +49,7 @@ def go_to_message_list(driver_sender):
     :param driver_sender:
     :return:
     """
-    chatCollectionPage = ChatCollectionSourcePage(driver_sender)
+    basePage = BasePage(driver_sender)
     mainPage = MainPage(driver_sender)
     chatListPage = ChatListPage(driver_sender)
     # chatPage.click_enter_first_content() # 进入第一个对话
@@ -58,7 +58,7 @@ def go_to_message_list(driver_sender):
 
     yield
 
-    chatCollectionPage.back()
+    basePage.back()
     mainPage.go_to_main_page()
 
 
