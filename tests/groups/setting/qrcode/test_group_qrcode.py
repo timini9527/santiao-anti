@@ -56,17 +56,21 @@ class TestGroupQrCode:
     def restore_qrcode_validity(self):
         """环境强隔离清理：确保不论用例是否执行失败，最终都能将有效期恢复为默认的 7d"""
         yield
+        
         try:
             self._ensure_on_qrcode_page()
             current_validity = self.groupQrCodePage.get_validity_text()
             
-            # 计算 7天 后的日期字符串，用于精准判定
+            # 计算 7天 后的预期日期
             now = datetime.now()
             expire_time = now + timedelta(days=7)
             expected_month_day = f"{expire_time.month}月{expire_time.day}日"
-
-            # 如果既不包含“7天”且又不匹配7天后具体日期的文案，则强制还原为 7天
-            if "7天" not in current_validity and expected_month_day not in current_validity:
+            expected_month_day_alt = f"{expire_time.month}月{expire_time.day}日前"
+            
+            is_7d = (expected_month_day in current_validity) or (expected_month_day_alt in current_validity)
+            
+            # 如果当前二维码有效期不是 7d，则将其重置为 7d
+            if not is_7d:
                 self.groupQrCodePage.click_change_date_row()
                 self.groupQrCodePage.select_validity_option('7d')
                 logger.info("🧹 [Cleanup] 成功将群二维码有效期恢复为默认的 7天")
