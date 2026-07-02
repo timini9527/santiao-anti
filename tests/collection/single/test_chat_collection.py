@@ -209,7 +209,7 @@ class TestChatCollection:
     @allure.title("私聊聊天页面展示收藏所有({msg_source})的文本消息")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
     @pytest.mark.parametrize("msg_source", ["sent", "received"], ids=["所有发送文本消息", "所有接收文本消息"])
-    def test_collection_all_sent(self, strategy, msg_source):
+    def test_collection_all_text_by_source(self, strategy, msg_source):
         self._enter_chat(strategy)
 
         elems = self.chatPage.get_message_elements("text", msg_source)
@@ -260,52 +260,6 @@ class TestChatCollection:
         rece_coll_time = self.common_first_assert(received_elem, "image")
         expected_times = [rece_coll_time, sent_coll_time]
 
-        self.common_enter_my_collection()
-        self._verify_image_collected(expected_times)
-
-    @allure.story("私聊聊天页面收藏所有展示的文本消息(混合)")
-    @allure.title("私聊聊天页面收藏所有展示的文本消息(混合)")
-    @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
-    def test_collection_all_show_text(self, strategy):
-        self._enter_chat(strategy)
-
-        elems_s = self.chatPage.get_message_elements("text", "sent", expect_missing=True)
-        texts_s = [elem.text for elem in elems_s]
-        if elems_s:
-            for elem in elems_s:
-                self.common_first_assert(elem, "text")
-
-        elems_r = self.chatPage.get_message_elements("text", "received", expect_missing=True)
-        texts_r = [elem.text for elem in elems_r]
-        if elems_r:
-            for elem in elems_r:
-                self.common_first_assert(elem, "text")
-
-        expected_texts = texts_r[::-1] + texts_s[::-1]
-        self.common_enter_my_collection()
-        self._verify_text_collected(expected_texts, True)
-
-    @allure.story("私聊聊天页面收藏所有展示的图片消息(混合)")
-    @allure.title("私聊聊天页面收藏所有展示的图片消息(混合)")
-    @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
-    def test_collection_all_show_image(self, strategy):
-        self._enter_chat(strategy)
-
-        elems_s = self.chatPage.get_message_elements("image", "sent", expect_missing=True)
-        sent_times = []
-        if elems_s:
-            for elem in elems_s:
-                st = self.common_first_assert(elem, "image")
-                sent_times.append(st)
-
-        elems_r = self.chatPage.get_message_elements("image", "received", expect_missing=True)
-        rece_times = []
-        if elems_r:
-            for elem in elems_r:
-                rt = self.common_first_assert(elem, "image")
-                rece_times.append(rt)
-
-        expected_times = rece_times[::-1] + sent_times[::-1]
         self.common_enter_my_collection()
         self._verify_image_collected(expected_times)
 

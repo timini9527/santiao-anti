@@ -38,10 +38,6 @@ class CollectionPage(BasePage):
         logger.info(f" ✅ 将字符串转换成时间戳: {dt_coll}")
         return dt_coll
 
-    # 回到主页面
-    def back_to_main(self):
-        self.back()
-
     # 进入我的收藏页面
     def enter_my_collection(self):
         self.click(MinePage.MENU_MINE)
