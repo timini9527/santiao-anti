@@ -1,11 +1,12 @@
 import time
+import datetime
 from common.base_page import BasePage
 from appium.webdriver.webelement import WebElement
 from locators.collection.collection_locator import CollectionLocator
 from core.logger_utils import logger
 from pages.chat.core.chat_page import ChatPage
 from utils.cv_recognition.screenshot_utils import ScreenshotUtils, ImageComparator
-
+from dateutil import parser
 
 
 
@@ -251,7 +252,7 @@ class ChatCollectionPage(ChatPage):
         logger.info(f"✅ [Action] - 获取到索引为 {index} 的收藏图片,准备进行hash计算")
         return ScreenshotUtils.dhash_auto(element=image_ele)
  
-    # 根据传入的index来选择并点击收藏项
+    # 聊天页面收藏-根据传入的index来选择并点击收藏项
     def select_and_click_collection_item(self, col_type: str = "text", index: int = 0, max_swipes: int = 10) -> str:
         """
         根据类型选择并点击收藏项，支持滑动查找（增强版：支持负数索引、滑动查找、去重、索引兜底）
@@ -347,7 +348,7 @@ class ChatCollectionPage(ChatPage):
             
         return result_content
     
-    # 获取打开 item 后，其面板的内容
+    # 聊天页面收藏-获取打开 item 后，其面板的内容
     def get_selected_item_panel_content(self, col_type: str = "text") -> str:
         """
         获取打开面板的内容
@@ -368,7 +369,7 @@ class ChatCollectionPage(ChatPage):
             logger.info(f"✅ [Action] - 提取面板图片哈希: {content_image}")
             return content_image
  
-    # 选择并发送收藏项
+    # 聊天页面收藏-选择并发送收藏项
     def select_and_send_collection_item(self, index: int = 0, comment: str = None) -> bool:
         """
         选择并发送一个收藏项
@@ -405,23 +406,4 @@ class ChatCollectionPage(ChatPage):
         return ImageComparator.is_hash_similar(hash1, hash2, threshold)
 
     
-    # ================================================================
-    # 收藏页面相关
-    # ================================================================
-    # 收藏页面-收藏页面时间
-    def get_collection_page_time(self) -> str:
-        """  获取收藏页面时间  """
-        from dateutil import parser
-        try:
-            device_time = self.driver.get_device_time()
-            dt = parser.parse(device_time)
-            formatted_time = dt.strftime("%Y/%m/%d%H:%M:%S")
-            logger.info(f"⏳ [Action] 获取设备时间并格式化成功: {formatted_time}")
-            return formatted_time
-        except Exception as e:
-            logger.error(f"❌ [Action] 获取或解析设备时间失败: {e}")
-            import datetime
-            formatted_time = datetime.datetime.now().strftime("%Y/%m/%d%H:%M:%S")
-            logger.info(f"⏳ [Action] 采用本地时间格式化降级: {formatted_time}")
-            return formatted_time
-
+    

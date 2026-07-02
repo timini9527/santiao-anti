@@ -1,20 +1,18 @@
 import io
 import os
 import time
+from dateutil import parser
 from datetime import datetime
 import imagehash
 from PIL import Image
-from appium.webdriver.common.appiumby import AppiumBy
-from dateutil import parser
+from locators.collection.collection_locator import CollectionLocator
 from selenium.common import StaleElementReferenceException
 from selenium.webdriver.remote.webelement import WebElement
-
-from common.base_page import BasePage
-from pages.mine.mine_page import MinePage
+from pages.collection.chat_collection_page import ChatCollectionPage
 from core.logger_utils import logger
 
 
-class CollectionPage(BasePage):
+class CollectionPage(ChatCollectionPage):
 
     # 将字符串转换成时间戳
     def str_to_dtime(self, dt_str: str, index: int = 0) -> datetime:
@@ -316,3 +314,65 @@ class CollectionPage(BasePage):
                     logger.warning(f"⚠️ 刷新失败: {e}")
                     raise e
         return None
+
+
+
+
+
+    # ================================================================
+    # 收藏页面相关
+    # ================================================================
+    # 收藏页面-获取收藏页面时间
+    def get_collection_page_time(self) -> str:
+        """  获取收藏页面时间  """
+        try:
+            device_time = self.driver.get_device_time()
+            dt = parser.parse(device_time)
+            formatted_time = dt.strftime("%Y/%m/%d %H:%M:%S")
+            logger.info(f"⏳ [Action] 获取设备时间：{device_time}，格式化成功：{formatted_time}")
+            return formatted_time
+        except Exception as e:
+            logger.error(f"❌ [Action] 获取或解析设备时间失败: {e}")
+            formatted_time = datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")
+            logger.info(f"⏳ [Action] 采用本地时间格式化降级: {formatted_time}")
+            return formatted_time
+
+    # 收藏页面-获取收藏的用户+时间
+    def get_collection_user_time(self, index: int = 0) -> str:
+        """  获取收藏的用户+时间  """
+        items = self.get_collection_items()
+        content = items[index].find_element(*CollectionLocator.COLL_META).get_attribute('text')
+        logger.info(f"⏳ [Action] 获取收藏的用户+时间: {content}")
+        return content
+
+    # 收藏页面-获取收藏的时间
+    def get_collection_time(self, index: int = 0) -> str:
+        """  获取收藏的时间  """
+        content = self.get_collection_user_time(index)
+        if not content:
+            logger.warning("⚠️ 收藏的用户与时间内容为空")
+            return ""
+        # 提取时间部分：时间格式固定为 'YYYY/MM/DD HH:mm:ss'，长度为 19 位，且位于最右侧
+        time_part = content[-19:].strip()
+        logger.info(f"⏳ [Action] 从内容 '{content}' 中分离出时间: '{time_part}'")
+        return time_part
+
+    # 收藏页面-验证收藏的时间
+    def verify_collection_time(self, now_time: str, coll_time: str, max_diff_seconds: float = 60.0) -> bool:
+        """  验证收藏的时间  """
+        logger.info(f"⏳ [Action] 正在验证收藏时间，当前设备时间: {now_time}, 收藏显示时间: {coll_time}")
+        try:
+            dt_now = parser.parse(now_time)
+            dt_coll = parser.parse(coll_time)
+            diff = abs((dt_now - dt_coll).total_seconds())
+            logger.info(f"⏳ [Action] 时间差值为 {diff} 秒, 允许的最大误差为 {max_diff_seconds} 秒")
+            is_valid = diff <= max_diff_seconds
+            assert is_valid, f"❌ 收藏时间验证不匹配！当前时间: {now_time}, 收藏时间: {coll_time}, 差值: {diff}s"
+            logger.info("✅ 收藏时间验证通过！")
+            return is_valid
+        except Exception as e:
+            logger.error(f"❌ 收藏时间验证发生异常: {e}")
+            raise e    
+
+
+
