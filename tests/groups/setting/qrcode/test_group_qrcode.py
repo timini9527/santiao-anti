@@ -59,6 +59,24 @@ class TestGroupQrCode:
         """进入群聊"""
         self.chatListPage.enter_chat(GROUP_STRATEGY.name)
 
+    # 用例共享-群聊设置状态
+    _enter_group_setting_state = False
+    def _enter_group_setting(self):
+        """进入群聊设置"""
+        if self.__class__._enter_group_setting_state:
+            logger.info("群聊设置已进入，无需再次进入")
+            return
+
+        with allure.step("1. 进入临时群"):
+            self._enter_group()
+
+        with allure.step("2. 进入群设置，并点击群二维码"):
+            self.chatPage.click_more_button()
+            self.groupSettingPage.wait_for_setting_page_load()
+            self.groupSettingPage.click_group_qr_code()
+            self.groupQrCodePage.wait_for_qrcode_page_load()
+            self.__class__._enter_group_setting_state = True
+
     def _create_temp_group(self, friend_list):
         """内部辅助方法：快速创建一个用于测试的临时群聊"""
         with allure.step("-> [前置准备] 在首页发起群聊创建临时群"):
@@ -196,20 +214,15 @@ class TestGroupQrCode:
     ], ids=["30分钟", "2小时", "24小时", "7天", "30天", "90天", "永久"])
     def test_group_qrcode_change_validity(self, restore_qrcode_validity, validity_type, validity_text):
         """测试更改群二维码有效截止日期"""
-        with allure.step("1. 进入临时群"):
-            self._enter_group()
 
-        with allure.step("2. 进入群设置，并点击群二维码"):
-            self.chatPage.click_more_button()
-            self.groupSettingPage.wait_for_setting_page_load()
-            self.groupSettingPage.click_group_qr_code()
-            self.groupQrCodePage.wait_for_qrcode_page_load()
+        with allure.step("1. 进入群聊设置"):
+            self._enter_group_setting()
 
-        with allure.step("3. 获取更改前的二维码有效期截止文案（默认为 7 天）"):
+        with allure.step("2. 获取更改前的二维码有效期截止文案（默认为 7 天）"):
             initial_validity_text = self.groupQrCodePage.get_validity_text()
             self._verify_validity_text(validity_type='7d', validity_text=initial_validity_text)
 
-        with allure.step(f"4. 点击修改有效期入口，选择 {validity_text}"):
+        with allure.step(f"3. 点击修改有效期入口，选择 {validity_text}"):
             self.groupQrCodePage.click_change_date_row()
             self.groupQrCodePage.select_validity_option(validity_type)
             
