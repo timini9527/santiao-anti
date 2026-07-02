@@ -24,9 +24,9 @@ class CollectionPage(ChatCollectionPage):
     def get_collection_details_data(self, item_type: str = 'text', index: int = 0, max_scrolls: int = 100) \
             -> list[dict] | dict | None:
         locator_map = {
-            'text': self.COLLECTION_ITEM_TEXT,
-            'image': self.COLLECTION_ITEM_IMAGE,
-            'all': self.SWIPE_CONTENT_ITEM
+            'text': CollectionLocator.COLL_CONTENT_TEXT,
+            'image': CollectionLocator.COLL_CONTENT_IMAGE,
+            'all': CollectionLocator.COLL_CONTENT_CONTAINER
         }
         search_locator = locator_map.get(item_type)
         if not search_locator:
@@ -97,7 +97,7 @@ class CollectionPage(ChatCollectionPage):
 
     # 获取收藏当前页面所有 text 数据
     def get_collection_text_data(self, index: int = 0) -> list[str]:
-        elems = self.find_elements(self.COLLECTION_ITEM_TEXT)
+        elems = self.find_elements(CollectionLocator.COLLECTION_ITEM_TEXT)
         texts = [elem.text for elem in elems]
         if index == 0:
             return texts
@@ -367,10 +367,11 @@ class CollectionPage(ChatCollectionPage):
             dt_coll = parser.parse(coll_time)
             diff = abs((dt_now - dt_coll).total_seconds())
             logger.info(f"⏳ [Action] 时间差值为 {diff} 秒, 允许的最大误差为 {max_diff_seconds} 秒")
-            is_valid = diff <= max_diff_seconds
-            assert is_valid, f"❌ 收藏时间验证不匹配！当前时间: {now_time}, 收藏时间: {coll_time}, 差值: {diff}s"
-            logger.info("✅ 收藏时间验证通过！")
-            return is_valid
+
+            if diff > max_diff_seconds:
+                logger.error(f"❌ 收藏时间验证不匹配！当前时间: {now_time}, 收藏时间: {coll_time}, 差值: {diff}s")
+                return False
+            return True
         except Exception as e:
             logger.error(f"❌ 收藏时间验证发生异常: {e}")
             raise e    
