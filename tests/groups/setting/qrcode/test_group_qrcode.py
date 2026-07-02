@@ -60,10 +60,13 @@ class TestGroupQrCode:
             self._ensure_on_qrcode_page()
             current_validity = self.groupQrCodePage.get_validity_text()
             
-            # 判断当前文案是否是 7d，如果不符合则将其重置为 7d
-            try:
-                self._verify_validity_text(validity_type='7d', validity_text=current_validity)
-            except AssertionError:
+            # 计算 7天 后的日期字符串，用于精准判定
+            now = datetime.now()
+            expire_time = now + timedelta(days=7)
+            expected_month_day = f"{expire_time.month}月{expire_time.day}日"
+
+            # 如果既不包含“7天”且又不匹配7天后具体日期的文案，则强制还原为 7天
+            if "7天" not in current_validity and expected_month_day not in current_validity:
                 self.groupQrCodePage.click_change_date_row()
                 self.groupQrCodePage.select_validity_option('7d')
                 logger.info("🧹 [Cleanup] 成功将群二维码有效期恢复为默认的 7天")
