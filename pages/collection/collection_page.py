@@ -321,33 +321,24 @@ class CollectionPage(ChatCollectionPage):
     # 删除收藏-删除指定索引的文本/图片条目
     def del_collection_item(self, del_type: str = "text", index: int = 0) -> bool:
         """删除收藏页面中指定索引的条目"""
-        # 1. 获取所有的卡片容器
-        containers = self.find_elements(CollectionLocator.COLL_CONTENT_CONTAINER)
-        
-        # 2. 根据删除类型过滤出符合条件的卡片容器
-        target_containers = []
-        for container in containers:
-            if del_type == "text":
-                # 如果容器内包含文本节点，则为文本收藏卡片
-                if container.find_elements(*CollectionLocator.COLL_CONTENT_TEXT):
-                    target_containers.append(container)
-            elif del_type == "image":
-                # 如果容器内包含图片节点，则为图片收藏卡片
-                if container.find_elements(*CollectionLocator.COLL_CONTENT_IMAGE):
-                    target_containers.append(container)
-            elif del_type == "all":
-                target_containers.append(container)
-            else:
-                raise ValueError(f"不支持的收藏类型: {del_type}")
 
-        # 3. 判定索引越界
-        if not target_containers or index >= len(target_containers):
-            logger.warning(f"⚠️ 未找到第 {index} 条 {del_type} 类型收藏卡片，无法执行删除")
+        if del_type == "text":
+            elem = self.get_collection_text_element(index)
+        elif del_type == "image":
+            elem = self.get_collection_image_element(index)
+        elif del_type == "all":
+            items = self.get_collection_items()
+            elem = items[index] if index < len(items) else None
+        else:
+            raise ValueError(f"不支持的收藏类型: {del_type}")
+
+        if not elem:
+            logger.warning(f"⚠️ 未找到第 {index} 条 {del_type} 类型收藏，无法执行删除")
             return False
 
-        # 4. 取得目标卡片进行左滑删除
-        container = target_containers[index]
         try:
+            # 使用相对路径向上查找直接父级容器（不限制 resource-id，兼容 image 的非标准祖先树结构）
+            container = elem.find_element(AppiumBy.XPATH, "./parent::*")
             self.swipe_on_element(container, slid_type="left", duration=400)
             self.click(CollectionLocator.SWIPE_RIGHT_DELETE_ITEM)
             logger.info(f"✅ 第 {index} 条 {del_type} 收藏删除成功")
