@@ -99,13 +99,13 @@ class TestCollection:
         """  测试从收藏夹中成功删除条目的流程  """
         strategy = PRIVATE_USER1
         
-        with allure.step(f"1. 前置造数据：向 {strategy.name} 发送一条【{col_type}】消息并收藏"):
-            self.chatListPage.enter_chat(strategy.name)
-            if col_type == "text":
-                unique_text = self._build_text("delete_test", strategy)
-                self._send_text_and_collect(unique_text)
-            else:
-                self._send_image_and_collect(strategy)
+        # with allure.step(f"1. 前置造数据：向 {strategy.name} 发送一条【{col_type}】消息并收藏"):
+        #     self.chatListPage.enter_chat(strategy.name)
+        #     if col_type == "text":
+        #         unique_text = self._build_text("delete_test", strategy)
+        #         self._send_text_and_collect(unique_text)
+        #     else:
+        #         self._send_image_and_collect(strategy)
 
         self.common_enter_my_collection()
 

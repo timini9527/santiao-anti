@@ -10,6 +10,7 @@ from selenium.common import StaleElementReferenceException
 from selenium.webdriver.remote.webelement import WebElement
 from pages.collection.chat_collection_page import ChatCollectionPage
 from core.logger_utils import logger
+from appium.webdriver.common.appiumby import AppiumBy
 
 
 class CollectionPage(ChatCollectionPage):
@@ -336,14 +337,11 @@ class CollectionPage(ChatCollectionPage):
             return False
 
         try:
-            if del_type == "all":
-                container = elem
-            else:
-                # 在已获取的具体类型子元素 elem 基础上，相对向上定位其所属的唯一的 content_container 容器
-                container = elem.find_element(
-                    AppiumBy.XPATH, 
-                    f"./ancestor::*[@resource-id='{CollectionLocator.COLL_CONTENT_CONTAINER_ID}']"
-                )
+            # 必须使用带 ./ 开头的相对祖先轴定位，因为图片元素与卡片外层容器之间可能存在中间嵌套布局，".." 只能定位到直接父级而非真正的滑屏容器卡片
+            container = elem.find_element(
+                AppiumBy.XPATH, 
+                f"./ancestor::*[@resource-id='{CollectionLocator.COLL_CONTENT_CONTAINER_ID}']"
+            )
             self.swipe_on_element(container, slid_type="left", duration=400)
             self.click(CollectionLocator.SWIPE_RIGHT_DELETE_ITEM)
             logger.info(f"✅ 第 {index} 条 {del_type} 收藏删除成功")

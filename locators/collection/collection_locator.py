@@ -58,4 +58,21 @@ class CollectionLocator(CommonLocator):
             f'//*[@resource-id="{content_id}"]/ancestor::*[@resource-id="{CollectionLocator.COLL_CONTENT_CONTAINER_ID}"]'
         )
 
+    # 当前元素的直接父节点
+    COLL_ITEM_PARENT = (AppiumBy.XPATH, "./..")
 
+    @staticmethod
+    def get_coll_item_parent_by_type(col_type: str = "text", index: int = 0):
+        content_id_map = {
+            "text": CollectionLocator.COLL_CONTENT_TEXT_ID,
+            "image": CollectionLocator.COLL_CONTENT_IMAGE_ID,
+        }
+
+        content_id = content_id_map.get(col_type)
+        if not content_id:
+            raise ValueError(f"不支持的收藏类型: {col_type}")
+
+        return (
+            AppiumBy.XPATH,
+            f'(//*[@resource-id="{content_id}"]/parent::*)[{index + 1}]'
+        )
