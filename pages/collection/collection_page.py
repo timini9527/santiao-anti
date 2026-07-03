@@ -237,22 +237,20 @@ class CollectionPage(ChatCollectionPage):
 
             
     # 分享收藏-收藏页面的分享文本/图片
-    def share_collection_item(self, share_type: str = 'text', index: int = 0) -> bool:
-        """ 分享收藏页面指定索引的条目 """
-        if share_type == 'text':
-            elem = self.get_collection_text_element(index)
-        elif share_type == 'image':
-            elem = self.get_collection_image_element(index)
-        elif share_type == 'all':
+    def _get_element_by_type(self, item_type: str, index: int = 0) -> WebElement | None:
+        """ 辅助函数：根据类型及索引获取对应的 WebElement """
+        if item_type == 'text':
+            return self.get_collection_text_element(index)
+        elif item_type == 'image':
+            return self.get_collection_image_element(index)
+        elif item_type == 'all':
             items = self.get_collection_items()
-            elem = items[index] if items and index < len(items) else None
+            return items[index] if items and index < len(items) else None
         else:
-            raise ValueError(f"不支持的分享类型: {share_type}")
+            raise ValueError(f"不支持的类型: {item_type}")
 
-        if not elem:
-            logger.warning(f"⚠️ 未找到第 {index} 条 {share_type} 类型收藏，无法执行分享")
-            return False
-
+    def _swipe_item_left(self, elem: WebElement) -> bool:
+        """ 辅助函数：将特定的收藏卡片项向左侧滑 """
         try:
             self.swipe_by_offset(
                 elem.rect, 
@@ -260,6 +258,21 @@ class CollectionPage(ChatCollectionPage):
                 x_offset=-int(elem.rect['width']), 
                 duration=400
             )
+            return True
+        except Exception as e:
+            logger.error(f"❌ 卡片向左侧滑执行失败: {e}")
+            return False
+
+    def share_collection_item(self, share_type: str = 'text', index: int = 0) -> bool:
+        """ 分享收藏页面指定索引的条目 """
+        elem = self._get_element_by_type(share_type, index)
+        if not elem:
+            logger.warning(f"⚠️ 未找到第 {index} 条 {share_type} 类型收藏，无法执行分享")
+            return False
+
+        try:
+            if not self._swipe_item_left(elem):
+                return False
             self.click(CollectionLocator.SWIPE_RIGHT_SHARE_ITEM)
             logger.info(f"✅ 第 {index} 条 {share_type} 收藏数据分享按钮点击成功")
             return True
@@ -268,34 +281,19 @@ class CollectionPage(ChatCollectionPage):
             return False
         except Exception as e:
             logger.error(f"❌ 第 {index} 条 {share_type} 收藏数据分享失败: {e}")
-            raise e
-
+            return False
 
     # 删除收藏-删除指定索引的文本/图片条目
     def del_collection_item(self, del_type: str = "text", index: int = 0) -> bool:
         """删除收藏页面中指定索引的条目"""
-
-        if del_type == "text":
-            elem = self.get_collection_text_element(index)
-        elif del_type == "image":
-            elem = self.get_collection_image_element(index)
-        elif del_type == "all":
-            items = self.get_collection_items()
-            elem = items[index] if index < len(items) else None
-        else:
-            raise ValueError(f"不支持的收藏类型: {del_type}")
-
+        elem = self._get_element_by_type(del_type, index)
         if not elem:
             logger.warning(f"⚠️ 未找到第 {index} 条 {del_type} 类型收藏，无法执行删除")
             return False
 
         try:
-            self.swipe_by_offset(
-                elem.rect, 
-                start_x_offset=int(elem.rect['width'] * 0.8), 
-                x_offset=-int(elem.rect['width']), 
-                duration=400
-            )
+            if not self._swipe_item_left(elem):
+                return False
             self.click(CollectionLocator.SWIPE_RIGHT_DELETE_ITEM)
             logger.info(f"✅ 第 {index} 条 {del_type} 收藏删除成功")
             return True
@@ -304,14 +302,12 @@ class CollectionPage(ChatCollectionPage):
             return False
         except Exception as e:
             logger.error(f"❌ 第 {index} 条 {del_type} 收藏删除失败: {e}")
-            raise
+            return False
 
     # 删除收藏-删除所有文本/图片条目
     def del_collection_all_item(self, del_type: str = 'text', max_items: int = 100) -> int:
         ''' 删除收藏页面中所有文本/图片条目 并返回被删除的数量 '''
-        
         logger.info(f"🗑️ 开始全量清空操作 (类型: {del_type})")
- 
         index = 0
         last_source = None
  
@@ -325,12 +321,9 @@ class CollectionPage(ChatCollectionPage):
 
             if elems:
                 try:
-                    self.swipe_by_offset(
-                        elems[0].rect, 
-                        start_x_offset=int(elems[0].rect['width'] * 0.8), 
-                        x_offset=-int(elems[0].rect['width']), 
-                        duration=400
-                    )
+                    if not self._swipe_item_left(elems[0]):
+                        logger.warning("⚠️ 滑动第一个元素失败，尝试重新扫描...")
+                        continue
                     self.click(CollectionLocator.SWIPE_RIGHT_DELETE_ITEM)
                     index += 1
                     max_items -= 1

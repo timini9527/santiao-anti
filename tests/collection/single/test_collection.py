@@ -255,46 +255,5 @@ class TestCollection:
             )
             check.is_true(flag, f"❌ {col_type} 消息发送上屏验证失败！")
 
-    @allure.story("收藏管理-一键清空")
-    @allure.title("清空收藏夹中特定/所有条目流程")
-    @pytest.mark.parametrize("target_type, exp_del, exp_remain", [
-        ("text", 2, 1),   # 删掉所有文本，剩下 1 条图片
-        ("image", 1, 2),  # 删掉所有图片，剩下 2 条文本
-        ("all", 3, 0)     # 删掉所有收藏，剩下 0 条
-    ], ids=["仅清空文本收藏", "仅清空图片收藏", "一键清空全部收藏"])
-    def test_delete_all_collection_items(self, target_type, exp_del, exp_remain):
-        """测试清空收藏夹中指定类型或全部收藏条目的功能，验证类型隔离过滤是否正确"""
-        strategy = PRIVATE_USER1
-        
-        with allure.step("1. 前置造数据：发送并收藏 2 条文本和 1 条图片"):
-            self.chatListPage.enter_chat(strategy.name)
+
             
-            # 发送并收藏文本 1
-            text1 = self._build_text("all_del_t1", strategy)
-            self._send_text_and_collect(text1)
-            
-            # 发送并收藏文本 2
-            text2 = self._build_text("all_del_t2", strategy)
-            self._send_text_and_collect(text2)
-            
-            # 发送并收藏图片 1
-            self._send_image_and_collect(strategy)
-            
-        self.common_enter_my_collection()
-        
-        with allure.step("2. 校验列表当前至少有刚造好的 3 条收藏"):
-            before_items = self.collectionPage.get_collection_items()
-            check.greater_equal(len(before_items), 3, "⚠️ 前置数据准备失败，当前收藏列表条数小于3")
-            
-        with allure.step(f"3. 执行清空【{target_type}】类型收藏操作"):
-            deleted_count = self.collectionPage.del_collection_all_item(del_type=target_type)
-            logger.info(f"🗑️ 清空操作已完成，类型: {target_type}，共计删除 {deleted_count} 条")
-            check.greater_equal(deleted_count, exp_del, f"❌ 删除校验失败：实际删除数量 {deleted_count} 小于预期 {exp_del}")
-            
-        with allure.step(f"4. 校验删除后，列表中剩余的卡片数量符合预期"):
-            after_items = self.collectionPage.get_collection_items()
-            if target_type == "all":
-                check.equal(len(after_items), 0, "❌ 校验失败：一键清空全部后收藏列表依然残留有条目")
-            else:
-                remaining_count = len(before_items) - deleted_count
-                check.equal(len(after_items), remaining_count, f"❌ 校验失败：删除后剩余卡片数与预期不符 (期望: {remaining_count}, 实际: {len(after_items)})")

@@ -44,6 +44,13 @@ class CollectionLocator(CommonLocator):
     # 删除
     SWIPE_RIGHT_DELETE_ITEM = (AppiumBy.XPATH, f'(//*[@resource-id="{SWIPE_RIGHT}"]//android.widget.ImageView)[2]')               
 
+    # 空状态页面
+    EMPTY_LAYOUT = (AppiumBy.ID, f'{PACKAGE_ID}/layout_empty')
+    # 空状态页面文字
+    EMPTY_LAYOUT_TEXT = (AppiumBy.XPATH, f'//*[@resource-id="{PACKAGE_ID}/layout_empty"]//android.widget.TextView')
+
+
+
 
     # 通过text/image元素，相对向上定位其所在的卡片容器
     @staticmethod
