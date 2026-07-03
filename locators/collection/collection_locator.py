@@ -45,13 +45,17 @@ class CollectionLocator(CommonLocator):
     SWIPE_RIGHT_DELETE_ITEM = (AppiumBy.XPATH, f'(//*[@resource-id="{SWIPE_RIGHT}"]//android.widget.ImageView)[2]')               
 
 
-    # 通过text/image元素，相对向上定位其所在的卡片行容器
+    # 通过text/image元素，相对向上定位其所在的卡片容器
     @staticmethod
     def get_coll_item_by_type(col_type: str = 'text'):
-        # 💡 通用降维定位：直接向上寻找“其父节点为 recyclerView”的直接子卡片 Root，支持所有卡片类型且防止 ID 不匹配
+        content_id = (
+            CollectionLocator.COLL_CONTENT_TEXT_ID 
+            if col_type == 'text' 
+            else CollectionLocator.COLL_CONTENT_IMAGE_ID
+        )
         return (
             AppiumBy.XPATH, 
-            f'./ancestor::*[parent::*[@resource-id="{CollectionLocator.PACKAGE_ID}/recyclerView"]]'
+            f'//*[@resource-id="{content_id}"]/ancestor::*[@resource-id="{CollectionLocator.COLL_CONTENT_CONTAINER_ID}"]'
         )
 
     # 当前元素的直接父节点
