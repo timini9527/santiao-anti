@@ -406,6 +406,6 @@ class CollectionPage(ChatCollectionPage):
                 except Exception as e:
                     logger.warning(f"⚠️ 翻页检测失败: {e}")
                     raise e
-        return None
+        return index
 
 
