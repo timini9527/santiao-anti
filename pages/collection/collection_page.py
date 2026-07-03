@@ -310,7 +310,7 @@ class CollectionPage(ChatCollectionPage):
             logger.info(f"⏳ [Action] 时间差值为 {diff} 秒, 允许的最大误差为 {max_diff_seconds} 秒")
 
             if diff > max_diff_seconds:
-                logger.error(f"❌ 收藏时间验证不匹配！当前时间: {now_time}, 收藏时间: {coll_time}, 差值: {diff}s")
+                logger.warning(f"⚠️ 收藏时间验证不匹配！当前时间: {now_time}, 收藏时间: {coll_time}, 差值: {diff}s")
                 return False
             return True
         except Exception as e:
@@ -337,11 +337,10 @@ class CollectionPage(ChatCollectionPage):
             return False
 
         try:
-            # 设定起滑点为卡片偏右侧 (中心 + 30%宽度)，并向左移动手势 80% 卡片宽度的偏移量
             self.swipe_by_offset(
                 elem.rect, 
-                start_x_offset=int(elem.rect['width'] * 0.3), 
-                x_offset=-int(elem.rect['width'] * 0.8), 
+                start_x_offset=int(elem.rect['width'] * 0.8), 
+                x_offset=-int(elem.rect['width']), 
                 duration=400
             )
             self.click(CollectionLocator.SWIPE_RIGHT_DELETE_ITEM)
