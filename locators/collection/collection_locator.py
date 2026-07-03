@@ -48,10 +48,14 @@ class CollectionLocator(CommonLocator):
     # 通过text/image元素，相对向上定位其所在的卡片容器
     @staticmethod
     def get_coll_item_by_type(col_type: str = 'text'):
-        # 必须以 ./ 开头，代表相对于当前传入的子元素上下文向上检索，防止在 elem.find_element 中被解析为全局定位
+        content_id = (
+            CollectionLocator.COLL_CONTENT_TEXT_ID 
+            if col_type == 'text' 
+            else CollectionLocator.COLL_CONTENT_IMAGE_ID
+        )
         return (
             AppiumBy.XPATH, 
-            f'./ancestor::*[@resource-id="{CollectionLocator.COLL_CONTENT_CONTAINER_ID}"]'
+            f'//*[@resource-id="{content_id}"]/ancestor::*[@resource-id="{CollectionLocator.COLL_CONTENT_CONTAINER_ID}"]'
         )
 
 

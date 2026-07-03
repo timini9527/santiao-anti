@@ -336,7 +336,14 @@ class CollectionPage(ChatCollectionPage):
             return False
 
         try:
-            container = elem.find_element(*CollectionLocator.get_coll_item_by_type(del_type))
+            if del_type == "all":
+                container = elem
+            else:
+                # 在已获取的具体类型子元素 elem 基础上，相对向上定位其所属的唯一的 content_container 容器
+                container = elem.find_element(
+                    AppiumBy.XPATH, 
+                    f"./ancestor::*[@resource-id='{CollectionLocator.COLL_CONTENT_CONTAINER_ID}']"
+                )
             self.swipe_on_element(container, slid_type="left", duration=400)
             self.click(CollectionLocator.SWIPE_RIGHT_DELETE_ITEM)
             logger.info(f"✅ 第 {index} 条 {del_type} 收藏删除成功")
