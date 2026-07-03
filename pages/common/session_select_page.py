@@ -34,14 +34,14 @@ class SessionSelectPage(CommonPage):
         return title
 
     # 点击确定
-    def click_finish_button(self, msg_type: int = 0):
+    def click_finish_button(self, msg_type: int = 0, timeout=2):
         """点击确定按钮
         :param msg_type: 消息类型 0: 文本/群聊/文件/视频/语音等 1: 图片
         """
         if msg_type == 1:
-            self.click(SessionSelectLocator.TOP_FB_ACTION_BTN)
+            self.click(SessionSelectLocator.TOP_FB_ACTION_BTN, timeout=timeout)
         else:
-            self.click(SessionSelectLocator.FINISH_BUTTON)
+            self.click(SessionSelectLocator.FINISH_BUTTON, timeout=timeout)
         logger.info("✅ [Action] 会话选择页 - 点击确定")
         time.sleep(1)
 

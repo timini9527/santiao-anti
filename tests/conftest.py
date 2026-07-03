@@ -39,8 +39,6 @@ def message_page(driver_sender):
 
     yield main_page
 
-    # 后置操作：
-    # driver.back() ...
 
 @pytest.fixture(scope="function")
 def go_to_message_list(driver_sender):

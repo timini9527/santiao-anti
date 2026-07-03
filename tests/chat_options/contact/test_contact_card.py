@@ -132,7 +132,7 @@ class TestContactCard:
             self.chatListPage.click_more_button()
             self.contactSelectPage.click_action_button()
             self.sessionSelectPage.select_session_by_name(strategy.name)
-            self.sessionSelectPage.click_finish_button()
+            self.sessionSelectPage.click_finish_button(msg_type=1)
             # TODO：这里需要添加二次确认操作，待功能完善后移除
             self.mainPage.go_to_main_page()
 
