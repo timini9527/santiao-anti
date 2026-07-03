@@ -176,88 +176,6 @@ class CollectionPage(ChatCollectionPage):
         else:
             return all_data_texts
 
-    # 获取收藏当前页面所有图片数据
-    def get_all_collection_image_data(self, max_scrolls: int = 10) -> tuple[int, list[str]]:
-        saved_hashes = set()
-        images_names = []
-
-        logger.info(f"📸 开始全量抓取图片，保存至: {self.IMG_AFT}")
-        total_captures = 0
-
-        for i in range(max_scrolls):
-            logger.info(f"🔄 正在扫描第 {i + 1} 屏 ...")
-            screen_png = self.driver.get_screenshot_as_png()
-            full_screen_img = Image.open(io.BytesIO(screen_png))
-
-            # 重用已有的 get_collection_images() 封装
-            elems = self.get_collection_images()
-            if not elems:
-                logger.warning("❌ 找不到图片元素，请检查页面元素是否正确")
-
-            current_page_count = 0
-            for idx, elem in enumerate(elems):
-                try:
-                    rect = elem.rect
-                    if rect['height'] < 10 or rect['width'] < 10:
-                        continue
-
-                    left, top, right, bottom = rect["x"], rect["y"], rect["x"] + rect["width"], rect["y"] + rect["height"]
-                    elem_img = full_screen_img.crop((left, top, right, bottom))
-
-                    img_hash = imagehash.phash(elem_img)
-                    if img_hash in saved_hashes:
-                        logger.debug(f"   ↳ 图片已存在，跳过 (Hash: {img_hash})")
-                        continue
-
-                    saved_hashes.add(img_hash)
-                    timestamp = int(time.time() * 1000)
-                    filename = f"{timestamp}_{total_captures}.png"
-                    save_path = os.path.join(self.IMG_AFT, filename)
-
-                    images_names.append(filename)
-                    elem_img.save(save_path)
-
-                    total_captures += 1
-                    current_page_count += 1
-                    logger.info(f"   ✅ 捕获第 {total_captures} 张图片: {filename}")
-                except Exception as e:
-                    logger.warning(f"   ❌ 裁剪第 {idx} 个元素失败: {e}")
-
-            source_before = self.driver.page_source
-            self.swipe_page('up', 800)
-            source_after = self.driver.page_source
-            if source_before == source_after:
-                logger.info("   ✅ 页面已滑动到底")
-                break
-        logger.info(f"🎉 抓取完成! 共保存 {total_captures} 张图片")
-        return total_captures, images_names
-
-
-    # 分享收藏页面的文本或图片条目
-    def share_collection_item(self, share_type: str = 'text', index: int = 0) -> bool:
-        """ 分享收藏页面指定索引的条目 """
-        if share_type == 'text':
-            elem = self.get_collection_text_element(index)
-        elif share_type == 'image':
-            elem = self.get_collection_image_element(index)
-        else:
-            items = self.get_collection_items()
-            elem = items[index] if items and index < len(items) else None
-
-        if not elem:
-            logger.warning(f"⚠️ 未找到 {share_type} 类型的元素，无法执行分享")
-            return False
-
-        try:
-            self.swipe_on_element(elem, slid_type='left', duration=400)
-            self.click(CollectionLocator.SWIPE_RIGHT_SHARE_ITEM)
-            logger.info(f"✅ 第 {index} 条 {share_type} 收藏数据分享按钮点击成功")
-            return True
-        except Exception as e:
-            logger.error(f"❌ 第 {index} 条 {share_type} 收藏数据分享失败: {e}")
-            raise e
-
-
 
 
     # ================================================================
@@ -315,6 +233,41 @@ class CollectionPage(ChatCollectionPage):
             return True
         except Exception as e:
             logger.error(f"❌ 收藏时间验证发生异常: {e}")
+            raise e
+
+            
+    # 分享收藏-收藏页面的分享文本/图片
+    def share_collection_item(self, share_type: str = 'text', index: int = 0) -> bool:
+        """ 分享收藏页面指定索引的条目 """
+        if share_type == 'text':
+            elem = self.get_collection_text_element(index)
+        elif share_type == 'image':
+            elem = self.get_collection_image_element(index)
+        elif share_type == 'all':
+            items = self.get_collection_items()
+            elem = items[index] if items and index < len(items) else None
+        else:
+            raise ValueError(f"不支持的分享类型: {share_type}")
+
+        if not elem:
+            logger.warning(f"⚠️ 未找到第 {index} 条 {share_type} 类型收藏，无法执行分享")
+            return False
+
+        try:
+            self.swipe_by_offset(
+                elem.rect, 
+                start_x_offset=int(elem.rect['width'] * 0.8), 
+                x_offset=-int(elem.rect['width']), 
+                duration=400
+            )
+            self.click(CollectionLocator.SWIPE_RIGHT_SHARE_ITEM)
+            logger.info(f"✅ 第 {index} 条 {share_type} 收藏数据分享按钮点击成功")
+            return True
+        except StaleElementReferenceException as e:
+            logger.warning(f"⚠️ 第 {index} 条 {share_type} 收藏元素引用过期，分享失败: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"❌ 第 {index} 条 {share_type} 收藏数据分享失败: {e}")
             raise e
 
 
