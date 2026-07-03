@@ -239,6 +239,31 @@ class CollectionPage(ChatCollectionPage):
             raise ValueError(f"不支持滑动方向: {slider_type}")
         self.swipe(start_x, center_y, end_x, center_y, duration)
 
+    # 分享收藏页面的文本或图片条目
+    def share_collection_item(self, share_type: str = 'text', index: int = 0) -> bool:
+        """ 分享收藏页面指定索引的条目 """
+        if share_type == 'text':
+            elem = self.get_collection_text_element(index)
+        elif share_type == 'image':
+            elem = self.get_collection_image_element(index)
+        else:
+            items = self.get_collection_items()
+            elem = items[index] if items and index < len(items) else None
+
+        if not elem:
+            logger.warning(f"⚠️ 未找到 {share_type} 类型的元素，无法执行分享")
+            return False
+
+        try:
+            self.swipe_on_element_collection(elem.rect, slider_type='left', duration=200, collection_type=share_type)
+            self.click(CollectionLocator.SWIPE_RIGHT_SHARE_ITEM)
+            logger.info(f"✅ 第 {index} 条 {share_type} 收藏数据分享按钮点击成功")
+            return True
+        except Exception as e:
+            logger.error(f"❌ 第 {index} 条 {share_type} 收藏数据分享失败: {e}")
+            self.back()
+            raise e
+
     # 删除收藏页面进行一个文本、图片删除
     def del_collection_item(self, del_type: str = 'text', index: int = 0) -> int | None:
         if index == 0:
@@ -277,7 +302,6 @@ class CollectionPage(ChatCollectionPage):
         re_enter_retries = 1
 
         while max_items > 0:
-            # 重用已有的列表元素获取方法
             if del_type == 'text':
                 elems = self.get_collection_texts()
             elif del_type == 'image':
