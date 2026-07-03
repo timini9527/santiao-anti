@@ -337,11 +337,7 @@ class CollectionPage(ChatCollectionPage):
             return False
 
         try:
-            # 必须使用带 ./ 开头的相对祖先轴定位，因为图片元素与卡片外层容器之间可能存在中间嵌套布局，".." 只能定位到直接父级而非真正的滑屏容器卡片
-            container = elem.find_element(
-                AppiumBy.XPATH, 
-                f"./ancestor::*[@resource-id='{CollectionLocator.COLL_CONTENT_CONTAINER_ID}']"
-            )
+            container = elem.find_element(*CollectionLocator.get_coll_item_by_type(del_type))
             self.swipe_on_element(container, slid_type="left", duration=400)
             self.click(CollectionLocator.SWIPE_RIGHT_DELETE_ITEM)
             logger.info(f"✅ 第 {index} 条 {del_type} 收藏删除成功")
