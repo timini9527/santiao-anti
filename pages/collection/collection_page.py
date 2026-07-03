@@ -23,84 +23,6 @@ class CollectionPage(ChatCollectionPage):
         logger.info(f" ✅ 将字符串转换成时间戳: {dt_coll}")
         return dt_coll
 
-    # 获取消息页面文本/图片/等元素的通用方法
-    def get_message_common(self, msg_type: str, side: str, index: int = 0, return_all: bool = False):
-        elements = self.get_message_elements(msg_type, side, expect_missing=True)
-
-        if not elements or len(elements) == 0:
-            logger.error(f" Lomb: 未找到 {side} {msg_type} 消息元素")
-            if return_all:
-                return [], []
-            return None, None
-
-        if return_all:
-            texts = [ele.text if msg_type == 'text' else ele.get_attribute("text") for ele in elements]
-            logger.info(f" 💬 找到 {len(texts)} 条消息: {texts}")
-            return elements, texts
-
-        if index >= len(elements):
-            error_msg = f"❌ 索引越界: 共找到 {len(elements)} 条, 无法获取索引 {index}"
-            logger.error(error_msg)
-            raise IndexError(error_msg)
-
-        elem = elements[index]
-        text = elem.get_attribute("text")
-        if text is None:
-            text = elem.text
-
-        logger.info(f"✅ 找到第 {index + 1} 条消息 : {text}")
-        return elem, text
-
-    # 获取发送消息当前页面的文本条数
-    def get_sent_text_count(self) -> int:
-        return self.get_message_count('text', 'sent')
-
-    # 发送消息: 文本
-    def get_sent_text(self, index: int = 0, return_all: bool = False):
-        return self.get_message_common('text', 'sent', index, return_all)
-
-    # 发送消息: 图片
-    def get_sent_image(self, index: int = 0, return_all: bool = False):
-        return self.get_message_common('image', 'sent', index, return_all)
-
-    # 接收消息: 文本
-    def get_received_text(self, index: int = 0, return_all: bool = False):
-        return self.get_message_common('text', 'received', index, return_all)
-
-    # 接收消息: 图片
-    def get_received_image(self, index: int = 0, return_all: bool = False):
-        return self.get_message_common('image', 'received', index, return_all)
-
-    # 点击第一个对话框进入消息页面
-    def click_enter_first_content(self):
-        from locators.home.home_locator import HomeLocator
-        logger.info("👉 点击第一个会话进入消息页面")
-        self.click(HomeLocator.CONVERSATION_ITEM)
-
-    # 长按点击收藏
-    def click_collection(self, ele: WebElement):
-        self.long_press_action(ele)
-        from locators.chat.core.chat_long_press_locator import ChatLongPressLocator
-        self.click(ChatLongPressLocator.COLLECTION)
-        logger.info(" 💬 点击收藏")
-
-    # 获取第一个长按弹窗项并执行收藏，返回设备时间
-    def get_first_collection_item(self, elem: WebElement) -> str:
-        self.long_press_action(elem)
-        from locators.chat.core.chat_long_press_locator import ChatLongPressLocator
-        self.click(ChatLongPressLocator.COLLECTION)
-        click_time = self.driver.get_device_time(format="YYYY/MM/DD HH:mm:ss")
-        logger.info(f" ✅ 获取点击前的设备时间: {click_time}")
-        return click_time
-
-    # 获取 Toast 消息
-    def toast_message(self) -> str:
-        return self.get_toast()
-
-    # 回到主页面
-    def back_to_main(self):
-        self.back()
-
     # 进入我的收藏页面
     def enter_my_collection(self):
         from pages.mine.mine_page import MinePage
@@ -108,8 +30,7 @@ class CollectionPage(ChatCollectionPage):
         self.click(CollectionLocator.MINE_COLLECTION_ENTRANCE, force_wait=True)
 
     # 获取收藏页面最新 collect_details() 数据
-    def get_collection_details_data(self, item_type: str = 'text', index: int = 0, max_scrolls: int = 100) \
-            -> list[dict] | dict | None:
+    def get_collection_details_data(self, item_type: str = 'text', index: int = 0, max_scrolls: int = 10) -> list[dict] | dict | None:
         locator_map = {
             'text': CollectionLocator.COLL_CONTENT_TEXT,
             'image': CollectionLocator.COLL_CONTENT_IMAGE,
@@ -123,7 +44,8 @@ class CollectionPage(ChatCollectionPage):
 
         details_results = []
         for i in range(max_scrolls):
-            swipe_elems = self.find_elements(CollectionLocator.COLL_CONTENT_CONTAINER)
+            # 重用已有的 get_collection_items() 封装
+            swipe_elems = self.get_collection_items()
             logger.info(f" 🔎 滚动查找第 {i + 1} 页...")
             if not swipe_elems:
                 logger.info(f"⚠️ 第 {i+1} 屏未找到任何列表元素")
@@ -138,18 +60,21 @@ class CollectionPage(ChatCollectionPage):
                         if not text_content:
                             logger.warning("详情元素文本为空")
                             continue
-                        text_lists = text_content.split('  ')
-                        if len(text_lists) < 2:
+                        
+                        # 重用空格分割+合并时间的统一策略
+                        parts = text_content.split(' ')
+                        if len(parts) >= 2:
+                            collected_details = {
+                                "collected_person": parts[0],
+                                "collected_time": " ".join(parts[1:])
+                            }
+                        else:
                             collected_details = {
                                 "collected_person": "Unknown",
                                 "collected_time": text_content
                             }
-                        else:
-                            collected_details = {
-                                "collected_person": text_lists[0],
-                                "collected_time": text_lists[1]
-                            }
-                            logger.info(f" 💬 找到数据: {collected_details}")
+                        
+                        logger.info(f" 💬 找到数据: {collected_details}")
                         details_results.append(collected_details)
                         logger.info(f" ✅ 找到第 {i} 条数据: {collected_details}")
 
@@ -175,16 +100,15 @@ class CollectionPage(ChatCollectionPage):
 
     # 获取当前页面时间及被收藏人 重构排序
     def get_sort_time(self, detail_list: list[dict[str, str]]):
-        pastimes = []
-        for i, detail in enumerate(detail_list):
-            pastimes.append(detail["collected_time"])
+        pastimes = [detail["collected_time"] for detail in detail_list]
         pastimes = sorted(pastimes, reverse=True)
         print(f" 💬 获取当前页面时间及被收藏人 重构排序: {pastimes}")
         return pastimes
 
     # 获取收藏当前页面所有 text 数据
     def get_collection_text_data(self, index: int = 0) -> list[str]:
-        elems = self.find_elements(CollectionLocator.COLL_CONTENT_TEXT)
+        # 重用 get_collection_texts() 封装
+        elems = self.get_collection_texts()
         texts = [elem.text for elem in elems]
         if index == 0:
             return texts
@@ -200,9 +124,7 @@ class CollectionPage(ChatCollectionPage):
     def calculate_overlap(list_a: list, list_b: list) -> int:
         max_possible_overlap = min(len(list_a), len(list_b))
         for size in range(max_possible_overlap, 0, -1):
-            suffix_a = list_a[-size:]
-            prefix_b = list_b[:size]
-            if suffix_a == prefix_b:
+            if list_a[-size:] == list_b[:size]:
                 return size
         return 0
 
@@ -212,7 +134,8 @@ class CollectionPage(ChatCollectionPage):
         prev_page_texts = []
 
         for i in range(max_scrolls):
-            elems = self.find_elements(CollectionLocator.COLL_CONTENT_TEXT)
+            # 重用 get_collection_texts() 封装
+            elems = self.get_collection_texts()
             curr_page_texts = [elem.text for elem in elems]
             logger.info(f"🔄 第 {i + 1} 次扫描，当前屏数据: {curr_page_texts}")
 
@@ -244,8 +167,8 @@ class CollectionPage(ChatCollectionPage):
         else:
             return all_data_texts
 
-    # 获取收藏当前页面所有 chat_option 数据
-    def get_all_collection_image_data(self, max_scrolls=10) -> tuple[int, list[str]]:
+    # 获取收藏当前页面所有图片数据
+    def get_all_collection_image_data(self, max_scrolls: int = 10) -> tuple[int, list[str]]:
         saved_hashes = set()
         images_names = []
 
@@ -257,7 +180,8 @@ class CollectionPage(ChatCollectionPage):
             screen_png = self.driver.get_screenshot_as_png()
             full_screen_img = Image.open(io.BytesIO(screen_png))
 
-            elems = self.find_elements(CollectionLocator.COLL_CONTENT_IMAGE)
+            # 重用已有的 get_collection_images() 封装
+            elems = self.get_collection_images()
             if not elems:
                 logger.warning("❌ 找不到图片元素，请检查页面元素是否正确")
 
@@ -317,17 +241,16 @@ class CollectionPage(ChatCollectionPage):
 
     # 删除收藏页面进行一个文本、图片删除
     def del_collection_item(self, del_type: str = 'text', index: int = 0) -> int | None:
-        locator_map = {
-            'text': CollectionLocator.COLL_CONTENT_TEXT,
-            'image': CollectionLocator.COLL_CONTENT_IMAGE,
-            'all': CollectionLocator.COLL_CONTENT_CONTAINER
-        }
-        locator = locator_map.get(del_type)
-        if not locator:
-            raise ValueError("无效的删除类型")
-
         if index == 0:
-            elem = self.find_element(locator)
+            # 优雅地根据类型重用已有的高级 PO 方法
+            if del_type == 'text':
+                elem = self.get_collection_text_element(0)
+            elif del_type == 'image':
+                elem = self.get_collection_image_element(0)
+            else:
+                items = self.get_collection_items()
+                elem = items[0] if items else None
+
             if not elem:
                 logger.warning(f"⚠️ 未找到 {del_type} 类型的元素，无法执行删除")
                 return None
@@ -343,10 +266,10 @@ class CollectionPage(ChatCollectionPage):
                 self.back()
                 raise
         else:
-            return self.del_collection_all_item(del_type=del_type, locator=locator)
+            return self.del_collection_all_item(del_type=del_type)
 
     # 删除收藏页面进行所有文本、图片匹配
-    def del_collection_all_item(self, del_type: str = 'text', locator=None, max_items: int = 1000) -> int | None:
+    def del_collection_all_item(self, del_type: str = 'text', max_items: int = 1000) -> int | None:
         logger.info(f"🗑️ 开始全量清空操作 (类型: {del_type})")
 
         index = 0
@@ -354,7 +277,13 @@ class CollectionPage(ChatCollectionPage):
         re_enter_retries = 1
 
         while max_items > 0:
-            elems = self.find_elements(locator)
+            # 重用已有的列表元素获取方法
+            if del_type == 'text':
+                elems = self.get_collection_texts()
+            elif del_type == 'image':
+                elems = self.get_collection_images()
+            else:
+                elems = self.get_collection_items()
             if elems:
                 try:
                     self.swipe_on_element_collection(elems[0].rect, slider_type='left', duration=100,
@@ -387,7 +316,12 @@ class CollectionPage(ChatCollectionPage):
                             logger.info("⚠️ 尝试执行【下拉刷新】以同步数据...")
                             self.swipe_page_quickly()
                             has_refresh = True
-                            self.find_elements(locator)
+                            if del_type == 'text':
+                                self.get_collection_texts()
+                            elif del_type == 'image':
+                                self.get_collection_images()
+                            else:
+                                self.get_collection_items()
                             continue
                         elif re_enter_retries > 0:
                             self.back()
