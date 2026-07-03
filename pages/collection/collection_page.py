@@ -346,7 +346,6 @@ class CollectionPage(ChatCollectionPage):
  
         index = 0
         last_source = None
-        empty_swipes_count = 0  # 连续空屏滑动计数，防止动态DOM造成死循环
  
         while max_items > 0:
             if del_type == 'text':

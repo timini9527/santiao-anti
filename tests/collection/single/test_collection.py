@@ -143,7 +143,6 @@ class TestCollection:
             else:
                 self._send_image_and_collect(strategy)
 
-        # 进入我的收藏页面
         self.common_enter_my_collection()
 
         with allure.step(f"2. 校验刚造的数据在收藏夹中正确展示"):
