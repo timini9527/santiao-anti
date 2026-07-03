@@ -375,15 +375,17 @@ class CollectionPage(ChatCollectionPage):
             else:
                 try:
                     logger.info("👀 当前屏已清空，尝试上滑查找更多...")
-                    source_before = self.driver.page_source
-                    self.swipe_page('up', duration=600)
-                    time.sleep(0.5)
-                    is_changed, _ = self.is_page_source_changed(source_before)
-
-                    if is_changed:
-                        logger.info("🔄 页面已滚动，重新扫描...")
-                        continue
+                    self.swipe_page_quickly(slid_type='up', duration=600, max_swipes=1)
+                    
+                    # 重新扫描以确认是否还有新元素出现
+                    if del_type == 'text':
+                        elems = self.get_collection_texts()
+                    elif del_type == 'image':
+                        elems = self.get_collection_images()
                     else:
+                        elems = self.get_collection_items()
+                        
+                    if not elems:
                         logger.info("✅ 页面已滑到底部且当前屏为空，列表已彻底清空")
                         break
                 except Exception as e:
