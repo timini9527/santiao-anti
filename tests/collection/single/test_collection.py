@@ -130,12 +130,12 @@ class TestCollection:
 
     @allure.story("收藏管理-分享")
     @allure.title("分享收藏条目流程")
-    @pytest.mark.parametrize("col_type", ["text", "image"])
+    @pytest.mark.parametrize("col_type", ["text", "image"], ids=["分享第一条文本收藏", "分享第一条图片收藏"])
     def test_share_collection_success(self, col_type):
         """测试从收藏夹中分享条目的流程（完全自治造数据）"""
         strategy = PRIVATE_USER1
         
-        with allure.step(f"1. 前置造数据：发送一条【{col_type}】消息并收藏"):
+        with allure.step(f"1. 前置造数据：向 {strategy.name} 发送一条【{col_type}】消息并收藏"):
             self.chatListPage.enter_chat(strategy.name)
             if col_type == "text":
                 unique_text = self._build_text("share_test", strategy)

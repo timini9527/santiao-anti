@@ -16,8 +16,10 @@ class CollectionLocator(CommonLocator):
 
     # 收藏 Item 容器
     COLL_CONTENT_CONTAINER = (AppiumBy.ID, f'{PACKAGE_ID}/content_container')       # 收藏 Item 容器
-    COLL_CONTENT_TEXT = (AppiumBy.ID, f'{PACKAGE_ID}/tv_text_content')              # 收藏文本
-    COLL_CONTENT_IMAGE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_image_content')            # 收藏图片
+    COLL_CONTENT_TEXT_ID = f'{PACKAGE_ID}/tv_text_content'
+    COLL_CONTENT_TEXT = (AppiumBy.ID, COLL_CONTENT_TEXT_ID)                         # 收藏文本
+    COLL_CONTENT_IMAGE_ID = f'{PACKAGE_ID}/tv_image_content'
+    COLL_CONTENT_IMAGE = (AppiumBy.ID, COLL_CONTENT_IMAGE_ID)                       # 收藏图片
     COLL_META = (AppiumBy.ID, f'{PACKAGE_ID}/tv_meta')                              # 收藏的用户昵称
     COLL_TIME = (AppiumBy.ID, f'{PACKAGE_ID}/tv_time')                              # 收藏时间
     
@@ -35,9 +37,25 @@ class CollectionLocator(CommonLocator):
     CONTENT_SEND = (AppiumBy.ID, f'{PACKAGE_ID}/send_bnt')                          # 发送按钮
 
     # 右滑/左滑菜单项
-    SWIPE_RIGHT = f'{PACKAGE_ID}/swipe_right"]'
-    SWIPE_RIGHT_SHARE_ITEM = (AppiumBy.XPATH, f'{SWIPE_RIGHT}/*[1]')                # 分享
-    SWIPE_RIGHT_DELETE_ITEM = (AppiumBy.XPATH, f'(//*[@resource-id="{PACKAGE_ID}/swipe_right"]//android.widget.ImageView)[2]')               # 删除
+    SWIPE_RIGHT = f'{PACKAGE_ID}/swipe_right'
+    # 分享
+    SWIPE_RIGHT_SHARE_ITEM = (AppiumBy.XPATH, f'(//*[@resource-id="{SWIPE_RIGHT}"]//android.widget.ImageView)[1]')               
+    # 删除
+    SWIPE_RIGHT_DELETE_ITEM = (AppiumBy.XPATH, f'(//*[@resource-id="{SWIPE_RIGHT}"]//android.widget.ImageView)[2]')               
 
+
+    # 通过text/image元素，向上定位容器
+    @staticmethod
+    def get_coll_item_by_text(text: str, col_type: str = 'text'):
+        content_id = (
+            CollectionLocator.COLL_CONTENT_TEXT_ID 
+            if col_type == 'text' 
+            else CollectionLocator.COLL_CONTENT_IMAGE_ID
+        )
+        return (
+            AppiumBy.XPATH, 
+            f'//*[@resource-id="{CollectionLocator.PACKAGE_ID}/content_container" '
+            f'and .//*[@resource-id="{content_id}" and @text="{text}"]]'
+        )
 
 

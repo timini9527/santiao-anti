@@ -107,10 +107,10 @@ class CollectionPage(ChatCollectionPage):
 
     # 获取收藏当前页面所有 text 数据
     def get_collection_text_data(self, index: int = 0) -> list[str]:
-        # 重用 get_collection_texts() 封装
         elems = self.get_collection_texts()
         texts = [elem.text for elem in elems]
         if index == 0:
+            logger.info(f" 💬 获取收藏页面的数据: {texts}")
             return texts
         elif index <= len(texts):
             logger.info(f" 💬 获取收藏页面的数据: {texts[0:index:1]}")
@@ -122,6 +122,14 @@ class CollectionPage(ChatCollectionPage):
 
     @staticmethod
     def calculate_overlap(list_a: list, list_b: list) -> int:
+        """
+        计算两个列表尾部与头部的重叠长度
+        Args:
+            list_a: 第一个列表（当前页面数据，列表尾部是最新数据）
+            list_b: 第二个列表（上滑后的历史数据，列表头部是最新数据）
+        Returns:
+            重叠的长度，如果没有重叠返回 0
+        """
         max_possible_overlap = min(len(list_a), len(list_b))
         for size in range(max_possible_overlap, 0, -1):
             if list_a[-size:] == list_b[:size]:
@@ -309,34 +317,36 @@ class CollectionPage(ChatCollectionPage):
             raise e
 
 
-
     # 删除收藏-删除指定索引的文本/图片条目
-    def del_collection_item(self, del_type: str = 'text', index: int = 0) -> int | None:
-        ''' 删除收藏页面中指定索引的条目 '''
-        
-        if index == 0:
-            if del_type == 'text':
-                elem = self.get_collection_text_element(0)
-            elif del_type == 'image':
-                elem = self.get_collection_image_element(0)
-            else:
-                items = self.get_collection_items()
-                elem = items[0] if items else None
+    def del_collection_item(self, del_type: str = "text", index: int = 0) -> bool:
+        """删除收藏页面中指定索引的条目"""
 
-            if not elem:
-                logger.warning(f"⚠️ 未找到 {del_type} 类型的元素，无法执行删除")
-                return None
-            try:
-                self.swipe_on_element(elem, slid_type='left', duration=400)
-                self.click(CollectionLocator.SWIPE_RIGHT_DELETE_ITEM)
-                logger.info(f"✅ 第 {index} 条数据 删除成功")
-            except StaleElementReferenceException as e:
-                logger.warning("⚠️ 元素引用过期，重试...")
-            except Exception as e:
-                logger.error(f"❌ 第 {index} 条数据 删除失败: {e}")
-                raise
+        if del_type == "text":
+            elem = self.get_collection_text_element(index)
+        elif del_type == "image":
+            elem = self.get_collection_image_element(index)
+        elif del_type == "all":
+            items = self.get_collection_items()
+            elem = items[index] if index < len(items) else None
         else:
-            return self.del_collection_all_item(del_type=del_type)
+            raise ValueError(f"不支持的收藏类型: {del_type}")
+
+        if not elem:
+            logger.warning(f"⚠️ 未找到第 {index} 条 {del_type} 类型收藏，无法执行删除")
+            return False
+
+        try:
+            container = self.find_element(*CollectionLocator.COLL_CONTENT_CONTAINER)
+            self.swipe_on_element(container, slid_type="left", duration=400)
+            self.click(CollectionLocator.SWIPE_RIGHT_DELETE_ITEM)
+            logger.info(f"✅ 第 {index} 条 {del_type} 收藏删除成功")
+            return True
+        except StaleElementReferenceException:
+            logger.warning(f"⚠️ 第 {index} 条 {del_type} 收藏元素引用过期，删除失败")
+            return False
+        except Exception as e:
+            logger.error(f"❌ 第 {index} 条 {del_type} 收藏删除失败: {e}")
+            raise
 
     # 删除收藏-删除所有文本/图片条目
     def del_collection_all_item(self, del_type: str = 'text', max_items: int = 100) -> int:
