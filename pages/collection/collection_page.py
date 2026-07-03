@@ -339,14 +339,15 @@ class CollectionPage(ChatCollectionPage):
             return self.del_collection_all_item(del_type=del_type)
 
     # 删除收藏-删除所有文本/图片条目
-    def del_collection_all_item(self, del_type: str = 'text', max_items: int = 100) -> int | None:
-        ''' 删除收藏页面中所有文本/图片条目 '''
+    def del_collection_all_item(self, del_type: str = 'text', max_items: int = 100) -> int:
+        ''' 删除收藏页面中所有文本/图片条目 并返回被删除的数量 '''
         
         logger.info(f"🗑️ 开始全量清空操作 (类型: {del_type})")
-
+ 
         index = 0
         last_source = None
-
+        empty_swipes_count = 0  # 连续空屏滑动计数，防止动态DOM造成死循环
+ 
         while max_items > 0:
             if del_type == 'text':
                 elems = self.get_collection_texts()
