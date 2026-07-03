@@ -35,9 +35,9 @@ class CollectionLocator(CommonLocator):
     CONTENT_SEND = (AppiumBy.ID, f'{PACKAGE_ID}/send_bnt')                          # 发送按钮
 
     # 右滑/左滑菜单项
-    SWIPE_RIGHT = f'//*[@resource-id="{PACKAGE_ID}/swipe_right"]'
+    SWIPE_RIGHT = f'{PACKAGE_ID}/swipe_right"]'
     SWIPE_RIGHT_SHARE_ITEM = (AppiumBy.XPATH, f'{SWIPE_RIGHT}/*[1]')                # 分享
-    SWIPE_RIGHT_DELETE_ITEM = (AppiumBy.XPATH, f'{SWIPE_RIGHT}/*[2]')               # 删除
+    SWIPE_RIGHT_DELETE_ITEM = (AppiumBy.XPATH, f'(//*[@resource-id="{PACKAGE_ID}/swipe_right"]//android.widget.ImageView)[2]')               # 删除
 
 
 
