@@ -240,13 +240,12 @@ class CollectionPage(ChatCollectionPage):
             return False
 
         try:
-            self.swipe_on_element_collection(elem.rect, slider_type='left', duration=200, collection_type=share_type)
+            self.swipe_on_element(elem, slid_type='left', duration=400)
             self.click(CollectionLocator.SWIPE_RIGHT_SHARE_ITEM)
             logger.info(f"✅ 第 {index} 条 {share_type} 收藏数据分享按钮点击成功")
             return True
         except Exception as e:
             logger.error(f"❌ 第 {index} 条 {share_type} 收藏数据分享失败: {e}")
-            self.back()
             raise e
 
 
@@ -329,7 +328,6 @@ class CollectionPage(ChatCollectionPage):
                 return None
             try:
                 self.swipe_on_element(elem, slid_type='left', duration=400)
-
                 self.click(CollectionLocator.SWIPE_RIGHT_DELETE_ITEM)
                 logger.info(f"✅ 第 {index} 条数据 删除成功")
             except StaleElementReferenceException as e:
