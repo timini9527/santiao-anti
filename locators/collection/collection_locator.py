@@ -15,7 +15,8 @@ class CollectionLocator(CommonLocator):
     COLL_RECYCLER_VIEW = (AppiumBy.ID, f'{PACKAGE_ID}/recyclerView')                # 收藏列表容器
 
     # 收藏 Item 容器
-    COLL_CONTENT_CONTAINER = (AppiumBy.ID, f'{PACKAGE_ID}/content_container')       # 收藏 Item 容器
+    COLL_CONTENT_CONTAINER_ID = f'{PACKAGE_ID}/content_container'
+    COLL_CONTENT_CONTAINER = (AppiumBy.ID, COLL_CONTENT_CONTAINER_ID)               # 收藏 Item 容器
     COLL_CONTENT_TEXT_ID = f'{PACKAGE_ID}/tv_text_content'
     COLL_CONTENT_TEXT = (AppiumBy.ID, COLL_CONTENT_TEXT_ID)                         # 收藏文本
     COLL_CONTENT_IMAGE_ID = f'{PACKAGE_ID}/tv_image_content'
@@ -46,7 +47,7 @@ class CollectionLocator(CommonLocator):
 
     # 通过text/image元素，向上定位容器
     @staticmethod
-    def get_coll_item_by_text(text: str, col_type: str = 'text'):
+    def get_coll_item_by_type(col_type: str = 'text'):
         content_id = (
             CollectionLocator.COLL_CONTENT_TEXT_ID 
             if col_type == 'text' 
@@ -54,8 +55,7 @@ class CollectionLocator(CommonLocator):
         )
         return (
             AppiumBy.XPATH, 
-            f'//*[@resource-id="{content_id}" and @text="{text}"]'
-            f'/ancestor::*[@resource-id="{CollectionLocator.PACKAGE_ID}/content_container"]'
+            f'//*[@resource-id="{content_id}"]/ancestor::*[@resource-id="{CollectionLocator.COLL_CONTENT_CONTAINER_ID}"]'
         )
 
 
