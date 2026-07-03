@@ -375,25 +375,20 @@ class CollectionPage(ChatCollectionPage):
             else:
                 try:
                     logger.info("👀 当前屏已清空，尝试上滑查找更多...")
-                    source_page = self.driver.page_source
+                    source_before = self.driver.page_source
                     self.swipe_page('up', duration=300)
                     time.sleep(0.5)
-                    source_after = self.driver.page_source
-                    if source_page != source_after:
+                    is_changed, _ = self.is_page_source_changed(source_before)
+
+                    if is_changed:
                         logger.info("🔄 页面已滚动，重新扫描...")
                         continue
                     else:
                         logger.warning("🛑 页面已滑到底部 (源码未变)")
                         if not has_refresh:
                             logger.info("⚠️ 尝试执行【下拉刷新】以同步数据...")
-                            self.swipe_page_quickly()
+                            self.swipe_page_quickly(slid_type='down')
                             has_refresh = True
-                            if del_type == 'text':
-                                self.get_collection_texts()
-                            elif del_type == 'image':
-                                self.get_collection_images()
-                            else:
-                                self.get_collection_items()
                             continue
                         elif re_enter_retries > 0:
                             self.back()
