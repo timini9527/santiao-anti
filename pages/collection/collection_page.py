@@ -364,19 +364,25 @@ class CollectionPage(ChatCollectionPage):
  
         while max_items > 0:
             if del_type == 'text':
-                elems = self.get_collection_texts()
+                elems = self.get_collection_texts(expect_missing=True)
             elif del_type == 'image':
-                elems = self.get_collection_images()
+                elems = self.get_collection_images(expect_missing=True)
             else:
-                elems = self.get_collection_items()
+                elems = self.get_collection_items(expect_missing=True)
 
             if elems:
                 try:
-                    self.swipe_on_element(elems[0], slid_type='left', duration=400)
+                    self.swipe_by_offset(
+                        elems[0].rect, 
+                        start_x_offset=int(elems[0].rect['width'] * 0.8), 
+                        x_offset=-int(elems[0].rect['width']), 
+                        duration=400
+                    )
                     self.click(CollectionLocator.SWIPE_RIGHT_DELETE_ITEM)
                     index += 1
                     max_items -= 1
                     logger.info(f"✅ 第 {index} 条数据 删除成功")
+                    time.sleep(0.5)
                     continue
                 except StaleElementReferenceException as e:
                     logger.warning("⚠️ 元素引用过期 (Stale)，DOM 已刷新，重新扫描...")
@@ -388,7 +394,7 @@ class CollectionPage(ChatCollectionPage):
                 try:
                     logger.info("👀 当前屏已清空，尝试上滑查找更多...")
                     self.swipe_page_quickly(slid_type='up', duration=600, max_swipes=1)
-                    
+                    time.sleep(0.8)
                     is_changed, last_source = self.is_page_source_changed(last_source)
                     
                     if is_changed:

@@ -26,11 +26,11 @@ class ChatCollectionPage(ChatPage):
             title = self.get_attribute(CollectionLocator.TOP_TV_TITLE, 'text')
             logger.info(f"✅ [Wait] 收藏选择页加载完成，标题为：{title}")
             if "收藏" not in title:
-                logger.error(f"❌ [Wait] 收藏选择页标题不是“收藏”，当前标题为：{title}")
+                logger.warning(f"⚠️ [Wait] 收藏选择页标题不是“收藏”，当前标题为：{title}")
                 return False
             return True
         except Exception as e:
-            logger.error(f"❌ [Wait] 收藏选择页加载超时: {e}")
+            logger.warning(f"⚠️ [Wait] 收藏选择页加载超时: {e}")
             return False
  
     # 打开面板进入收藏页面
@@ -46,27 +46,27 @@ class ChatCollectionPage(ChatPage):
         """获取收藏列表容器"""
         list_elem = self.find_element(CollectionLocator.COLL_RECYCLER_VIEW)
         if not list_elem:
-            logger.error("❌ [Action] - 未找到收藏列表容器")
+            logger.warning("⚠️ [Action] - 未找到收藏列表容器")
             return None
         logger.info(f"✅ [Action] - 获取到收藏列表容器")
         return list_elem
  
     # 获取收藏Item
-    def get_collection_items(self) -> list[WebElement]:
+    def get_collection_items(self, timeout: int = 2, expect_missing: bool = False) -> list[WebElement]:
         """获取收藏Item"""
-        items = self.find_elements(CollectionLocator.COLL_CONTENT_CONTAINER)
+        items = self.find_elements(CollectionLocator.COLL_CONTENT_CONTAINER, timeout=timeout, expect_missing=expect_missing)
         if not items and len(items) == 0:
-            logger.error("❌ [Action] - 未找到收藏Item")
+            logger.warning("⚠️ [Action] - 未找到收藏Item")
             return []
         logger.info(f"✅ [Action] - 获取到 {len(items)} 个收藏Item")
         return items
  
     # 获取收藏的文本列表
-    def get_collection_texts(self) -> list[WebElement]:
+    def get_collection_texts(self, timeout: int = 2, expect_missing: bool = False) -> list[WebElement]:
         """获取收藏的文本列表"""
-        texts = self.find_elements(CollectionLocator.COLL_CONTENT_TEXT)
+        texts = self.find_elements(CollectionLocator.COLL_CONTENT_TEXT, timeout=timeout, expect_missing=expect_missing)
         if not texts:
-            logger.error("❌ [Action] - 未找到任何收藏的文本")
+            logger.warning("⚠️ [Action] - 未找到任何收藏的文本")
             return []
         logger.info(f"✅ [Action] - 获取到 {len(texts)} 个收藏的文本")
         return texts 
@@ -78,7 +78,7 @@ class ChatCollectionPage(ChatPage):
         if not text_list:
             return None
         if index >= len(text_list):
-            logger.error(f"❌ [Action] - 索引 {index} 越界，当前仅有 {len(text_list)} 条文本")
+            logger.warning(f"⚠️ [Action] - 索引 {index} 越界，当前仅有 {len(text_list)} 条文本")
             return None
         text_elem = text_list[index]
         logger.info(f"✅ [Action] - 获取到收藏的第 {index} 条文本 Element")
@@ -89,7 +89,7 @@ class ChatCollectionPage(ChatPage):
         """获取收藏的第 {index} 条文本内容"""
         text_elem = self.get_collection_text_element(index)
         if not text_elem:
-            logger.error(f"❌ [Action] - 无法获取第 {index} 条文本内容，Element 为 None")
+            logger.warning(f"⚠️ [Action] - 无法获取第 {index} 条文本内容，Element 为 None")
             return ""
         return text_elem.get_attribute('text')
     
@@ -98,17 +98,17 @@ class ChatCollectionPage(ChatPage):
         """点击收藏的第 {index} 条文本"""
         text_elem = self.get_collection_text_element(index)
         if not text_elem:
-            logger.error(f"❌ [Action] - 无法点击第 {index} 条文本，Element 为 None")
+            logger.warning(f"⚠️ [Action] - 无法点击第 {index} 条文本，Element 为 None")
             return
         text_elem.click()
         logger.info(f"✅ [Action] - 点击了收藏的第 {index} 条文本")
  
     # 获取收藏图片列表
-    def get_collection_images(self) -> list[WebElement]:
+    def get_collection_images(self, timeout: int = 2, expect_missing: bool = False) -> list[WebElement]:
         """获取收藏图片列表"""
-        images = self.find_elements(CollectionLocator.COLL_CONTENT_IMAGE)
+        images = self.find_elements(CollectionLocator.COLL_CONTENT_IMAGE, timeout=timeout, expect_missing=expect_missing)
         if not images:
-            logger.error("❌ [Action] - 未找到任何收藏图片")
+            logger.warning("⚠️ [Action] - 未找到任何收藏图片")
             return []
         logger.info(f"✅ [Action] - 获取到 {len(images)} 个收藏图片")
         return images 
@@ -120,7 +120,7 @@ class ChatCollectionPage(ChatPage):
         if not images:
             return None
         if index >= len(images):
-            logger.error(f"❌ [Action] - 索引 {index} 越界，当前仅有 {len(images)} 张图片")
+            logger.warning(f"⚠️ [Action] - 索引 {index} 越界，当前仅有 {len(images)} 张图片")
             return None
         image = images[index]
         logger.info(f"✅ [Action] - 获取到收藏的第 {index} 张图片 Element")
@@ -131,7 +131,7 @@ class ChatCollectionPage(ChatPage):
         """点击收藏的第 {index} 张图片"""
         image = self.get_collection_image_element(index)
         if not image:
-            logger.error(f"❌ [Action] - 无法点击第 {index} 张图片，Element 为 None")
+            logger.warning(f"⚠️ [Action] - 无法点击第 {index} 张图片，Element 为 None")
             return
         image.click()
         logger.info(f"✅ [Action] - 点击了收藏的第 {index} 张图片")
@@ -142,7 +142,7 @@ class ChatCollectionPage(ChatPage):
         """获取收藏的用户昵称"""
         nicknames = self.find_elements(CollectionLocator.COLL_USER_NICKNAME)
         if not nicknames and len(nicknames) == 0:
-            logger.error("❌ [Action] - 未找到收藏的用户昵称")
+            logger.warning("⚠️ [Action] - 未找到收藏的用户昵称")
             return []
         logger.info(f"✅ [Action] - 获取到 {len(nicknames)} 个收藏的用户昵称")
         return nicknames 
@@ -152,7 +152,7 @@ class ChatCollectionPage(ChatPage):
         """获取收藏的时间"""
         times = self.find_elements(CollectionLocator.COLL_TIME)
         if not times and len(times) == 0:
-            logger.error("❌ [Action] - 未找到收藏的时间")
+            logger.warning("⚠️ [Action] - 未找到收藏的时间")
             return []
         logger.info(f"✅ [Action] - 获取到 {len(times)} 个收藏的时间")
         return times 
@@ -163,7 +163,7 @@ class ChatCollectionPage(ChatPage):
         """获取发送收藏面板"""
         panel = self.find_element(CollectionLocator.CONTENT)
         if not panel:
-            logger.error("❌ [Action] - 未找到发送收藏面板")
+            logger.warning("⚠️ [Action] - 未找到发送收藏面板")
             return None
         logger.info(f"✅ [Action] - 获取到发送收藏面板")
         return panel 
@@ -173,7 +173,7 @@ class ChatCollectionPage(ChatPage):
         """等待确认发送面板"""
         panel = self.find_element(CollectionLocator.CONTENT_SEND, timeout=timeout)
         if not panel:
-            logger.error("❌ [Wait] - 未找到发送面板")
+            logger.warning("⚠️ [Wait] - 未找到发送面板")
             return False
         logger.info(f"✅ [Wait] - 发送面板加载完成")
         return True
@@ -183,7 +183,7 @@ class ChatCollectionPage(ChatPage):
         """获取面板头像"""
         ava = self.find_element(CollectionLocator.CONTENT_AVATAR)
         if not ava:
-            logger.error("❌ [Action] - 未找到面板头像")
+            logger.warning("⚠️ [Action] - 未找到面板头像")
             return None
         logger.info(f"✅ [Action] - 获取到面板头像")
         return ava 
@@ -193,7 +193,7 @@ class ChatCollectionPage(ChatPage):
         """获取面板昵称"""
         nickname = self.find_element(CollectionLocator.CONTENT_NICKNAME_ITEM)
         if not nickname:
-            logger.error("❌ [Action] - 未找到面板昵称")
+            logger.warning("⚠️ [Action] - 未找到面板昵称")
             return None
         logger.info(f"✅ [Action] - 获取到面板昵称")
         return nickname 
@@ -206,13 +206,13 @@ class ChatCollectionPage(ChatPage):
         elif col_type == "image":
             locator = CollectionLocator.CONTENT_IMAGE_BUBBLE
         else:
-            logger.error(f"❌ [Action] - 未找到面板气泡内容, col_type: {col_type}")
+            logger.warning(f"⚠️ [Action] - 未找到面板气泡内容, col_type: {col_type}")
             return None
         
         content_bubble = self.find_element(locator)
  
         if not content_bubble:
-            logger.error(f"❌ [Action] - 未找到面板{col_type}气泡内容")
+            logger.warning(f"⚠️ [Action] - 未找到面板{col_type}气泡内容")
             return None
         logger.info(f"✅ [Action] - 获取到面板{col_type}气泡内容")
         return content_bubble 
@@ -245,7 +245,7 @@ class ChatCollectionPage(ChatPage):
         """获取收藏图片->Hash"""
         image_eles = self.find_elements(CollectionLocator.COLL_CONTENT_IMAGE)
         if index >= len(image_eles) or index < 0:
-            logger.error(f"❌ [Action] - 未找到索引为 {index} 的收藏图片")
+            logger.warning(f"⚠️ [Action] - 未找到索引为 {index} 的收藏图片")
             return None
  
         image_ele = image_eles[index]
@@ -320,7 +320,7 @@ class ChatCollectionPage(ChatPage):
             time.sleep(0.5)
  
         if not found_items_data:
-            logger.error(f"❌ [Action] - 未找到任何【{col_type}】条目")
+            logger.warning(f"⚠️ [Action] - 未找到任何【{col_type}】条目")
             return None
         
         if is_negative_index:
@@ -344,7 +344,7 @@ class ChatCollectionPage(ChatPage):
         if self.wait_for_send_collection_panel(timeout=3):
             logger.info(f"✅ [Action] - 成功弹出确认发送面板")
         else:
-            logger.error("❌ [Action] - 确认发送面板仍未弹出")
+            logger.warning("⚠️ [Action] - 确认发送面板仍未弹出")
             
         return result_content
     
@@ -357,7 +357,7 @@ class ChatCollectionPage(ChatPage):
         """
         content = self.get_send_collection_panel_content(col_type=col_type)
         if not content:
-            logger.error(f"❌ [Action] - 未找到面板{col_type}气泡内容")
+            logger.warning(f"⚠️ [Action] - 未找到面板{col_type}气泡内容")
             return None
  
         if col_type == "text":
@@ -382,7 +382,7 @@ class ChatCollectionPage(ChatPage):
         # 1. 获取并点击收藏项
         items = self.get_collection_items()
         if not items or len(items) <= index:
-            logger.error(f"❌ [Action] - 列表中没有索引为 {index} 的条目")
+            logger.warning(f"⚠️ [Action] - 列表中没有索引为 {index} 的条目")
             return False
         
         items[index].click()

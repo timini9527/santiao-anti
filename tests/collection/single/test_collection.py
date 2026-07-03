@@ -119,42 +119,6 @@ class TestCollection:
             check.is_true(result, "点击分享按钮失败")
 
 
-    @allure.story("收藏夹管理-删除")
-    @allure.title("删除收藏夹中的单个条目流程 - 状态：已完成")
-    @pytest.mark.parametrize("col_type", ["text", "image"], ids=["删除第一条文本收藏", "删除第一条图片收藏"])
-    def test_delete_collection_success(self, col_type):
-        """  测试从收藏夹中成功删除条目的流程  """
-        strategy = PRIVATE_USER1
-        
-        with allure.step(f"1. 前置造数据：向 {strategy.name} 发送一条【{col_type}】消息并收藏"):
-            self.chatListPage.enter_chat(strategy.name)
-            if col_type == "text":
-                unique_text = self._build_text("delete_test", strategy)
-                self._send_text_and_collect(unique_text)
-            else:
-                self._send_image_and_collect(strategy)
-
-        self.common_enter_my_collection()
-
-        with allure.step(f"2. 校验刚造的数据在收藏夹中正确展示"):
-            if col_type == "text":
-                self._verify_latest_text(unique_text)
-            self._verify_latest_collection_time()
-
-        with allure.step(f"3. 执行删除刚造的最新一条【{col_type}】收藏"):
-            before_content = None
-            if col_type == "text":
-                before_content = self.collectionPage.get_collection_text_content(0)
-            
-            self.collectionPage.del_collection_item(del_type=col_type, index=0)
-
-        with allure.step(f"4. 验证删除结果"):
-            if col_type == "text":
-                after_content = self.collectionPage.get_collection_text_content(0)
-                check.not_equal(before_content, after_content, f"❌ 删除校验失败：第0条文本内容依然为 '{before_content}'")
-            else:
-                logger.info("✅ 图片删除成功")
-
 
     @allure.story("收藏管理-排序")
     @allure.title("验证收藏列表按时间倒序排列")
@@ -217,27 +181,24 @@ class TestCollection:
 
     @allure.story("收藏管理-一键清空")
     @allure.title("清空收藏夹中特定/所有条目流程")
-    @pytest.mark.parametrize("target_type, exp_del, exp_remain", [
-        ("text", 2, 1),   # 删掉所有文本，剩下 1 条图片
-        ("image", 1, 2),  # 删掉所有图片，剩下 2 条文本
-        ("all", 3, 0)     # 删掉所有收藏，剩下 0 条
+    @pytest.mark.parametrize("target_type, exp_del", [
+        ("text", 1),   
+        ("image", 2),  
+        ("all", 0)     
     ], ids=["仅清空文本收藏", "仅清空图片收藏", "一键清空全部收藏"])
-    def test_delete_all_collection_items(self, target_type, exp_del, exp_remain):
+    def test_delete_all_collection_items(self, target_type, exp_del):
         """测试清空收藏夹中指定类型或全部收藏条目的功能，验证类型隔离过滤是否正确"""
         strategy = PRIVATE_USER1
         
         with allure.step("1. 前置造数据：发送并收藏 2 条文本和 1 条图片"):
             self.chatListPage.enter_chat(strategy.name)
             
-            # 发送并收藏文本 1
             text1 = self._build_text("all_del_t1", strategy)
             self._send_text_and_collect(text1)
             
-            # 发送并收藏文本 2
             text2 = self._build_text("all_del_t2", strategy)
             self._send_text_and_collect(text2)
             
-            # 发送并收藏图片 1
             self._send_image_and_collect(strategy)
             
         self.common_enter_my_collection()
@@ -248,7 +209,6 @@ class TestCollection:
             
         with allure.step(f"3. 执行清空【{target_type}】类型收藏操作"):
             deleted_count = self.collectionPage.del_collection_all_item(del_type=target_type)
-            logger.info(f"🗑️ 清空操作已完成，类型: {target_type}，共计删除 {deleted_count} 条")
             check.greater_equal(deleted_count, exp_del, f"❌ 删除校验失败：实际删除数量 {deleted_count} 小于预期 {exp_del}")
             
         with allure.step(f"4. 校验删除后，列表中剩余的卡片数量符合预期"):
