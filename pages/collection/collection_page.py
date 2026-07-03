@@ -102,7 +102,7 @@ class CollectionPage(ChatCollectionPage):
     def get_sort_time(self, detail_list: list[dict[str, str]]):
         pastimes = [detail["collected_time"] for detail in detail_list]
         pastimes = sorted(pastimes, reverse=True)
-        print(f" 💬 获取当前页面时间及被收藏人 重构排序: {pastimes}")
+        logger.info(f"[Action] 获取当前页面时间及被收藏人 重构排序: {pastimes}")
         return pastimes
 
     # 获取收藏当前页面所有 text 数据
@@ -223,21 +223,6 @@ class CollectionPage(ChatCollectionPage):
         logger.info(f"🎉 抓取完成! 共保存 {total_captures} 张图片")
         return total_captures, images_names
 
-    # 左滑只针对我的收藏中的左滑操作
-    def swipe_on_element_collection(self, rect, slider_type: str = "left", duration: int = 500,
-                                    collection_type: str = ""):
-        rect = rect.copy()
-        center_y = rect['y'] + rect['height'] * 0.5
-
-        if collection_type == "image":
-            rect['width'] = rect['width'] * 2
-
-        if slider_type.lower() == "left":
-            start_x = rect['x'] + rect['width'] * 0.8
-            end_x = rect['x'] + rect['width'] * 0.2
-        else:
-            raise ValueError(f"不支持滑动方向: {slider_type}")
-        self.swipe(start_x, center_y, end_x, center_y, duration)
 
     # 分享收藏页面的文本或图片条目
     def share_collection_item(self, share_type: str = 'text', index: int = 0) -> bool:
@@ -343,15 +328,14 @@ class CollectionPage(ChatCollectionPage):
                 logger.warning(f"⚠️ 未找到 {del_type} 类型的元素，无法执行删除")
                 return None
             try:
-                self.swipe_on_element_collection(elem.rect, slider_type='left', duration=200,
-                                                 collection_type=del_type)
+                self.swipe_on_element(elem, slid_type='left', duration=400)
+
                 self.click(CollectionLocator.SWIPE_RIGHT_DELETE_ITEM)
                 logger.info(f"✅ 第 {index} 条数据 删除成功")
             except StaleElementReferenceException as e:
                 logger.warning("⚠️ 元素引用过期，重试...")
             except Exception as e:
                 logger.error(f"❌ 第 {index} 条数据 删除失败: {e}")
-                self.back()
                 raise
         else:
             return self.del_collection_all_item(del_type=del_type)
@@ -365,6 +349,7 @@ class CollectionPage(ChatCollectionPage):
         index = 0
         has_refresh = False
         re_enter_retries = 1
+        
 
         while max_items > 0:
             if del_type == 'text':
@@ -373,10 +358,10 @@ class CollectionPage(ChatCollectionPage):
                 elems = self.get_collection_images()
             else:
                 elems = self.get_collection_items()
+
             if elems:
                 try:
-                    self.swipe_on_element_collection(elems[0].rect, slider_type='left', duration=100,
-                                                     collection_type=del_type)
+                    self.swipe_on_element(elems[0], slid_type='left', duration=400)
                     self.click(CollectionLocator.SWIPE_RIGHT_DELETE_ITEM)
                     index += 1
                     max_items -= 1

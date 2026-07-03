@@ -93,13 +93,13 @@ class TestCollection:
 
 
     @allure.story("收藏夹管理-删除")
-    @allure.title("删除收藏条目流程")
+    @allure.title("删除收藏夹中的单个条目流程 - 状态：已完成")
     @pytest.mark.parametrize("col_type", ["text", "image"])
     def test_delete_collection_success(self, col_type):
-        """测试从收藏夹中成功删除条目的流程（完全自治造数据）"""
+        """  测试从收藏夹中成功删除条目的流程  """
         strategy = PRIVATE_USER1
         
-        with allure.step(f"1. 前置造数据：发送一条【{col_type}】消息并收藏"):
+        with allure.step(f"1. 前置造数据：向 {strategy.name} 发送一条【{col_type}】消息并收藏"):
             self.chatListPage.enter_chat(strategy.name)
             if col_type == "text":
                 unique_text = self._build_text("delete_test", strategy)
@@ -109,15 +109,19 @@ class TestCollection:
 
         self.common_enter_my_collection()
 
-        with allure.step(f"2. 执行删除刚造的最新一条【{col_type}】收藏"):
+        with allure.step(f"2. 校验刚造的数据在收藏夹中正确展示"):
+            if col_type == "text":
+                self._verify_latest_text(unique_text)
+            self._verify_latest_collection_time()
+
+        with allure.step(f"3. 执行删除刚造的最新一条【{col_type}】收藏"):
             before_content = None
             if col_type == "text":
                 before_content = self.collectionPage.get_collection_text_content(0)
-                check.equal(before_content, unique_text, "预校验：最新一条文本收藏与刚才发送的文本不一致")
             
             self.collectionPage.del_collection_item(del_type=col_type, index=0)
 
-        with allure.step(f"3. 验证删除结果"):
+        with allure.step(f"4. 验证删除结果"):
             if col_type == "text":
                 after_content = self.collectionPage.get_collection_text_content(0)
                 check.not_equal(before_content, after_content, f"❌ 删除校验失败：第0条文本内容依然为 '{before_content}'")
@@ -142,7 +146,12 @@ class TestCollection:
         # 进入我的收藏页面
         self.common_enter_my_collection()
 
-        with allure.step(f"2. 点击分享第一条【{col_type}】收藏"):
+        with allure.step(f"2. 校验刚造的数据在收藏夹中正确展示"):
+            if col_type == "text":
+                self._verify_latest_text(unique_text)
+            self._verify_latest_collection_time()
+
+        with allure.step(f"3. 点击分享第一条【{col_type}】收藏"):
             result = self.collectionPage.share_collection_item(share_type=col_type, index=0)
             check.is_true(result, "点击分享按钮失败")
 
