@@ -1,9 +1,6 @@
 import pytest
 import allure
 import pytest_check as check
-import time
-from core.logger_utils import logger
-
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.chat.list.chat_list_page import ChatListPage
@@ -78,27 +75,45 @@ class TestSmokeChatCore(BaseSmokeChat):
     @allure.story("聊天密码开关")
     @allure.title("单聊设置 - 聊天密码开关-状态：已完成")
     def test_chat_password_switch(self):
-        with allure.step("1. 进入单聊设置"):
-            self._enter_setting(PRIVATE_USER1.name)
+        enabled_by_test = False
 
-        with allure.step("2. 点击聊天密码开关"):
-            init_status = self.chatSettingPage.get_switch_chat_pwd_status()
-            if str(init_status).lower() == 'true':
+        try:
+            with allure.step("1. 进入单聊设置"):
+                self._enter_setting(PRIVATE_USER1.name)
+
+            with allure.step("2. 开启聊天密码开关"):
+                init_status = self.chatSettingPage.get_switch_chat_pwd_status()
+                if str(init_status).lower() == 'true':
+                    pytest.skip("聊天密码已开启，跳过测试，避免改变已有环境状态")
+
                 self.chatSettingPage.click_switch_chat_pwd()
-                pytest.skip("聊天密码已开启，跳过测试")
-            self.chatSettingPage.click_switch_chat_pwd()
+                enabled_by_test = True
 
-        with allure.step("3. 回到主页校验消息已掩码"):
-            self.mainPage.go_to_main_page()
-            content = self.homePage.get_message_by_name(PRIVATE_USER1.name)
-            check.is_in("******", content, "❌ 聊天密码未生效，内容未加密")
+            with allure.step("3. 回到主页校验消息已掩码"):
+                self.mainPage.go_to_main_page()
+                content = self.homePage.get_message_by_name(PRIVATE_USER1.name)
+                check.is_in("******", content, "❌ 聊天密码未生效，内容未加密")
 
-        with allure.step("4. 输入密码重新进入并还原开关"):
-            self.homePage.get_conversation_by_name(PRIVATE_USER1.name).click()
-            self.homePage.input_chat_password("111111")
-            self.chatSettingPage.click_more_button()
-            self.chatSettingPage.wait_for_setting_page_load()
-            self.chatSettingPage.click_switch_chat_pwd()
+            with allure.step("4. 输入密码重新进入并还原开关"):
+                self.homePage.get_conversation_by_name(PRIVATE_USER1.name).click()
+                self.homePage.input_chat_password("111111")
+                self.chatSettingPage.click_more_button()
+                self.chatSettingPage.wait_for_setting_page_load()
+                self.chatSettingPage.click_switch_chat_pwd()
+                enabled_by_test = False
+        finally:
+            if enabled_by_test:
+                with allure.step("后置清理：关闭本用例开启的聊天密码"):
+                    try:
+                        self.mainPage.go_to_main_page()
+                        self.homePage.get_conversation_by_name(PRIVATE_USER1.name).click()
+                        self.homePage.input_chat_password("111111")
+                        self.chatSettingPage.click_more_button()
+                        self.chatSettingPage.wait_for_setting_page_load()
+                        if str(self.chatSettingPage.get_switch_chat_pwd_status()).lower() == 'true':
+                            self.chatSettingPage.click_switch_chat_pwd()
+                    except Exception:
+                        pass
 
     @allure.story("清空聊天记录")
     @allure.title("单聊设置 - 清空聊天记录-状态：已完成")
@@ -202,3 +217,4 @@ class TestSmokeChatLongPress(BaseSmokeChat):
             self.sideSlipPage.click_collection()
             coll_tt = self.collectionPage.get_collection_text_content()
             check.equal(coll_tt, payload, f"❌ 收藏夹文本不一致: {coll_tt}")
+
