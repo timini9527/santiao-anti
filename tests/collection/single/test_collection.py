@@ -68,7 +68,7 @@ class TestCollection:
         check.is_true(result, "选图失败")
         self.imagePage.click_send_button()
 
-        # 发送图片后最后一条消息定位可能不稳定，重新进入会话再收藏
+        # TODO: 发送图片后最后一条消息定位不稳定，先重新进入会话再收藏。
         self.mainPage.go_to_main_page()
         self.chatListPage.enter_chat(strategy.name)
         self._long_collection()
@@ -90,7 +90,9 @@ class TestCollection:
         result = self.collectionPage.verify_collection_time(now_time, coll_time)
         check.is_true(result, f"校验失败：收藏时间不匹配 {now_time} | {coll_time}")
 
-    @allure.story("收藏管理-删除")
+
+
+    @allure.story("收藏夹管理-删除")
     @allure.title("删除收藏条目流程")
     @pytest.mark.parametrize("col_type", ["text", "image"])
     def test_delete_collection_success(self, col_type):
@@ -105,7 +107,6 @@ class TestCollection:
             else:
                 self._send_image_and_collect(strategy)
 
-        # 进入我的收藏页面
         self.common_enter_my_collection()
 
         with allure.step(f"2. 执行删除刚造的最新一条【{col_type}】收藏"):
@@ -115,7 +116,6 @@ class TestCollection:
                 check.equal(before_content, unique_text, "预校验：最新一条文本收藏与刚才发送的文本不一致")
             
             self.collectionPage.del_collection_item(del_type=col_type, index=0)
-            time.sleep(1)
 
         with allure.step(f"3. 验证删除结果"):
             if col_type == "text":

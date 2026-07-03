@@ -264,10 +264,73 @@ class CollectionPage(ChatCollectionPage):
             self.back()
             raise e
 
-    # 删除收藏页面进行一个文本、图片删除
+
+
+
+    # ================================================================
+    # 收藏页面相关
+    # ================================================================
+    # 收藏页面-获取收藏页面时间
+    def get_collection_page_time(self) -> str:
+        """  获取收藏页面时间  """
+        try:
+            device_time = self.driver.get_device_time()
+            dt = parser.parse(device_time)
+            formatted_time = dt.strftime("%Y/%m/%d %H:%M:%S")
+            logger.info(f"⏳ [Action] 获取设备时间：{device_time}，格式化成功：{formatted_time}")
+            return formatted_time
+        except Exception as e:
+            logger.error(f"❌ [Action] 获取或解析设备时间失败: {e}")
+            formatted_time = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
+            logger.info(f"⏳ [Action] 采用本地时间格式化降级: {formatted_time}")
+            return formatted_time
+
+    # 收藏页面-获取收藏的用户+时间
+    def get_collection_user_time(self, index: int = 0) -> str:
+        """  获取收藏的用户+时间  """
+        items = self.get_collection_items()
+        content = items[index].find_element(*CollectionLocator.COLL_META).get_attribute('text')
+        logger.info(f"⏳ [Action] 获取收藏的用户+时间: {content}")
+        return content
+
+    # 收藏页面-获取收藏的时间与用户昵称
+    def get_collection_time(self, index: int = 0) -> tuple[str, str]:
+        """  获取收藏的用户昵称和时间  """
+        content = self.get_collection_user_time(index)
+        if not content:
+            logger.warning("⚠️ 收藏的用户与时间内容为空")
+            return "", ""
+        parts = content.split(' ')
+        user_part = parts[0]
+        time_part = " ".join(parts[1:])
+        logger.info(f"⏳ [Action] 从内容中分割出用户昵称: '{user_part}', 时间: '{time_part}'")
+        return user_part, time_part
+
+    # 收藏页面-验证收藏的时间
+    def verify_collection_time(self, now_time: str, coll_time: str, max_diff_seconds: float = 60.0) -> bool:
+        """  验证收藏的时间  """
+        logger.info(f"⏳ [Action] 正在验证收藏时间，当前设备时间: {now_time}, 收藏显示时间: {coll_time}")
+        try:
+            dt_now = parser.parse(now_time)
+            dt_coll = parser.parse(coll_time)
+            diff = abs((dt_now - dt_coll).total_seconds())
+            logger.info(f"⏳ [Action] 时间差值为 {diff} 秒, 允许的最大误差为 {max_diff_seconds} 秒")
+
+            if diff > max_diff_seconds:
+                logger.error(f"❌ 收藏时间验证不匹配！当前时间: {now_time}, 收藏时间: {coll_time}, 差值: {diff}s")
+                return False
+            return True
+        except Exception as e:
+            logger.error(f"❌ 收藏时间验证发生异常: {e}")
+            raise e
+
+
+
+    # 删除收藏-删除指定索引的文本/图片条目
     def del_collection_item(self, del_type: str = 'text', index: int = 0) -> int | None:
+        ''' 删除收藏页面中指定索引的条目 '''
+        
         if index == 0:
-            # 优雅地根据类型重用已有的高级 PO 方法
             if del_type == 'text':
                 elem = self.get_collection_text_element(0)
             elif del_type == 'image':
@@ -293,8 +356,10 @@ class CollectionPage(ChatCollectionPage):
         else:
             return self.del_collection_all_item(del_type=del_type)
 
-    # 删除收藏页面进行所有文本、图片匹配
-    def del_collection_all_item(self, del_type: str = 'text', max_items: int = 1000) -> int | None:
+    # 删除收藏-删除所有文本/图片条目
+    def del_collection_all_item(self, del_type: str = 'text', max_items: int = 100) -> int | None:
+        ''' 删除收藏页面中所有文本/图片条目 '''
+        
         logger.info(f"🗑️ 开始全量清空操作 (类型: {del_type})")
 
         index = 0
@@ -360,67 +425,5 @@ class CollectionPage(ChatCollectionPage):
                     logger.warning(f"⚠️ 刷新失败: {e}")
                     raise e
         return None
-
-
-
-
-
-    # ================================================================
-    # 收藏页面相关
-    # ================================================================
-    # 收藏页面-获取收藏页面时间
-    def get_collection_page_time(self) -> str:
-        """  获取收藏页面时间  """
-        try:
-            device_time = self.driver.get_device_time()
-            dt = parser.parse(device_time)
-            formatted_time = dt.strftime("%Y/%m/%d %H:%M:%S")
-            logger.info(f"⏳ [Action] 获取设备时间：{device_time}，格式化成功：{formatted_time}")
-            return formatted_time
-        except Exception as e:
-            logger.error(f"❌ [Action] 获取或解析设备时间失败: {e}")
-            formatted_time = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
-            logger.info(f"⏳ [Action] 采用本地时间格式化降级: {formatted_time}")
-            return formatted_time
-
-    # 收藏页面-获取收藏的用户+时间
-    def get_collection_user_time(self, index: int = 0) -> str:
-        """  获取收藏的用户+时间  """
-        items = self.get_collection_items()
-        content = items[index].find_element(*CollectionLocator.COLL_META).get_attribute('text')
-        logger.info(f"⏳ [Action] 获取收藏的用户+时间: {content}")
-        return content
-
-    # 收藏页面-获取收藏的时间与用户昵称
-    def get_collection_time(self, index: int = 0) -> tuple[str, str]:
-        """  获取收藏的用户昵称和时间  """
-        content = self.get_collection_user_time(index)
-        if not content:
-            logger.warning("⚠️ 收藏的用户与时间内容为空")
-            return "", ""
-        parts = content.split(' ')
-        user_part = parts[0]
-        time_part = " ".join(parts[1:])
-        logger.info(f"⏳ [Action] 从内容中分割出用户昵称: '{user_part}', 时间: '{time_part}'")
-        return user_part, time_part
-
-    # 收藏页面-验证收藏的时间
-    def verify_collection_time(self, now_time: str, coll_time: str, max_diff_seconds: float = 60.0) -> bool:
-        """  验证收藏的时间  """
-        logger.info(f"⏳ [Action] 正在验证收藏时间，当前设备时间: {now_time}, 收藏显示时间: {coll_time}")
-        try:
-            dt_now = parser.parse(now_time)
-            dt_coll = parser.parse(coll_time)
-            diff = abs((dt_now - dt_coll).total_seconds())
-            logger.info(f"⏳ [Action] 时间差值为 {diff} 秒, 允许的最大误差为 {max_diff_seconds} 秒")
-
-            if diff > max_diff_seconds:
-                logger.error(f"❌ 收藏时间验证不匹配！当前时间: {now_time}, 收藏时间: {coll_time}, 差值: {diff}s")
-                return False
-            return True
-        except Exception as e:
-            logger.error(f"❌ 收藏时间验证发生异常: {e}")
-            raise e
-
 
 
