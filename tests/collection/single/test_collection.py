@@ -1,11 +1,15 @@
 import allure
 import pytest
 import pytest_check as check
+from datetime import datetime
 from pages.main.main_page import MainPage
 from pages.chat.list.chat_list_page import ChatListPage
+from pages.chat.core.chat_page import ChatPage
+from pages.chat.core.chat_long_press_page import ChatLongPressPage
 from pages.collection.chat_collection_page import ChatCollectionPage
 from pages.collection.collection_page import CollectionPage
 from pages.home.side_slip_page import SideSlipPage
+from pages.chat_options.images.chat_image_page import ChatImagePage
 from core.logger_utils import logger
 from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
 import time
@@ -20,9 +24,12 @@ class TestCollection:
         """初始化页面对象"""
         self.mainPage = MainPage(driver_sender)
         self.chatListPage = ChatListPage(driver_sender)
+        self.chatPage = ChatPage(driver_sender)
+        self.longPressPage = ChatLongPressPage(driver_sender)
         self.chatCollectionPage = ChatCollectionPage(driver_sender)
         self.collectionPage = CollectionPage(driver_sender)
         self.sideSlipPage = SideSlipPage(driver_sender)
+        self.imagePage = ChatImagePage(driver_sender)
         
         yield
 
@@ -37,29 +44,78 @@ class TestCollection:
             self.sideSlipPage.click_my_collection()
             self.collectionPage.wait_for_collection_page_load()
 
+    def _long_collection(self):
+        """长按最后一条消息并收藏"""
+        self.longPressPage.long_press_last_message()
+        self.longPressPage.click_menu_item("收藏")
+        toast = self.collectionPage.get_toast()
+        check.equal("收藏成功", toast, f"收藏失败，实际 Toast：{toast}")
+
+    def _build_text(self, prefix: str, strategy) -> str:
+        """生成本次测试唯一文本，避免被历史收藏数据干扰"""
+        timestamp = datetime.now().strftime("%H%M%S%f")
+        return f"{prefix} {strategy.name} {timestamp}"
+
+    def _send_text_and_collect(self, text: str):
+        """发送文本并收藏最后一条消息"""
+        self.chatPage.send_message(text)
+        self._long_collection()
+
+    def _send_image_and_collect(self, strategy):
+        """发送图片并收藏最后一条图片消息"""
+        self.imagePage.open_panel_to_album()
+        result = self.imagePage.select_single_image(mode=1)
+        check.is_true(result, "选图失败")
+        self.imagePage.click_send_button()
+
+        # 发送图片后最后一条消息定位可能不稳定，重新进入会话再收藏
+        self.mainPage.go_to_main_page()
+        self.chatListPage.enter_chat(strategy.name)
+        self._long_collection()
+
+    def _verify_latest_text(self, expected_text: str, index: int = 0):
+        """校验我的收藏中最新文本内容"""
+        actual_text = self.chatCollectionPage.get_collection_text_content(index)
+        check.equal(actual_text, expected_text, f"校验失败：实际内容{actual_text}, 预期内容{expected_text}")
+
+    def _verify_latest_texts(self, expected_texts: list[str]):
+        """校验我的收藏中最新多条文本内容"""
+        actual_texts = self.collectionPage.get_collection_text_data(index=len(expected_texts))
+        check.equal(actual_texts, expected_texts, f"校验失败：实际内容{actual_texts}, 预期内容{expected_texts}")
+
+    def _verify_latest_collection_time(self):
+        """校验我的收藏中最新一条数据的收藏时间"""
+        now_time = self.collectionPage.get_collection_page_time()
+        _, coll_time = self.collectionPage.get_collection_time()
+        result = self.collectionPage.verify_collection_time(now_time, coll_time)
+        check.is_true(result, f"校验失败：收藏时间不匹配 {now_time} | {coll_time}")
+
     @allure.story("收藏管理-删除")
     @allure.title("删除收藏条目流程")
     @pytest.mark.parametrize("col_type", ["text", "image"])
     def test_delete_collection_success(self, col_type):
-        """测试从收藏夹中成功删除条目的流程"""
+        """测试从收藏夹中成功删除条目的流程（完全自治造数据）"""
+        strategy = PRIVATE_USER1
+        
+        with allure.step(f"1. 前置造数据：发送一条【{col_type}】消息并收藏"):
+            self.chatListPage.enter_chat(strategy.name)
+            if col_type == "text":
+                unique_text = self._build_text("delete_test", strategy)
+                self._send_text_and_collect(unique_text)
+            else:
+                self._send_image_and_collect(strategy)
+
+        # 进入我的收藏页面
         self.common_enter_my_collection()
 
-        with allure.step(f"1. 确认列表中是否存在【{col_type}】类型的收藏数据"):
-            if col_type == "text":
-                elem = self.collectionPage.get_collection_text_element(0)
-            else:
-                elem = self.collectionPage.get_collection_image_element(0)
-            
-            if not elem:
-                pytest.skip(f"⚠️ 列表中没有【{col_type}】类型的收藏项，跳过删除测试")
-
-        with allure.step(f"2. 执行删除第一条【{col_type}】收藏"):
+        with allure.step(f"2. 执行删除刚造的最新一条【{col_type}】收藏"):
             before_content = None
             if col_type == "text":
                 before_content = self.collectionPage.get_collection_text_content(0)
+                check.equal(before_content, unique_text, "预校验：最新一条文本收藏与刚才发送的文本不一致")
             
             self.collectionPage.del_collection_item(del_type=col_type, index=0)
-            time.sleep(1)  # 等待列表刷新
+            time.sleep(1)
 
         with allure.step(f"3. 验证删除结果"):
             if col_type == "text":
@@ -72,17 +128,19 @@ class TestCollection:
     @allure.title("分享收藏条目流程")
     @pytest.mark.parametrize("col_type", ["text", "image"])
     def test_share_collection_success(self, col_type):
-        """测试从收藏夹中分享条目的流程"""
-        self.common_enter_my_collection()
-
-        with allure.step(f"1. 确认列表中是否存在【{col_type}】类型的收藏数据"):
+        """测试从收藏夹中分享条目的流程（完全自治造数据）"""
+        strategy = PRIVATE_USER1
+        
+        with allure.step(f"1. 前置造数据：发送一条【{col_type}】消息并收藏"):
+            self.chatListPage.enter_chat(strategy.name)
             if col_type == "text":
-                elem = self.collectionPage.get_collection_text_element(0)
+                unique_text = self._build_text("share_test", strategy)
+                self._send_text_and_collect(unique_text)
             else:
-                elem = self.collectionPage.get_collection_image_element(0)
-            
-            if not elem:
-                pytest.skip(f"⚠️ 列表中没有【{col_type}】类型的收藏项，跳过分享测试")
+                self._send_image_and_collect(strategy)
+
+        # 进入我的收藏页面
+        self.common_enter_my_collection()
 
         with allure.step(f"2. 点击分享第一条【{col_type}】收藏"):
             result = self.collectionPage.share_collection_item(share_type=col_type, index=0)
