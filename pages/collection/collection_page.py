@@ -384,11 +384,11 @@ class CollectionPage(ChatCollectionPage):
                         logger.info("🔄 页面已滚动，重新扫描...")
                         continue
                     else:
-                        logger.info("🛑 页面已滑到底部且无新内容，清空完成。")
+                        logger.info("✅ 页面已滑到底部且当前屏为空，列表已彻底清空")
                         break
                 except Exception as e:
-                    logger.warning(f"⚠️ 滑动查找更多失败: {e}")
+                    logger.warning(f"⚠️ 翻页检测失败: {e}")
                     raise e
-        return index
+        return None
 
 
