@@ -12,6 +12,7 @@ from pages.home.side_slip_page import SideSlipPage
 from pages.chat_options.images.chat_image_page import ChatImagePage
 from core.logger_utils import logger
 from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
+from pages.common.contact_select_page import ContactSelectPage
 import time
 
 
@@ -30,6 +31,7 @@ class TestCollection:
         self.collectionPage = CollectionPage(driver_sender)
         self.sideSlipPage = SideSlipPage(driver_sender)
         self.imagePage = ChatImagePage(driver_sender)
+        self.contactSelectPage = ContactSelectPage(driver_sender)
         
         yield
 
@@ -117,6 +119,19 @@ class TestCollection:
         with allure.step(f"3. 点击分享第一条【{col_type}】收藏"):
             result = self.collectionPage.share_collection_item(share_type=col_type, index=0)
             check.is_true(result, "点击分享按钮失败")
+        
+        with allure.step("4. 分享到聊天窗口"):
+            self.contactSelectPage.click_contact_by_name(strategy.name)
+            self.contactSelectPage.click_fb_action()
+            toast = self.collectionPage.get_toast("发送成功")
+            check.is_true(toast, "发送失败")
+
+        with allure.step("5. 进入聊天窗口并校验"):
+            self.mainPage.go_to_main_page()
+            self.chatListPage.enter_chat(strategy.name)
+            actual_text = self.chatPage.get_text_message_content_by_index(index= -1)
+            check.equal(actual_text, unique_text, f"校验失败：实际内容{actual_text}, 预期内容{unique_text}")
+
 
 
     @allure.story("收藏夹管理-删除")
@@ -256,4 +271,3 @@ class TestCollection:
             check.is_true(flag, f"❌ {col_type} 消息发送上屏验证失败！")
 
 
-            

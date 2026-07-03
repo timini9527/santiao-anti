@@ -8,6 +8,7 @@ class ContactSelectLocator(CommonLocator):
     # 顶部导航栏
     BACK_BUTTON = CommonLocator.TOP_IV_BACK_BTN                     # 返回按钮
     TITLE_TEXT = CommonLocator.TOP_TV_TITLE                         # 页面标题 (如: 选择好友)
+    FB_ACTION = CommonLocator.TOP_FB_ACTION_BTN                     # 确定按钮
     
     # 搜索框
     SEARCH_EDIT = (AppiumBy.ID, f"{PACKAGE_ID}/et_search")          # 搜索输入框

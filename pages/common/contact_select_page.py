@@ -38,6 +38,12 @@ class ContactSelectPage(CommonPage):
             return False
         logger.info(f"✅ [Action] 【好友和转发】选择页 - 页面加载成功")
         return True
+    
+    # 点击确定按钮
+    def click_fb_action(self):
+        """点击确定按钮"""
+        self.click(ContactSelectLocator.FB_ACTION)
+        logger.info("✅ [Action] 好友选择页 - 点击确认")
 
     # 获取页面标题
     def get_page_title(self) -> str:
