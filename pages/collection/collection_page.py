@@ -345,9 +345,7 @@ class CollectionPage(ChatCollectionPage):
         logger.info(f"🗑️ 开始全量清空操作 (类型: {del_type})")
 
         index = 0
-        has_refresh = False
-        re_enter_retries = 1
-        
+        last_source = None
 
         while max_items > 0:
             if del_type == 'text':
@@ -363,7 +361,6 @@ class CollectionPage(ChatCollectionPage):
                     self.click(CollectionLocator.SWIPE_RIGHT_DELETE_ITEM)
                     index += 1
                     max_items -= 1
-                    has_refresh = False
                     logger.info(f"✅ 第 {index} 条数据 删除成功")
                     continue
                 except StaleElementReferenceException as e:
@@ -375,16 +372,15 @@ class CollectionPage(ChatCollectionPage):
             else:
                 try:
                     logger.info("👀 当前屏已清空，尝试上滑查找更多...")
-                    source_before = self.driver.page_source
-                    self.swipe_page('up', duration=600)
-                    time.sleep(0.5)
-                    is_changed, _ = self.is_page_source_changed(source_before)
-
+                    self.swipe_page_quickly(slid_type='up', duration=600, max_swipes=1)
+                    
+                    is_changed, last_source = self.is_page_source_changed(last_source)
+                    
                     if is_changed:
                         logger.info("🔄 页面已滚动，重新扫描...")
                         continue
                     else:
-                        logger.info("✅ 页面已滑到底部且当前屏为空，列表已彻底清空")
+                        logger.warning("🛑 页面已滑到底部 (源码未变)")
                         break
                 except Exception as e:
                     logger.warning(f"⚠️ 翻页检测失败: {e}")
