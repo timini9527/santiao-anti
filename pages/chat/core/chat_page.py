@@ -450,6 +450,20 @@ class ChatPage(BasePage):
         elements = self.get_message_content_bubbles()
         return elements[-1]
 
+    # 消息接收-获取最后一条消息的气泡内容容器，是否包含某种类型的消息
+    def get_last_message_content_bubble_has_type(self, msg_type: str, index: int = -1) -> bool:
+        """消息接收-获取指定索引的消息的气泡内容容器，是否包含某种类型的消息"""
+        msg_items = self.get_message_content_bubbles()
+        last_item = msg_items[index]
+        if msg_type == "text":
+            return len(last_item.find_elements(*ChatLocator.TEXT_MESSAGE_VIEW_ITEM)) > 0
+        elif msg_type == "image":
+            return len(last_item.find_elements(*ChatLocator.IMAGE_ITEM)) > 0
+        elif msg_type == "video":
+            return len(last_item.find_elements(*ChatLocator.VIDEO_ITEM)) > 0
+        else:
+            raise ValueError(f"不支持的消息类型: {msg_type}")
+
 
     # 视频消息-验证最后一条视频消息的状态是否完整成功
     def get_last_message_video_status(self) -> bool:

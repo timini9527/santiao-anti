@@ -104,6 +104,7 @@ class TestCollection:
         with allure.step(f"1. 前置造数据：向 {strategy.name} 发送一条【{col_type}】消息并收藏"):
             self.chatListPage.enter_chat(strategy.name)
             if col_type == "text":
+                self.chatPage.send_message("测试收藏里的分享数据")
                 unique_text = self._build_text("share_test", strategy)
                 self._send_text_and_collect(unique_text)
             else:
@@ -129,8 +130,12 @@ class TestCollection:
         with allure.step("5. 进入聊天窗口并校验"):
             self.mainPage.go_to_main_page()
             self.chatListPage.enter_chat(strategy.name)
-            actual_text = self.chatPage.get_text_message_content_by_index(index= -1)
-            check.equal(actual_text, unique_text, f"校验失败：实际内容{actual_text}, 预期内容{unique_text}")
+            if col_type == "text":
+                actual_text = self.chatPage.get_text_message_content_by_index(index= -1)
+                check.equal(actual_text, unique_text, f"校验失败：实际内容{actual_text}, 预期内容{unique_text}")
+            else:
+                result = self.chatPage.get_last_message_content_bubble_has_type(msg_type=col_type, index= -1)
+                check.is_true(result, f"校验失败：实际内容不是{col_type}")
 
 
 
