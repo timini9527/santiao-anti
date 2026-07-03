@@ -337,9 +337,13 @@ class CollectionPage(ChatCollectionPage):
             return False
 
         try:
-            # 使用相对路径向上查找直接父级容器（不限制 resource-id，兼容 image 的非标准祖先树结构）
-            container = elem.find_element(AppiumBy.XPATH, "./parent::*")
-            self.swipe_on_element(container, slid_type="left", duration=400)
+            # 设定起滑点为卡片偏右侧 (中心 + 30%宽度)，并向左移动手势 80% 卡片宽度的偏移量
+            self.swipe_by_offset(
+                elem.rect, 
+                start_x_offset=int(elem.rect['width'] * 0.3), 
+                x_offset=-int(elem.rect['width'] * 0.8), 
+                duration=400
+            )
             self.click(CollectionLocator.SWIPE_RIGHT_DELETE_ITEM)
             logger.info(f"✅ 第 {index} 条 {del_type} 收藏删除成功")
             return True
