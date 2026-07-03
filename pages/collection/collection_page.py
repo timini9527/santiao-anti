@@ -376,7 +376,7 @@ class CollectionPage(ChatCollectionPage):
                 try:
                     logger.info("👀 当前屏已清空，尝试上滑查找更多...")
                     source_before = self.driver.page_source
-                    self.swipe_page('up', duration=300)
+                    self.swipe_page('up', duration=600)
                     time.sleep(0.5)
                     is_changed, _ = self.is_page_source_changed(source_before)
 
@@ -384,24 +384,11 @@ class CollectionPage(ChatCollectionPage):
                         logger.info("🔄 页面已滚动，重新扫描...")
                         continue
                     else:
-                        logger.warning("🛑 页面已滑到底部 (源码未变)")
-                        if not has_refresh:
-                            logger.info("⚠️ 尝试执行【下拉刷新】以同步数据...")
-                            self.swipe_page_quickly(slid_type='down')
-                            has_refresh = True
-                            continue
-                        elif re_enter_retries > 0:
-                            self.back()
-                            self.enter_my_collection()
-                            re_enter_retries -= 1
-                            logger.info("🔄 已重新进入页面，开始最终扫描...")
-                            continue
-                        else:
-                            logger.info("✅ 列表已彻底清空")
-                            return len(elems)
+                        logger.info("🛑 页面已滑到底部且无新内容，清空完成。")
+                        break
                 except Exception as e:
-                    logger.warning(f"⚠️ 刷新失败: {e}")
+                    logger.warning(f"⚠️ 滑动查找更多失败: {e}")
                     raise e
-        return None
+        return index
 
 
