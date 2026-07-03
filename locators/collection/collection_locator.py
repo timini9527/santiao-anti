@@ -54,8 +54,8 @@ class CollectionLocator(CommonLocator):
         )
         return (
             AppiumBy.XPATH, 
-            f'//*[@resource-id="{CollectionLocator.PACKAGE_ID}/content_container" '
-            f'and .//*[@resource-id="{content_id}" and @text="{text}"]]'
+            f'//*[@resource-id="{content_id}" and @text="{text}"]'
+            f'/ancestor::*[@resource-id="{CollectionLocator.PACKAGE_ID}/content_container"]'
         )
 
 
