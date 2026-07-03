@@ -320,24 +320,29 @@ class CollectionPage(ChatCollectionPage):
     # 删除收藏-删除指定索引的文本/图片条目
     def del_collection_item(self, del_type: str = "text", index: int = 0) -> bool:
         """删除收藏页面中指定索引的条目"""
-        if del_type == "all":
-            locator = CollectionLocator.COLL_CONTENT_CONTAINER
-        else:
-            locator = CollectionLocator.get_coll_item_by_type(del_type)
 
-        containers = self.find_elements(locator)
-        if not containers or index >= len(containers):
-            logger.warning(f"⚠️ 未找到第 {index} 条 {del_type} 类型收藏卡片，无法执行删除")
+        if del_type == "text":
+            elem = self.get_collection_text_element(index)
+        elif del_type == "image":
+            elem = self.get_collection_image_element(index)
+        elif del_type == "all":
+            items = self.get_collection_items()
+            elem = items[index] if index < len(items) else None
+        else:
+            raise ValueError(f"不支持的收藏类型: {del_type}")
+
+        if not elem:
+            logger.warning(f"⚠️ 未找到第 {index} 条 {del_type} 类型收藏，无法执行删除")
             return False
 
-        container = containers[index]
         try:
+            container = elem.find_element(*CollectionLocator.get_coll_item_by_type(del_type))
             self.swipe_on_element(container, slid_type="left", duration=400)
             self.click(CollectionLocator.SWIPE_RIGHT_DELETE_ITEM)
             logger.info(f"✅ 第 {index} 条 {del_type} 收藏删除成功")
             return True
-        except StaleElementReferenceException:
-            logger.warning(f"⚠️ 第 {index} 条 {del_type} 收藏在操作过程中元素引用过期")
+        except StaleElementReferenceException as e:
+            logger.warning(f"⚠️ 第 {index} 条 {del_type} 收藏元素引用过期，删除失败: {e}")
             return False
         except Exception as e:
             logger.error(f"❌ 第 {index} 条 {del_type} 收藏删除失败: {e}")
