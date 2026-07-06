@@ -1,14 +1,14 @@
 import os
 import time
 from cnocr import CnOcr
-
 from core.logger_utils import logger
 
-# 延迟导入，防止未安装库导致整个框架崩溃
+# 引入 cv2 进行模板匹配
 try:
-    from paddleocr import PaddleOCR
+    import cv2
+    import numpy as np
 except ImportError:
-    raise ImportError("请先安装 PaddleOCR: pip install paddlepaddle paddleocr")
+    logger.warning("⚠️ 未检测到 opencv-python 库，模板匹配功能将无法使用")
 
 
 class OCRHelper:
@@ -16,58 +16,38 @@ class OCRHelper:
     _ocr = None
 
     _BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    copy = os.path.join(_BASE_DIR, 'data', 'images', 'copy.png')
-    collection = os.path.join(_BASE_DIR, 'data', 'images', 'collection.png')
-    long_press = os.path.join(_BASE_DIR, 'data', 'images', 'long_press.png')
+    copy = os.path.join(_BASE_DIR, 'resources', 'action_long_press', 'copy.png')
+    collection = os.path.join(_BASE_DIR, 'resources', 'action_long_press', 'collection.png')
+    long_press = os.path.join(_BASE_DIR, 'resources', 'action_long_press', 'long_press.png')
 
-    # cnocr 识别
     def __new__(cls):
-        # cnocr 识别
+        """
+        整合单例初始化：在首次实例化时尝试预加载 CnOcr 引擎
+        """
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            # 初始化模型，rec_model_name='densenet_lite_136-fc' 是轻量级模型，速度快
-            # det_model_name='en_PP-OCRv3_det' 用于检测文字坐标
-            cls._ocr = CnOcr(det_model_name='en_PP-OCRv3_det', rec_model_name='densenet_lite_136-gru')
-        return cls._instance
-        """
-        # PaddleOCR 识别
-        单例模式初始化，确保模型只加载一次
-        """
-        if cls._instance is None:
-            cls._instance = super(OCRHelper, cls).__new__(cls)
-            logger.info("🚀 正在初始化 PaddleOCR 引擎 (首次加载较慢，请稍候)...")
-            start_t = time.time()
-            # 初始化 PaddleOCR
-            # use_angle_cls=True: 开启方向分类（应对文字旋转）
-            # lang="ch": 中文模型
-            # show_log=False: 关闭底层刷屏日志
-            # use_gpu=False: 测试机通常无 GPU，强制 CPU 运行更稳
-            cls._ocr_engine  = PaddleOCR(
-                use_angle_cls=True,  # 【关键】在这里开启方向检测，后续调用不需要传 cls=True
-                lang="ch",
-                # use_gpu=False,
-                # show_log=False,
-                # --- 核心修复 ---
-                # enable_mkldnn=False  # 禁用 Intel 加速库，解决 fused_conv2d 报错
-            )
-
-            logger.info(f"✅ PaddleOCR 引擎加载完成，耗时: {time.time() - start_t:.2f}s")
+            
+            # 初始化 CnOcr
+            try:
+                cls._ocr = CnOcr(det_model_name='en_PP-OCRv3_det', rec_model_name='densenet_lite_136-gru')
+                logger.info("✅ CnOcr 引擎预加载成功")
+            except Exception as e:
+                logger.warning(f"⚠️ CnOcr 引擎加载失败: {e}")
+                
         return cls._instance
 
     # cnocr 识别文字
     def find_text_coordinates_cnocr(self, image_path: str, target_text: str):
-        """
-            cnocr 识别 在图片中查找文字，返回中心坐标 (x, y)
-        """
+        """  cnocr 识别 在图片中查找文字，返回中心坐标 (x, y) """
         start_time = time.time()
         # 识别图片
         result = self._ocr.ocr(image_path)
-        print("cnocr -> 识别结果: ", result)
+        logger.info(f"cnocr -> 识别结果: {result}，开始遍历")
 
         for item in result:
             # item 结构: {'text': '复制', 'position': [[x1, y1], [x2, y1], [x2, y2], [x1, y2]], 'score': 0.9}
             text = item['text']
-            print(f"识别文字: {text}")
+            logger.info(f"cnocr -> 识别文字: {text}")
 
             # 模糊匹配，只要包含 "复制" 即可
             if target_text in text:
@@ -76,89 +56,102 @@ class OCRHelper:
                 center_x = (position[0][0] + position[2][0]) / 2
                 center_y = (position[0][1] + position[2][1]) / 2
 
-                print(f"OCR 耗时: {time.time() - start_time:.2f}s | 找到 '{target_text}' 坐标: ({center_x}, {center_y})")
+                logger.info(f"OCR 耗时: {time.time() - start_time:.2f}s | 找到 '{target_text}' 坐标: ({center_x}, {center_y})")
                 return center_x, center_y
 
-        print(f"OCR 未找到文字: {target_text}")
+        logger.warning(f"OCR 未找到文字: {target_text}")
         return None, None
 
 
-    # PaddleOCR 识别
-    def find_text_coordinates_paddle(self, image_path: str, target_text: str, confidence: float = 0.6) \
+    # OpenCV 模板匹配识别
+    def find_image_coordinates_by_template(self, image_path: str, template_path: str, threshold: float = 0.8) \
         -> tuple[int, int] | tuple[None, None]:
         """
-           在图片中查找文字，返回中心坐标 (x, y)
-
-           :param image_path: 图片路径
-           :param target_text: 目标文字 (支持模糊匹配)
-           :param confidence: 置信度阈值 (0~1)，低于此值的识别结果被忽略
-           :return: (center_x, center_y) 或 (None, None)
+        使用 OpenCV 多尺度模板匹配在图片中查找子图，返回匹配区域的中心坐标 (x, y)
+        
+        :param image_path: 大图路径 (如当前屏幕截屏)
+        :param template_path: 待查找的模板小图路径 (如"删除"红色垃圾桶图标)
+        :param threshold: 相似度阈值 (0~1)，低于此阈值认为未成功匹配
+        :return: (center_x, center_y) 或 (None, None)
         """
         if not os.path.exists(image_path):
-            logger.error(f"❌ 图片文件不存在: {image_path}")
+            logger.error(f"❌ 大图文件不存在: {image_path}")
+            return None, None
+        if not os.path.exists(template_path):
+            logger.error(f"❌ 模板图片文件不存在: {template_path}")
             return None, None
 
         start_time = time.time()
-
-        # 执行识别
-        # cls=True 开启方向纠正
         try:
-            result = self._ocr_engine.ocr(image_path)
-        except Exception as e:
-            logger.error(f"OCR 识别过程发生异常: {e}")
-            return None, None
+            # 读取灰度图像提升查找准确度与速度
+            img_rgb = cv2.imread(image_path)
+            img_gray = cv2.cvtColor(img_rgb, cv2.COLOR_BGR2GRAY)
+            template_gray = cv2.imread(template_path, 0)
+            
+            orig_w, orig_h = template_gray.shape[::-1]
+            img_h, img_w = img_gray.shape[:2]
 
-        # PaddleOCR 返回 None 或 空列表的处理
-        if not result or result[0] is None:
-            logger.warning(f"OCR 未在图片中识别到任何文字: {target_text}")
-            return None, None
-        print(f"OCR 耗时: {time.time() - start_time:.2f}s | 识别结果: {result}")
-        # 遍历结果
-        # 标准结构通常是: [ [ [box], (text, score) ], ... ]
-        # 但报错显示你的结构可能是: [ [ [box], "text" ], ... ]
-        for line in result[0]:
-            try:
-                box = line[0]  # 坐标 [[x1,y1],...]
-                element = line[1]  # 可能是元组 ('text', 0.99) 也可能是字符串 'text'
+            best_match_val = -1.0
+            best_match_loc = None
+            best_scale_w = orig_w
+            best_scale_h = orig_h
 
-                text_content = ""
-                score = 1.0  # 默认置信度 (如果结构里没有分数)
+            # 多尺度等比缩放因子，兼容各种分辨率适配
+            scales = np.linspace(0.5, 1.6, 12)
 
-                # ✅ 架构师修复：防御性类型检查
-                if isinstance(element, (tuple, list)):
-                    # 标准情况: ('复制', 0.99)
-                    text_content = element[0]
-                    if len(element) > 1:
-                        score = element[1]
-                elif isinstance(element, str):
-                    # 异常情况: 只有字符串 '复制'
-                    text_content = element
-                    score = 1.0  # 无法获取分数，默认置信度满分
-                else:
-                    logger.warning(f"⚠️ 未知的 OCR 结果格式: {type(element)} - {element}")
+            for scale in scales:
+                resized_w = int(orig_w * scale)
+                resized_h = int(orig_h * scale)
+
+                # 排除异常边界和过大模板
+                if resized_w <= 0 or resized_h <= 0 or resized_w > img_w or resized_h > img_h:
                     continue
 
-                # 匹配逻辑
-                if target_text in text_content and score >= confidence:
-                    # 计算中心点
-                    center_x = int((box[0][0] + box[2][0]) / 2)
-                    center_y = int((box[0][1] + box[2][1]) / 2)
+                # 缩放模板小图
+                resized_template = cv2.resize(template_gray, (resized_w, resized_h), interpolation=cv2.INTER_AREA)
 
-                    logger.info(f"✅ OCR 命中: '{text_content}' (score={score:.2f}) -> 坐标 ({center_x}, {center_y})")
-                    return center_x, center_y
+                # 执行匹配
+                res = cv2.matchTemplate(img_gray, resized_template, cv2.TM_CCOEFF_NORMED)
+                _, max_val, _, max_loc = cv2.minMaxLoc(res)
 
-            except Exception as inner_e:
-                # 防止单行解析错误导致整个流程崩溃
-                logger.warning(f"⚠️ 解析单行 OCR 结果失败: {line} | Error: {inner_e}")
-                continue
+                if max_val > best_match_val:
+                    best_match_val = max_val
+                    best_match_loc = max_loc
+                    best_scale_w = resized_w
+                    best_scale_h = resized_h
 
-        logger.warning(f"❌ OCR 未找到目标文字: {target_text}")
-        return None, None
+            if best_match_val >= threshold:
+                center_x = int(best_match_loc[0] + best_scale_w / 2)
+                center_y = int(best_match_loc[1] + best_scale_h / 2)
+                logger.info(f"✅ [Multi-Scale Template Matching] 成功匹配到模板: {template_path} | 最佳相似度: {best_match_val:.4f} (阈值: {threshold}) | 最佳尺寸: {best_scale_w}x{best_scale_h} -> 坐标: ({center_x}, {center_y}) | 耗时: {time.time() - start_time:.4f}s")
+                return center_x, center_y
+
+            logger.warning(f"❌ [Multi-Scale Template Matching] 最佳相似度仍低于阈值: {best_match_val:.4f} < {threshold}")
+            return None, None
+        except Exception as e:
+            logger.error(f"❌ 执行多尺度模板匹配过程中发生异常: {e}")
+            return None, None
 
 
+    # 统一对外定位匹配接口
+    def find_coordinates(self, image_path: str, target: str, method: str = "cnocr", **kwargs) \
+        -> tuple[int, int] | tuple[None, None]:
+        """
+        统一定位与匹配识别接口
+        
+        :param image_path: 需要识别的大图路径 (如截屏图片)
+        :param target: 匹配目标（当使用 OCR 时为目标文本，如 '删除'；当使用模板匹配时为子图模板路径，如 'delete.png'）
+        :param method: 指定方法，可选：'template' (模板匹配) | 'cnocr' (CnOcr)
+        """
+        if method == "template":
+            threshold = kwargs.get("threshold", 0.8)
+            return self.find_image_coordinates_by_template(image_path, target, threshold)
+        elif method == "cnocr":
+            return self.find_text_coordinates_cnocr(image_path, target)
+        else:
+            logger.error(f"❌ 不支持的识别方法类型: {method}")
+            return None, None
 
 
 # OCRHelper().find_text_coordinates_cnocr(OCRHelper.copy, '复制')
 # OCRHelper().find_text_coordinates_cnocr(OCRHelper.long_press, '复制')
-# OCRHelper().find_text_coordinates_paddle(OCRHelper.long_press, '复制')
-# OCRHelper().find_text_coordinates_paddle(OCRHelper.copy, '复制')

@@ -30,6 +30,10 @@ class ChatLongPressLocator:
         "position": (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().description(".*position.*")'),
     }
 
+    # 弹窗定位器
+    BTN_CONFIRM = CommonLocator.DIALOG_CONFIRM_BTN      # 确定
+    BTN_CANCEL = CommonLocator.DIALOG_CANCEL_BTN        # 取消
+
     @staticmethod
     def get_menu_item_by_name(name: str):
         """动态生成菜单项定位器"""

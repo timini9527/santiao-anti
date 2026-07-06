@@ -8,7 +8,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from core.logger_utils import logger
 import pandas as pd
-from config import CONFIG_DIR, DATA_DIR
+from config import CONFIG_DIR, DATA_DIR, RESOURCE_DIR
 
 
 def find_file(filename: str) -> Any | None:
@@ -19,7 +19,7 @@ def find_file(filename: str) -> Any | None:
         raise ValueError("Invalid filename: potential path traversal detected")
 
     # 【核心逻辑】：定义需要搜索的优先级目录列表,它会先找 configs 目录，再去 data 目录找
-    search_dirs = [CONFIG_DIR, DATA_DIR]
+    search_dirs = [CONFIG_DIR, DATA_DIR, RESOURCE_DIR]
 
     for directory in search_dirs:
         # 使用 / 符号拼接路径

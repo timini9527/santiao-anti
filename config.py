@@ -7,11 +7,13 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent
 
 # 2. 定义各个核心资源目录的绝对路径常量
-CONFIG_DIR = PROJECT_ROOT / "config"   # 存放框架配置文件
-DATA_DIR = PROJECT_ROOT / "data"        # 存放业务测试数据
-LOG_DIR = PROJECT_ROOT / "logs"         # 存放日志文件
-REPORT_DIR = PROJECT_ROOT / "reports"   # 存放测试报告
-SCREENSHOT_DIR = PROJECT_ROOT / "screenshots" # 存放异常截图
+CONFIG_DIR = PROJECT_ROOT / "config"                        # 存放框架配置文件
+DATA_DIR = PROJECT_ROOT / "data"                            # 存放业务测试数据
+LOG_DIR = PROJECT_ROOT / "logs"                             # 存放日志文件
+REPORT_DIR = PROJECT_ROOT / "reports"                       # 存放测试报告
+SCREENSHOT_DIR = PROJECT_ROOT / "screenshots"               # 存放异常截图
+RESOURCE_DIR = PROJECT_ROOT / "resources"                   # 存放测试资源、匹配图片等
+
 
 
 

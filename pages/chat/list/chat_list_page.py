@@ -24,7 +24,7 @@ class ChatListPage(ChatPage):
                 logger.info(f"✅ 进入会话列表")
                 return True
             time.sleep(0.2)
-        logger.error(f"❌ 未找到会话列表项")
+        logger.warning(f"❌ 未找到会话列表项")
         return False
 
     # 快速下滑避免页面不是原始页面
@@ -46,16 +46,18 @@ class ChatListPage(ChatPage):
         end_time = time.time() + timeout
         while time.time() <= end_time:
             # 获取当前屏幕可见的所有会话名称元素 (设短超时，避免找不到时卡住)
-            session_elems = self.find_elements(HL.CONVERSATION_NAME, timeout=1, raise_exception=False)
+            session_elems = self.find_elements(HL.CONVERSATION_NAME, timeout=1, raise_exception=True)
             
             if session_elems:
                 # 遍历匹配文本
                 for elem in session_elems:
                     try:
-                        elem_text = elem.text.strip()
-                        if match_type == "exact" and target_name == elem_text:
+                        # 增加 clean_ui_text 过滤不可见零宽字符，确保匹配准确
+                        elem_text = self.clean_ui_text(elem.text.strip())
+                        target_name_clean = self.clean_ui_text(target_name.strip())
+                        if match_type == "exact" and target_name_clean == elem_text:
                             return elem
-                        elif match_type == "partial" and target_name in elem_text:
+                        elif match_type == "partial" and target_name_clean in elem_text:
                             return elem
                     except Exception:
                         pass
@@ -97,7 +99,7 @@ class ChatListPage(ChatPage):
             self.wait_for_chat_page_load()
             logger.info(f"✅ 进入会话: {session_name} (匹配模式: {match_type})")
             return True
-        logger.error(f"❌ 未找到会话: {session_name}")
+        logger.warning(f"❌ 未找到会话: {session_name}")
         return False
 
     # 进入私聊或群聊通用 方法
@@ -134,6 +136,19 @@ class ChatListPage(ChatPage):
             if self.enter_session(chat_name, match_type=match_type, timeout=timeout):
                 logger.info(f"✅ 在搜索列表中找到并成功进入: {chat_name}")
                 return
+            
+            # 备用兜底逻辑：如果复用 enter_session 没匹配到，直接使用 UiSelector 按文本查找并点击
+            logger.info(f"⚠️ [场景B] enter_session 查找失败，开始尝试使用文本直接定位点击会话: {chat_name}")
+            try:
+                text_locator = HL.get_conver_by_name(chat_name)
+                if self.is_element_exist(text_locator, timeout=timeout):
+                    self.click(text_locator, force_wait=True)
+                    self.wait_for_chat_page_load()
+                    logger.info(f"✅ [备用兜底] 通过文本直接定位并成功进入: {chat_name}")
+                    return
+            except Exception as e:
+                logger.warning(f"⚠️ [备用兜底] 通过文本直接定位点击失败: {e}")
+
         # 如果首页没有，搜也搜不到，必须抛出异常阻断测试，防止后续步骤乱点！
         error_msg = f"❌ 严重错误：无法在首页及搜索结果中找到会话【{chat_name}】"
         logger.error(error_msg)

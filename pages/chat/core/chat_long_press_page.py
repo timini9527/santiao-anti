@@ -1,10 +1,12 @@
 import allure
 import time
+import os
 from core.logger_utils import logger
 from pages.chat.core.chat_page import ChatPage
 from locators.chat.core.chat_locator import ChatLocator
 from locators.chat.core.chat_long_press_locator import ChatLongPressLocator
 from utils.cv_recognition.ocr_utils import OcrUtils
+from utils.cv_recognition.ocr_helper import OCRHelper
 
 class ChatLongPressPage(ChatPage):
     """
@@ -30,41 +32,49 @@ class ChatLongPressPage(ChatPage):
     def click_copy(self):
         """ 点击复制 """
         self.click_menu_item("复制")
+        logger.info("🖱️ [Action] - 正在复制消息...")
     
     # 长按消息-点击收藏
     def click_favorite(self):
         """ 点击收藏 """
         self.click_menu_item("收藏")
+        logger.info("🖱️ [Action] - 正在收藏消息...")
     
     # 长按消息-点击转发
     def click_forward(self):
         """ 点击转发 """
         self.click_menu_item("转发")
+        logger.info("🖱️ [Action] - 正在转发消息...")
 
     # 长按消息-点击多选
     def click_multi_select(self):
         """ 点击多选 """
         self.click_menu_item("多选")
+        logger.info("🖱️ [Action] - 正在多选消息...")
 
     # 长按消息-点击回复
     def click_reply(self):
         """ 点击回复 """
         self.click_menu_item("回复")
+        logger.info("🖱️ [Action] - 正在回复消息...")
 
     # 长按消息-点击删除
     def click_delete(self):
         """ 点击删除 """
         self.click_menu_item("删除")
+        logger.info("🖱️ [Action] - 正在删除消息...")
 
     # 长按消息-点击添加表情
     def click_add_emoji(self):
         """ 点击添加表情 """
         self.click_menu_item("添加表情")
+        logger.info("🖱️ [Action] - 正在添加表情...")
 
     # 长按消息-点击撤回
     def click_revoke(self):
         """ 点击撤回 """
         self.click_menu_item("撤回")
+        logger.info("🖱️ [Action] - 正在撤回消息...")
     
     # 长按消息-点击切换听筒/扬声器
     def click_speaker(self):
@@ -72,16 +82,30 @@ class ChatLongPressPage(ChatPage):
         # 语音消息独有，动态识别当前是哪个就点哪个
         if self.is_text_present("听筒"):
             self.click_menu_item("听筒")
+            logger.info("🖱️ [Action] - 正在切换到扬声器...")
         else:
             self.click_menu_item("扬声器")
+            logger.info("🖱️ [Action] - 正在切换到听筒...")
 
-    # 长按最后一条消息
+    # 长按消息-长按最后一条消息
     def long_press_last_message(self):
         """执行长按最后一条消息的操作"""
         message_content = self.get_last_message_content_bubble()
         self.long_press_action(message_content)
         logger.info("🖱️ [Action] - 正在长按最后一条聊天消息...")
         time.sleep(0.5)
+
+    # 弹窗-点击确认/确定
+    def click_dialog_confirm(self):
+        """点击弹窗的【确认】按钮（适用于删除、退出群聊等操作）"""
+        self.click(ChatLongPressLocator.BTN_CONFIRM)
+        logger.info("🖱️ [Action] - 点击弹窗确认按钮 (Confirm)")
+
+    # 弹窗-点击取消
+    def click_dialog_cancel(self):
+        """点击弹窗的【取消】按钮"""
+        self.click(ChatLongPressLocator.BTN_CANCEL)
+        logger.info("🖱️ [Action] - 点击弹窗取消按钮 (Cancel)")
     
     # ==================================
     # 校验长按菜单项相关
@@ -179,32 +203,69 @@ class ChatLongPressPage(ChatPage):
         logger.info(f"✅ OCR 成功识别出 XML 缺失的菜单项: {missing_in_xml}")
         return True
 
+
     # 长按消息-点击菜单项(降级OCR)
     def click_menu_item(self, menu_name: str):
         """
         点击弹窗菜单中的指定项目
-        优先使用 XML 定位，如果 XML 抓不到，则降级使用 OCR 识别坐标点击
+        优先使用 XML 定位，如果 XML 抓不到，则渐进式通过 [CnOcr -> PaddleOCR -> OpenCV模板匹配] 兜底定位点击
         """
         logger.info(f"🖱️ [Action] - 尝试点击菜单项: 【{menu_name}】")
         
-        # 1. XML 尝试 (将 timeout 增加到 3 秒，避免动画延迟导致漏抓)
         locator = ChatLongPressLocator.get_menu_item_by_name(menu_name)
-        if self.is_element_exist(locator, timeout=2, raise_exception=False):
+        
+        # 1. XML 直接模糊匹配尝试
+        if self.is_element_exist(locator, timeout=1.5, raise_exception=False):
             self.click(locator)
-            logger.info(f"✅ XML 成功点击菜单: {menu_name}")
+            logger.info(f"✅ XML 成功直接点击菜单: {menu_name}")
+            return
+        # 2. 三步渐进式 OCR/图片匹配 兜底
+        logger.warning(f"⚠️ XML 未能定位菜单项 【{menu_name}】，启动渐进式识别降级机制...")
+        
+        # 2.0 截图保存为临时图片
+        screenshot_path = "temp_long_press.png"
+        self.driver.get_screenshot_as_file(screenshot_path)
+        
+        ocr_util = OcrUtils(self.driver)
+        helper = OCRHelper()
+        
+        # --- 步骤 1: 尝试 RapidOCR 定位并点击 ---
+        logger.info(f"🔍 [OCR 兜底 Step 1] 尝试使用 RapidOCR 定位并点击: 【{menu_name}】")
+        if ocr_util.click_text_by_ocr(ocr_text=menu_name, image_name="temp_long_press.png", exact_match=True):
+            logger.info(f"🎯 [OCR 兜底 Step 1] RapidOCR 识别成功并完成点击")
             return
 
-        # 2. OCR 兜底
-        logger.warning(f"⚠️ XML 未发现菜单项 【{menu_name}】，启动 OCR 降级...")
-        ocr = OcrUtils(self.driver)
+        # --- 步骤 2: 尝试 CnOcr 定位 ---
+        logger.info(f"🔍 [OCR 兜底 Step 2] 尝试使用 CnOcr 定位: 【{menu_name}】")
+        x, y = helper.find_coordinates(screenshot_path, menu_name, method="cnocr")
+        if x is not None and y is not None:
+            self.click_by_coordinate(x, y)
+            logger.info(f"🎯 [OCR 兜底 Step 2] CnOcr 识别成功并点击: ({x}, {y})")
+            return
 
-        # 放宽 OCR 的精确匹配限制，防止识别出 "删 除" 等带空格的文本导致漏判
-        if ocr.click_text_by_ocr(ocr_text=menu_name, click_duration=300, exact_match=True):
-            logger.info(f"🎯 OCR 识别并点击成功: {menu_name}")
-            time.sleep(0.5)
-        else:
-            logger.error(f"❌ OCR 也未能识别出文字: {menu_name}")
-            raise RuntimeError(f"无法定位并点击长按菜单项: {menu_name}")
+        # --- 步骤 3: 尝试 OpenCV 模板图像匹配 ---
+        template_map = {
+            "复制": "copy.png",
+            "收藏": "collection.png",
+            "转发": "forward.png",
+            "多选": "duoxuan.png",
+            "回复": "huifu.png",
+            "撤回": "chehui.png",
+            "删除": "delete.png"
+        }
+        if menu_name in template_map:
+            template_file = template_map[menu_name]
+            template_path = os.path.join(helper._BASE_DIR, 'resources', 'action_long_press', template_file)
+            logger.info(f"🔍 [OCR 兜底 Step 3] 尝试使用 OpenCV 模板匹配: {template_path}")
+            
+            x, y = helper.find_coordinates(screenshot_path, template_path, method="template", threshold=0.8)
+            if x is not None and y is not None:
+                self.click_by_coordinate(x, y)
+                logger.info(f"🎯 [OCR 兜底 Step 3] 模板图像匹配成功并点击: ({x}, {y})")
+                return
+
+        logger.error(f"❌ [OCR 兜底] 所有识别方案(CnOcr / RapidOCR / 模板匹配)均未能识别到: 【{menu_name}】")
+        raise RuntimeError(f"无法定位并点击长按菜单项: {menu_name}")
 
 
 

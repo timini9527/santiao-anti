@@ -184,6 +184,9 @@ async function loadTestsCatalog() {
             id: `class::${file}::${cls.name}`,
             label: cls.display_name,
             isClass: true,
+            file: file,
+            className: cls.name,
+            nodeid: `${file}::${cls.name}`,
             children: classChildren
           })
         })
@@ -249,7 +252,11 @@ async function loadTestsCatalog() {
     const finalTreeData = []
     
     // 渲染排序后的分类目录并统计子目录用例总和
-    const sortedCatNames = Object.keys(categories).sort()
+    const sortedCatNames = Object.keys(categories).sort((a, b) => {
+      if (a === 'smoke_test') return -1
+      if (b === 'smoke_test') return 1
+      return a.localeCompare(b)
+    })
     sortedCatNames.forEach(catName => {
       let catCount = 0
       categories[catName].forEach(f => {
@@ -272,7 +279,7 @@ async function loadTestsCatalog() {
     
     catalog.value = finalTreeData
     
-    // 默认状态下仅展开第一个顶级节点
+    // 默认状态下仅展开第一个顶级节点（即置顶的 smoke_test，露出其下的第二级文件节点）
     if (finalTreeData.length > 0) {
       defaultExpandedKeys.value = [finalTreeData[0].id]
     }
@@ -428,6 +435,9 @@ async function startTestExecution(node) {
   } else if (node.isFile) {
     // 运行整个文件
     targetNodeId = node.file
+  } else if (node.isClass) {
+    // 运行整个类
+    targetNodeId = node.nodeid
   } else if (node.isTestGroup) {
     // 运行参数化函数的整个组
     targetNodeId = node.nodeid
@@ -786,6 +796,17 @@ function clearTerminal() {
                 <!-- 3. Class 测试类节点 -->
                 <div v-else-if="data.isClass" class="test-item-row">
                   <span class="node-label">🧱 {{ data.label }}</span>
+                  <div class="test-item-actions" @click.stop>
+                    <el-button
+                      type="warning"
+                      size="small"
+                      plain
+                      :disabled="isRunning"
+                      @click="startTestExecution(data)"
+                    >
+                      运行类
+                    </el-button>
+                  </div>
                 </div>
 
                 <!-- 4. TestGroup 参数化整个函数组 -->

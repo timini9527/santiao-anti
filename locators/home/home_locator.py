@@ -53,8 +53,7 @@ class HomeLocator:
     # 返回不同会话定位
     @classmethod
     def get_conver_by_name(cls, name: str):
-        return (AppiumBy.ANDROID_UIAUTOMATOR,
-                f'new UiSelector().text("{name}")')
+        return (AppiumBy.ANDROID_UIAUTOMATOR, f'new UiSelector().text("{name}")')
 
     # 会话时间
     CONVERSATION_TIME = (AppiumBy.ID, f"{PACKAGE_ID}/tv_time")
