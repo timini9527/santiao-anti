@@ -979,6 +979,7 @@ function resetAllNodesStatus(nodes) {
                     style="flex: 1;"
                   >
                     <el-option label="127.0.0.1:4723 (本地)" value="127.0.0.1:4723" />
+                    <el-option label="192.168.1.26:4723" value="192.168.1.26:4723" />
                     <el-option label="192.168.1.212:4723" value="192.168.1.212:4723" />
                     <el-option label="192.168.1.135:4723" value="192.168.1.135:4723" />
                   </el-select>
@@ -1005,6 +1006,7 @@ function resetAllNodesStatus(nodes) {
                     style="width: 100%;"
                   >
                     <el-option label="127.0.0.1:4724 (本地)" value="127.0.0.1:4724" />
+                    <el-option label="192.168.1.26:4724" value="192.168.1.26:4724" />
                     <el-option label="192.168.1.212:4724" value="192.168.1.212:4724" />
                     <el-option label="192.168.1.135:4724" value="192.168.1.135:4724" />
                   </el-select>
@@ -1061,8 +1063,26 @@ function resetAllNodesStatus(nodes) {
 
             <el-form-item label="业务调试变量 (私聊 / 群聊)">
               <div class="chat-vars-group">
-                <el-input v-model="privateChatName" placeholder="私聊测试名称" />
-                <el-input v-model="groupChatName" placeholder="群聊测试名称" />
+                <el-select
+                  v-model="privateChatName"
+                  filterable
+                  allow-create
+                  default-first-option
+                  placeholder="私聊测试名称"
+                  style="flex: 1; margin-right: 8px;"
+                >
+                  <el-option label="test209-11" value="test209-11" />
+                </el-select>
+                <el-select
+                  v-model="groupChatName"
+                  filterable
+                  allow-create
+                  default-first-option
+                  placeholder="群聊测试名称"
+                  style="flex: 1;"
+                >
+                  <el-option label="测试aaaaa" value="测试aaaaa" />
+                </el-select>
               </div>
             </el-form-item>
 

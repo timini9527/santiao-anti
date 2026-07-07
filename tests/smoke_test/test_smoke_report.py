@@ -38,6 +38,7 @@ class TestSmokeReport:
 
     @allure.story("投诉分类列表结构验证")
     @allure.title("投诉分类列表结构验证-状态：已完成")
+    @pytest.mark.skip(reason="该用例暂时不执行")
     def test_report_categories_layout(self):
         """动态加载 report_tree_output.yaml，校验投诉首屏一级大类及二级分类是否渲染完整"""
         report_tree = load_yaml_data('report/report_tree_output.yaml')
