@@ -126,15 +126,58 @@ class TestSmokeGroupCreate(BaseSmokeGroupSingle):
             check.is_false(self.groupCreatePage.is_chat_group(title), f"❌ 取消建群后不应进入群聊，实际标题: {title}")
 
     @allure.story("发布群公告")
+    @allure.title("发布新群公告 - 正常发布流程-状态：已完成")
+    def test_group_publish_notice_success(self):
+        original_notice = ""
+        new_notice = "冒烟测试发布的群公告"
+        published = False
+
+        try:
+            with allure.step("1. 进入群聊并进入设置页"):
+                self._enter_group_setting()
+
+            with allure.step("2. 进入群公告并获取原公告"):
+                self.groupSettingPage.click_group_notice()
+                self.groupNoticePage.wait_for_notice_page_load()
+                original_notice = self.groupNoticePage.get_notice_content()
+                if original_notice != "":
+                    self.groupNoticePage.click_publish_btn()
+                    time.sleep(0.5)
+
+            with allure.step("3. 输入要发布的群公告内容并点击发布"):
+                self.groupNoticePage.input_notice_content(new_notice)
+                self.groupNoticePage.click_publish_btn()
+                published = True
+
+            with allure.step("4. 验证群公告页面内容成功更新并返回"):
+                current_notice = self.groupNoticePage.get_notice_content()
+                check.equal(current_notice, new_notice, f"❌ 发布后公告内容校验不一致")
+                self.groupNoticePage.click_iv_back_button()
+        finally:
+            if published:
+                with allure.step("5. 环境恢复：还原原有的群公告"):
+                    try:
+                        self.mainPage.go_to_main_page()
+                        self._enter_group_setting()
+                        self.groupSettingPage.click_group_notice()
+                        self.groupNoticePage.wait_for_notice_page_load()
+                        self.groupNoticePage.click_publish_btn()
+                        time.sleep(0.5)
+                        self.groupNoticePage.input_notice_content(original_notice)
+                        self.groupNoticePage.click_publish_btn()
+                    except Exception:
+                        pass
+
+    @allure.story("发布群公告")
     @allure.title("发布新群公告 - 取消发布流程-状态：已完成")
     def test_group_publish_notice_cancel(self):
-        with allure.step("1. 进入群聊并打开群公告页面"):
+        with allure.step("1. 进入群聊并进入设置页"):
             self._enter_group_setting()
-            desc = self.groupNoticePage.get_notice_content()
 
         with allure.step("2. 进入群公告并开启编辑"):
             self.groupSettingPage.click_group_notice()
             self.groupNoticePage.wait_for_notice_page_load()
+            desc = self.groupNoticePage.get_notice_content()
             if desc != "":
                 self.groupNoticePage.click_publish_btn()
                 time.sleep(0.5)
@@ -152,7 +195,7 @@ class TestSmokeGroupCreate(BaseSmokeGroupSingle):
 @allure.epic("IM核心功能测试")
 @allure.feature("冒烟测试-群聊模块-群管理设置")
 class TestSmokeGroupManage(BaseSmokeGroupSingle):
-    """群名称、头像、二维码以及成员搜索等日常管理冒烟用例"""
+    """群名称、头像、二维码以及成员管理等日常管理冒烟用例"""
 
     def _enter_group(self):
         self.chatListPage.enter_chat(GROUP_STRATEGY.name)
@@ -254,10 +297,88 @@ class TestSmokeGroupManage(BaseSmokeGroupSingle):
             self.groupAvatarPage.click_album_image_by_index(index=-1)
             self.groupAvatarPage.wait_group_avatar_page_load()
 
+    @allure.story("群成员管理")
+    @allure.title("群成员邀请与移除（踢人）流程-状态：已完成")
+    def test_group_member_add_and_remove(self):
+        """在已有群聊中，移出成员与重新邀请成员的闭环流程，异常安全还原"""
+        removed = False
+
+        try:
+            with allure.step("1. 进入已有群聊设置页并获取当前成员列表"):
+                self._enter_group_setting()
+                init_members = self.groupSettingPage.get_friend_names()
+                check.is_in(PRIVATE_USER1.name, init_members, f"❌ 初始群成员中未包含待测好友 {PRIVATE_USER1.name}")
+
+            with allure.step("2. 点击移除成员按钮，将指定好友移出群聊"):
+                headers = self.groupSettingPage.get_friend_headers()
+                check.greater_equal(len(headers), 2, "❌ 成员头像列表异常，无法找到 '-' 按钮")
+                headers[-1].click()
+                
+                self.groupManagerPage.click_member_by_search_keyword(PRIVATE_USER1.name)
+                self.groupManagerPage.click_edit_finish_button()
+                self.chatPage.wait_banner_message_disappear()
+                removed = True
+
+            with allure.step("3. 重新进入群设置校验被踢出的成员不在列表中"):
+                self.mainPage.go_to_main_page()
+                self._enter_group_setting()
+                current_members = self.groupSettingPage.get_friend_names()
+                check.is_not_in(PRIVATE_USER1.name, current_members, f"❌ 好友 {PRIVATE_USER1.name} 未被成功移出群聊")
+        finally:
+            if removed:
+                with allure.step("4. 环境恢复：重新邀请被踢出的成员进群"):
+                    try:
+                        self.mainPage.go_to_main_page()
+                        self._enter_group_setting()
+                        headers = self.groupSettingPage.get_friend_headers()
+                        headers[-2].click() # '+' 通常是倒数第二个
+                        self.groupManagerPage.click_member_by_search_keyword(PRIVATE_USER1.name)
+                        self.groupManagerPage.click_edit_finish_button()
+                        self.chatPage.wait_banner_message_disappear()
+                    except Exception:
+                        pass
+
+    @allure.story("解散群聊")
+    @allure.title("通过群详情正常解散群聊流程-状态：已完成")
+    def test_group_disband_success(self):
+        """建临时群，执行解散群聊闭环流程"""
+        friend_list = [PRIVATE_USER1.name, PRIVATE_USER2.name]
+
+        with allure.step("1. 在首页发起群聊创建临时群"):
+            self._open_start_group_chat()
+            self.contactSelectPage.wait_for_contact_and_group_select_page_load()
+            for contact in friend_list:
+                self.contactSelectPage.click_contact_by_name(contact)
+            self.contactSelectPage.click_action_button()
+            self.chatPage.wait_banner_message_disappear()
+            self.chatPage.wait_for_chat_page_load()
+
+        with allure.step("2. 进入群详情 -> 进入群管理 -> 点击解散群组"):
+            self.chatPage.click_more_button()
+            self.groupSettingPage.wait_for_setting_page_load()
+            self.groupSettingPage.click_group_manager()
+            self.groupManagerPage.wait_for_page_load()
+            self.groupManagerPage.click_dismiss_group()
+
+        with allure.step("3. 确认弹窗解散群聊并验证退回首页"):
+            self.groupSettingPage.click_confirm_button()
+            toast = self.groupSettingPage.get_toast(expected_toast="群不存在")
+            check.is_in("群不存在", toast, "❌ 解散群聊后未弹出提示")
+        
+        with allure.step("4. 删除并退出群聊"):
+            self.chatPage.wait_banner_message_disappear()
+            # self.groupSettingPage.click_delete_and_out()
+            # self.groupSettingPage.click_confirm_button()
+            
+        with allure.step("5. 返回聊天列表，验证群聊已退出"):
+            self.groupSettingPage.click_iv_back_button()
+            self.chatPage.click_back_button()
+            title = self.homePage.get_top_middle_title()
+            check.is_in("三条", title, "❌ 解散群聊后未能返回消息首页")
+
 
 @allure.epic("IM核心功能测试")
-@allure.feature("冒烟测试-群聊模块-双端协同权限")
-# @pytest.mark.skip("TODO: 群聊日常管理（禁言、互相加好友、群管理员增删等）冒烟用例")
+@allure.feature("冒烟测试-群聊群管理模块-权限验证")
 class TestSmokeGroupAdminDouble(BaseSmokeGroupSingle):
     """群聊日常管理（禁言、互相加好友、群管理员增删等）冒烟用例"""
 
@@ -454,4 +575,3 @@ class TestSmokeGroupBot(BaseSmokeGroupSingle):
                 self.groupBotPage.clear_all_keywords()
                 self.groupBotPage.toggle_keyword_detection_switch(enable=False)
                 self.groupBotPage.click_save()
-

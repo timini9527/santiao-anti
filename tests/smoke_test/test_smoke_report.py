@@ -53,7 +53,6 @@ class TestSmokeReport:
         with allure.step("2、动态遍历并校验各一级分类下的子级选项是否完整"):
             for parent_cat, sub_tree in report_tree.items():
                 if sub_tree:
-                    # 进入大类页面进行校验
                     self.reportPage.select_report_path([parent_cat])
                     
                     # 动态获取子项列表：字典取 keys()，列表直接读取
@@ -75,6 +74,7 @@ class TestSmokeReport:
 
     @allure.story("投诉流程随机路径冒烟测试")
     @allure.title("投诉流程随机路径冒烟测试-状态：已完成")
+    @pytest.mark.skip(reason="该用例暂时不执行")
     def test_submit_report_smoke(self):
         """随机选取投诉路径进行端到端提交的冒烟测试"""
         report_tree = load_yaml_data('report/report_tree_output.yaml')

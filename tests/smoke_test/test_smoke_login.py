@@ -6,6 +6,10 @@ from core.logger_utils import logger
 from utils.cv_recognition.ocr_utils import OcrUtils
 from strategy.chat.chat_strategy import PRIVATE_USER1
 
+DEFAULT_ACCOUNT = "38100000225"
+DEFAULT_PASSWORD = "a1234567B9"
+
+
 
 class BaseSmokeLogin:
     """登录注册模块的测试基类，提取公共的初始化和状态控制"""
@@ -58,6 +62,40 @@ class TestSmokeLoginAgreement(BaseSmokeLogin):
             if pre_title != protocol_title:
                 self.loginPage.click_back_btn()
 
+    @allure.story("协议拦截与弹窗处理")
+    @allure.title("未勾选协议直接点击登录 - 弹出服务协议确认框并可拒绝/同意-状态：已完成")
+    def test_login_without_agreement_popup(self):
+        """未勾选协议点击登录时，应弹出确认协议弹窗；点击拒绝能留在登录页；点击同意并登录能成功登录"""
+        account = DEFAULT_ACCOUNT
+        password = DEFAULT_PASSWORD
+        
+        with allure.step("1. 初始化登录环境并输入数据（不勾选协议）"):
+            self.loginPage.click_password_login_button()
+            self.loginPage.input_account(account)
+            self.loginPage.input_password(password)
+
+        with allure.step("2. 未勾选协议，直接点击登录按钮，验证协议弹窗弹出"):
+            self.loginPage.click_login_button()
+            popup_title = self.loginPage.get_agreement_popup_title()
+            check.is_in("用户协议及隐私政策", popup_title, "❌ 未弹出服务协议与隐私政策确认框")
+
+        with allure.step("3. 点击‘不同意并退出’（拒绝），验证仍留在登录页面"):
+            self.loginPage.close_agreement_popup()
+            check.is_true(self.loginPage.wait_for_login_page(), "❌ 拒绝协议弹窗后未停留在登录页")
+
+        with allure.step("4. 再次点击登录按钮，并同意弹窗协议，验证登录成功"):
+            self.loginPage.click_login_button()
+            self.loginPage.click_handle_agreement_popup()
+            
+            try:
+                is_success = self.loginPage.is_login_success()
+                check.is_true(is_success, "❌ 同意协议弹窗后，未能成功进入主页")
+            finally:
+                with allure.step("5. 环境清理：确保账号登出"):
+                    if self.loginPage.is_login_success():
+                        self.loginPage.logout_if_logged_in()
+                        self.loginPage.wait_for_login_page()
+
 
 @allure.epic("IM核心功能测试")
 @allure.feature("冒烟测试-登录注册-密码登录")
@@ -67,8 +105,9 @@ class TestSmokeLoginPwd(BaseSmokeLogin):
     @allure.story("账号密码成功登录")
     @allure.title("手机账号密码登录场景回归验证-状态：已完成")
     def test_pwd_login_success(self):
-        account = PRIVATE_USER1.account
-        password = PRIVATE_USER1.password
+        account = DEFAULT_ACCOUNT
+        password = DEFAULT_PASSWORD
+
 
         with allure.step("1. 初始化登录环境并输入数据"):
             self.loginPage.click_password_login_button()
@@ -96,7 +135,7 @@ class TestSmokeLoginPwd(BaseSmokeLogin):
     @allure.title("连续登录退出不同由于，验证手机号记住功能-状态：已完成")
     def test_login_remember_account(self):
         users = [
-            {"account": PRIVATE_USER1.account, "password": PRIVATE_USER1.password},
+            {"account": DEFAULT_ACCOUNT, "password": DEFAULT_PASSWORD},
             {"account": "38100000224", "password": "a1234567B9"}
         ]
         
@@ -118,7 +157,6 @@ class TestSmokeLoginPwd(BaseSmokeLogin):
                 self.loginPage.wait_for_login_page()
                 
             with allure.step(f"账号 {idx} ({account}) - 3. 校验输入框中是否自动填充了刚登录的账号"):
-                self.loginPage.click_phone_login_button()
                 self.loginPage.click_password_login_button()
-                saved_account = self.loginPage.get_account()
+                saved_account = self.loginPage.get_phone_number()
                 check.equal(saved_account, account, f"❌ 未能记住上一次登录成功的账号: {account}")

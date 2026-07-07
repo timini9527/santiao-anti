@@ -4,6 +4,8 @@ from locators.common.common_locator import CommonLocator
 
 class ReportLocator(CommonLocator):
     PACKAGE_ID = 'com.santiaotalk.im:id'
+
+    
     
     # 动态获取具体投诉项（如：“色情”、“赌博”、“违法犯罪及违禁品”等）
     @staticmethod
