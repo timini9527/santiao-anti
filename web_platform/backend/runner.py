@@ -217,7 +217,7 @@ async def start_pytest_task(
                 nodeid_to_run = safe_nodeid
 
     # 组装命令参数，添加 -u 强制 Python 无缓冲运行，以确保输出流即时性
-    cmd = [sys.executable, "-u", "-m", "pytest", nodeid_to_run, "-vs", "--color=yes", f"--alluredir={tmp_dir}"]
+    cmd = [sys.executable, "-u", "-m", "pytest", nodeid_to_run, "-vs", "--color=yes", "-p", "web_platform.backend.pytest_status_plugin", f"--alluredir={tmp_dir}"]
     if env_name:
         cmd.extend(["--env", env_name])
     if debug_mode:

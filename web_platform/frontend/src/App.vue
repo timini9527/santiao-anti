@@ -421,6 +421,8 @@ async function detectConnectedDevices(targetIndex = 1) {
 async function startTestExecution(node) {
   if (isRunning.value) return
 
+  resetAllNodesStatus(catalog.value)
+
   isRunning.value = true
   globalStatus.value = 'running'
   globalStatusText.value = '运行中'
@@ -493,6 +495,10 @@ async function startTestExecution(node) {
   }
 }
 
+function stripAnsi(str) {
+  return str.replace(/[\u001b\x1b]\[[0-9;]*[a-zA-Z]/g, '')
+}
+
 function connectSseStream() {
   if (activeSse) activeSse.close()
   
@@ -500,6 +506,52 @@ function connectSseStream() {
   activeSse.onmessage = (event) => {
     const logMsg = JSON.parse(event.data)
     logsBuffer.value += logMsg
+    
+    // 实时提取与解析用例执行状态
+    if (logMsg) {
+      const lines = logMsg.split(/[\r\n]+/);
+      lines.forEach(line => {
+        const cleanLine = stripAnsi(line).trim();
+        if (!cleanLine) return;
+        
+        // 1. 优先使用自定义插件打印的结构化 TEST_RESULT 行
+        const pluginMatch = cleanLine.match(/\[TEST_RESULT\]\s+nodeid=([^\s]+)\s+status=([^\s]+)/i);
+        if (pluginMatch) {
+          const matchedNodeId = pluginMatch[1].trim();
+          const rawStatus = pluginMatch[2].toLowerCase();
+          
+          let status = 'pending';
+          if (rawStatus === 'passed') {
+            status = 'passed';
+          } else if (rawStatus === 'failed') {
+            status = 'failed';
+          } else if (rawStatus === 'skipped') {
+            status = 'skipped';
+          }
+          
+          updateNodeStatus(catalog.value, matchedNodeId, status);
+          return;
+        }
+        
+        // 2. 兜底匹配 pytest 原生的控制台输出
+        const match = cleanLine.match(/(tests\/[a-zA-Z0-9_\-\.\/]+\.py::[^\n\r]+?)\s+(PASSED|FAILED|ERROR|SKIPPED)/i);
+        if (match) {
+          const matchedNodeId = match[1].trim();
+          const rawStatus = match[2].toUpperCase();
+          
+          let status = 'pending';
+          if (rawStatus === 'PASSED') {
+            status = 'passed';
+          } else if (rawStatus === 'FAILED' || rawStatus === 'ERROR') {
+            status = 'failed';
+          } else if (rawStatus === 'SKIPPED') {
+            status = 'skipped';
+          }
+          
+          updateNodeStatus(catalog.value, matchedNodeId, status);
+        }
+      });
+    }
     
     // 自动滚动终端到底部
     if (terminalScreenRef.value) {
@@ -716,6 +768,31 @@ function resetParams() {
 function clearTerminal() {
   logsBuffer.value = '终端清空，等待选择用例运行...'
 }
+
+function updateNodeStatus(nodes, targetNodeId, status) {
+  for (let node of nodes) {
+    if ((node.isTest || node.isTestParam) && node.nodeid === targetNodeId) {
+      node.status = status
+      return true
+    }
+    if (node.children && node.children.length > 0) {
+      const found = updateNodeStatus(node.children, targetNodeId, status)
+      if (found) return true
+    }
+  }
+  return false
+}
+
+function resetAllNodesStatus(nodes) {
+  nodes.forEach(node => {
+    if (node.isTest || node.isTestParam) {
+      node.status = ''
+    }
+    if (node.children && node.children.length > 0) {
+      resetAllNodesStatus(node.children)
+    }
+  })
+}
 </script>
 
 <template>
@@ -829,6 +906,7 @@ function clearTerminal() {
 
                 <!-- 5. TestParam 参数化单个参数项 -->
                 <div v-else-if="data.isTestParam" class="test-item-row">
+                  <span class="status-radio-dot" :class="data.status || 'pending'"></span>
                   <span class="node-label" style="font-size: 12px; color: #94a3b8; padding-left: 6px;">
                     🚀 [{{ data.label }}]
                   </span>
@@ -847,6 +925,7 @@ function clearTerminal() {
 
                 <!-- 6. 普通独立 Test 用例 -->
                 <div v-else-if="data.isTest" class="test-item-row">
+                  <span class="status-radio-dot" :class="data.status || 'pending'"></span>
                   <span class="node-label">⚙️ {{ data.label }}</span>
                   <div class="test-item-actions" @click.stop>
                     <el-button
@@ -1527,5 +1606,43 @@ function clearTerminal() {
   0% { opacity: 0.5; }
   50% { opacity: 1; }
   100% { opacity: 0.5; }
+}
+
+/* 用例状态圆点标识（类似 radio 效果） */
+.status-radio-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #94a3b8; /* 默认灰色 */
+  margin-right: 8px;
+  background-color: transparent;
+  box-sizing: border-box;
+  vertical-align: middle;
+  flex-shrink: 0;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.status-radio-dot.pending {
+  border-color: #94a3b8;
+  background-color: transparent;
+}
+
+.status-radio-dot.passed {
+  border-color: #10b981; /* 绿色 */
+  background-color: #10b981;
+  box-shadow: 0 0 5px rgba(16, 185, 129, 0.6);
+}
+
+.status-radio-dot.failed {
+  border-color: #ef4444; /* 红色 */
+  background-color: #ef4444;
+  box-shadow: 0 0 5px rgba(239, 68, 68, 0.6);
+}
+
+.status-radio-dot.skipped {
+  border-color: #f97316; /* 橙色 */
+  background-color: #f97316;
+  box-shadow: 0 0 5px rgba(249, 115, 22, 0.6);
 }
 </style>
