@@ -1,7 +1,7 @@
 from appium.webdriver.common.appiumby import AppiumBy
 from locators.common.common_locator import CommonLocator
 
-class ChatLocatorPanel(CommonLocator):
+class ChatPanelLocator(CommonLocator):
     """聊天页面“+”号扩展面板的元素定位器"""
     PACKAGE_ID = CommonLocator.PACKAGE_ID
 
@@ -23,7 +23,7 @@ class ChatLocatorPanel(CommonLocator):
     BTN_FILE = (AppiumBy.XPATH, f'//*[@resource-id="{MORE_ACTION_ROOT_ID}" and .//*[@resource-id="{MORE_ACTION_TEXT_ID}" and @text="文件"]]')
     BTN_VOTE = (AppiumBy.XPATH, f'//*[@resource-id="{MORE_ACTION_ROOT_ID}" and .//*[@resource-id="{MORE_ACTION_TEXT_ID}" and @text="投票"]]')
     BTN_SOLITAIRE = (AppiumBy.XPATH, f'//*[@resource-id="{MORE_ACTION_ROOT_ID}" and .//*[@resource-id="{MORE_ACTION_TEXT_ID}" and @text="接龙"]]')
-    BTN_FILE = (AppiumBy.XPATH, f'//*[@resource-id="{MORE_ACTION_ROOT_ID}" and .//*[@resource-id="{MORE_ACTION_TEXT_ID}" and @text="文件"]]')
+    BTN_COLLECTION = (AppiumBy.XPATH, f'//*[@resource-id="{MORE_ACTION_ROOT_ID}" and .//*[@resource-id="{MORE_ACTION_TEXT_ID}" and @text="收藏"]]')
     BTN_CARD = (AppiumBy.XPATH, f'//*[@resource-id="{MORE_ACTION_ROOT_ID}" and .//*[@resource-id="{MORE_ACTION_TEXT_ID}" and @text="名片"]]')
     BTN_LOCATION = (AppiumBy.XPATH, f'//*[@resource-id="{MORE_ACTION_ROOT_ID}" and .//*[@resource-id="{MORE_ACTION_TEXT_ID}" and @text="位置"]]')
     BTN_VIDEO_CALL = (AppiumBy.XPATH, f'//*[@resource-id="{MORE_ACTION_ROOT_ID}" and .//*[@resource-id="{MORE_ACTION_TEXT_ID}" and @text="通话"]]')

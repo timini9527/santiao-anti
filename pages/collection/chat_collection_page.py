@@ -38,7 +38,7 @@ class ChatCollectionPage(ChatPage):
         """ 我的收藏-打开面板进入收藏页面 """
         logger.info("🚀 [Action] - 打开面板进入收藏页面")
         self.click_add_button()
-        self.click(CollectionLocator.COLLECTION_SELECT_BTN)
+        self.click(CollectionLocator.CHAT_COLLECTION_BUTTON)
         self.wait_for_collection_page_load()
  
     # 我的收藏-获取收藏列表容器

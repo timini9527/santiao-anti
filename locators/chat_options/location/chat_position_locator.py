@@ -1,16 +1,16 @@
 from appium.webdriver.common.appiumby import AppiumBy
 from locators.chat.core.chat_locator import ChatLocator
 from locators.common.common_locator import CommonLocator
-from locators.chat.core.chat_panel_locator import ChatLocatorPanel
+from locators.chat.core.chat_panel_locator import ChatPanelLocator
 
 
 class ChatPositionLocator(CommonLocator):
     PACKAGE_ID = CommonLocator.PACKAGE_ID
 
     # ==================== 位置入口（加号面板内）====================
-    LOCATION_SELECT_ROOT_ID = ChatLocatorPanel.MORE_ACTION_ROOT_ID
-    LOCATION_SELECT_ROOT = ChatLocatorPanel.MORE_ACTION_ROOT
-    LOCATION_SELECT_TEXT = ChatLocatorPanel.BTN_LOCATION
+    LOCATION_SELECT_ROOT_ID = ChatPanelLocator.MORE_ACTION_ROOT_ID
+    LOCATION_SELECT_ROOT = ChatPanelLocator.MORE_ACTION_ROOT
+    LOCATION_SELECT_TEXT = ChatPanelLocator.BTN_LOCATION
 
     # ==================== 位置选择页面 (地图页) ====================
     CANCEL_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/left_text') # 左上角取消按钮

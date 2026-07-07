@@ -1,12 +1,15 @@
 from appium.webdriver.common.appiumby import AppiumBy
 from locators.common.common_locator import CommonLocator
 from locators.chat.core.chat_locator import ChatLocator
+from locators.chat.core.chat_panel_locator import ChatPanelLocator
+
+
 
 class CollectionLocator(CommonLocator):
     PACKAGE_ID = CommonLocator.PACKAGE_ID
 
     # 聊天页面：收藏入口
-    CHAT_COLLECTION_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/collect_btn')
+    CHAT_COLLECTION_BUTTON = ChatPanelLocator.BTN_COLLECTION
 
     # 收藏入口 (通常在“我的”页面)
     MINE_COLLECTION_ENTRANCE = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("收藏")')

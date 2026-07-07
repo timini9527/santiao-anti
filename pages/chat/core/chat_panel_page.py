@@ -1,6 +1,6 @@
 import time
 from common.base_page import BasePage
-from locators.chat.core.chat_panel_locator import ChatLocatorPanel
+from locators.chat.core.chat_panel_locator import ChatPanelLocator
 from core.logger_utils import logger
 from appium.webdriver.webelement import WebElement
 
@@ -12,7 +12,7 @@ class ChatPanelPage(BasePage):
     def wait_for_panel_load(self, timeout: int = 10) -> bool:
         """等待扩展面板加载完成"""
         logger.info(f"⏳ [Wait] 等待“+”号扩展面板加载，超时时间 {timeout} 秒")
-        is_loaded = self.is_element_exist(ChatLocatorPanel.INPUT_MORE_PAGER, timeout=timeout)
+        is_loaded = self.is_element_exist(ChatPanelLocator.INPUT_MORE_PAGER, timeout=timeout)
         if is_loaded:
             logger.info("✅ [Wait] “+”号扩展面板已成功加载")
         else:
@@ -22,7 +22,7 @@ class ChatPanelPage(BasePage):
     # 获取功能面板
     def get_function_panel(self) -> WebElement | None:
         """获取功能面板"""
-        func_panel = self.find_element(ChatLocatorPanel.LL_INPUT_MORE)
+        func_panel = self.find_element(ChatPanelLocator.LL_INPUT_MORE)
         if not func_panel:
             logger.error("❌ [Wait] 功能面板加载失败或超时")
             return None
@@ -33,7 +33,7 @@ class ChatPanelPage(BasePage):
     def click_panel_item(self, item_name: str):
         """根据名称点击扩展面板中的子功能按钮"""
         logger.info(f"🖱️ [Action-Panel] 尝试点击扩展面板按钮: 【{item_name}】")
-        locator = ChatLocatorPanel.get_panel_item_by_text(item_name)
+        locator = ChatPanelLocator.get_panel_item_by_text(item_name)
         self.click(locator)
         time.sleep(0.5)
 
@@ -41,56 +41,56 @@ class ChatPanelPage(BasePage):
     def click_file(self):
         """点击‘文件’按钮"""
         logger.info("🖱️ [Action-Panel] 点击扩展面板中的【文件】")
-        self.click(ChatLocatorPanel.BTN_FILE)
+        self.click(ChatPanelLocator.BTN_FILE)
         time.sleep(0.5)
 
     # 点击‘投票’按钮
     def click_vote(self):
         """点击‘投票’按钮"""
         logger.info("🖱️ [Action-Panel] 点击扩展面板中的【投票】")
-        self.click(ChatLocatorPanel.BTN_VOTE)
+        self.click(ChatPanelLocator.BTN_VOTE)
         time.sleep(0.5)
 
     # 点击‘接龙’按钮
     def click_solitaire(self):
         """点击‘接龙’按钮"""
         logger.info("🖱️ [Action-Panel] 点击扩展面板中的【接龙】")
-        self.click(ChatLocatorPanel.BTN_SOLITAIRE)
+        self.click(ChatPanelLocator.BTN_SOLITAIRE)
         time.sleep(0.5)
 
     # 点击‘名片’按钮
     def click_card(self):
         """点击‘名片’按钮"""
         logger.info("🖱️ [Action-Panel] 点击扩展面板中的【名片】")
-        self.click(ChatLocatorPanel.BTN_CARD)
+        self.click(ChatPanelLocator.BTN_CARD)
         time.sleep(0.5)
 
     # 点击‘位置’按钮
     def click_location(self):
         """点击‘位置’按钮"""
         logger.info("🖱️ [Action-Panel] 点击扩展面板中的【位置】")
-        self.click(ChatLocatorPanel.BTN_LOCATION)
+        self.click(ChatPanelLocator.BTN_LOCATION)
         time.sleep(0.5)
 
     # 点击‘通话’按钮
     def click_video_call(self):
         """点击‘通话’按钮"""
         logger.info("🖱️ [Action-Panel] 点击扩展面板中的【通话】")
-        self.click(ChatLocatorPanel.BTN_VIDEO_CALL)
+        self.click(ChatPanelLocator.BTN_VIDEO_CALL)
         time.sleep(0.5)
 
     # 点击‘图片’按钮
     def click_album(self):
         """点击‘图片’（相册）按钮"""
         logger.info("🖱️ [Action-Panel] 点击扩展面板中的【图片】")
-        self.click(ChatLocatorPanel.BTN_ALBUM)
+        self.click(ChatPanelLocator.BTN_ALBUM)
         time.sleep(0.5)
 
     # 点击‘拍摄’按钮
     def click_camera(self):
         """点击‘拍摄’（相机）按钮"""
         logger.info("🖱️ [Action-Panel] 点击扩展面板中的【拍摄】")
-        self.click(ChatLocatorPanel.BTN_CAMERA)
+        self.click(ChatPanelLocator.BTN_CAMERA)
         time.sleep(0.5)
 
 
@@ -107,7 +107,7 @@ class ChatPanelPage(BasePage):
             self.swipe_page_quickly(element=pand_elem, slid_type="left")
             time.sleep(0.5)
             
-        locator = ChatLocatorPanel.get_panel_item_by_text(tab_name)
+        locator = ChatPanelLocator.get_panel_item_by_text(tab_name)
         self.click(locator, force_wait=True)
         time.sleep(0.5)
     
