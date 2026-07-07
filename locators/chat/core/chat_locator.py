@@ -161,22 +161,22 @@ class ChatLocator:
     # 名片消息相关
     # ==================================================================================================================
     # 名片气泡内部特征
-    CARD_TAG_ID = f'{PACKAGE_ID}/tvTag'                     # 名片类型标识
+    CARD_TAG_ID = f'{PACKAGE_ID}/tvTag'                         # 名片类型标识
     CARD_TAG = (AppiumBy.ID, CARD_TAG_ID) 
     
-    CARD_BG_ID = f'{PACKAGE_ID}/ivBlurBg'                   # 名片背景
+    CARD_BG_ID = f'{PACKAGE_ID}/ivBlurBg'                       # 名片背景
     CARD_BG = (AppiumBy.ID, CARD_BG_ID)
 
-    CARD_AVATAR_ID = f'{PACKAGE_ID}/ivAvatarSingle'         # 名片上的头像
+    CARD_AVATAR_ID = f'{PACKAGE_ID}/ivAvatarSingle'             # 名片上的头像
     CARD_AVATAR_ITEM = (AppiumBy.ID, CARD_AVATAR_ID)
     
-    CARD_NICKNAME_ID = f'{PACKAGE_ID}/tvName'               # 名片上的昵称
+    CARD_NICKNAME_ID = f'{PACKAGE_ID}/tvName'                   # 名片上的昵称
     CARD_NICKNAME_ITEM = (AppiumBy.ID, CARD_NICKNAME_ID)
     
-    CARD_NAME_XPATH = f'//*[@resource-id="{CARD_NICKNAME_ID}"]/android.widget.TextView' # 名片上的名称
+    CARD_NAME_XPATH = f'//*[@resource-id="{CARD_NICKNAME_ID}"]' # 名片上的名称
     CARD_NAME_ITEM = (AppiumBy.XPATH, CARD_NAME_XPATH)
 
-    CARD_ST_ID = f'{PACKAGE_ID}/tvSubName'                  # 名片上的ID
+    CARD_ST_ID = f'{PACKAGE_ID}/tvSubName'                      # 名片上的ID
     CARD_ST_ITEM = (AppiumBy.ID, CARD_ST_ID)
 
     # 发送方的名片气泡

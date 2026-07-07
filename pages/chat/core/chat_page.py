@@ -980,18 +980,19 @@ class ChatPage(BasePage):
     # 消息状态-验证最后一条消息的发送成功状态
     def verify_message_sent_status(self) -> bool:
         """消息状态-验证最后一条消息的发送成功状态"""
-        resend_btns = self.find_elements(ChatLocator.FAIL_MSG, timeout=2)
-        if not resend_btns:
-            logger.info("✅ 未检测到重发按钮，消息发送正常")
-            return True
-        return False
+        resend_btns = self.find_elements(ChatLocator.FAIL_MSG, timeout=2, expect_missing=True)
+        if resend_btns:
+            logger.error("❌ 检测到重发按钮，消息发送异常")
+            return False
+        logger.info("✅ 未检测到重发按钮，消息发送正常")
+        return True
 
     # =========================================================================================
     # 聊天页面【长按操作】位置消息相关方法 
     # =========================================================================================
-    # 位置消息-获取所有位置消息的标题列表
+    # 位置消息 - 获取所有位置消息的标题列表
     def get_all_location_titles(self):
-        """位置消息-获取所有位置消息的标题列表"""
+        """位置消息 - 获取所有位置消息的标题列表"""
         titles = self.find_elements(ChatLocator.SENT_LOCATION_MESSAGE_TITLE)
         if not titles:
             logger.warning("未找到任何位置消息标题")
@@ -1000,9 +1001,9 @@ class ChatPage(BasePage):
         logger.info(f"所有位置消息标题: {msg_titles}")
         return msg_titles
 
-    # 位置消息-验证已发送位置消息的标题与副标题并返回
+    # 位置消息 - 验证已发送位置消息的标题与副标题并返回
     def verify_location_sent_status(self) -> dict:
-        """位置消息-验证已发送位置消息的标题与副标题并返回"""
+        """位置消息 - 验证已发送位置消息的标题与副标题并返回"""
         title_locator = ChatLocator.get_avatar_bubble_locator(ChatLocator.LOCATION_MESSAGE_TITLE_ID, is_sender=True)
         subtitle_locator = ChatLocator.get_avatar_bubble_locator(ChatLocator.LOCATION_MESSAGE_SUBTITLE_ID, is_sender=True)
         
@@ -1039,7 +1040,7 @@ class ChatPage(BasePage):
     # 名片消息-获取所有已发送名片的信息列表
     def get_all_send_contact_card_infos(self):
         """名片消息-获取所有已发送名片的信息列表"""
-        # time.sleep(2)
+        time.sleep(2)
         titles = self.find_elements(ChatLocator.SENT_CARD_NAME_ITEM, timeout=2)
         stIds = self.find_elements(ChatLocator.SENT_CARD_ST_ITEM, timeout=2)
         card_types = self.find_elements(ChatLocator.SENT_CARD_TAG_ITEM, timeout=2)

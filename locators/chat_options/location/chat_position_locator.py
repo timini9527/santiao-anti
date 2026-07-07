@@ -1,16 +1,16 @@
 from appium.webdriver.common.appiumby import AppiumBy
 from locators.chat.core.chat_locator import ChatLocator
 from locators.common.common_locator import CommonLocator
+from locators.chat.core.chat_panel_locator import ChatLocatorPanel
 
 
 class ChatPositionLocator(CommonLocator):
     PACKAGE_ID = CommonLocator.PACKAGE_ID
 
     # ==================== 位置入口（加号面板内）====================
-    LOCATION_BTN_ID = f'{PACKAGE_ID}/location_bnt'
-    LOCATION_BTN              = (AppiumBy.ID, LOCATION_BTN_ID)                                                              # 位置入口：包含图片和文本区域的整体容器
-    LOCATION_SELECT_BTN       = (AppiumBy.XPATH, f'//*[@resource-id="{LOCATION_BTN_ID}"]/android.widget.ImageView')            # 位置入口：图片图标
-    LOCATION_SELECT_TEXT      = (AppiumBy.XPATH, f'//*[@resource-id="{LOCATION_BTN_ID}"]/android.widget.TextView')             # 位置入口："图片"文本
+    LOCATION_SELECT_ROOT_ID = ChatLocatorPanel.MORE_ACTION_ROOT_ID
+    LOCATION_SELECT_ROOT = ChatLocatorPanel.MORE_ACTION_ROOT
+    LOCATION_SELECT_TEXT = ChatLocatorPanel.BTN_LOCATION
 
     # ==================== 位置选择页面 (地图页) ====================
     CANCEL_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/left_text') # 左上角取消按钮

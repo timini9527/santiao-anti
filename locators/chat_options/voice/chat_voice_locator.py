@@ -76,8 +76,9 @@ class ChatVoiceLocator(CommonLocator, ChatLocator):
         """
         # 逻辑：找一个 message_row，它内部包含指定的时长文本，且包含声波图标
         # 然后定位到该 row 下的失败状态按钮
-        xpath = (f'(//*[@resource-id="{cls.SENT_VOICE_MESSAGE_ROW_ID}" '
-                 f'and .//*[@resource-id="{cls.SENT_VOICE_MESSAGE_TIME_ID}" and @text="{time_text}"] '
+        
+        xpath = (f'(//*[@resource-id="{cls.MESSAGE_LAYOUT_ID}" '
+                 f'and .//*[@resource-id="{cls.SENT_VOICE_MESSAGE_TIME_ID}" and contains(@text, "{time_text}")] '
                  f'and .//*[@resource-id="{cls.SENT_VOICE_MESSAGE_WAVE_ID}"]])[last()]'
                  f'//*[@resource-id="{cls.SENT_VOICE_MESSAGE_STATUS_ID}"]')
         return (AppiumBy.XPATH, xpath)

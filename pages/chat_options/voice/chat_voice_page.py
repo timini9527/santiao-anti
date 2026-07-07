@@ -163,7 +163,7 @@ class ChatVoicePage(ChatPage):
     def get_latest_voice_message_status(self, time: int):
         """获取最新一条语音消息的发送状态元素（有则代表发送失败，气泡上会显示红点）"""
         locator = ChatVoiceLocator.get_latest_voice_message_status_locator(time)
-        elem = self.find_element(locator, timeout=2)
+        elem = self.find_element(locator, timeout=2, expect_missing=True)
         if elem:
             logger.warning(f"⚠️ [{time}s] 语音消息存在失败状态红点（发送失败）")
         else:
@@ -186,8 +186,10 @@ class ChatVoicePage(ChatPage):
         start_x, start_y = self.get_element_center(voice_button)
 
         if hold_time < 50:
-            logger.info(f"👉 短时间录音 ({hold_time}秒)，直接使用长按...")
-            self.long_press_action(voice_button, hold_time=hold_time * 1000)
+            logger.info(f"👉 短时间录音 ({hold_time}秒)，直接使用 W3C 触屏长按...")
+            actions, touch_input = self.init_w3c_actions()
+            self.pointer_down_and_hold(actions, start_x, start_y, hold_time)
+            self.pointer_up_at_location(touch_input, start_x, start_y)
             if hold_time == 0:
                 result["toast"] = self.toast_message()
             return result
@@ -289,6 +291,12 @@ class ChatVoicePage(ChatPage):
             logger.info(f"✅ 成功捕获到悬停提示: 【{hover_tips.text}】")
             is_hover_text_found = True
         except Exception:
+            logger.info(f"👉 短时间录音 ({hold_time}秒)，直接使用 W3C 触屏长按...")
+            actions, touch_input = self.init_w3c_actions()
+            self.pointer_down_and_hold(actions, start_x, start_y, hold_time)
+            self.pointer_up_at_location(touch_input, start_x, start_y)
+            if hold_time == 0:
+                result["toast"] = self.toast_message()
             logger.warning("❌ 未捕获到『松开 取消发送』的提示文案！")
 
         logger.info("👉 松开手指，取消发送...")
@@ -381,7 +389,7 @@ class ChatVoicePage(ChatPage):
         """
         try:
             locator = ChatVoiceLocator.get_sent_voice_message_time_locator(role)
-            elems = self.find_elements(locator, timeout=2)
+            elems = self.find_elements(locator, timeout=2, raise_exception=False)
             if not elems:
                 logger.info(f"📷 [{role}] 语音消息列表快照：当前无消息（count=0）")
                 return {"count": 0, "last_elem_id": None}
@@ -405,12 +413,12 @@ class ChatVoicePage(ChatPage):
         :param expect_sent: True 表示预期发送成功，False 表示预期取消发送(未发送)
         """
         if expected_time > 60:
-            self.click_voice_press_button()  # 模拟器需要的操作
+            self.click_voice_press_button()     # TODO： 模拟器需要的操作
             
         try:
+            time.sleep(1)
             locator = ChatVoiceLocator.get_sent_voice_message_time_locator(role)
             elems = self.find_elements(locator, timeout=2)
-            time.sleep(1)
             if not elems:
                 if expect_sent:
                     logger.error("❌ 验证失败：消息列表为空，未找到任何语音消息气泡")
@@ -436,7 +444,7 @@ class ChatVoicePage(ChatPage):
                     return False
 
                 status_elem = self.get_latest_voice_message_status(actual_time)
-                if status_elem is not None:
+                if status_elem:
                     logger.error("❌ 验证失败：虽然生成了气泡，但带有红色发送失败感叹号！")
                     return False
 
