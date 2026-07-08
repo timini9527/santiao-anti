@@ -1,6 +1,6 @@
 import time
 from common.base_page import BasePage
-from locators.auth.login.login_locator import LoginLocator
+from locators.login.login_locator import LoginLocator
 from core.logger_utils import logger
 from business_helpers.verify_color import VerifyColor
 from pages.system.common.common_page import CommonPage

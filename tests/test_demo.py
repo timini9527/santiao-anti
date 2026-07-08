@@ -6,7 +6,7 @@ import sys
 import os
 from pages.system.home.home_page import HomePage
 from pages.personal.other_page import OtherPage
-from pages.auth.users.loginPage import LoginPage
+from pages.login.loginPage import LoginPage
 from utils.file_reader.csv_handler import RegionCrawler
 
 

@@ -2,7 +2,7 @@ import time
 import datetime
 from common.base_page import BasePage
 from appium.webdriver.webelement import WebElement
-from locators.personal.collection.collection_locator import CollectionLocator
+from locators.mine.collection.collection_locator import CollectionLocator
 from core.logger_utils import logger
 from pages.chat.core.chat_page import ChatPage
 from utils.cv_recognition.screenshot_utils import ScreenshotUtils, ImageComparator

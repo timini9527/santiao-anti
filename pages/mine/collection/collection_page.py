@@ -5,10 +5,10 @@ from dateutil import parser
 from datetime import datetime
 import imagehash
 from PIL import Image
-from locators.personal.collection.collection_locator import CollectionLocator
+from locators.mine.collection.collection_locator import CollectionLocator
 from selenium.common import StaleElementReferenceException
 from selenium.webdriver.remote.webelement import WebElement
-from pages.personal.collection.chat_collection_page import ChatCollectionPage
+from pages.mine.collection.chat_collection_page import ChatCollectionPage
 from core.logger_utils import logger
 from appium.webdriver.common.appiumby import AppiumBy
 
@@ -26,7 +26,7 @@ class CollectionPage(ChatCollectionPage):
 
     # 进入我的收藏页面
     def enter_my_collection(self):
-        from pages.personal.mine.mine_page import MinePage
+        from pages.mine.mine_page import MinePage
         self.click(MinePage.MENU_MINE)
         self.click(CollectionLocator.MINE_COLLECTION_ENTRANCE, force_wait=True)
 

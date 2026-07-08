@@ -2,8 +2,8 @@ import time
 import pytest
 import allure
 import pytest_check as check
-from pages.auth.login.login_page import LoginPage
-from locators.auth.login.login_locator import LoginLocator
+from pages.login.login_page import LoginPage
+from locators.login.login_locator import LoginLocator
 from core.logger_utils import logger
 from utils.file_reader.data_loader import load_yaml_data
 from dataclasses import dataclass

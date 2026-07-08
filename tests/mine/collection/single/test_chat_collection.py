@@ -6,8 +6,8 @@ from pages.system.main.main_page import MainPage
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_page import ChatPage
 from pages.chat.core.chat_long_press_page import ChatLongPressPage
-from pages.personal.collection.chat_collection_page import ChatCollectionPage
-from pages.personal.collection.collection_page import CollectionPage
+from pages.mine.collection.chat_collection_page import ChatCollectionPage
+from pages.mine.collection.collection_page import CollectionPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
 from pages.system.home.home_page import HomePage
 from pages.system.home.side_slip_page import SideSlipPage

@@ -5,8 +5,8 @@ from core.logger_utils import logger
 from pages.system.main.main_page import MainPage
 from pages.chat.core.chat_page import ChatPage
 from pages.chat.list.chat_list_page import ChatListPage
-from pages.personal.collection.collection_page import CollectionPage
-from pages.personal.collection.chat_collection_page import ChatCollectionPage
+from pages.mine.collection.collection_page import CollectionPage
+from pages.mine.collection.chat_collection_page import ChatCollectionPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2
 import time
 

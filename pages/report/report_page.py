@@ -1,5 +1,5 @@
 from common.base_page import BasePage
-from locators.system.report.report_locator import ReportLocator
+from locators.report.report_locator import ReportLocator
 from core.logger_utils import logger
 import time
 

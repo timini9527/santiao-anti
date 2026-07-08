@@ -1,7 +1,7 @@
 import allure
 import pytest
 from pages.system.main.main_page import MainPage
-from pages.personal.collection.collection_page import CollectionPage
+from pages.mine.collection.collection_page import CollectionPage
 from core.logger_utils import logger
 
 

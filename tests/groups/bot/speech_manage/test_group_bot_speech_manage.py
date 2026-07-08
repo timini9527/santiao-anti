@@ -9,7 +9,7 @@ from pages.groups.bot.group_bot_page import GroupBotPage
 from pages.chat.core.chat_page import ChatPage
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_panel_page import ChatPanelPage
-from pages.personal.collection.chat_collection_page import ChatCollectionPage
+from pages.mine.collection.chat_collection_page import ChatCollectionPage
 from pages.chat_options.emojis.chat_emoji_page import ChatEmojiPage
 from pages.chat_options.emojis.chat_emoji_package_page import ChatEmojiPackagePage
 from pages.chat_options.voice.chat_voice_page import ChatVoicePage

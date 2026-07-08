@@ -12,7 +12,7 @@ from strategy.chat.chat_message_strategy import MessageTypeStrategy, ChatMessage
 from locators.chat.core.chat_locator import ChatLocator
 from pages.system.home.side_slip_page import SideSlipPage
 from pages.system.home.home_page import HomePage
-from pages.personal.collection.chat_collection_page import ChatCollectionPage
+from pages.mine.collection.chat_collection_page import ChatCollectionPage
 from pages.system.common.contact_select_page import ContactSelectPage
 from pages.system.common.session_select_page import SessionSelectPage
 from pages.chat_options.emojis.chat_emoji_package_page import ChatEmojiPackagePage

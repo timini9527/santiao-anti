@@ -9,8 +9,8 @@ from pages.chat.setting.chat_setting_page import ChatSettingPage
 from pages.chat.search.chat_search_page import ChatSearchPage
 from pages.chat.core.chat_long_press_page import ChatLongPressPage
 from pages.system.home.side_slip_page import SideSlipPage
-from pages.personal.collection.chat_collection_page import ChatCollectionPage
-from pages.personal.collection.collection_page import CollectionPage
+from pages.mine.collection.chat_collection_page import ChatCollectionPage
+from pages.mine.collection.collection_page import CollectionPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2
 from utils.file_reader.data_loader import load_yaml_data
 
