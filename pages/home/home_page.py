@@ -3,7 +3,7 @@ import time
 from selenium.webdriver.remote.webelement import WebElement
 from common.base_page import BasePage
 from core.logger_utils import logger
-from locators.system.home.home_locator import HomeLocator
+from locators.home.home_locator import HomeLocator
 
 
 class HomePage(BasePage):

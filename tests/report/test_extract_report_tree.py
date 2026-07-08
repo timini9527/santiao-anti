@@ -1,4 +1,4 @@
-from pages.system.main.main_page import MainPage
+from pages.main.main_page import MainPage
 import pytest
 import allure
 import yaml

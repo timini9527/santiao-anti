@@ -338,7 +338,7 @@ class BasePage:
         """
         获取当前屏幕上显示的任意 Toast 文本的内容 (支持 XML + OCR 降级双通道检测)
         """
-        from locators.system.common.common_locator import CommonLocator
+        from locators.common.common_locator import CommonLocator
         from utils.cv_recognition.ocr_utils import OcrUtils
 
         locator = CommonLocator.TOAST_MSG

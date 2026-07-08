@@ -4,7 +4,7 @@ import pytest_check as check
 import time
 from core.logger_utils import logger
 
-from pages.system.main.main_page import MainPage
+from pages.main.main_page import MainPage
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_page import ChatPage
 from pages.chat_options.voice.chat_voice_page import ChatVoicePage
@@ -16,8 +16,8 @@ from pages.chat_options.emojis.chat_emoji_page import ChatEmojiPage
 from pages.chat_options.emojis.chat_emoji_store_page import ChatEmojiStorePage
 from pages.chat_options.emojis.chat_emoji_package_page import ChatEmojiPackagePage
 from pages.chat_options.contact.chat_contact_card_page import ChatContactCardPage
-from pages.system.common.contact_select_page import ContactSelectPage
-from pages.personal.contact_detail_page import ContactDetailPage
+from pages.common.contact_select_page import ContactSelectPage
+from pages.chat_options.contact.contact_detail_page import ContactDetailPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2
 
 

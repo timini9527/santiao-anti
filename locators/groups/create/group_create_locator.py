@@ -1,5 +1,5 @@
 from appium.webdriver.common.appiumby import AppiumBy
-from locators.system.common.common_locator import CommonLocator
+from locators.common.common_locator import CommonLocator
 
 class GroupCreateLocator(CommonLocator):
     """发起群聊页面定位器"""

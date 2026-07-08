@@ -4,8 +4,8 @@ import pytest_check as check
 from core.logger_utils import logger
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.setting.chat_setting_page import ChatSettingPage
-from pages.system.main.main_page import MainPage
-from pages.system.home.home_page import HomePage
+from pages.main.main_page import MainPage
+from pages.home.home_page import HomePage
 from pages.chat.core.chat_long_press_page import ChatLongPressPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY, PRIVATE_USER2, GROUP_STRATEGY2
 

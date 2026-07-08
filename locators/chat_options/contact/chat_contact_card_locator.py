@@ -1,5 +1,5 @@
 from appium.webdriver.common.appiumby import AppiumBy
-from locators.system.common.common_locator import CommonLocator
+from locators.common.common_locator import CommonLocator
 
 class ChatContactCardLocator(CommonLocator):
     """名片模块特有定位器 (仅保留名片入口及消息气泡相关)"""

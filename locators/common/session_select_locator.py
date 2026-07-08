@@ -1,5 +1,5 @@
 from appium.webdriver.common.appiumby import AppiumBy
-from locators.system.common.common_locator import CommonLocator
+from locators.common.common_locator import CommonLocator
 
 class SessionSelectLocator(CommonLocator):
     """通用会话选择组件定位器 (常用于转发、分享群名片等场景)"""

@@ -4,8 +4,8 @@ import pytest_check as check
 import time
 from datetime import datetime
 
-from pages.system.main.main_page import MainPage
-from pages.system.home.home_page import HomePage
+from pages.main.main_page import MainPage
+from pages.home.home_page import HomePage
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_page import ChatPage
 from pages.chat.setting.chat_setting_page import ChatSettingPage
@@ -15,8 +15,8 @@ from pages.groups.setting.qrcode.group_qrcode_page import GroupQrCodePage
 from pages.groups.setting.notice.group_notice_page import GroupNoticePage
 from pages.groups.setting.manager.group_manager_page import GroupManagerPage
 from pages.groups.setting.general.group_avatar_page import GroupAvatarPage
-from pages.system.common.contact_select_page import ContactSelectPage
-from pages.system.common.session_select_page import SessionSelectPage
+from pages.common.contact_select_page import ContactSelectPage
+from pages.common.session_select_page import SessionSelectPage
 from pages.chat.core.chat_panel_page import ChatPanelPage
 from pages.chat.core.chat_long_press_page import ChatLongPressPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, GROUP_STRATEGY

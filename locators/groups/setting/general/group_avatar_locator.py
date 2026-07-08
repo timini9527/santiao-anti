@@ -1,7 +1,7 @@
 from appium.webdriver.common.appiumby import AppiumBy
 from locators.groups.setting.general.group_setting_locator import GroupSettingLocator
-from locators.system.common.album_locator import CommonAlbumLocator
-from locators.system.common.common_locator import CommonLocator
+from locators.common.album_locator import CommonAlbumLocator
+from locators.common.common_locator import CommonLocator
 
 class GroupAvatarLocator(GroupSettingLocator, CommonAlbumLocator):
     """群头像设置页面定位器"""

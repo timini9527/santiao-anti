@@ -1,5 +1,5 @@
 from appium.webdriver.common.appiumby import AppiumBy
-from locators.system.common.common_locator import CommonLocator
+from locators.common.common_locator import CommonLocator
 
 class MediaSelectLocator:
     """图片和视频选择面板的通用定位器"""

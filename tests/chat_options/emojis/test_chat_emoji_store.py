@@ -4,7 +4,7 @@ import pytest_check as check
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_page import ChatPage
 from strategy.chat.chat_strategy import (PRIVATE_USER1)
-from pages.system.main.main_page import MainPage
+from pages.main.main_page import MainPage
 from core.logger_utils import logger
 from utils.file_reader.data_loader import load_yaml_data
 

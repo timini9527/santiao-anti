@@ -3,14 +3,14 @@ import allure
 import time
 import pytest_check as check
 from core.logger_utils import logger
-from pages.system.main.main_page import MainPage
+from pages.main.main_page import MainPage
 from pages.groups.setting.general.group_setting_page import GroupSettingPage
 from pages.groups.bot.group_bot_page import GroupBotPage
 from pages.chat.core.chat_page import ChatPage
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.groups.setting.manager.group_manager_page import GroupManagerPage
-from pages.system.common.session_select_page import SessionSelectPage
-from pages.system.common.contact_select_page import ContactSelectPage
+from pages.common.session_select_page import SessionSelectPage
+from pages.common.contact_select_page import ContactSelectPage
 from locators.chat.core.chat_locator import ChatLocator
 from strategy.chat.chat_strategy import GROUP_STRATEGY, PRIVATE_USER4
 

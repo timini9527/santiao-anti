@@ -5,7 +5,7 @@ import pytest_check as check
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_page import ChatPage
 from pages.chat_options.videos.chat_video_page import ChatVideoPage
-from pages.system.main.main_page import MainPage
+from pages.main.main_page import MainPage
 from core.logger_utils import logger
 from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
 from pages.chat_options.videos.video_strategy import (

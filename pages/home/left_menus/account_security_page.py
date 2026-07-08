@@ -1,7 +1,7 @@
 from common.base_page import BasePage
-from pages.system.common.common_page import CommonPage
+from pages.common.common_page import CommonPage
 from core.logger_utils import logger
-from locators.personal.left_menus.account_security_locator import AccountSecurityLocator
+from locators.home.left_menus.account_security_locator import AccountSecurityLocator
 import time
 
 

@@ -1,5 +1,5 @@
 from appium.webdriver.common.appiumby import AppiumBy
-from locators.system.common.common_locator import CommonLocator
+from locators.common.common_locator import CommonLocator
 
 class ChatSettingLocator(CommonLocator):
     """单聊设置页面（聊天信息）定位器"""

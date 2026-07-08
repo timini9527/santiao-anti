@@ -1,6 +1,6 @@
 from appium.webdriver.common.appiumby import AppiumBy
 from locators.chat.core.chat_locator import ChatLocator
-from locators.system.common.common_locator import CommonLocator
+from locators.common.common_locator import CommonLocator
 from locators.chat.core.chat_panel_locator import ChatPanelLocator
 
 

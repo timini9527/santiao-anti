@@ -1,12 +1,12 @@
 import re
 import time
 from appium.webdriver.common.appiumby import AppiumBy
-from locators.system.common.common_locator import CommonLocator
+from locators.common.common_locator import CommonLocator
 from pages.personal.personal_page import PersonalPage
 from locators.personal.personal_locator import PersonalLocator
 from locators.personal.other_locator import OtherLocator
 from core.logger_utils import logger
-from pages.system.common.common_page import CommonPage
+from pages.common.common_page import CommonPage
 from business_helpers.verify_color import VerifyColor
 
 

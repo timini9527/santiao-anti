@@ -7,7 +7,7 @@ from pages.chat.setting.chat_setting_page import ChatSettingPage
 from pages.report.report_page import ReportPage
 from strategy.chat.chat_strategy import PRIVATE_USER1
 from utils.file_reader.data_loader import load_yaml_data
-from pages.system.main.main_page import MainPage
+from pages.main.main_page import MainPage
 
 
 @allure.epic("IM核心功能测试")

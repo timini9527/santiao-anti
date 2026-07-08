@@ -1,5 +1,5 @@
 from common.base_page import BasePage
-from locators.system.common.common_locator import CommonLocator
+from locators.common.common_locator import CommonLocator
 from core.logger_utils import logger
 
 class CommonPage(BasePage):

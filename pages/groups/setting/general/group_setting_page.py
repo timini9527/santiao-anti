@@ -4,7 +4,7 @@ from common.base_page import BasePage
 from appium.webdriver.webelement import WebElement
 from appium.webdriver.common.appiumby import AppiumBy
 from locators.groups.setting.general.group_setting_locator import GroupSettingLocator
-from locators.system.common.common_locator import CommonLocator
+from locators.common.common_locator import CommonLocator
 
 class GroupSettingPage(BasePage):
     """群聊设置（群信息/群管理）页面操作类"""

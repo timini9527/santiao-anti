@@ -1,6 +1,6 @@
-from locators.system.home.side_slip_locator import SideSlipLocator
+from locators.home.side_slip_locator import SideSlipLocator
 from core.logger_utils import logger
-from pages.system.home.home_page import HomePage
+from pages.home.home_page import HomePage
 
 class SideSlipPage(HomePage):
 

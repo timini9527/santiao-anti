@@ -144,7 +144,7 @@ class ChatMessageBuilder(ChatPage):
     def _prepare_card_msg(self, **kwargs):
         """发送/准备联系人名片消息"""
         from pages.chat_options.contact.chat_contact_card_page import ChatContactCardPage
-        from pages.system.common.contact_select_page import ContactSelectPage
+        from pages.common.contact_select_page import ContactSelectPage
         ChatContactCardPage(self.driver).open_panel_enter_contact_card_page()
         contact = kwargs.get("contact_name", "测试0222")
         ContactSelectPage(self.driver).click_contact_by_name(name=contact, select_type="share")

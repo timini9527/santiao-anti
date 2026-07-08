@@ -3,7 +3,7 @@ import allure
 import pytest_check as check
 import random
 
-from pages.system.main.main_page import MainPage
+from pages.main.main_page import MainPage
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.setting.chat_setting_page import ChatSettingPage
 from pages.report.report_page import ReportPage

@@ -2,8 +2,8 @@ import pytest
 import allure
 import pytest_check as check
 from core.logger_utils import logger
-from pages.system.main.main_page import MainPage
-from pages.system.home.home_page import HomePage
+from pages.main.main_page import MainPage
+from pages.home.home_page import HomePage
 from pages.groups.setting.general.group_setting_page import GroupSettingPage
 from pages.groups.bot.group_bot_page import GroupBotPage
 from pages.chat.core.chat_page import ChatPage

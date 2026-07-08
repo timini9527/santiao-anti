@@ -5,7 +5,7 @@ from selenium.webdriver.remote.webelement import WebElement
 
 from business_helpers.avatar_comparison import AvatarComparator
 from locators.personal.personal_locator import PersonalLocator
-from pages.system.common.common_page import CommonPage
+from pages.common.common_page import CommonPage
 from core.logger_utils import logger
 from pages.personal.personal_page import PersonalPage
 from apis.personal_api import PersonalAPI

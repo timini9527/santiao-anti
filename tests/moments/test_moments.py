@@ -1,7 +1,7 @@
 import allure
 import pytest
 import pytest_check as check
-from pages.system.main.main_page import MainPage
+from pages.main.main_page import MainPage
 from pages.moments.moments_page import MomentsPage
 from core.logger_utils import logger
 

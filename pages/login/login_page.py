@@ -3,7 +3,7 @@ from common.base_page import BasePage
 from locators.login.login_locator import LoginLocator
 from core.logger_utils import logger
 from business_helpers.verify_color import VerifyColor
-from pages.system.common.common_page import CommonPage
+from pages.common.common_page import CommonPage
 from selenium.common.exceptions import TimeoutException
 from utils.cv_recognition.ocr_utils import OcrUtils
 
@@ -205,7 +205,7 @@ class LoginPage(BasePage):
         """
         根据是否能找到主页特有元素判断登录是否成功
         """
-        from pages.system.home.home_page import HomePage
+        from pages.home.home_page import HomePage
         title = HomePage(self.driver).get_top_middle_title()
         if '三条' in title:
             logger.info(f"登录成功，获取到主页标题: {title}")
@@ -263,9 +263,9 @@ class LoginPage(BasePage):
         """
         退出登录业务流转
         """
-        from pages.system.home.home_page import HomePage
-        from pages.system.home.side_slip_page import SideSlipPage
-        from pages.personal.left_menus.account_security_page import AccountSecurityPage
+        from pages.home.home_page import HomePage
+        from pages.home.side_slip_page import SideSlipPage
+        from pages.home.left_menus.account_security_page import AccountSecurityPage
 
         logger.info("👉 开始执行退出登录流转...")
         HomePage(self.driver).open_left_menu()

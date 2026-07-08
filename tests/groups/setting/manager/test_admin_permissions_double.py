@@ -3,7 +3,7 @@ import allure
 import time
 import pytest_check as check
 from core.logger_utils import logger
-from pages.system.main.main_page import MainPage
+from pages.main.main_page import MainPage
 from pages.groups.setting.general.group_setting_page import GroupSettingPage
 from pages.groups.setting.manager.group_manager_page import GroupManagerPage
 from pages.chat.core.chat_page import ChatPage

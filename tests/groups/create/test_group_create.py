@@ -1,14 +1,14 @@
 import pytest
 import allure
 import time
-from pages.system.main.main_page import MainPage
-from pages.system.home.home_page import HomePage
+from pages.main.main_page import MainPage
+from pages.home.home_page import HomePage
 from pages.groups.create.group_create_page import GroupCreatePage
 from pages.chat.core.chat_page import ChatPage
 from pages.chat.list.chat_list_page import ChatListPage
-from pages.system.common.session_select_page import SessionSelectPage
-from pages.system.common.contact_select_page import ContactSelectPage
-from pages.system.home.home_page import HomePage
+from pages.common.session_select_page import SessionSelectPage
+from pages.common.contact_select_page import ContactSelectPage
+from pages.home.home_page import HomePage
 import pytest_check as check
 from core.logger_utils import logger
 from pages.chat.setting.chat_setting_page import ChatSettingPage

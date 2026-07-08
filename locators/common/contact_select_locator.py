@@ -1,5 +1,5 @@
 from appium.webdriver.common.appiumby import AppiumBy
-from locators.system.common.common_locator import CommonLocator
+from locators.common.common_locator import CommonLocator
 
 class ContactSelectLocator(CommonLocator):
     """通用好友/群聊选择组件定位器"""

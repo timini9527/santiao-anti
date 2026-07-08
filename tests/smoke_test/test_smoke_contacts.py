@@ -1,13 +1,13 @@
 import pytest
 import allure
 import pytest_check as check
-from pages.system.main.main_page import MainPage
-from pages.system.home.home_page import HomePage
+from pages.main.main_page import MainPage
+from pages.home.home_page import HomePage
 from pages.personal.add_friend_page import AddFriendPage
-from pages.personal.contact_detail_page import ContactDetailPage
-from pages.system.common.contact_select_page import ContactSelectPage
+from pages.chat_options.contact.contact_detail_page import ContactDetailPage
+from pages.common.contact_select_page import ContactSelectPage
 from strategy.chat.chat_strategy import PRIVATE_USER1
-from locators.system.common.contact_select_locator import ContactSelectLocator
+from locators.common.contact_select_locator import ContactSelectLocator
 
 class BaseSmokeContacts:
     """联系人与好友模块测试基类"""

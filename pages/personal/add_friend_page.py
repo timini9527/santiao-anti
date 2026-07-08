@@ -1,5 +1,5 @@
 import time
-from pages.system.common.common_page import CommonPage
+from pages.common.common_page import CommonPage
 from locators.personal.add_friend_locator import AddFriendLocator
 from core.logger_utils import logger
 

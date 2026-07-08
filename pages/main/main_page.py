@@ -2,8 +2,8 @@ import time
 from selenium.webdriver.common.by import By
 from common.base_page import BasePage
 from core.logger_utils import logger
-from locators.system.home.home_locator import HomeLocator
-from locators.system.main.main_locator import MainLocator
+from locators.home.home_locator import HomeLocator
+from locators.main.main_locator import MainLocator
 
 
 #   主页面

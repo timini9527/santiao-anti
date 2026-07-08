@@ -5,7 +5,7 @@ import yaml
 import allure
 import logging
 from core.driver_factory import DriverFactory
-from pages.system.main.main_page import MainPage
+from pages.main.main_page import MainPage
 
 logger = logging.getLogger(__name__)
 

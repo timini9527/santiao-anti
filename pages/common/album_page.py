@@ -5,7 +5,7 @@ from selenium.webdriver.remote.webelement import WebElement
 from appium.webdriver.common.appiumby import AppiumBy
 from common.base_page import BasePage
 from core.logger_utils import logger
-from locators.system.common.album_locator import CommonAlbumLocator
+from locators.common.album_locator import CommonAlbumLocator
 
 
 class CommonAlbumPage(BasePage):

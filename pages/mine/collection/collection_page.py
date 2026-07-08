@@ -11,6 +11,7 @@ from selenium.webdriver.remote.webelement import WebElement
 from pages.mine.collection.chat_collection_page import ChatCollectionPage
 from core.logger_utils import logger
 from appium.webdriver.common.appiumby import AppiumBy
+from pages.mine.mine_page import MinePage
 
 
 class CollectionPage(ChatCollectionPage):
@@ -26,7 +27,6 @@ class CollectionPage(ChatCollectionPage):
 
     # 进入我的收藏页面
     def enter_my_collection(self):
-        from pages.mine.mine_page import MinePage
         self.click(MinePage.MENU_MINE)
         self.click(CollectionLocator.MINE_COLLECTION_ENTRANCE, force_wait=True)
 

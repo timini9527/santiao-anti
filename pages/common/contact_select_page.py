@@ -2,8 +2,8 @@ import time
 import allure
 from appium.webdriver.webelement import WebElement
 from appium.webdriver.common.appiumby import AppiumBy
-from pages.system.common.common_page import CommonPage
-from locators.system.common.contact_select_locator import ContactSelectLocator
+from pages.common.common_page import CommonPage
+from locators.common.contact_select_locator import ContactSelectLocator
 from core.logger_utils import logger
 
 class ContactSelectPage(CommonPage):

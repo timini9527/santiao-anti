@@ -1,7 +1,7 @@
 from typing import Literal
-from pages.system.common.common_page import CommonPage
+from pages.common.common_page import CommonPage
 from pages.chat_options.contact.chat_contact_card_page import ChatContactCardPage
-from locators.personal.contact_detail_locator import ContactDetailLocator
+from locators.chat_options.contact.contact_detail_locator import ContactDetailLocator
 from core.logger_utils import logger
 import time
 

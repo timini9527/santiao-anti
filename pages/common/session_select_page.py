@@ -1,7 +1,7 @@
 import time
 from appium.webdriver.common.appiumby import AppiumBy
-from pages.system.common.common_page import CommonPage
-from locators.system.common.session_select_locator import SessionSelectLocator
+from pages.common.common_page import CommonPage
+from locators.common.session_select_locator import SessionSelectLocator
 from core.logger_utils import logger
 
 class SessionSelectPage(CommonPage):

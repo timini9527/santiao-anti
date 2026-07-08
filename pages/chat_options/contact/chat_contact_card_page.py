@@ -5,7 +5,7 @@ from selenium.webdriver.remote.webelement import WebElement
 from pages.chat.core.chat_page import ChatPage
 from core.logger_utils import logger
 from locators.chat_options.contact.chat_contact_card_locator import ChatContactCardLocator
-from locators.system.common.contact_select_locator import ContactSelectLocator
+from locators.common.contact_select_locator import ContactSelectLocator
 
 class ChatContactCardPage(ChatPage):
 

@@ -3,17 +3,17 @@ import allure
 import time
 import pytest_check as check
 from core.logger_utils import logger
-from pages.system.main.main_page import MainPage
-from pages.system.home.home_page import HomePage
+from pages.main.main_page import MainPage
+from pages.home.home_page import HomePage
 from pages.groups.create.group_create_page import GroupCreatePage
 from pages.groups.setting.general.group_setting_page import GroupSettingPage
 from pages.groups.setting.notice.group_notice_page import GroupNoticePage
 from pages.chat.core.chat_page import ChatPage
 from pages.chat.list.chat_list_page import ChatListPage
-from pages.system.common.contact_select_page import ContactSelectPage
+from pages.common.contact_select_page import ContactSelectPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, GROUP_STRATEGY
 from utils.file_reader.data_loader import load_yaml_data
-from locators.system.common.common_locator import CommonLocator
+from locators.common.common_locator import CommonLocator
 
 
 
