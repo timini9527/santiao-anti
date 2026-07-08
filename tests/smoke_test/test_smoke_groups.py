@@ -9,12 +9,12 @@ from pages.system.home.home_page import HomePage
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_page import ChatPage
 from pages.chat.setting.chat_setting_page import ChatSettingPage
-from pages.chat.groups.create.group_create_page import GroupCreatePage
-from pages.chat.groups.setting.general.group_setting_page import GroupSettingPage
-from pages.chat.groups.setting.qrcode.group_qrcode_page import GroupQrCodePage
-from pages.chat.groups.setting.notice.group_notice_page import GroupNoticePage
-from pages.chat.groups.setting.manager.group_manager_page import GroupManagerPage
-from pages.chat.groups.setting.general.group_avatar_page import GroupAvatarPage
+from pages.groups.create.group_create_page import GroupCreatePage
+from pages.groups.setting.general.group_setting_page import GroupSettingPage
+from pages.groups.setting.qrcode.group_qrcode_page import GroupQrCodePage
+from pages.groups.setting.notice.group_notice_page import GroupNoticePage
+from pages.groups.setting.manager.group_manager_page import GroupManagerPage
+from pages.groups.setting.general.group_avatar_page import GroupAvatarPage
 from pages.system.common.contact_select_page import ContactSelectPage
 from pages.system.common.session_select_page import SessionSelectPage
 from pages.chat.core.chat_panel_page import ChatPanelPage
@@ -479,7 +479,7 @@ class TestSmokeGroupBot(BaseSmokeGroupSingle):
 
     @pytest.fixture(autouse=True)
     def setup_double(self, driver_sender, driver_receiver):
-        from pages.chat.groups.bot.group_bot_page import GroupBotPage
+        from pages.groups.bot.group_bot_page import GroupBotPage
         
         self.init_single_pages(driver_sender)
         self.groupBotPage = GroupBotPage(driver_sender)

@@ -12,7 +12,7 @@ from pages.chat.core.chat_long_press_page import ChatLongPressPage
 from pages.personal.collection.collection_page import CollectionPage
 from pages.personal.collection.chat_collection_page import ChatCollectionPage
 from pages.system.home.side_slip_page import SideSlipPage
-from pages.chat.chat_options.images.chat_image_page import ChatImagePage
+from pages.chat_options.images.chat_image_page import ChatImagePage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2
 
 

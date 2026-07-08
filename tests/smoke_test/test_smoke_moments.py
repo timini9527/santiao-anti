@@ -2,7 +2,7 @@ import pytest
 import allure
 import pytest_check as check
 from pages.system.main.main_page import MainPage
-from pages.chat.message.MomentsPage import MomentsPage
+from pages.message.MomentsPage import MomentsPage
 from core.logger_utils import logger
 
 

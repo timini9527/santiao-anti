@@ -88,7 +88,7 @@ class ReportPage(BasePage):
     # 选择一张照片上传
     def click_upload_image_from_album(self):
         """点击选择一张照片上传"""
-        from pages.chat.chat_options.images.chat_image_page import ChatImagePage
+        from pages.chat_options.images.chat_image_page import ChatImagePage
         imagePage = ChatImagePage(self.driver)
         imagePage.wait_for_image_page_load()
         imagePage.select_single_image()

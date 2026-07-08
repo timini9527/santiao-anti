@@ -8,11 +8,11 @@ from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.setting.chat_setting_page import ChatSettingPage
 from pages.chat.search.chat_search_page import ChatSearchPage
 from pages.system.main.main_page import MainPage
-from pages.chat.chat_options.images.chat_image_page import ChatImagePage
-from pages.chat.chat_options.videos.chat_video_page import ChatVideoPage
-from pages.chat.chat_options.file.chat_file_page import ChatFilePage
+from pages.chat_options.images.chat_image_page import ChatImagePage
+from pages.chat_options.videos.chat_video_page import ChatVideoPage
+from pages.chat_options.file.chat_file_page import ChatFilePage
 from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
-from pages.chat.groups.setting.general.group_setting_page import GroupSettingPage
+from pages.groups.setting.general.group_setting_page import GroupSettingPage
 from pages.system.common.contact_select_page import ContactSelectPage
 
 

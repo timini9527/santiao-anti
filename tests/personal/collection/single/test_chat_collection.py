@@ -11,7 +11,7 @@ from pages.personal.collection.collection_page import CollectionPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
 from pages.system.home.home_page import HomePage
 from pages.system.home.side_slip_page import SideSlipPage
-from pages.chat.chat_options.images.chat_image_page import ChatImagePage
+from pages.chat_options.images.chat_image_page import ChatImagePage
 
 
 @allure.epic("IM核心功能测试")

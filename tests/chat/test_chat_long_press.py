@@ -15,7 +15,7 @@ from pages.system.home.home_page import HomePage
 from pages.personal.collection.chat_collection_page import ChatCollectionPage
 from pages.system.common.contact_select_page import ContactSelectPage
 from pages.system.common.session_select_page import SessionSelectPage
-from pages.chat.chat_options.emojis.chat_emoji_package_page import ChatEmojiPackagePage
+from pages.chat_options.emojis.chat_emoji_package_page import ChatEmojiPackagePage
 
 
 
