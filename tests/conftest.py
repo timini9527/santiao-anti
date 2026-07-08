@@ -2,9 +2,9 @@ import pytest
 
 from common.base_page import BasePage
 from pages.chat.list.chat_list_page import ChatListPage
-from pages.main.main_page import MainPage
-from pages.home.side_slip_page import SideSlipPage
-from pages.home.home_page import HomePage
+from pages.system.main.main_page import MainPage
+from pages.system.home.side_slip_page import SideSlipPage
+from pages.system.home.home_page import HomePage
 from core.logger_utils import logger
 
 

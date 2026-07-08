@@ -2,7 +2,7 @@ import time
 import pytest
 import allure
 import pytest_check as check
-from pages.main.main_page import MainPage
+from pages.system.main.main_page import MainPage
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_page import ChatPage
 from pages.chat.core.chat_long_press_page import ChatLongPressPage
@@ -10,12 +10,12 @@ from core.logger_utils import logger
 from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
 from strategy.chat.chat_message_strategy import MessageTypeStrategy, ChatMessageBuilder
 from locators.chat.core.chat_locator import ChatLocator
-from pages.home.side_slip_page import SideSlipPage
-from pages.home.home_page import HomePage
-from pages.collection.chat_collection_page import ChatCollectionPage
-from pages.common.contact_select_page import ContactSelectPage
-from pages.common.session_select_page import SessionSelectPage
-from pages.chat_options.emojis.chat_emoji_package_page import ChatEmojiPackagePage
+from pages.system.home.side_slip_page import SideSlipPage
+from pages.system.home.home_page import HomePage
+from pages.personal.collection.chat_collection_page import ChatCollectionPage
+from pages.system.common.contact_select_page import ContactSelectPage
+from pages.system.common.session_select_page import SessionSelectPage
+from pages.chat.chat_options.emojis.chat_emoji_package_page import ChatEmojiPackagePage
 
 
 

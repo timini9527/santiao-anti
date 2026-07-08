@@ -308,7 +308,7 @@ class ChatLongPressPage(ChatPage):
                 logger.error(f"❌ 【{menu_name}】 校验失败: 预期 {expect_val} 不在 Toast 【{toast}】 中")
                 return False
         elif verify_type == "page_change":
-            from pages.common.contact_select_page import ContactSelectPage
+            from pages.system.common.contact_select_page import ContactSelectPage
             forward_page = ContactSelectPage(self.driver)
             if not forward_page.wait_for_forward_page_load(msg_type=msg_type):
                 logger.error(f"❌ 【{menu_name}】 校验失败: 未进入转发页面")

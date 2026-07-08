@@ -1,7 +1,7 @@
 import pytest
 import allure
 import pytest_check as check
-from pages.login.login_page import LoginPage
+from pages.auth.login.login_page import LoginPage
 from core.logger_utils import logger
 from utils.cv_recognition.ocr_utils import OcrUtils
 from strategy.chat.chat_strategy import PRIVATE_USER1

@@ -5,10 +5,10 @@ import pytest_check as check
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_page import ChatPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2
-from pages.chat_options.images.chat_image_page import ChatImagePage
-from pages.chat_options.emojis.chat_emoji_page import ChatEmojiPage
-from pages.main.main_page import MainPage
-from pages.chat_options.location.chat_position_page import ChatPositionPage
+from pages.chat.chat_options.images.chat_image_page import ChatImagePage
+from pages.chat.chat_options.emojis.chat_emoji_page import ChatEmojiPage
+from pages.system.main.main_page import MainPage
+from pages.chat.chat_options.location.chat_position_page import ChatPositionPage
 from core.logger_utils import logger
 from utils.file_reader.data_loader import load_yaml_data
 

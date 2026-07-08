@@ -1,9 +1,9 @@
 import pytest
 import allure
 import pytest_check as check
-from pages.main.main_page import MainPage
-from pages.home.home_page import HomePage
-from pages.home.side_slip_page import SideSlipPage
+from pages.system.main.main_page import MainPage
+from pages.system.home.home_page import HomePage
+from pages.system.home.side_slip_page import SideSlipPage
 from pages.personal.other_page import OtherPage
 from core.logger_utils import logger
 

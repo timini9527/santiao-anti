@@ -2,8 +2,8 @@ import time
 from appium.webdriver.common.appiumby import AppiumBy
 from selenium.webdriver.common.by import By
 from common.base_page import BasePage 
-from pages.home.home_page import HomePage
-from locators.home.home_locator import HomeLocator as HL
+from pages.system.home.home_page import HomePage
+from locators.system.home.home_locator import HomeLocator as HL
 from pages.chat.core.chat_page import ChatPage
 import allure
 from core.logger_utils import logger

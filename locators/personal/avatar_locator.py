@@ -1,5 +1,5 @@
 from appium.webdriver.common.appiumby import AppiumBy
-from locators.common.common_locator import CommonLocator
+from locators.system.common.common_locator import CommonLocator
 
 
 """ 更新头像元素 """

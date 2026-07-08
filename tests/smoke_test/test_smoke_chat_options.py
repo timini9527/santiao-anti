@@ -4,19 +4,19 @@ import pytest_check as check
 import time
 from core.logger_utils import logger
 
-from pages.main.main_page import MainPage
+from pages.system.main.main_page import MainPage
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_page import ChatPage
-from pages.chat_options.voice.chat_voice_page import ChatVoicePage
-from pages.chat_options.images.chat_image_page import ChatImagePage
-from pages.chat_options.videos.chat_video_page import ChatVideoPage
-from pages.chat_options.location.chat_position_page import ChatPositionPage
-from pages.chat_options.file.chat_file_page import ChatFilePage
-from pages.chat_options.emojis.chat_emoji_page import ChatEmojiPage
-from pages.chat_options.emojis.chat_emoji_store_page import ChatEmojiStorePage
-from pages.chat_options.emojis.chat_emoji_package_page import ChatEmojiPackagePage
-from pages.chat_options.contact.chat_contact_card_page import ChatContactCardPage
-from pages.common.contact_select_page import ContactSelectPage
+from pages.chat.chat_options.voice.chat_voice_page import ChatVoicePage
+from pages.chat.chat_options.images.chat_image_page import ChatImagePage
+from pages.chat.chat_options.videos.chat_video_page import ChatVideoPage
+from pages.chat.chat_options.location.chat_position_page import ChatPositionPage
+from pages.chat.chat_options.file.chat_file_page import ChatFilePage
+from pages.chat.chat_options.emojis.chat_emoji_page import ChatEmojiPage
+from pages.chat.chat_options.emojis.chat_emoji_store_page import ChatEmojiStorePage
+from pages.chat.chat_options.emojis.chat_emoji_package_page import ChatEmojiPackagePage
+from pages.chat.chat_options.contact.chat_contact_card_page import ChatContactCardPage
+from pages.system.common.contact_select_page import ContactSelectPage
 from pages.personal.contact_detail_page import ContactDetailPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2
 

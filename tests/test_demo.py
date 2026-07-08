@@ -4,9 +4,9 @@ import pytest
 import allure
 import sys
 import os
-from pages.home.home_page import HomePage
+from pages.system.home.home_page import HomePage
 from pages.personal.other_page import OtherPage
-from pages.users.loginPage import LoginPage
+from pages.auth.users.loginPage import LoginPage
 from utils.file_reader.csv_handler import RegionCrawler
 
 
