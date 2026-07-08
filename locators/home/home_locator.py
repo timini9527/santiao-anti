@@ -25,12 +25,12 @@ class HomeLocator:
     BOTTOM = (AppiumBy.ID, BOTTOM_ID)
     # 底部搜索
     SEARCH = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("搜索")')
-    SEARCH_INPUT = (AppiumBy.CLASS_NAME, "android.widget.EditText") # 搜索输入框
+    SEARCH_INPUT = (AppiumBy.CLASS_NAME, "android.widget.EditText")           # 搜索输入框
     # SEARCH_INPUT = (AppiumBy.XPATH, "//android.widget.EditText[.//android.widget.TextView[@text='搜索']]")
-    SEARCH_CLEAR = (AppiumBy.CLASS_NAME, 'android.widget.Button') # 搜索清除按钮
+    SEARCH_CLEAR = (AppiumBy.CLASS_NAME, 'android.widget.Button')             # 搜索清除按钮
 
 
-    # 底部扩展菜单
+    # 底部展开聊天类型菜单
     EXPAND_MENU = (AppiumBy.XPATH,
                    f'//*[@resource-id="{BOTTOM_ID}"]/android.view.View/android.view.View[2]')
     # 好友
