@@ -280,10 +280,10 @@ class MomentsPage(BasePage):
             logger.warning(f"⚠️ [Action-moments] 未能成功探测到属于自己的评论")
 
     # 动态 - 删除自己发布的评论
-    def delete_own_comment(self):
+    def delete_own_comment(self, comment_text: str, nickname: str = ""):
         """ 动态 - 删除自己发布的评论"""
-        self.click(MomentsLocator.RV_COMMENT_DELETE)
-        logger.info("🚀 [Action-moments] 点击评论的删除按钮")
+        self.click_comment_by_text(comment_text, nickname)
+        logger.info(f"🚀 [Action-moments] 点击评论: [{comment_text}] 后进行删除操作")
         time.sleep(0.5)
     
     # 动态 - 确认删除评论
@@ -301,11 +301,11 @@ class MomentsPage(BasePage):
         time.sleep(0.5)
 
     # 动态 - 删除自己发布的评论并二次确认
-    def delete_own_comment_with_confirm(self):
+    def delete_own_comment_with_confirm(self,comment_text: str, nickname: str = ""):
         """ 动态 - 删除自己发布的评论并二次确认"""
-        self.delete_own_comment()
+        self.delete_own_comment(comment_text,nickname)
         self.confirm_delete_comment()
-        logger.info("🚀 [Action-moments] 成功删除自己发布的评论")
+        logger.info(f"🚀 [Action-moments] 成功删除自己发布的评论: [{comment_text}]")
 
 
 

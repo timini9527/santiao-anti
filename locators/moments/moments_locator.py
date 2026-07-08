@@ -34,7 +34,6 @@ class MomentsLocator:
     TV_DELETE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_delete')                # 删除
     DIALOG_CONFIRM_BTN = CommonLocator.DIALOG_CONFIRM_BTN               # 确认按钮
     DIALOG_CANCEL_BTN = CommonLocator.DIALOG_CANCEL_BTN                 # 取消按钮
-    RV_COMMENT_DELETE = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("删除")')  # 评论删除选项
 
     
     TV_LIKE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_like')                    # 朋友圈点赞按钮

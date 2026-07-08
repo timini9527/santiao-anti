@@ -244,8 +244,7 @@ class TestMoments:
             )
 
         with allure.step("3. 点击该条评论，触发删除并二次确认"):
-            self.momentsPage.click_comment_by_text(test_comment)
-            self.momentsPage.delete_own_comment_with_confirm()
+            self.momentsPage.delete_own_comment_with_confirm(test_comment)
             time.sleep(1)
 
         with allure.step("4. 校验该评论已从列表中消失"):
