@@ -57,16 +57,17 @@ class TestMoments:
             logger.error(f"方法级 Teardown 恢复朋友圈状态失败: {e}")
     
 
-    def _publish_test_moment(self, content: str):
-        """发布文本测试朋友圈"""
+    def _publish_test_moment(self, content: str) -> str:
+        """发布文本测试朋友圈，返回包含时间戳的实际正文"""
         timestamp = int(time.time())
-        content = content+str(timestamp)
-        self.momentsPage.post_text_moment(content)
+        actual_content = content + str(timestamp)
+        self.momentsPage.post_text_moment(actual_content)
         toast = self.momentsPage.get_toast("发布成功")
         check.equal(toast, "发布成功", f"❌ 朋友圈发布失败")
-        # TODO: Android端有BUG，每次点击发布后必须下拉刷新才能看到最新发布
-        # self.momentsPage.refresh_moments()
-        check.equal(content, self.momentsPage.get_first_moment_content(), f"❌ 朋友圈未能正常发布测试动态{content}")
+        # Android端有BUG，每次点击发布后必须下拉刷新才能看到最新发布
+        self.momentsPage.refresh_moments()
+        check.equal(actual_content, self.momentsPage.get_first_moment_content(), f"❌ 朋友圈未能正常发布测试动态{actual_content}")
+        return actual_content
         
 
     def _delete_test_moment(self, content: str):
@@ -269,11 +270,9 @@ class TestMoments:
 
         with allure.step("1. 前置条件：确保评论专用的临时朋友圈动态已发布"):
             if self.__class__._shared_comment_moment_content is None:
-                timestamp = int(time.time())
-                temp_content = f"评论测试专用动态_{timestamp}"
-                self._publish_test_moment(temp_content)
-                self.__class__._shared_comment_moment_content = temp_content
-                logger.info(f"🆕 成功为评论测试套件发布专用动态: '{temp_content}'")
+                actual_published = self._publish_test_moment("评论测试专用动态_")
+                self.__class__._shared_comment_moment_content = actual_published
+                logger.info(f"🆕 成功为评论测试套件发布专用动态: '{actual_published}'")
             else:
                 logger.info(f"🔄 复用评论测试专用动态: '{self.__class__._shared_comment_moment_content}'")
 
