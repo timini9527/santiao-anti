@@ -78,6 +78,44 @@ class TestMoments:
         check.is_false(found, f"❌ 测试临时动态 [{content}] 删除后依然可见")
     
         
+    @pytest.fixture
+    def temp_like_moment(self):
+        """点赞与取消点赞用例专用的临时朋友圈"""
+        actual_content = self._publish_test_moment("点赞测试动态_")
+        yield actual_content
+        with allure.step("后置清理：删除点赞测试临时动态"):
+            self._delete_test_moment(actual_content)
+
+    @pytest.fixture
+    def comment_shared_moment(self):
+        """参数化评论用例共享的临时朋友圈动态"""
+        self.__class__._comment_test_counter += 1
+        total_cases = len(self.__class__._comment_cases_data)
+        
+        if self.__class__._shared_comment_moment_content is None:
+            actual_published = self._publish_test_moment("评论测试专用动态_")
+            self.__class__._shared_comment_moment_content = actual_published
+            
+        yield self.__class__._shared_comment_moment_content
+        
+        if self.__class__._comment_test_counter >= total_cases:
+            with allure.step("终期清理：所有评论参数化用例运行完毕，删除共享朋友圈"):
+                if self.__class__._shared_comment_moment_content:
+                    try:
+                        self._delete_test_moment(self.__class__._shared_comment_moment_content)
+                    except Exception as e:
+                        logger.error(f"⚠️ 清理评论专用朋友圈失败: {e}")
+                    finally:
+                        self.__class__._shared_comment_moment_content = None
+                        self.__class__._comment_test_counter = 0
+
+    @pytest.fixture
+    def temp_empty_comment_moment(self):
+        """空评论测试专用的临时朋友圈"""
+        actual_content = self._publish_test_moment("空评论测试临时动态_")
+        yield actual_content
+        with allure.step("后置清理：删除空评论测试临时动态"):
+            self._delete_test_moment(actual_content)
 
 
     @allure.story("入口与信息流")
@@ -220,30 +258,23 @@ class TestMoments:
 
     @allure.story("点赞与评论")
     @allure.title("点赞并取消点赞-状态：已完成")
-    def test_like_and_cancel_moment(self):
+    def test_like_and_cancel_moment(self, temp_like_moment):
         """测试对朋友圈动态点赞后可再次取消点赞（自产自销，数据闭环）"""
-        test_content = f"点赞测试临时动态"
+        # temp_like_moment 会自动发布一个临时动态并确保在用例结束后自动删除
 
-        with allure.step("1. 前置造数据：发布一条文字朋友圈"):
-            self._publish_test_moment(test_content)
+        with allure.step("1. 获取该动态的初始点赞状态（预期为空）"):
+            before_like = self.momentsPage.get_nth_moment_like_users(0)
+            check.equal(before_like, [], "❌ 新发布的动态点赞状态应该为空")
 
-        try:
-            with allure.step("2. 获取该动态的初始点赞状态（预期为空）"):
-                before_like = self.momentsPage.get_nth_moment_like_users(0)
-                check.equal(before_like, [], "❌ 新发布的动态点赞状态应该为空")
+        with allure.step("2. 正常执行点赞"):
+            self.momentsPage.click_like_nth_moment(0)
+            after_like = self.momentsPage.get_nth_moment_like_users(0)
+            check.not_equal(after_like, before_like, "❌ 点赞后点赞状态未发生变化")
 
-            with allure.step("3. 正常执行点赞"):
-                self.momentsPage.click_like_nth_moment(0)
-                after_like = self.momentsPage.get_nth_moment_like_users(0)
-                check.not_equal(after_like, before_like, "❌ 点赞后点赞状态未发生变化")
-
-            with allure.step("4. 正常执行取消点赞"):
-                self.momentsPage.click_like_nth_moment(0)
-                after_cancel = self.momentsPage.get_nth_moment_like_users(0)
-                check.equal(after_cancel, before_like, "❌ 取消点赞后状态未恢复到点赞前")
-        finally:
-            with allure.step("5. 后置清理：删除该临时测试动态"):
-                self._delete_test_moment(test_content)
+        with allure.step("3. 正常执行取消点赞"):
+            self.momentsPage.click_like_nth_moment(0)
+            after_cancel = self.momentsPage.get_nth_moment_like_users(0)
+            check.equal(after_cancel, before_like, "❌ 取消点赞后状态未恢复到点赞前")
 
 
     @allure.story("点赞与评论")
@@ -253,7 +284,7 @@ class TestMoments:
         _comment_cases_data,
         ids=lambda x: x["desc"]
     )
-    def test_comment_moment(self, case_data):
+    def test_comment_moment(self, case_data, comment_shared_moment):
         """测试对朋友圈动态发表不同内容评论（普通、Emoji、长文本限制、敏感词）"""
         case_id = case_data["id"]
         desc = case_data["desc"]
@@ -266,13 +297,6 @@ class TestMoments:
 
         allure.dynamic.title(f"评论朋友圈 - {case_id} - {desc}")
 
-        self.__class__._comment_test_counter += 1
-        total_cases = len(self.__class__._comment_cases_data)
-
-        with allure.step("1. 前置条件：确保评论专用的临时朋友圈动态已发布"):
-            if self.__class__._shared_comment_moment_content is None:
-                actual_published = self._publish_test_moment("评论测试专用动态_")
-                self.__class__._shared_comment_moment_content = actual_published
         try:
             with allure.step(f"2. 为该动态发表评论：{desc}"):
                 self.momentsPage.click_comment_on_nth_moment(0)
@@ -332,45 +356,22 @@ class TestMoments:
                     except Exception as e:
                         logger.warning(f"⚠️ 清理本条截断评论失败: {e}")
 
-            if self.__class__._comment_test_counter >= total_cases:
-                with allure.step("6. 终期清理：所有评论参数化用例运行完毕，删除共享朋友圈"):
-                    if self.__class__._shared_comment_moment_content:
-                        try:
-                            self._delete_test_moment(self.__class__._shared_comment_moment_content)
-                        except Exception as e:
-                            logger.error(f"⚠️ 清理评论专用朋友圈失败: {e}")
-                        finally:
-                            self.__class__._shared_comment_moment_content = None
-                            self.__class__._comment_test_counter = 0
-
     @allure.story("点赞与评论")
     @allure.title("MOMENT_INTER_008 - 评论为空不可发送")
-    def test_empty_comment_cannot_send(self):
+    def test_empty_comment_cannot_send(self, temp_empty_comment_moment):
         """测试空评论不能成功发送"""
-        test_content = "空评论测试临时动态_"
-        with allure.step("1. 前置造数据：发布一条临时朋友圈"):
-            actual_content = self._publish_test_moment(test_content)
+        # temp_empty_comment_moment 会自动发布一个临时动态并确保在用例结束后自动删除
 
-        try:
-            with allure.step("2. 获取发送空评论前的评论列表"):
-                before_comments = self.momentsPage.get_comment_texts(raise_exception=False)
+        with allure.step("1. 获取发送空评论前的评论列表"):
+            before_comments = self.momentsPage.get_comment_texts(2, False)
 
-            with allure.step("3. 点击评论按钮并不输入内容尝试点击发送"):
-                self.momentsPage.click_comment_on_nth_moment(0)
-                self.momentsPage.send_comment()
+        with allure.step("2. 点击评论按钮并不输入内容尝试点击发送"):
+            self.momentsPage.click_comment_on_nth_moment(0)
+            self.momentsPage.send_comment()
 
-            with allure.step("4. 校验评论列表未新增空评论且未成功发送"):
-                time.sleep(1)
-                after_comments = self.momentsPage.get_comment_texts(raise_exception=False)
-                check.equal(after_comments, before_comments, "❌ 空评论不应被成功发送，评论列表应当保持不变")
-
-        finally:
-            with allure.step("5. 后置清理：清理评论输入框并删除该临时测试动态"):
-                try:
-                    self.momentsPage.driver.hide_keyboard()
-                except Exception:
-                    pass
-                self._delete_test_moment(actual_content)
+        with allure.step("3. 校验评论列表未新增空评论且未成功发送"):
+            after_comments = self.momentsPage.get_comment_texts(2, False)
+            check.equal(after_comments, before_comments, "❌ 空评论不应被成功发送，评论列表应当保持不变")
 
 
     @allure.story("发布朋友圈")
