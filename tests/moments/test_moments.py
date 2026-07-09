@@ -6,44 +6,76 @@ from pages.main.main_page import MainPage
 from pages.moments.moments_page import MomentsPage
 from pages.home.home_page import HomePage
 from core.logger_utils import logger
+from utils.file_reader.data_loader import load_yaml_data
 
 
 @allure.epic("IM核心功能测试")
 @allure.feature("朋友圈模块-发布与互动")
 class TestMoments:
+    _publish_cases_data = load_yaml_data("moments/moments_data.yaml")["test_cases"]
+    _comment_cases_data = load_yaml_data("moments/moments_data.yaml")["comment_cases"]
+    _shared_comment_moment_content = None
+    _comment_test_counter = 0
+
+    @pytest.fixture(scope="class", autouse=True)
+    def class_setup(self, request, driver_sender):
+        """类级别前置与后置：进入朋友圈并在类中所有用例执行完毕后返回主页"""
+        main_page = MainPage(driver_sender)
+        home_page = HomePage(driver_sender)
+        
+        with allure.step("类前置步骤：进入朋友圈页面"):
+            home_page.click_bottom_expand_button()
+            home_page.click_dynamic()
+            
+        yield
+        
+        with allure.step("类后置步骤：所有用例执行完毕，返回首页"):
+            try:
+                main_page.go_to_main_page()
+            except Exception as e:
+                logger.error(f"类级 Teardown 失败，未能返回首页: {e}")
 
     @pytest.fixture(autouse=True)
-    def setup(self, driver_sender):
-        """初始化页面对象并确保测试结束后返回主页"""
+    def method_setup(self, driver_sender):
+        """方法级别前置与后置：初始化页面对象并在每个用例结束后确保页面状态干净"""
         self.mainPage = MainPage(driver_sender)
         self.momentsPage = MomentsPage(driver_sender)
         self.homePage = HomePage(driver_sender)
 
-        with allure.step("前置步骤：进入朋友圈页面"):
-            self._go_to_moments_page()
-
         yield
 
         try:
-            self.mainPage.go_to_main_page()
+            if self.momentsPage.is_publish_editor_displayed():
+                logger.warning("⚠️ 用例执行结束，但仍留在发布编辑页，强行执行返回及清理...")
+                self.momentsPage.click_iv_back()
+                try:
+                    self.momentsPage.confirm_delete_moment()
+                except Exception:
+                    pass
+                self.momentsPage.wait_for_moments_page_load(raise_exception=False)
         except Exception as e:
-            logger.error(f"Teardown 失败，未能返回首页: {e}")
-
-
-    def _go_to_moments_page(self):
-        """进入朋友圈页面"""
-        self.homePage.click_bottom_expand_button()
-        self.homePage.click_dynamic()
+            logger.error(f"方法级 Teardown 恢复朋友圈状态失败: {e}")
     
+
     def _publish_test_moment(self, content: str):
-        """发布测试朋友圈"""
+        """发布文本测试朋友圈"""
         timestamp = int(time.time())
-        self.momentsPage.post_text_moment(content+str(timestamp))
+        content = content+str(timestamp)
+        self.momentsPage.post_text_moment(content)
         toast = self.momentsPage.get_toast("发布成功")
         check.equal(toast, "发布成功", f"❌ 朋友圈发布失败")
+        # TODO: Android端有BUG，每次点击发布后必须下拉刷新才能看到最新发布
+        # self.momentsPage.refresh_moments()
+        check.equal(content, self.momentsPage.get_first_moment_content(), f"❌ 朋友圈未能正常发布测试动态{content}")
         
 
-
+    def _delete_test_moment(self, content: str):
+        """删除测试朋友圈"""
+        self.momentsPage.delete_first_moment()
+        found = self.momentsPage.has_moment_with_text(content)
+        check.is_false(found, f"❌ 测试临时动态 [{content}] 删除后依然可见")
+    
+        
 
 
     @allure.story("入口与信息流")
@@ -93,110 +125,231 @@ class TestMoments:
         
         
     @allure.story("发布朋友圈")
-    @allure.title("发布纯文字朋友圈 - {case_id}-状态：已完成")
+    @allure.title("发布纯文字朋友圈-状态：已完成")
     @pytest.mark.parametrize(
-        "case_id, content, expected_behavior",
-        [
-            ("MOMENT_PUB_001", "Hello Moments! 这是一个自动化测试动态。", "success"),
-            ("MOMENT_PUB_008", "朋友圈 Emoji 与特殊字符校验 🌟🔥🚀 ABC123 !@#$%^&*()", "success"),
-            ("MOMENT_PUB_009", "朋友圈长文本展示校验：" + "自动化长文本内容" * 20, "success"),
-            ("MOMENT_PUB_011", "A" * 1005, "truncated"),
-            ("MOMENT_PUB_012", "包含敏感词的动态测试：特务，涉毒，暴恐", "blocked"),
-        ],
-        ids=["纯文字朋友圈", "emoji和特殊字符文案", "长文本动态", "超过999字长文案限制", "敏感词朋友圈拦截"],
+        "case_data",
+        _publish_cases_data,
+        ids=lambda x: x["desc"]
     )
-    def test_post_text_moment(self, case_id, content, expected_behavior):
+    def test_post_text_moment(self, case_data):
         """测试发布不同文字内容的朋友圈（普通、Emoji、长文本、超长限制、敏感词）"""
-        allure.dynamic.title(f"发布纯文字朋友圈 - {case_id}")
+        case_id = case_data["id"]
+        desc = case_data["desc"]
+        content = case_data["input_content"]
+        expected_behavior = case_data["expected"]["behavior"]
+        is_expand = case_data["expected"]["is_expand"]
+        expected_toast = case_data["expected"]["toast"]
+
+        if expected_behavior == "truncated":
+            content = content + "A" * (1005 - len(content))
+
+        allure.dynamic.title(f"发布纯文字朋友圈 - {case_id} - {desc}")
 
         with allure.step(f"1. 尝试发布动态内容"):
-            self.momentsPage.post_text_moment(content)
+            self.momentsPage.long_press_post_moments(1000)
+            self.momentsPage.input_moments_content(content)
+        
+        with allure.step("2. 校验发布按钮与 Toast 提示并发表"):
+            if expected_behavior == "truncated":
+                limit_toast = self.momentsPage.get_toast()
+                check.equal(expected_toast, limit_toast, f"❌ {case_id} 超出字数限制，朋友圈发布失败")
+            
+            self.momentsPage.click_publish()
+            
+            if expected_behavior == "empty":
+                empty_toast = self.momentsPage.get_toast(expected_toast)
+                check.equal(expected_toast, empty_toast, f"❌ {case_id} 空内容，朋友圈发布失败")
+            elif expected_behavior == "blocked":
+                blocked_toast = self.momentsPage.get_toast(expected_toast)
+                check.equal(expected_toast, blocked_toast, f"❌ {case_id} 敏感词，朋友圈发布失败")
+            else:
+                toast = self.momentsPage.get_toast("发布成功")
+                check.equal(toast, "发布成功", f"❌ {case_id} 正常发布朋友圈失败")
+                self.momentsPage.wait_for_moments_page_load()
+                # TODO: Android端有BUG，每次点击发布后必须下拉刷新才能看到最新发布
+                self.momentsPage.refresh_moments()
+            
+        if expected_behavior in ["success", "truncated"]:
+            with allure.step("3. 校验发布成功后是否停留在朋友圈页面"):
+                self.momentsPage.click_expand_or_shrink_moment(is_expand=is_expand)
 
         if expected_behavior == "success":
-            with allure.step("2. 校验动态是否完整显示在列表首位"):
+            with allure.step("4. 校验动态是否完整显示在列表首位"):
                 actual_content = self.momentsPage.get_first_moment_content()
-                check.equal(actual_content, content, f"❌ {case_id} 朋友圈发布内容不匹配")
+                check.equal(actual_content, content, f"❌ {case_id} 正常发布朋友圈内容不匹配")
+
+        elif expected_behavior == "empty":
+            with allure.step("4. 校验仍停留在发布编辑页"):
+                is_still_editing = self.momentsPage.is_publish_editor_displayed()
+                check.is_true(is_still_editing, "❌ 空内容朋友圈不应被成功发布")
+                if is_still_editing:
+                    self.momentsPage.click_iv_back()
+                    self.momentsPage.wait_for_moments_page_load()
 
         elif expected_behavior == "truncated":
-            with allure.step("2. 校验发布成功后列表首条动态被自动截断限制为 999 字符"):
+            with allure.step("4. 校验发布成功后列表首条动态被自动截断限制为 999 字符"):
                 actual_content = self.momentsPage.get_first_moment_content()
                 check.equal(len(actual_content), 999, f"❌ {case_id} 朋友圈文字长度未限制为 999 字符")
                 check.equal(actual_content, content[:999], f"❌ {case_id} 截断后的朋友圈内容不匹配")
 
         elif expected_behavior == "blocked":
-            with allure.step("2. 校验拦截提示 Toast 并确认页面未退出发表编辑页"):
-                toast = self.momentsPage.get_toast(expected_toast="敏感词")
-                if not toast:
-                    toast = self.momentsPage.get_toast(expected_toast="违规")
-                logger.info(f"捕获到的 Toast 提示: {toast}")
-                check.is_true(len(toast) > 0, "❌ 未能捕获到敏感词拦截提示 Toast")
-                
+            with allure.step("4. 校验拦截提示 Toast 并确认页面未退出发表编辑页"):
                 is_still_editing = self.momentsPage.is_publish_editor_displayed()
                 check.is_true(is_still_editing, "❌ 包含敏感词的朋友圈不应发布成功，但当前页面已退出编辑页")
                 
                 if is_still_editing:
-                    self.momentsPage.back()
-                    try:
-                        self.momentsPage.click_by_UiSelector_text("放弃")
-                    except Exception:
-                        pass
-                    self.momentsPage.wait_for_moments_page_load(raise_exception=False)
+                    self.momentsPage.click_iv_back()
+                    self.momentsPage.confirm_delete_moment()
+                    self.momentsPage.wait_for_moments_page_load()
 
-    @allure.story("发布朋友圈")
-    @allure.title("MOMENT_PUB_010 - 不填写内容不可发表")
-    def test_empty_text_moment_cannot_publish(self):
-        """测试未输入内容时不能成功发布朋友圈"""
 
-        with allure.step("1. 不输入内容直接尝试发表"):
-            is_still_editing = self.momentsPage.try_publish_empty_moment()
+    @allure.story("删除朋友圈")
+    @allure.title("删除朋友圈-状态：已完成")
+    def test_delete_moment(self):
+        """测试删除朋友圈"""
+        test_content = f"删除测试临时动态"
 
-        with allure.step("2. 校验仍停留在发布编辑页"):
-            check.is_true(is_still_editing, "❌ 空内容朋友圈不应被成功发布")
-            if is_still_editing:
-                self.momentsPage.back()
-                self.momentsPage.wait_for_moments_page_load(raise_exception=False)
+        with allure.step("1. 前置造数据：发布一条文字朋友圈"):
+            self._publish_test_moment(test_content)
+
+        with allure.step("2. 删除朋友圈"):
+            self._delete_test_moment(test_content)
+
 
     @allure.story("点赞与评论")
-    @allure.title("MOMENT_INTER_001/MOMENT_INTER_002 - 点赞并取消点赞")
+    @allure.title("点赞并取消点赞-状态：已完成")
     def test_like_and_cancel_moment(self):
-        """测试对朋友圈动态点赞后可再次取消点赞"""
+        """测试对朋友圈动态点赞后可再次取消点赞（自产自销，数据闭环）"""
+        test_content = f"点赞测试临时动态"
 
-        with allure.step("1. 获取点赞前状态"):
-            before_like = self.momentsPage.get_first_moment_like_text()
+        with allure.step("1. 前置造数据：发布一条文字朋友圈"):
+            self._publish_test_moment(test_content)
 
-        with allure.step("2. 点击第一条动态点赞入口"):
-            self.momentsPage.like_first_moment()
-            after_like = self.momentsPage.get_first_moment_like_text()
-            check.not_equal(after_like, before_like, "❌ 点赞后点赞状态未发生变化")
+        try:
+            with allure.step("2. 获取该动态的初始点赞状态（预期为空）"):
+                before_like = self.momentsPage.get_nth_moment_like_users(0)
+                check.equal(before_like, [], "❌ 新发布的动态点赞状态应该为空")
 
-        with allure.step("3. 再次点击取消点赞"):
-            self.momentsPage.like_first_moment()
-            after_cancel = self.momentsPage.get_first_moment_like_text()
-            check.not_equal(after_cancel, after_like, "❌ 取消点赞后点赞状态未发生变化")
+            with allure.step("3. 正常执行点赞"):
+                self.momentsPage.click_like_nth_moment(0)
+                after_like = self.momentsPage.get_nth_moment_like_users(0)
+                check.not_equal(after_like, before_like, "❌ 点赞后点赞状态未发生变化")
+
+            with allure.step("4. 正常执行取消点赞"):
+                self.momentsPage.click_like_nth_moment(0)
+                after_cancel = self.momentsPage.get_nth_moment_like_users(0)
+                check.equal(after_cancel, before_like, "❌ 取消点赞后状态未恢复到点赞前")
+        finally:
+            with allure.step("5. 后置清理：删除该临时测试动态"):
+                self._delete_test_moment(test_content)
+
 
     @allure.story("点赞与评论")
     @allure.title("评论朋友圈 - {case_id}")
     @pytest.mark.parametrize(
-        "case_id, comment_text",
-        [
-            ("MOMENT_INTER_003", "自动化评论测试"),
-            ("MOMENT_INTER_009", "评论 Emoji 与特殊字符 🌟🔥🚀 !@#$%^&*()"),
-        ],
-        ids=["评论好友朋友圈", "评论包含emoji和特殊字符"],
+        "case_data",
+        _comment_cases_data,
+        ids=lambda x: x["desc"]
     )
-    def test_comment_moment(self, case_id, comment_text):
-        """测试对朋友圈动态发表评论"""
-        allure.dynamic.title(f"评论朋友圈 - {case_id}")
+    def test_comment_moment(self, case_data):
+        """测试对朋友圈动态发表不同内容评论（普通、Emoji、长文本限制、敏感词）"""
+        case_id = case_data["id"]
+        desc = case_data["desc"]
+        comment_text = case_data["input_content"]
+        expected_behavior = case_data["expected"]["behavior"]
+        expected_toast = case_data["expected"]["toast"]
 
-        with allure.step(f"1. 为第一条动态发表评论：{comment_text}"):
-            self.momentsPage.comment_on_first_moment(comment_text)
+        if expected_behavior == "truncated":
+            comment_text = comment_text + "B" * (1005 - len(comment_text))
 
-        with allure.step("2. 校验评论是否展示在评论列表"):
-            comments = self.momentsPage.get_comment_texts()
-            check.is_true(
-                any(comment_text in comment for comment in comments),
-                f"❌ {case_id} 未找到评论内容: {comment_text}",
-            )
+        allure.dynamic.title(f"评论朋友圈 - {case_id} - {desc}")
+
+        # 增加参数化用例计数器
+        self.__class__._comment_test_counter += 1
+        total_cases = len(self.__class__._comment_cases_data)
+
+        # 发送新的朋友圈进行测试，但整个套件中只执行一次发布
+        with allure.step("1. 前置条件：确保评论专用的临时朋友圈动态已发布"):
+            if self.__class__._shared_comment_moment_content is None:
+                timestamp = int(time.time())
+                temp_content = f"评论测试专用动态_{timestamp}"
+                self._publish_test_moment(temp_content)
+                self.__class__._shared_comment_moment_content = temp_content
+                logger.info(f"🆕 成功为评论测试套件发布专用动态: '{temp_content}'")
+            else:
+                logger.info(f"🔄 复用评论测试专用动态: '{self.__class__._shared_comment_moment_content}'")
+
+        try:
+            with allure.step(f"2. 为该动态发表评论：{desc}"):
+                self.momentsPage.click_comment_on_nth_moment(0)
+                self.momentsPage.send_comment_text(comment_text)
+
+            with allure.step("3. 校验并发送评论"):
+                if expected_behavior == "truncated":
+                    limit_toast = self.momentsPage.get_toast(expected_toast)
+                    check.equal(expected_toast, limit_toast, f"❌ {case_id} 超长评论未弹出字数限制提示")
+
+                self.momentsPage.send_comment()
+
+                if expected_behavior == "blocked":
+                    blocked_toast = self.momentsPage.get_toast(expected_toast)
+                    check.equal(expected_toast, blocked_toast, f"❌ {case_id} 敏感词评论未被正确拦截")
+                
+                time.sleep(1)
+
+            if expected_behavior == "success":
+                with allure.step("4. 校验评论是否成功展示在列表中"):
+                    comments = self.momentsPage.get_comment_texts()
+                    check.is_true(
+                        any(comment_text in comment for comment in comments),
+                        f"❌ {case_id} 未在列表中找到已发表的评论: {comment_text}"
+                    )
+            elif expected_behavior == "truncated":
+                with allure.step("4. 校验超长评论是否被自动截断为 999 字符"):
+                    comments = self.momentsPage.get_comment_texts()
+                    truncated_text = comment_text[:999]
+                    
+                    matched_comment = next((c for c in comments if truncated_text in c), "")
+                    check.is_true(bool(matched_comment), f"❌ {case_id} 未在列表中找到截断后的 999 字符评论")
+                    
+                    if matched_comment:
+                        content_part = matched_comment.split(":", 1)[-1].strip()
+                        content_part = content_part.split("：", 1)[-1].strip()
+                        check.equal(len(content_part), 999, f"❌ {case_id} 评论长度未被截断为 999 字符")
+
+            elif expected_behavior == "blocked":
+                with allure.step("4. 校验敏感词评论未展示在列表中"):
+                    comments = self.momentsPage.get_comment_texts()
+                    check.is_false(
+                        any(comment_text in comment for comment in comments),
+                        f"❌ {case_id} 敏感词评论不应展示在列表中"
+                    )
+
+        finally:
+            with allure.step("5. 后置清理：清理评论框与本用例所发评论"):
+                if expected_behavior == "success":
+                    try:
+                        self.momentsPage.delete_own_comment_with_confirm(comment_text)
+                    except Exception as e:
+                        logger.warning(f"⚠️ 清理本条评论失败: {e}")
+                elif expected_behavior == "truncated":
+                    try:
+                        self.momentsPage.delete_own_comment_with_confirm(comment_text[:999])
+                    except Exception as e:
+                        logger.warning(f"⚠️ 清理本条截断评论失败: {e}")
+
+            # 最后一个参数化用例执行完后，删除发布的朋友圈
+            if self.__class__._comment_test_counter >= total_cases:
+                with allure.step("6. 终期清理：所有评论参数化用例运行完毕，删除共享朋友圈"):
+                    if self.__class__._shared_comment_moment_content:
+                        try:
+                            self._delete_test_moment(self.__class__._shared_comment_moment_content)
+                        except Exception as e:
+                            logger.error(f"⚠️ 清理评论专用朋友圈失败: {e}")
+                        finally:
+                            # 变量复位以防下轮迭代
+                            self.__class__._shared_comment_moment_content = None
+                            self.__class__._comment_test_counter = 0
 
     @allure.story("点赞与评论")
     @allure.title("MOMENT_INTER_008 - 评论为空不可发送")

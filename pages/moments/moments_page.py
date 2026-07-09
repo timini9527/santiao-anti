@@ -36,6 +36,13 @@ class MomentsPage(BasePage):
         self.click(MomentsLocator.IV_CAMERA)
         logger.info("🚀 [Action-moments]点击发布朋友圈按钮")
     
+    # 动态 - 长按发布朋友圈按钮
+    def long_press_post_moments(self, hold_time: int = 1000):
+        """ 动态 - 长按发布朋友圈按钮"""
+        elem = self.find_element(MomentsLocator.IV_CAMERA, timeout=2)
+        self.long_press_action(found_ele=elem, hold_time=hold_time)
+        logger.info(f"🚀 [Action-moments]长按朋友圈按钮，耗时{hold_time}毫秒")
+    
     # 动态 - 点击拍摄
     def click_camera(self):
         """ 动态 - 点击拍摄"""
@@ -65,6 +72,57 @@ class MomentsPage(BasePage):
         """ 动态 - 点击发表按钮"""
         self.click(MomentsLocator.FB_ACTION)
         logger.info("🚀 [Action-moments]点击发表按钮")
+    
+
+    # ============================================================================
+    # 朋友圈 - 朋友圈列表
+    # ============================================================================
+    # 动态 - 获取朋友圈列表的Item
+    def get_visible_moment_items(self, timeout: int=2) -> list[WebElement]:
+        """ 动态 - 获取朋友圈列表的Item"""
+        moment_list = self.find_elements(MomentsLocator.RV_LIST_MOMENT_CONTENT, timeout=timeout)
+        if moment_list:
+            logger.info(f"🚀 [Action-moments]获取朋友圈列表的Item, 共{len(moment_list)}个")
+        else:
+            logger.info(f"⚠️ [Action-moments]获取朋友圈列表的Item为空")
+        return moment_list
+
+    # 动态 - 朋友圈列表的第n个item，默认为第一个
+    def get_moment_item(self, index: int = 0, timeout: int = 2) -> WebElement:
+        """ 动态 - 朋友圈列表的第n个item，默认为第一个(由0开始索引)"""
+        moment_list = self.get_visible_moment_items(timeout=timeout)
+        if moment_list:
+            if index < len(moment_list):
+                logger.info(f"🚀 [Action-moments]获取朋友圈列表的第 {index} 个Item")
+                return moment_list[index]
+            else:
+                logger.warning(f"⚠️ [Action-moments]获取朋友圈列表请求索引 {index} 越界，列表共有 {len(moment_list)} 个Item")
+        else:
+            logger.info(f"⚠️ [Action-moments]获取朋友圈列表的第 {index} 个Item为空")
+        return None
+
+    # 动态 - 点击全文展开或收起
+    def click_expand_or_shrink_moment(self, is_expand: bool = True, index: int = 0):
+        """ 动态 - 点击全文展开或收起"""
+        moment_item = self.get_moment_item(index=index)
+        if moment_item is None:
+            logger.warning(f"⚠️ [Check-moments] 未找到第 {index} 个朋友圈Item，无法执行展开或收起")
+            return
+
+        expand_btns = moment_item.find_elements(*MomentsLocator.TV_EXPAND)
+        if expand_btns:
+            expand_btn = expand_btns[0]
+            btn_text = expand_btn.text
+            logger.info(f"🔍 [Check-moments] 找到展开或收起按钮，当前状态文本为: '{btn_text}'，期望 is_expand={is_expand}")
+            
+            if (is_expand and btn_text == "全文") or (not is_expand and btn_text == "收起"):
+                expand_btn.click()
+                logger.info(f"🚀 [Action-moments] 成功点击了第 {index} 个Item的展开/收起按钮")
+            else:
+                logger.info(f"ℹ️ [Check-moments] 按钮状态与期望一致，无需重复点击")
+        else:
+            logger.warning(f"⚠️ [Check-moments] 当前页面第 {index} 个Item没有找到展开或收起按钮")
+    
 
     # ============================================================================
     # 朋友圈 - 快速发布动态
@@ -72,9 +130,7 @@ class MomentsPage(BasePage):
     # 动态 - 快速发布一条纯文字动态
     def post_text_moment(self, text: str):
         """ 动态 - 快速发布一条纯文字动态"""
-        logger.info(f"🚀 [Action-moments]长按朋友圈按钮，快速发表一条纯文字动态，文字内容: {text}")
-        elem = self.find_element(MomentsLocator.IV_CAMERA, timeout=2)
-        self.long_press_action(found_ele=elem, hold_time=1000)
+        self.long_press_post_moments(1000)
         self.input_moments_content(text)
         self.click_publish()
     
@@ -165,25 +221,25 @@ class MomentsPage(BasePage):
 
 
     # ============================================================================
-    # 刷新
+    # 刷新与加载
     # ============================================================================
-    # 动态 - 下拉刷新朋友圈列表
+    # 动态刷新 - 下拉刷新朋友圈列表
     def refresh_moments(self):
-        """ 动态 - 下拉刷新朋友圈列表"""
+        """ 动态刷新 - 下拉刷新朋友圈列表"""
         self.swipe_page(slid_type="down", duration=300)
         logger.info("🚀 [Action-moments]下拉刷新朋友圈列表")
         time.sleep(0.5)
 
-    # 动态 - 上滑加载更多朋友圈列表
+    # 动态加载 - 上滑加载更多朋友圈列表
     def load_more_moments(self):
-        """ 动态 - 上滑加载更多朋友圈列表"""
+        """ 动态加载 - 上滑加载更多朋友圈列表"""
         self.swipe_page(slid_type="up", duration=300)
         logger.info("🚀 [Action-moments]上滑加载更多朋友圈列表")
         time.sleep(0.5)
     
-    # 动态 - 快速上滑加载最后一条朋友圈动态
+    # 动态加载 - 快速上滑加载最后一条朋友圈动态
     def fast_load_more_moments(self, max_swipes: int = 200) -> bool:
-        """ 动态 - 快速上滑加载最后一条朋友圈动态 (使用高性能稀疏 DOM 边界检测)"""
+        """ 动态加载 - 快速上滑加载最后一条朋友圈动态 (使用高性能稀疏 DOM 边界检测)"""
         swipe_times = 0
         last_source = ""
         
@@ -203,11 +259,11 @@ class MomentsPage(BasePage):
     
     
     # ============================================================================
-    # 点赞和评论
+    # 点赞和评论相关功能
     # ============================================================================
-    # 动态 - 获取朋友圈点赞按钮
+    # 动态点赞 - 获取朋友圈点赞按钮
     def get_like_button_elems(self, timeout: int=2, raise_exception: bool=False) -> list[WebElement]:
-        """ 动态 - 获取朋友圈点赞按钮"""
+        """ 动态点赞 - 获取朋友圈点赞按钮"""
         like_buttons = self.find_elements(MomentsLocator.TV_LIKE, timeout=timeout, raise_exception=raise_exception)
         if like_buttons == []:
             logger.warning(f"⚠️ [Check-moments] 当前页面不可见朋友圈点赞按钮")
@@ -215,58 +271,80 @@ class MomentsPage(BasePage):
         logger.info(f"🔍 [Check-moments] 当前可见朋友圈点赞按钮个数: {len(like_buttons)}")
         return like_buttons
 
-    # 动态 - 为第n条动态点赞，n从0开始，不传默认为0
+    # 动态点赞 - 为第n条动态点赞，n从0开始，不传默认为0
     def click_like_nth_moment(self, n: int=0):
-        """ 动态 - 为第n条动态点赞，n从0开始，不传默认为0"""
+        """ 动态点赞 - 为第n条动态点赞，n从0开始，不传默认为0"""
         like_buttons = self.get_like_button_elems()
         if len(like_buttons) <= n:
             logger.warning(f"⚠️ [Check-moments] 当前页面不可见第{n+1}条动态的点赞按钮")
             return
-        self.click(like_buttons[n])
+        like_buttons[n].click()
         logger.info(f"🚀 [Action-moments]为第{n+1}条动态点赞")
+
+    # 动态点赞 - 获取第n条朋友圈的点赞用户名文本并转化为用户列表
+    def get_nth_moment_like_users(self, n: int = 0) -> list[str]:
+        """ 动态点赞 - 获取第n条朋友圈的点赞用户名文本并转化为用户列表 """
+        moment_item = self.get_moment_item(n)
+        if moment_item is None:
+            logger.warning(f"⚠️ [Check-moments] 未找到第 {n+1} 个朋友圈Item，无法获取点赞人列表")
+            return []
+
+        like_users_elems = moment_item.find_elements(*MomentsLocator.TV_LIKE_USERNAME)
+        if like_users_elems:
+            raw_text = "".join([elem.text for elem in like_users_elems if elem.text])
+            if not raw_text.strip():
+                logger.info(f"🔍 [Check-moments] 第 {n+1} 条动态点赞人节点文本为空")
+                return []
+            users = raw_text.split("，")
+            logger.info(f"🔍 [Check-moments] 成功获取第 {n+1} 条动态的点赞用户列表: {users}")
+            return users
+            
+        logger.info(f"🔍 [Check-moments] 第 {n+1} 条动态当前无点赞用户")
+        return []
     
-    # 动态 - 输入评论内容
+
+    # 动态评论 - 输入评论内容
     def send_comment_text(self, comment_text: str):
-        """ 动态 - 输入评论内容"""
+        """ 动态评论 - 输入评论内容"""
         self.send_keys(MomentsLocator.ET_COMMENT, comment_text)
         logger.info(f"🚀 [Action-moments]输入评论内容: {comment_text}")
     
-    # 动态 - 发送评论
+    # 动态评论 - 发送评论
     def send_comment(self):
-        """ 动态 - 发送评论"""
+        """ 动态评论 - 发送评论"""
         self.click(MomentsLocator.TV_SEND)
         logger.info("🚀 [Action-moments]发送评论")
     
-    # 动态 - 输入内容并发送评论
+    # 动态评论 - 输入内容并发送评论
     def post_comment(self, comment_text: str):
-        """ 动态 - 输入内容并发送评论"""
+        """ 动态评论 - 输入内容并发送评论"""
         self.send_comment_text(comment_text)
         self.send_comment()
         logger.info(f"🚀 [Action-moments]输入内容并发送评论: {comment_text}")
 
-    # 动态 - 获取第n条动态的评论按钮
-    def get_comment_button_elems(self, timeout: int=2, raise_exception: bool=True) -> list[WebElement]:
-        """ 动态 - 获取第n条动态的评论按钮"""
-        comment_buttons = self.find_elements(MomentsLocator.TV_COMMENT, timeout=timeout, raise_exception=raise_exception)
+    # 动态评论 - 获取第n条动态的评论按钮
+    def get_comment_button_elems(self, timeout: int=2) -> list[WebElement]:
+        """ 动态评论 - 获取第n条动态的评论按钮"""
+        comment_buttons = self.find_elements(MomentsLocator.TV_COMMENT, timeout=timeout)
         if comment_buttons == []:
             logger.warning(f"⚠️ [Check-moments] 当前页面不可见朋友圈评论按钮")
             return []
         logger.info(f"🔍 [Check-moments] 当前可见朋友圈评论按钮个数: {len(comment_buttons)}")
         return comment_buttons
 
-    # 动态 - 为第n条动态发表评论，n从0开始，不传默认为0
+    # 动态评论 - 为第n条动态发表评论，n从0开始，不传默认为0
     def click_comment_on_nth_moment(self, n: int=0):
-        """ 动态 - 为第n条动态发表评论，n从0开始，不传默认为0"""
+        """ 动态评论 - 为第n条动态发表评论，n从0开始，不传默认为0"""
         comment_buttons = self.get_comment_button_elems()
         if len(comment_buttons) <= n:
             logger.warning(f"⚠️ [Check-moments] 当前页面不可见第{n+1}条动态的评论按钮")
             return
-        self.click(comment_buttons[n])
+        comment_buttons[n].click()
         logger.info(f"🚀 [Action-moments] 点击评论第{n+1}条动态")
     
-    # 动态 - 获取可见评论内容Item
+    # 动态评论 - 获取可见评论内容Item
     def get_comment_item_elems(self, timeout: int=2, raise_exception: bool=True) -> list[WebElement]:
-        """ 动态 - 获取可见评论内容Item"""
+        """ 动态评论 - 获取可见评论内容Item"""
         comment_elems = self.find_elements(MomentsLocator.RV_COMMENT_DETAIL, timeout=timeout, raise_exception=raise_exception)
         if comment_elems == []:
             logger.warning(f"⚠️ [Check-moments] 当前页面不可见朋友圈评论内容Item")
@@ -274,9 +352,9 @@ class MomentsPage(BasePage):
         logger.info(f"🔍 [Check-moments] 当前可见朋友圈评论内容Item个数: {len(comment_elems)}")
         return comment_elems
 
-    # 动态 - 获取当前可见评论内容列表
+    # 动态评论 - 获取当前可见评论内容列表
     def get_comment_texts(self, timeout: int=2, raise_exception: bool=True) -> list[str]:
-        """ 动态 - 获取当前可见评论内容列表"""
+        """ 动态评论 - 获取当前可见评论内容列表"""
         comment_elems = self.get_comment_item_elems(timeout, raise_exception)
         if comment_elems == []:
             return []
@@ -284,7 +362,7 @@ class MomentsPage(BasePage):
         logger.info(f"🔍 [Check-moments] 当前可见评论内容: {comments}")
         return comments
 
-    # 动态 - 获取自己发送的评论Item
+    # 动态评论 - 获取自己发送的评论Item
     def get_own_comment_item(self, comment_text: str, nickname: str = "") -> WebElement | None:
         """
         根据评论内容和发送者昵称，精准获取自己发送的评论Item元素。
@@ -305,12 +383,12 @@ class MomentsPage(BasePage):
         logger.warning(f"⚠️ [Check-moments] 未在当前页面定位到匹配 [{comment_text}] 的评论")
         return None
 
-    # 动态 - 根据评论内容点击该评论以触发删除菜单（支持昵称组合和防重探测）
+    # 动态评论 - 根据评论内容点击该评论以触发删除菜单（支持昵称组合和防重探测）
     def click_comment_by_text(self, comment_text: str, nickname: str = ""):
-        """ 动态 - 根据评论内容点击该评论以触发删除菜单（支持昵称组合和防重探测）"""
+        """ 动态评论 - 根据评论内容点击该评论以触发删除菜单（支持昵称组合和防重探测）"""
         elem = self.get_own_comment_item(comment_text, nickname)
         if elem:
-            self.click(elem)
+            elem.click()
             logger.info(f"🚀 [Action-moments] 点击指定评论: [{comment_text}]")
             time.sleep(0.5)
         else:
@@ -330,31 +408,31 @@ class MomentsPage(BasePage):
                         time.sleep(0.5)
             logger.warning(f"⚠️ [Action-moments] 未能成功探测到属于自己的评论")
 
-    # 动态 - 删除自己发布的评论
+    # 动态评论 - 删除自己发布的评论
     def delete_own_comment(self, comment_text: str, nickname: str = ""):
-        """ 动态 - 删除自己发布的评论"""
+        """ 动态评论 - 删除自己发布的评论"""
         self.click_comment_by_text(comment_text, nickname)
         logger.info(f"🚀 [Action-moments] 点击评论: [{comment_text}] 后进行删除操作")
         time.sleep(0.5)
     
-    # 动态 - 确认删除评论
+    # 动态评论 - 确认删除评论
     def confirm_delete_comment(self):
-        """ 动态 - 确认删除评论"""
+        """ 动态评论 - 确认删除评论"""
         self.click(MomentsLocator.DIALOG_CONFIRM_BTN)
         logger.info("🚀 [Action-moments] 点击评论的确定按钮")
         time.sleep(0.5)
 
-    # 动态 - 取消删除评论
+    # 动态评论 - 取消删除评论
     def cancel_delete_comment(self):
-        """ 动态 - 取消删除评论"""
+        """ 动态评论 - 取消删除评论"""
         self.click(MomentsLocator.DIALOG_CANCEL_BTN)
         logger.info("🚀 [Action-moments] 点击评论的取消按钮")
         time.sleep(0.5)
 
-    # 动态 - 删除自己发布的评论并二次确认
+    # 动态评论 - 删除自己发布的评论并二次确认
     def delete_own_comment_with_confirm(self, comment_text: str, nickname: str = ""):
-        """ 动态 - 删除自己发布的评论并二次确认"""
-        self.delete_own_comment(comment_text,nickname)
+        """ 动态评论 - 删除自己发布的评论并二次确认"""
+        self.delete_own_comment(comment_text, nickname)
         self.confirm_delete_comment()
         logger.info(f"🚀 [Action-moments] 成功删除自己发布的评论: [{comment_text}]")
 

@@ -1,0 +1,118 @@
+# ==========================================
+# 朋友圈和评论区发布纯文字动态测试套件
+# 适用场景: 普通文字、Emoji、长文本折叠、字数上限截断、敏感词拦截
+# ==========================================
+
+suite_info:
+  module: "Moments_Publish_Text"
+  version: "1.0"
+  description: "朋友圈和评论区发布纯文字动态测试套件（含格式校验与安全防护）"
+
+# 朋友圈用例
+test_cases:
+  # 正向成功用例
+  - id: "MOMENT_PUB_001"
+    priority: "P0"
+    tags: ["smoke", "valid", "basic"]
+    input_content: "Hello Moments! 这是一个自动化测试动态。"
+    expected:
+      behavior: "success"
+      toast: "发布成功"
+      is_expand: false
+    desc: "发布常规纯英文数字与中文混合动态"
+
+  - id: "MOMENT_PUB_008"
+    priority: "P1"
+    tags: ["regression", "valid", "special_characters"]
+    input_content: "朋友圈 Emoji 与特殊字符校验 🌟🔥🚀 ABC123 !@#$%^&*()"
+    expected:
+      behavior: "success"
+      toast: "发布成功"
+      is_expand: false
+    desc: "发布包含表情和键盘特殊字符混合的动态"
+
+  - id: "MOMENT_PUB_009"
+    priority: "P1"
+    tags: ["regression", "valid", "long_text"]
+    input_content: >-
+      朋友圈长文本展示校验：自动化长文本内容。
+      为了验证朋友圈对于长文案的折叠、展示和关键信息不丢失机制，
+      这里通过多行文本进行回归测试。测试正文需要保持完整，不应在未经截断规则处理时丢失数据。
+      自动化长文本内容自动化长文本内容自动化长文本内容自动化长文本内容自动化长文本内容。
+    expected:
+      behavior: "success"
+      toast: "发布成功"
+      is_expand: true
+    desc: "发布多行长文案，验证列表展示及“全文/收起”折叠功能"
+
+  # 失败/异常用例
+  - id: "MOMENT_PUB_010"
+    priority: "P0"
+    tags: ["smoke", "invalid", "empty"]
+    input_content: ""
+    expected:
+      behavior: "empty"
+      toast: "请输入发布内容"
+      is_expand: false
+    desc: "未输入任何字符直接发表，校验空内容发表拦截提示"
+
+  - id: "MOMENT_PUB_011"
+    priority: "P1"
+    tags: ["boundary", "invalid", "over_limit"]
+    input_content: "超出长度上限测试：朋友圈纯文字动态最大长度限制为999个字。截断提示。"
+    expected:
+      behavior: "truncated"
+      toast: "内容最多支持999个字"
+      is_expand: true
+    desc: "发布超过999字限制的超长文案，校验Toast提示及999字截断行为"
+
+  - id: "MOMENT_PUB_012"
+    priority: "P0"
+    tags: ["security", "invalid", "sensitive_words"]
+    input_content: "包含敏感词的动态测试：习近平"
+    expected:
+      behavior: "blocked"
+      toast: "动态内容不合法，请修改再发布！"
+      is_expand: false
+    desc: "发布包含敏感词词条的文案，校验风控机制拦截及提示"
+
+
+# 评论用例
+comment_cases:
+  # 正向用例
+  - id: "MOMENT_INTER_003"
+    priority: "P0"
+    tags: ["smoke", "valid"]
+    input_content: "自动化评论测试"
+    expected:
+      behavior: "success"
+      toast: ""
+    desc: "正常评论好友朋友圈"
+
+  - id: "MOMENT_INTER_009"
+    priority: "P1"
+    tags: ["regression", "valid"]
+    input_content: "评论 Emoji 与特殊字符 🌟🔥🚀 !@#$%^&*()"
+    expected:
+      behavior: "success"
+      toast: ""
+    desc: "评论包含emoji和特殊字符"
+
+  # 边界与异常拦截用例
+  - id: "MOMENT_INTER_010"
+    priority: "P1"
+    tags: ["boundary", "invalid", "over_limit"]
+    input_content: "超出长度上限测试：朋友圈评论最大长度限制为999个字。截断提示。"
+    expected:
+      behavior: "truncated"
+      toast: "内容最多支持999个字"
+    desc: "评论超过999字限制的超长评论，校验999字截断行为"
+
+  - id: "MOMENT_INTER_011"
+    priority: "P0"
+    tags: ["security", "invalid", "sensitive_words"]
+    input_content: "包含敏感词的评论测试：习近平"
+    expected:
+      behavior: "blocked"
+      toast: "评论内容不合法，请修改再发布！"
+    desc: "评论包含敏感词，校验风控拦截提示"

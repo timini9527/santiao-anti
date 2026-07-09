@@ -20,6 +20,8 @@ class MomentsLocator:
     # 朋友圈列表及内容
     # ===========================================
     RV_LIST = (AppiumBy.ID, f'{PACKAGE_ID}/rv_list')            # 朋友圈列表
+    # 朋友圈列表最新一条内容 (发布成功后需要下拉刷新才能看到最新发布)
+    RV_LIST_MOMENT_CONTENT = (AppiumBy.XPATH, f'//*[@resource-id="{PACKAGE_ID}/rv_list"]/android.view.ViewGroup[2]')
 
     # 朋友圈昵称
     TV_NAME_ID = f'{PACKAGE_ID}/tv_name'
@@ -37,6 +39,11 @@ class MomentsLocator:
     DIALOG_CANCEL_BTN = CommonLocator.DIALOG_CANCEL_BTN                 # 取消按钮
     BOTTOM_TEXT = (AppiumBy.XPATH, '//*[contains(@text, "没有更多") or contains(@text, "到底了") or contains(@text, "已加载全部")]')
     
+    TV_EXPEND_ID = f'{PACKAGE_ID}/tv_expand'
+    TV_EXPAND = (AppiumBy.ID, TV_EXPEND_ID)                             # 全文展开按钮
+    TV_EXPAND_TEXT_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{TV_EXPEND_ID}" and @text="全文"]')  # 全文展开按钮
+    TV_SHRINK_TEXT_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{TV_EXPEND_ID}" and @text="收起"]')  # 收起
+
     TV_LIKE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_like')                    # 朋友圈点赞按钮
     TV_COMMENT_ID = f'{PACKAGE_ID}/tv_comment'
     TV_COMMENT = (AppiumBy.ID, TV_COMMENT_ID)                           # 朋友圈评论按钮
@@ -58,6 +65,13 @@ class MomentsLocator:
     # 发送评论元素
     ET_COMMENT = (AppiumBy.ID, f'{PACKAGE_ID}/et_comment')              # 评论输入框
     TV_SEND = (AppiumBy.ID, f'{PACKAGE_ID}/tv_send')                    # 评论发送按钮
+
+    # 收到点赞或评论的提醒Tip
+    FB_NEW_MESSAGE = (AppiumBy.ID, f'{PACKAGE_ID}/fb_new_message')                  # 收到点赞或评论的提醒Tip
+    IV_NEW_MESSAGE_AVATAR = (AppiumBy.ID, f'{PACKAGE_ID}/iv_new_message_avatar')    # 提醒Tip的头像
+    TV_NEW_MESSAGE_TEXT = (AppiumBy.ID, f'{PACKAGE_ID}/tv_new_message_text')        # 提醒Tip的文本
+    
+    
 
     
     # 发布页面元素
@@ -111,8 +125,6 @@ class MomentsLocator:
     TV_TAG_FRIENDS = (AppiumBy.ID, f'{PACKAGE_ID}/tv_tag_friends')          # 标签好友数量
     IV_MORE = (AppiumBy.ID, f'{PACKAGE_ID}/iv_more')                        # 更多按钮
     
-    RV_LIST = (AppiumBy.ID, f'{PACKAGE_ID}/rv_list')                        # 好友列表
-    TV_NAME = (AppiumBy.ID, f'{PACKAGE_ID}/tv_name')                        # 好友名称
     TV_ADD = (AppiumBy.ID, f'{PACKAGE_ID}/tv_add')                          # 添加好友
     TV_REMOVE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_remove')                    # 删除好友    
 
