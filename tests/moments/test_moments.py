@@ -260,7 +260,6 @@ class TestMoments:
     @allure.title("点赞并取消点赞-状态：已完成")
     def test_like_and_cancel_moment(self, temp_like_moment):
         """测试对朋友圈动态点赞后可再次取消点赞（自产自销，数据闭环）"""
-        # temp_like_moment 会自动发布一个临时动态并确保在用例结束后自动删除
 
         with allure.step("1. 获取该动态的初始点赞状态（预期为空）"):
             before_like = self.momentsPage.get_nth_moment_like_users(0)
@@ -278,7 +277,7 @@ class TestMoments:
 
 
     @allure.story("点赞与评论")
-    @allure.title("评论朋友圈 - {case_id}")
+    @allure.title("评论朋友圈-{case_id}-状态：已完成")
     @pytest.mark.parametrize(
         "case_data",
         _comment_cases_data,
@@ -356,11 +355,11 @@ class TestMoments:
                     except Exception as e:
                         logger.warning(f"⚠️ 清理本条截断评论失败: {e}")
 
+
     @allure.story("点赞与评论")
-    @allure.title("MOMENT_INTER_008 - 评论为空不可发送")
+    @allure.title("评论为空不可发送-状态：已完成")
     def test_empty_comment_cannot_send(self, temp_empty_comment_moment):
         """测试空评论不能成功发送"""
-        # temp_empty_comment_moment 会自动发布一个临时动态并确保在用例结束后自动删除
 
         with allure.step("1. 获取发送空评论前的评论列表"):
             before_comments = self.momentsPage.get_comment_texts(2, False)
@@ -378,8 +377,54 @@ class TestMoments:
     @allure.title("MOMENT_PUB_002 - 发布图片朋友圈")
     def test_post_image_moment(self):
         """测试发布图片朋友圈"""
-        # 预留 CI 资源依赖提示，如果执行环境不具备图片文件，则 skip 避免 Flaky
-        pytest.skip("由于本地相册资源 Mock 依赖和文件上传稳定性，本用例做逻辑链预留")
+        import os
+        test_image_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "testdata")
+        os.makedirs(test_image_dir, exist_ok=True)
+        test_image_path = os.path.join(test_image_dir, "temp_test_image.jpg")
+        
+        # 动态创建 100x100 像素的临时红色测试图片，降低对外部资源的依赖
+        if not os.path.exists(test_image_path):
+            try:
+                from PIL import Image
+                img = Image.new('RGB', (100, 100), color='red')
+                img.save(test_image_path)
+            except Exception as e:
+                logger.warning(f"⚠️ 无法使用 PIL 生成临时图片: {e}，将直接从手机相册默认位置选择")
+
+        timestamp = int(time.time())
+        expected_content = f"图片动态测试内容_{timestamp}"
+
+        try:
+            with allure.step("1. 点击相机图标，进入相册选择图片并输入正文发表"):
+                self.momentsPage.click_post_moments()
+                self.momentsPage.click_album()
+                self.momentsPage.select_image_from_album(test_image_path if os.path.exists(test_image_path) else "")
+                self.momentsPage.input_moments_content(expected_content)
+                self.momentsPage.click_publish()
+
+            with allure.step("2. 校验发布成功Toast提示，并下拉刷新页面"):
+                toast = self.momentsPage.get_toast("发布成功")
+                check.equal(toast, "发布成功", "❌ 图片朋友圈发布失败")
+                self.momentsPage.refresh_moments()
+
+            with allure.step("3. 校验最新动态正文及是否包含图片展示"):
+                actual_content = self.momentsPage.get_first_moment_content()
+                check.equal(actual_content, expected_content, "❌ 发布图片朋友圈的文字内容不匹配")
+                
+                first_item = self.momentsPage.get_moment_item(0)
+                if first_item:
+                    has_pic = len(first_item.find_elements(*MomentsLocator.CL_PIC)) > 0 or \
+                              len(first_item.find_elements(*MomentsLocator.IV_SINGLE_PIC)) > 0 or \
+                              len(first_item.find_elements(*MomentsLocator.IV_MEDIA)) > 0
+                    check.is_true(has_pic, "❌ 最新动态卡片中未检测到图片多媒体内容")
+
+        finally:
+            with allure.step("4. 后置清理：删除发布的临时图片朋友圈"):
+                try:
+                    self._delete_test_moment(expected_content)
+                except Exception as e:
+                    logger.warning(f"⚠️ 清理临时图片动态失败: {e}")
+
 
     @allure.story("朋友圈浏览与详情")
     @allure.title("MOMENT_VIEW_001 - 查看文字动态详情")
