@@ -441,30 +441,38 @@ class BasePage:
         rect = element.rect
         return int(rect['x'] + rect['width'] / 2), int(rect['y'] + rect['height'] / 2)
     
-    @allure.step("长按数据, 获取长按弹窗")
-    @allure.step("有多条数据存在时, 长按某一条, 获取弹窗")
-    def long_press_action(self, found_ele, hold_time: int = 1000):
-        """
-        长按数据, 获取长按弹窗
-        :param found_ele: 已查找到的元素
-        :return: 元素数量
-        """
-        # 2. 执行长按操作 (Long Press) Appium 新版使用 W3C Actions API
-        # 使用 ActionBuilder 创建长按操作
-        actions = ActionBuilder(self.driver)
-        # 获取指针输入设备
-        finger = actions.pointer_inputs
 
-        # 移动到目标元素位置
-        actions.pointer_action.move_to(found_ele)
-        # 按下指针（开始长按）
-        actions.pointer_action.pointer_down()
-        # 暂停1.5秒实现长按效果
-        actions.pointer_action.pause(hold_time/1000)  
-        # 释放指针（结束长按）
-        actions.pointer_action.pointer_up()
-        # 执行整个动作序列
-        actions.perform()
+    @allure.step("长按元素，获取弹窗")
+    @allure.step("有多条数据存在时, 长按某一条, 获取弹窗")
+    def long_press_action(self, found_ele: WebElement, hold_time: int = 1000):
+        """
+        长按元素，兼容 Appium 原生 longClickGesture 与 W3C Action 坐标长按
+        """
+        try:
+            # 1. 优先使用 Appium 原生的 longClickGesture 绕过 USB 模拟限制与坐标序列化错误
+            self.driver.execute_script(
+                'mobile: longClickGesture',
+                {'elementId': found_ele.id, 'duration': hold_time}
+            )
+            logger.info("✅ [Gesture] 使用 Appium 原生 longClickGesture 成功长按元素")
+        except Exception as e:
+            logger.warning(f"⚠️ [Gesture] Appium 原生 longClickGesture 失败: {e}，尝试 W3C Action 坐标长按")
+            # 2. 备用方案：采用精准中心点坐标的 W3C Action 链，规避越界报错
+            try:
+                x, y = self.get_element_center(found_ele)
+                actions = ActionBuilder(self.driver)
+                finger = PointerInput(interaction.POINTER_TOUCH, "finger")
+                actions.add_device(finger)
+
+                actions.pointer_action.move_to_location(x, y)
+                actions.pointer_action.pointer_down()
+                actions.pointer_action.pause(hold_time / 1000.0)
+                actions.pointer_action.pointer_up()
+                actions.perform()
+                logger.info("✅ [Gesture] 使用 W3C Action 坐标长按成功")
+            except Exception as w3c_err:
+                logger.error(f"❌ [Gesture] 长按操作彻底失败: {w3c_err}")
+                raise w3c_err
         time.sleep(0.5)
 
         # logger.info(f"长按元素,获取弹窗完成: {el}")
@@ -679,18 +687,20 @@ class BasePage:
             raise RuntimeError(f"执行手指手势操作失败: {str(e)}")
 
     @allure.step("在指定的坐标边界内容固定按预定距离滑动")
-    def swipe_to_distance(self, slid_type: str = "up", rect: dict = None, duration: int = 300, times: int = 1) -> None:
+    def swipe_to_distance(self, slid_type: str = "up", rect: dict = None, duration: int = 300, times: int = 1, x_ratio: float = 0.5, y_ratio: float = 0.5) -> None:
         """
         在指定字典区域的边界内计算滑动（预留 20% 安全区防误触）
         :param slid_type: 'up'(手指上滑) / 'down'(手指下滑) / 'left'(手指左滑) / 'right'(手指右滑)
+        :param x_ratio: 纵向滑动时，X轴位置占区域宽度的比例，默认 0.5
+        :param y_ratio: 横向滑动时，Y轴位置占区域高度的比例，默认 0.5
         """
         if not rect:
             return
 
         x, y, w, h = rect['x'], rect['y'], rect['width'], rect['height']
         
-        center_x = int(x + w * 0.5)
-        center_y = int(y + h * 0.5)
+        target_x = int(x + w * x_ratio)
+        target_y = int(y + h * y_ratio)
 
         # 构建防越界安全隔离区(20% ~ 80%)
         top_y = int(y + h * 0.2)
@@ -700,24 +710,24 @@ class BasePage:
 
         for _ in range(times):
             if slid_type.lower() == "up":      # 手指从下往上滑，页面下降
-                start_x, start_y, end_x, end_y = center_x, bottom_y, center_x, top_y
+                start_x, start_y, end_x, end_y = target_x, bottom_y, target_x, top_y
             elif slid_type.lower() == "down":  # 手指从上往下滑，页面上升
-                start_x, start_y, end_x, end_y = center_x, top_y, center_x, bottom_y
+                start_x, start_y, end_x, end_y = target_x, top_y, target_x, bottom_y
             elif slid_type.lower() == "left":  # 手指从右向左滑，页面向左移
-                start_x, start_y, end_x, end_y = right_x, center_y, left_x, center_y
+                start_x, start_y, end_x, end_y = right_x, target_y, left_x, target_y
             elif slid_type.lower() == "right": # 手指从左向右滑，页面向右移
-                start_x, start_y, end_x, end_y = left_x, center_y, right_x, center_y
+                start_x, start_y, end_x, end_y = left_x, target_y, right_x, target_y
             else:
                 raise ValueError(f"不支持的滑动方向: {slid_type}")
 
             self.swipe(start_x, start_y, end_x, end_y, duration)
     
     @allure.step("屏幕全局滑动")
-    def swipe_page(self, slid_type: str = 'up', duration: int = 500, times: int = 1):
+    def swipe_page(self, slid_type: str = 'up', duration: int = 500, times: int = 1, x_ratio: float = 0.5, y_ratio: float = 0.5):
         """ 全屏滑动：封装成全屏尺寸后转交 swipe_to_distance 处理 """
         size = self.driver.get_window_size()
         rect = {'x': 0, 'y': 0, 'width': size['width'], 'height': size['height']}
-        self.swipe_to_distance(slid_type=slid_type, rect=rect, duration=duration, times=times)
+        self.swipe_to_distance(slid_type=slid_type, rect=rect, duration=duration, times=times, x_ratio=x_ratio, y_ratio=y_ratio)
 
     @allure.step("元素内局域滑动")
     def swipe_on_element(self, element, slid_type: str = "left", duration: int = 600):

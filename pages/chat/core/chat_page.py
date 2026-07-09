@@ -660,7 +660,7 @@ class ChatPage(BasePage):
     def long_press_preview_image(self):
         """图片消息-长按预览的图片"""
         preview_image = self.find_element(ChatLocator.PREVIEW_IMAGE_ITEM)
-        self.long_press_action(element=preview_image)
+        self.long_press_action(found_ele=preview_image)
         logger.info("🚀[Action-chat] - chat 长按预览的图片")
 
     # 图片消息-点击预览图上的下载图标

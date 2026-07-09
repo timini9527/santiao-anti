@@ -8,10 +8,10 @@ from locators.home.home_locator import HomeLocator
 
 class HomePage(BasePage):
 
-    # 等待 home page 完全加载
+    # 主页 - 等待 home page 完全加载
     def wait_home_page(self, timeout: int = 10) -> bool:
         """
-        等待 home page 完全加载
+        主页 - 等待 home page 完全加载
         Args:
             timeout: 超时时间
         Returns:
@@ -23,191 +23,230 @@ class HomePage(BasePage):
         logger.info(f"✅ [Wait] - home page 加载完成，超时时间 {timeout} 秒")
         return True
 
-    # 打开侧边栏
+    # 主页 - 打开侧边栏
     def open_left_menu(self):
+        """ 主页 - 点击打开侧边栏 """
         self.click(HomeLocator.LEFT_MENU)
-        logger.info("[Action-Home] 点击打开侧边栏")
+        logger.info("[Action-Home] 主页 - 点击打开侧边栏")
         time.sleep(1.5)
 
-    # 点击主页标题
+    # 主页 - 点击主页标题
     def click_home_title(self):
+        """ 主页 - 点击主页标题 """
         self.click(HomeLocator.MIDDLE_TITLE, force_wait=True)
-        logger.info("[Action-Home] 点击主页标题")
+        logger.info("[Action-Home] 主页 - 点击主页标题")
 
-    # 主页获取顶部中间标题 三条标题
+    # 主页 - 获取顶部中间标题 三条标题
     def get_top_middle_title(self) -> str:
+        """ 主页 - 获取顶部中间标题 三条标题 """
         title = self.get_attribute(HomeLocator.MIDDLE_TITLE, 'text')
-        logger.info(f"[Action-Home] 获取顶部中间标题: {title}")
+        logger.info(f"[Action-Home] 主页 - 获取顶部中间标题: {title}")
         return title
 
-    # 点击 + 号按钮
+    # 主页 - 点击 + 号按钮
     def click_add_button(self):
+        """ 主页 - 点击 + 号按钮 """
         self.click(HomeLocator.RIGHT_MENU, force_wait=True)
-        logger.info("[Action-Home] 点击 + 号（右上角菜单）按钮")
+        logger.info("[Action-Home] 主页 - 点击 + 号（右上角菜单）按钮")
 
-    # 点击 发起群聊
+    # 主页 - 点击 发起群聊
     def click_start_group_chat(self):
+        """ 主页 - 点击 发起群聊 """
         self.click(HomeLocator.EXPAND_START_GROUP_CHAT, force_wait=True)
-        logger.info("[Action-Home] 点击 发起群聊")
+        logger.info("[Action-Home] 主页 - 点击 发起群聊")
 
-    # 点击 添加朋友
+    # 主页 - 点击 添加朋友
     def click_add_friend(self):
+        """ 主页 - 点击 添加朋友 """
         self.click(HomeLocator.EXPAND_ADD_FRIEND, force_wait=True)
-        logger.info("[Action-Home] 点击 添加朋友")
+        logger.info("[Action-Home] 主页 - 点击 添加朋友")
 
-    # 点击 扫一扫
+    # 主页 - 点击 扫一扫
     def click_scan(self):
+        """ 主页 - 点击 扫一扫 """
         self.click(HomeLocator.EXPAND_SCAN, force_wait=True)
-        logger.info("[Action-Home] 点击 扫一扫")
+        logger.info("[Action-Home] 主页 - 点击 扫一扫")
 
-    # 点击搜索
+    # 主页 - 点击搜索
     def click_search(self):
+        """ 主页 - 点击搜索 """
         self.click(HomeLocator.SEARCH, force_wait=True)
-        logger.info("[Action-Home] 点击搜索")
+        logger.info("[Action-Home] 主页 - 点击搜索")
 
-    # 点击搜索清除
+    # 主页 - 点击搜索清除
     def click_search_clear(self):
+        """ 主页 - 点击搜索清除 """
         self.click(HomeLocator.SEARCH_CLEAR, force_wait=True)
-        logger.info("[Action-Home] 点击清理搜索")
+        logger.info("[Action-Home] 主页 - 点击清理搜索")
 
-    # 点击底部扩展菜单
-    def click_bottom_expand_menu(self):
+    # 主页 - 点击底部展开按钮
+    def click_bottom_expand_button(self):
+        """ 主页 - 点击底部展开按钮 """
+        self.click(HomeLocator.EXPAND_MENU, force_wait=True)
+        logger.info("[Action-Home] 主页 - 点击底部展开按钮")
+
+    # 主页 - 关闭底部扩展菜单
+    def click_bottom_close_expand_button(self):
+        """ 主页 - 关闭底部扩展菜单 """
         if "三条" not in self.get_top_middle_title():
-            self.click(HomeLocator.EXPAND_MENU, force_wait=True)
-            logger.info("[Action-Home] 点击底部扩展菜单")
+            self.click_bottom_expand_button()
+        logger.info("[Action-Home] 主页 - 点击底部关闭扩展菜单按钮")
 
-    # 点击好友
+    # 主页 - 点击好友
     def click_friend(self):
+        """ 主页 - 点击好友 """
         self.click(HomeLocator.FRIEND, force_wait=True)
-        logger.info("[Action-Home] 点击好友")
+        logger.info("[Action-Home] 主页 - 点击好友")
 
-    # 点击群聊
+    # 主页 - 点击群聊
     def click_group(self):
+        """ 主页 - 点击群聊 """
         self.click(HomeLocator.GROUP, force_wait=True)
-        logger.info("[Action-Home] 点击群聊")
+        logger.info("[Action-Home] 主页 - 点击群聊")
 
-    # 点击动态
+    # 主页 - 点击动态
     def click_dynamic(self):
+        """ 主页 - 点击动态 """
         self.click(HomeLocator.DYNAMIC, force_wait=True)
-        logger.info("[Action-Home] 点击动态")
+        logger.info("[Action-Home] 主页 - 点击动态")
 
-    # 点击第一个会话
+    # 主页 - 点击第一个会话
     def click_conversation(self, index=0):
+        """ 主页 - 点击第一个会话 """
         self.click(HomeLocator.CONVERSATION_ITEM, force_wait=True)
-        logger.info("[Action-Home] 点击第一个会话")
+        logger.info("[Action-Home] 主页 - 点击第一个会话")
 
-    # 获取页面所有会话列表
+    # 主页 - 获取页面所有会话列表
     def get_conversation_list(self):
+        """ 主页 - 获取页面所有会话列表 """
         result = self.find_elements(HomeLocator.CONVERSATION_ITEM)
         logger.info(f"[Action-Home] 获取页面所有会话列表数量: {len(result)}")
         return result
 
-    # 获取会话数量
+    # 主页 - 获取会话数量
     def get_conversation_count(self):
+        """ 主页 - 获取会话数量 """
         count = len(self.get_conversation_list())
-        logger.info(f"[Action-Home] 获取会话数量: {count}")
+        logger.info(f"[Action-Home] 主页 - 获取会话数量: {count}")
         return count
 
-    # 获取第一个会话名称
+    # 主页 - 获取第一个会话名称
     def get_conversation_name(self, index=0):
+        """ 主页 - 获取第一个会话名称 """
         name = self.get_attribute(HomeLocator.CONVERSATION_NAME, 'text')
-        logger.info(f"[Action-Home] 获取第一个会话名称: {name}")
+        logger.info(f"[Action-Home] 主页 - 获取第一个会话名称: {name}")
         return name
 
-    # 获取页面所有会话名称
+    # 主页 - 获取页面所有会话名称
     def get_conversation_names(self):
+        """ 主页 - 获取页面所有会话名称 """
         elements = self.find_elements(HomeLocator.CONVERSATION_NAME)
         names = [element.get_attribute('text') for element in elements]
-        logger.info(f"[Action-Home] 获取页面所有会话名称: {names}")
+        logger.info(f"[Action-Home] 主页 - 获取页面所有会话名称: {names}")
         return names
     
-    # 获取特定名称会话
+    # 主页 - 获取特定名称会话
     def get_conversation_by_name(self, name: str):
+        """ 主页 - 获取特定名称会话 """
         result = self.find_element(HomeLocator.get_conver_by_name(name), timeout=2)
-        logger.info(f"[Action-Home] 获取特定名称会话: {name}")
+        logger.info(f"[Action-Home] 主页 - 获取特定名称会话: {name}")
         return result
 
-    # 获取第一个会话时间
+    # 主页 - 获取第一个会话时间
     def get_conversation_time(self, index=0):
+        """ 主页 - 获取第一个会话时间 """
         time_text = self.get_attribute(HomeLocator.CONVERSATION_TIME, 'text')
-        logger.info(f"[Action-Home] 获取第一个会话时间: {time_text}")
+        logger.info(f"[Action-Home] 主页 - 获取第一个会话时间: {time_text}")
         return time_text
 
-    # 获取页面所有会话时间
+    # 主页 - 获取页面所有会话时间
     def get_conversation_times(self):
+        """ 主页 - 获取页面所有会话时间 """
         elements = self.find_elements(HomeLocator.CONVERSATION_TIME)
         times = [element.get_attribute('text') for element in elements]
-        logger.info(f"[Action-Home] 获取页面所有会话时间数量: {len(times)}")
+        logger.info(f"[Action-Home] 主页 - 获取页面所有会话时间数量: {len(times)}")
         return times
 
-    # 获取第一个会话内容
+    # 主页 - 获取第一个会话内容
     def get_conversation_content(self, index=0):
+        """ 主页 - 获取第一个会话内容 """
         content = self.get_attribute(HomeLocator.CONVERSATION_CONTENT, 'text')
-        logger.info(f"[Action-Home] 获取第一个会话内容: {content}")
+        logger.info(f"[Action-Home] 主页 - 获取第一个会话内容: {content}")
         return content
 
-    # 获取页面所有会话内容
+    # 主页 - 获取页面所有会话内容
     def get_conversation_contents(self):
+        """ 主页 - 获取页面所有会话内容 """
         elements = self.find_elements(HomeLocator.CONVERSATION_CONTENT)
         contents = [element.get_attribute('text') for element in elements]
-        logger.info(f"[Action-Home] 获取页面所有会话内容数量: {len(contents)}")
+        logger.info(f"[Action-Home] 主页 - 获取页面所有会话内容数量: {len(contents)}")
         return contents
 
-    # 获取第一个会话未读消息数
+    # 主页 - 获取第一个会话未读消息数
     def get_conversation_unread_count(self, index=0):
+        """ 主页 - 获取第一个会话未读消息数 """
         count = self.get_attribute(HomeLocator.CONVERSATION_UNREAD_COUNT, 'text')
-        logger.info(f"[Action-Home] 获取第一个会话未读消息数: {count}")
+        logger.info(f"[Action-Home] 主页 - 获取第一个会话未读消息数: {count}")
         return count
 
-    # 获取第一个会话未读消息数内部
+    # 主页 - 获取第一个会话未读消息数内部
     def get_conversation_unread_count_inner(self, index=0):
+        """ 主页 - 获取第一个会话未读消息数内部 """
         count = self.get_attribute(HomeLocator.CONVERSATION_UNREAD_COUNT_INNER, 'text')
-        logger.info(f"[Action-Home] 获取第一个会话内部未读消息数: {count}")
+        logger.info(f"[Action-Home] 主页 - 获取第一个会话内部未读消息数: {count}")
         return count
 
-    # 通过好友昵称获取他的会话下面有没有消息内容
+    # 主页 - 通过好友昵称获取他的会话下面有没有消息内容
     def get_message_by_name(self, name: str):
+        """ 主页 - 通过好友昵称获取他的会话下面有没有消息内容 """
         content = self.get_attribute(HomeLocator.get_message_by_name(name), 'text')
-        logger.info(f"[Action-Home] 通过好友昵称[{name}]获取他的消息内容: {content}")
+        logger.info(f"[Action-Home] 主页 - 通过好友昵称[{name}]获取他的消息内容: {content}")
         return content
 
-    # 会话静音
+    # 主页 - 会话静音
     def click_conversation_mute(self):
+        """ 主页 - 会话静音 """
         self.click(HomeLocator.CONVERSATION_MUTE, force_wait=True)
-        logger.info("[Action-Home] 点击会话静音")
+        logger.info("[Action-Home] 主页 - 点击会话静音")
 
-    # 会话置顶
+    # 主页 - 会话置顶
     def click_conversation_top(self):
+        """ 主页 - 会话置顶 """
         self.click(HomeLocator.CONVERSATION_TOP, force_wait=True)
-        logger.info("[Action-Home] 点击会话置顶")
+        logger.info("[Action-Home] 主页 - 点击会话置顶")
 
-    # 会话删除
+    # 主页 - 会话删除
     def click_conversation_delete(self):
+        """ 主页 - 会话删除 """
         self.click(HomeLocator.CONVERSATION_DELETE, force_wait=True)
-        logger.info("[Action-Home] 点击会话删除")
+        logger.info("[Action-Home] 主页 - 点击会话删除")
 
-    # 会话删除弹窗 清空聊天记录
+    # 主页 - 会话删除弹窗 清空聊天记录
     def click_conversation_delete_dialog_clear_chat_record(self):
+        """ 主页 - 会话删除弹窗 清空聊天记录 """
         self.click(HomeLocator.CONVERSATION_DELETE_DIALOG_CLEAR_CHAT_RECORD, force_wait=True)
-        logger.info("[Action-Home] 在删除会话弹窗勾选 清空聊天记录")
+        logger.info("[Action-Home] 主页 - 在删除会话弹窗勾选 清空聊天记录")
 
-    # 会话删除弹窗 确认删除
+    # 主页 - 会话删除弹窗 确认删除
     def click_conversation_delete_dialog_confirm(self):
+        """ 主页 - 会话删除弹窗 确认删除 """
         self.click(HomeLocator.CONVERSATION_DELETE_DIALOG_CONFIRM, force_wait=True)
-        logger.info("[Action-Home] 在删除会话弹窗点击 确认")
+        logger.info("[Action-Home] 主页 - 在删除会话弹窗点击 确认")
 
-    # 会话删除弹窗 取消
+    # 主页 - 会话删除弹窗 取消
     def click_conversation_delete_dialog_cancel(self):
+        """ 主页 - 会话删除弹窗 取消 """
         self.click(HomeLocator.CONVERSATION_DELETE_DIALOG_CANCEL, force_wait=True)
-        logger.info("[Action-Home] 在删除会话弹窗点击 取消")
+        logger.info("[Action-Home] 主页 - 在删除会话弹窗点击 取消")
 
-    # 会话获取草稿状态
+    # 主页 - 会话获取草稿状态
     def get_remind_status(self):
+        """ 主页 - 会话获取草稿状态 """
         status = self.get_attribute(HomeLocator.CONVERSATION_DRAFT, 'text')
-        logger.info(f"[Action-Home] 获取会话草稿状态: {status}")
+        logger.info(f"[Action-Home] 主页 - 获取会话草稿状态: {status}")
         return status
 
-    # 会话获取未读/已读状态
+    # 主页 - 会话获取未读/已读状态
     def get_unread_status(self, name: str) -> str:
         """
         获取指定会话列表的消息阅读状态
@@ -219,7 +258,7 @@ class HomePage(BasePage):
         logger.info(f"[Action-Home] 获取指定会话 [{name}] 阅读状态: {status}")
         return status
     
-    # 会话获取停用状态
+    # 主页 - 会话获取停用状态
     def get_disable_status(self, name: str) -> bool:
         """
         获取指定会话的停用状态
@@ -230,7 +269,7 @@ class HomePage(BasePage):
         logger.info(f"[Action-Home] 获取指定会话 [{name}] 停用状态: {is_disabled}")
         return is_disabled
 
-    # 会话安全点击列表项，防止被底部悬浮栏遮挡
+    # 主页 - 会话安全点击列表项，防止被底部悬浮栏遮挡
     def ensure_item_safe_visible(self, session_name: str, allow_swipe: bool = True) -> bool:
         """
         检测列表项是否完全在可视区域内（未被底部菜单遮挡）。
@@ -285,17 +324,17 @@ class HomePage(BasePage):
         logger.warning(f"❌ 超过最大尝试次数 ({max_attempts})，仍未能使会话【{session_name}】安全暴露。")
         return False 
 
-    # ---- 置顶折叠相关 ----
+    # 主页 - 置顶折叠相关
     def is_fold_entry_visible(self) -> bool:
-        """检查置顶折叠入口是否可见"""
+        """ 主页 - 检查置顶折叠入口是否可见 """
         result = self.is_element_exist(HomeLocator.CONVERSATION_FOLD_COUNT_TEXT, timeout=3)
-        logger.info(f"📌 折叠入口可见: {result}")
+        logger.info(f"📌 主页 - 折叠入口可见: {result}")
         return result
 
-    # 当折叠入户被隐藏时，需要下滑需寻找如何获取折叠数量 
+    # 主页 - 当折叠入户被隐藏时，需要下滑需寻找如何获取折叠数量 
     def is_fold_count_visible(self, max_attempts=5) -> WebElement | None:
         """
-        当折叠入口被隐藏时，需要下滑需寻找如何获取折叠数量 
+        主页 - 当折叠入口被隐藏时，需要下滑需寻找如何获取折叠数量 
         Args:
             max_attempts: 最大尝试次数
         Returns:
@@ -309,10 +348,10 @@ class HomePage(BasePage):
             self.swipe_page('up', duration=500)
         return None
 
-    # 获取折叠入口显示的置顶数量
+    # 主页 - 获取折叠入口显示的置顶数量
     def get_fold_count(self) -> int:
         """
-        获取折叠入口显示的置顶数量 
+        主页 - 获取折叠入口显示的置顶数量 
         Args:
             None
         Returns:
@@ -326,13 +365,13 @@ class HomePage(BasePage):
         # 提取数字
         nums = re.findall(r'\d+', text)
         count = int(nums[0]) if nums else 0
-        logger.info(f"📌 折叠数量文案: [{text}], 解析数量: {count}")
+        logger.info(f"📌 主页 - 折叠数量文案: [{text}], 解析数量: {count}")
         return count
 
-    # 点击折叠入口（优先点击整个 ViewGroup，兼容图标和文本）
+    # 主页 - 点击折叠入口
     def click_fold_entry(self, first_name: str = None, max_retries=3):
         """
-        点击折叠入口（优先点击整个 ViewGroup，兼容图标和文本）
+        主页 - 点击折叠入口
         Args:
             first_name: 第一个好友昵称
             max_retries: 最大尝试次数
@@ -350,12 +389,13 @@ class HomePage(BasePage):
                 fold_elem = self.find_element(HomeLocator.CONVERSATION_FOLD_COUNT_TEXT, timeout=2)
 
             if not fold_elem:
-                raise RuntimeError("❌ 未找到折叠入口元素")
+                logger.warning("⚠️ 主页 - 未找到折叠入口元素")
+                return None
 
             self.tap_point(click_elem=fold_elem)
             aft_name = self.get_attribute(name_locator, 'text')
             if first_name != aft_name:
-                logger.info(f"✅ 点击成功且 UI 已响应！没有找到 {first_name}")
+                logger.info(f"✅ 主页 - 点击成功且 UI 已响应！没有找到 {first_name}")
                 return True
             else:
                 logger.warning(f"⚠️ 置顶会话折叠失败，点击了但 UI 没反应 折叠前 {first_name}, 折叠后 {aft_name}，准备重试...")
@@ -363,10 +403,10 @@ class HomePage(BasePage):
         raise RuntimeError(f"❌ 连续 {max_retries} 次点击折叠入口，UI 均无响应！")
 
 
-    # 输入聊天密码
+    # 主页 - 输入聊天密码
     def input_chat_password(self, password: str = "111111", index: int = 0) -> None:
         """
-        输入聊天密码 
+        主页 - 输入聊天密码 
         Args:
             password: 聊天密码
             index: 密码输入框的索引

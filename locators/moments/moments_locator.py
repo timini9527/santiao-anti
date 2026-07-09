@@ -8,6 +8,7 @@ class MomentsLocator:
     # 顶部元素
     IV_BACK = CommonLocator.TOP_IV_BACK_BTN                     # 返回图标
     TV_MOMENTS = CommonLocator.TOP_TV_TITLE                     # 动态标题
+    TV_MOMENTS_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{CommonLocator.TOP_TV_TITLE_ID}" and @text="动态"]')
     IV_CAMERA = (AppiumBy.ID, f'{PACKAGE_ID}/iv_camera')        # 发布朋友圈按钮 (相机图标)
 
     IV_BG = (AppiumBy.ID, f'{PACKAGE_ID}/iv_bg')                # 背景图片
@@ -34,7 +35,7 @@ class MomentsLocator:
     TV_DELETE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_delete')                # 删除
     DIALOG_CONFIRM_BTN = CommonLocator.DIALOG_CONFIRM_BTN               # 确认按钮
     DIALOG_CANCEL_BTN = CommonLocator.DIALOG_CANCEL_BTN                 # 取消按钮
-
+    BOTTOM_TEXT = (AppiumBy.XPATH, '//*[contains(@text, "没有更多") or contains(@text, "到底了") or contains(@text, "已加载全部")]')
     
     TV_LIKE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_like')                    # 朋友圈点赞按钮
     TV_COMMENT_ID = f'{PACKAGE_ID}/tv_comment'
@@ -64,6 +65,7 @@ class MomentsLocator:
     CL_SHOOTING = (AppiumBy.ID, f'{PACKAGE_ID}/cl_shooting')            # 拍照选项
     TV_GALLERY = (AppiumBy.ID, f'{PACKAGE_ID}/tv_gallery')              # 从相册选择选项
     FB_CANCEL = (AppiumBy.ID, f'{PACKAGE_ID}/fb_cancel')                # 取消按钮
+    FB_ACTION = CommonLocator.TOP_FB_ACTION_BTN                         # 发布按钮
 
     # 朋友圈发布
     ET_TEXT = (AppiumBy.ID, f'{PACKAGE_ID}/et_text')                    # 文字输入框

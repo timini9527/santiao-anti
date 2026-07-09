@@ -5,8 +5,7 @@ from locators.common.common_locator import CommonLocator
 class ReportLocator(CommonLocator):
     PACKAGE_ID = 'com.santiaotalk.im:id'
 
-    
-    
+    TV_REPORT_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{CommonLocator.TOP_TV_TITLE_ID}" and @text="投诉"]')
     # 动态获取具体投诉项（如：“色情”、“赌博”、“违法犯罪及违禁品”等）
     @staticmethod
     def get_option_by_text(text: str) -> tuple:

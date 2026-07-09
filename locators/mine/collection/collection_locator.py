@@ -8,6 +8,9 @@ from locators.chat.core.chat_panel_locator import ChatPanelLocator
 class CollectionLocator(CommonLocator):
     PACKAGE_ID = CommonLocator.PACKAGE_ID
 
+    # 收藏顶部标题 XPath 定位器
+    TV_COLLECTION_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{CommonLocator.TOP_TV_TITLE_ID}" and contains(@text, "收藏")]')
+
     # 聊天页面：收藏入口
     CHAT_COLLECTION_BUTTON = ChatPanelLocator.BTN_COLLECTION
 

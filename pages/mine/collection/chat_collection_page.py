@@ -23,12 +23,9 @@ class ChatCollectionPage(ChatPage):
         """
         logger.info(f"⏳ [Wait] 等待收藏选择页加载完成，超时时间 {timeout} 秒")
         try:
-            title = self.get_attribute(CollectionLocator.TOP_TV_TITLE, 'text')
-            logger.info(f"✅ [Wait] 收藏选择页加载完成，标题为：{title}")
-            if "收藏" not in title:
-                logger.warning(f"⚠️ [Wait] 收藏选择页标题不是“收藏”，当前标题为：{title}")
-                return False
-            return True
+            is_visible = self.is_element_exist(CollectionLocator.TV_COLLECTION_XPATH, timeout=timeout)
+            logger.info(f"✅ [Wait] 收藏选择页加载完成, 标题是否显示: {is_visible}")
+            return bool(is_visible)
         except Exception as e:
             logger.warning(f"⚠️ [Wait] 收藏选择页加载超时: {e}")
             return False

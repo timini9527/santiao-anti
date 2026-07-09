@@ -9,10 +9,13 @@ class ReportPage(BasePage):
     def wait_for_report_page_load(self, timeout: int = 3) -> bool:
         """等待投诉首屏加载完成"""
         logger.info("⏱️ [Action-Report] 等待投诉首屏加载完成")
-        sta = self.get_attribute(locator=ReportLocator.TOP_TV_TITLE, attr="text", timeout=timeout) == "投诉"
-        if sta:
-            logger.info("✅ [Action-Report] 投诉首屏加载完成")
-            return True
+        try:
+            sta = self.is_element_exist(ReportLocator.TV_REPORT_XPATH, timeout=timeout)
+            if sta:
+                logger.info("✅ [Action-Report] 投诉首屏加载完成")
+                return True
+        except Exception:
+            pass
         logger.warning("❌ [Action-Report] 投诉首屏加载失败")
         return False
 

@@ -14,11 +14,10 @@ class MomentsPage(BasePage):
     # 朋友圈页面-基础功能
     # ============================================================================
     # 动态 - 等待朋友圈页面加载完成
-    def wait_for_moments_page_load(self, timeout: int = 10, raise_exception: bool = True) -> bool:
+    def wait_for_moments_page_load(self, timeout: int = 10) -> bool:
         """ 动态 - 等待朋友圈页面加载完成"""
-        logger.info(f"⏳ [Wait-moments] 等待朋友圈页面加载完成，超时时间 {timeout} 秒")
         try:
-            is_visible = self.get_attribute(MomentsLocator.TV_MOMENTS, 'text') == '动态'
+            is_visible = self.is_element_exist(MomentsLocator.TV_MOMENTS_XPATH, timeout=timeout)
             logger.info(f"✅ [Wait-moments] 朋友圈页面加载完成, 标题是否显示: {is_visible}")
             return bool(is_visible)
         except Exception:
@@ -36,6 +35,24 @@ class MomentsPage(BasePage):
         """ 动态 - 点击发布朋友圈按钮"""
         self.click(MomentsLocator.IV_CAMERA)
         logger.info("🚀 [Action-moments]点击发布朋友圈按钮")
+    
+    # 动态 - 点击拍摄
+    def click_camera(self):
+        """ 动态 - 点击拍摄"""
+        self.click(MomentsLocator.CL_SHOOTING)
+        logger.info("🚀 [Action-moments]点击拍摄")
+    
+    # 动态 - 点击从相册选择
+    def click_album(self):
+        """ 动态 - 点击从相册选择"""
+        self.click(MomentsLocator.TV_GALLERY)
+        logger.info("🚀 [Action-moments]点击从相册选择")
+    
+    # 动态 - 点击取消
+    def click_cancel(self):
+        """ 动态 - 点击取消"""
+        self.click(MomentsLocator.FB_CANCEL)
+        logger.info("🚀 [Action-moments]点击取消")
 
     # 动态 - 输入朋友圈文字内容
     def input_moments_content(self, text: str):
@@ -46,14 +63,27 @@ class MomentsPage(BasePage):
     # 动态 - 点击发表按钮
     def click_publish(self):
         """ 动态 - 点击发表按钮"""
-        self.click(MomentsLocator.TV_SEND)
+        self.click(MomentsLocator.FB_ACTION)
         logger.info("🚀 [Action-moments]点击发表按钮")
 
+    # ============================================================================
+    # 朋友圈 - 快速发布动态
+    # ============================================================================
     # 动态 - 快速发布一条纯文字动态
     def post_text_moment(self, text: str):
         """ 动态 - 快速发布一条纯文字动态"""
-        self.click_post_moments()
+        logger.info(f"🚀 [Action-moments]长按朋友圈按钮，快速发表一条纯文字动态，文字内容: {text}")
+        elem = self.find_element(MomentsLocator.IV_CAMERA, timeout=2)
+        self.long_press_action(found_ele=elem, hold_time=1000)
         self.input_moments_content(text)
+        self.click_publish()
+    
+    # 动态 - 快速发布一条图片动态
+    def post_image_moment(self, image_path: str):
+        """ 动态 - 快速发布一条图片动态"""
+        self.click_post_moments()
+        self.click_album()
+        self.select_image_from_album(image_path)
         self.click_publish()
 
     # 动态 - 判断朋友圈发布编辑页是否展示
@@ -94,15 +124,15 @@ class MomentsPage(BasePage):
             logger.info(f"🔍 [Check-moments] 当前可见朋友圈正文内容-Item个数: {len(content_elems)}")
         return content_elems
     
-    # 动态 - 获取当前页面可见的朋友圈正文内容-Text
-    def get_visible_moment_contents_text(self) -> list[str]:
-        """ 动态 - 获取当前页面可见的朋友圈正文内容-Text"""
-        content_texts = self.get_visible_moment_contents_item()
-        if content_texts == []:
-            logger.warning(f"⚠️ [Check-moments] 当前页面不可见朋友圈正文内容-Text")
+    # 动态 - 获取当前页面可见的朋友圈正文内容列表-Text
+    def get_visible_moment_contents(self) -> list[str]:
+        """ 动态 - 获取当前页面可见的朋友圈正文内容列表-Text"""
+        content_elems = self.get_visible_moment_contents_item()
+        if not content_elems:
+            logger.warning(f"⚠️ [Check-moments] 当前页面不可见朋友圈正文内容")
             return []
-        content_texts = [item.get_attribute('text') for item in content_texts]
-        logger.info(f"🔍 [Check-moments] 当前可见朋友圈正文内容-Text: {content_texts}")
+        content_texts = [item.get_attribute('text') for item in content_elems]
+        logger.info(f"🔍 [Check-moments] 当前可见朋友圈正文内容: {content_texts}")
         return content_texts
 
     # 动态 - 删除动态
@@ -140,16 +170,37 @@ class MomentsPage(BasePage):
     # 动态 - 下拉刷新朋友圈列表
     def refresh_moments(self):
         """ 动态 - 下拉刷新朋友圈列表"""
-        self.swipe_page(slid_type="down", duration=300, times=1)
+        self.swipe_page(slid_type="down", duration=300)
         logger.info("🚀 [Action-moments]下拉刷新朋友圈列表")
         time.sleep(0.5)
 
     # 动态 - 上滑加载更多朋友圈列表
     def load_more_moments(self):
         """ 动态 - 上滑加载更多朋友圈列表"""
-        self.swipe_page(slid_type="up", duration=300, times=1)
+        self.swipe_page(slid_type="up", duration=300)
         logger.info("🚀 [Action-moments]上滑加载更多朋友圈列表")
         time.sleep(0.5)
+    
+    # 动态 - 快速上滑加载最后一条朋友圈动态
+    def fast_load_more_moments(self, max_swipes: int = 200) -> bool:
+        """ 动态 - 快速上滑加载最后一条朋友圈动态 (使用高性能稀疏 DOM 边界检测)"""
+        swipe_times = 0
+        last_source = ""
+        
+        while max_swipes > 0:
+            if swipe_times > 0 and swipe_times % 10 == 0:
+                is_changed, last_source = self.is_page_source_changed(last_source)
+                if not is_changed:
+                    logger.info(f"✅ [Action-moments] 检测到页面 DOM 无变化，物理边界触底（滑动 {swipe_times} 次），安全终止。")
+                    return True
+                    
+            self.swipe_page(slid_type="up", duration=200, x_ratio=0.8)
+            swipe_times += 1
+            logger.info(f"🚀 [Action-moments]快速上滑加载最后一条朋友圈动态第{swipe_times}次")
+            time.sleep(0.8)
+            max_swipes -= 1
+        return False
+    
     
     # ============================================================================
     # 点赞和评论
@@ -301,7 +352,7 @@ class MomentsPage(BasePage):
         time.sleep(0.5)
 
     # 动态 - 删除自己发布的评论并二次确认
-    def delete_own_comment_with_confirm(self,comment_text: str, nickname: str = ""):
+    def delete_own_comment_with_confirm(self, comment_text: str, nickname: str = ""):
         """ 动态 - 删除自己发布的评论并二次确认"""
         self.delete_own_comment(comment_text,nickname)
         self.confirm_delete_comment()
@@ -320,7 +371,5 @@ class MomentsPage(BasePage):
         logger.info(f"🔍 [Check-moments] 朋友圈信息流中是否存在包含 [{text}] 的动态: {found}")
         return found
 
-    def get_visible_moment_contents(self) -> list[str]:
-        """ 向前兼容：获取当前页面可见的朋友圈正文内容 """
-        return self.get_visible_moment_contents_text()
+
 

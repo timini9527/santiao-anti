@@ -25,7 +25,8 @@ class CommonLocator:
     # 右上角完成按钮 通用
     TOP_FB_ACTION_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/fb_action')
     # 中间标题 通用
-    TOP_TV_TITLE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_title')
+    TOP_TV_TITLE_ID = f'{PACKAGE_ID}/tv_title'
+    TOP_TV_TITLE = (AppiumBy.ID, TOP_TV_TITLE_ID)
 
     # Toast 提示 (兼容应用内 ID 定位和系统级级 Toast 定位)
     # TOAST_MSG = (AppiumBy.ID, f'{PACKAGE_ID}/toast_message')

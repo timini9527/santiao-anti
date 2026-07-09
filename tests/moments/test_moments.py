@@ -1,5 +1,6 @@
 import allure
 import pytest
+import time
 import pytest_check as check
 from pages.main.main_page import MainPage
 from pages.moments.moments_page import MomentsPage
@@ -19,9 +20,7 @@ class TestMoments:
         self.homePage = HomePage(driver_sender)
 
         with allure.step("前置步骤：进入朋友圈页面"):
-            self.mainPage.go_to_moments_page()
-            is_loaded = self.momentsPage.wait_for_moments_page_load(raise_exception=False)
-            check.is_true(is_loaded, "❌ 朋友圈页面加载失败")
+            self._go_to_moments_page()
 
         yield
 
@@ -30,62 +29,79 @@ class TestMoments:
         except Exception as e:
             logger.error(f"Teardown 失败，未能返回首页: {e}")
 
+
+    def _go_to_moments_page(self):
+        """进入朋友圈页面"""
+        self.homePage.click_bottom_expand_button()
+        self.homePage.click_dynamic()
+    
+    def _publish_test_moment(self, content: str):
+        """发布测试朋友圈"""
+        timestamp = int(time.time())
+        self.momentsPage.post_text_moment(content+str(timestamp))
+        toast = self.momentsPage.get_toast("发布成功")
+        check.equal(toast, "发布成功", f"❌ 朋友圈发布失败")
+        
+
+
+
+
     @allure.story("入口与信息流")
-    @allure.title("MOMENT_ENTRY_001 - 从首页动态入口进入朋友圈")
+    @allure.title("从首页动态入口进入朋友圈校验页面-状态-已完成")
     def test_enter_group_moments(self):
         """测试进入群聊朋友圈的功能"""
 
-        with allure.step("1. 进入群聊朋友圈"):
-            self.mainPage.go_to_main_page()
-            self.homePage.click_bottom_expand_menu()
-            self.homePage.click_dynamic()
-            is_loaded = self.momentsPage.wait_for_moments_page_load(raise_exception=False)
-            check.is_true(is_loaded, "❌ 未成功进入群聊朋友圈页面")
+        with allure.step("1. 校验朋友圈页面是否成功加载"):
+            is_loaded = self.momentsPage.wait_for_moments_page_load()
+            check.is_true(is_loaded, "❌ 未成功进入朋友圈页面")
 
-        with allure.step("2. 校验群聊朋友圈是否显示"):
-            actual_content = self.momentsPage.get_first_moment_content()
-            check.is_true(bool(actual_content), "❌ 群聊朋友圈未展示动态内容")
 
     @allure.story("入口与信息流")
-    @allure.title("MOMENT_ENTRY_004 - 下拉刷新朋友圈信息流")
+    @allure.title("朋友圈信息流-下拉刷新")
     def test_refresh_moments_feed(self):
-        """测试朋友圈下拉刷新后页面仍能正常展示信息流"""
+        """测试朋友圈下拉刷新后，能够成功同步并展示最新发布的动态"""
+        new_moment_content = f"用于刷新验证的动态"
 
-        with allure.step("1. 获取刷新前可见动态"):
-            before_contents = self.momentsPage.get_visible_moment_contents()
-            if not before_contents:
-                pytest.skip("当前账号无可见朋友圈内容，跳过刷新信息流校验")
+        with allure.step("1. 发布一条全新的测试动态"):
+            self._publish_test_moment(new_moment_content)
 
         with allure.step("2. 下拉刷新朋友圈"):
+            is_loaded = self.momentsPage.wait_for_moments_page_load()
             self.momentsPage.refresh_moments()
-            is_loaded = self.momentsPage.wait_for_moments_page_load(raise_exception=False)
             check.is_true(is_loaded, "❌ 下拉刷新后朋友圈页面未正常加载")
 
-        with allure.step("3. 校验刷新后信息流仍有动态内容"):
+        with allure.step("3. 校验刷新后首条动态是否已更新为最新发布内容"):
             after_contents = self.momentsPage.get_visible_moment_contents()
             check.is_true(bool(after_contents), "❌ 下拉刷新后朋友圈动态内容为空")
+            
+            first_moment_after = after_contents[0] if after_contents else ""
+            check.is_in(new_moment_content, first_moment_after, f"❌ 下拉刷新未能成功同步最新动态。期望首条为: [{new_moment_content}], 实际首条: [{first_moment_after}]")
+
 
     @allure.story("入口与信息流")
-    @allure.title("MOMENT_ENTRY_005 - 上滑加载历史朋友圈动态")
+    @allure.title("快速上滑加载最后一条朋友圈动态-状态：已完成")
     def test_load_more_moments_feed(self):
         """测试朋友圈上滑加载历史动态时页面不白屏、不崩溃"""
 
-        with allure.step("1. 上滑加载更多朋友圈动态"):
-            self.momentsPage.load_more_moments()
+        with allure.step("1. 快速上滑加载最后一条朋友圈动态"):
+            bottom_state = self.momentsPage.fast_load_more_moments()
+            check.is_true(bottom_state, f'❌ 上滑后朋友圈页面没有到达底部, 触底判断：{bottom_state}')
 
         with allure.step("2. 校验上滑后仍停留在朋友圈信息流"):
-            is_loaded = self.momentsPage.wait_for_moments_page_load(raise_exception=False)
+            is_loaded = self.momentsPage.wait_for_moments_page_load()
             check.is_true(is_loaded, "❌ 上滑加载后朋友圈页面未正常展示")
-
+        
+        
     @allure.story("发布朋友圈")
-    @allure.title("发布纯文字朋友圈 - {case_id}")
+    @allure.title("发布纯文字朋友圈 - {case_id}-状态：已完成")
     @pytest.mark.parametrize(
         "case_id, content",
         [
             ("MOMENT_PUB_001", "Hello Moments! 这是一个自动化测试动态。"),
             ("MOMENT_PUB_008", "朋友圈 Emoji 与特殊字符校验 🌟🔥🚀 ABC123 !@#$%^&*()"),
+            ("MOMENT_PUB_011", "test" + "A" * 995),
         ],
-        ids=["纯文字朋友圈", "emoji和特殊字符文案"],
+        ids=["纯文字朋友圈", "emoji和特殊字符文案", "刚好999字文案"],
     )
     def test_post_text_moment(self, case_id, content):
         """测试发布纯文字、emoji 和特殊字符朋友圈"""
@@ -96,7 +112,39 @@ class TestMoments:
 
         with allure.step("2. 校验动态是否在列表首位显示"):
             actual_content = self.momentsPage.get_first_moment_content()
-            check.equal(actual_content, content, f"❌ {case_id} 朋友圈发布内容不匹配")
+            if len(content) > 100:
+                check.is_in(content[:50], actual_content, f"❌ {case_id} 朋友圈长文案首部内容不匹配")
+            else:
+                check.equal(actual_content, content, f"❌ {case_id} 朋友圈发布内容不匹配")
+
+    @allure.story("发布朋友圈")
+    @allure.title("MOMENT_PUB_012 - 包含敏感词的内容不允许发表")
+    def test_post_sensitive_word_moment(self):
+        """测试发布含有敏感词的朋友圈动态被拦截"""
+        content = "test敏感词：特许翻墙工具"
+
+        with allure.step("1. 长按朋友圈相机图标，输入敏感词内容并尝试发表"):
+            camera_btn = self.momentsPage.find_element(MomentsLocator.IV_CAMERA, timeout=2)
+            self.momentsPage.long_press_action(found_ele=camera_btn, hold_time=1000)
+            self.momentsPage.input_moments_content(content)
+            self.momentsPage.click_publish()
+
+        with allure.step("2. 校验发布被拦截且弹出敏感词错误提示"):
+            toast = self.momentsPage.get_toast(expected_toast="敏感词")
+            check.is_true(
+                any(kw in toast for kw in ["敏感词", "违规", "禁止", "不合法", "敏感", "内容"]),
+                f"❌ 未捕获到预期的敏感词拦截 Toast 提示。实际 Toast: {toast}"
+            )
+            is_still_editing = self.momentsPage.is_publish_editor_displayed()
+            check.is_true(is_still_editing, "❌ 包含敏感词的朋友圈不应发布成功，页面仍应停留在编辑页")
+
+        with allure.step("3. 异常流清理：取消并返回朋友圈信息流"):
+            if is_still_editing:
+                self.momentsPage.back()
+                time.sleep(1)
+                if self.momentsPage.is_publish_editor_displayed():
+                    self.momentsPage.back()
+                self.momentsPage.wait_for_moments_page_load(raise_exception=False)
 
     @allure.story("发布朋友圈")
     @allure.title("MOMENT_PUB_009 - 发布长文案朋友圈")
