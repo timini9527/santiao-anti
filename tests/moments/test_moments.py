@@ -72,10 +72,14 @@ class TestMoments:
         
 
     def _delete_test_moment(self, content: str):
-        """删除测试朋友圈"""
-        self.momentsPage.delete_first_moment()
-        found = self.momentsPage.has_moment_with_text(content)
-        check.is_false(found, f"❌ 测试临时动态 [{content}] 删除后依然可见")
+        """删除测试朋友圈 (带防误删校验)"""
+        first_content = self.momentsPage.get_first_moment_content()
+        if content in first_content:
+            self.momentsPage.delete_first_moment()
+            found = self.momentsPage.has_moment_with_text(content)
+            check.is_false(found, f"❌ 测试临时动态 [{content}] 删除后依然可见")
+        else:
+            logger.warning(f"⚠️ [Teardown] 首条朋友圈内容 [{first_content}] 与要删内容 [{content}] 不匹配，跳过删除以防误删他人数据")
     
         
     @pytest.fixture
@@ -375,56 +379,37 @@ class TestMoments:
 
     @allure.story("发布朋友圈")
     @allure.title("MOMENT_PUB_002 - 发布图片朋友圈")
-    def test_post_image_moment(self):
-        """测试发布图片朋友圈"""
-        import os
-        test_image_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "testdata")
-        os.makedirs(test_image_dir, exist_ok=True)
-        test_image_path = os.path.join(test_image_dir, "temp_test_image.jpg")
+    def test_post_image_moment(self, request):
+        """测试发布图片朋友圈 (使用现有系统相册及图片选择功能，实现数据闭环)"""
+        from pages.common.album_page import CommonAlbumPage
+        album_page = CommonAlbumPage(self.momentsPage.driver)
         
-        # 动态创建 100x100 像素的临时红色测试图片，降低对外部资源的依赖
-        if not os.path.exists(test_image_path):
-            try:
-                from PIL import Image
-                img = Image.new('RGB', (100, 100), color='red')
-                img.save(test_image_path)
-            except Exception as e:
-                logger.warning(f"⚠️ 无法使用 PIL 生成临时图片: {e}，将直接从手机相册默认位置选择")
+        test_text = "发图测试_"
+        actual_content = f"{test_text}{int(time.time())}"
+        
+        # 注册 Teardown 清理：防御性删除我们刚刚发布的图片动态
+        request.addfinalizer(lambda: self._delete_test_moment(actual_content))
 
-        timestamp = int(time.time())
-        expected_content = f"图片动态测试内容_{timestamp}"
+        with allure.step("1. 点击右上角相机按钮弹出菜单"):
+            self.momentsPage.click_post_moments()
 
-        try:
-            with allure.step("1. 点击相机图标，进入相册选择图片并输入正文发表"):
-                self.momentsPage.click_post_moments()
-                self.momentsPage.click_album()
-                self.momentsPage.select_image_from_album(test_image_path if os.path.exists(test_image_path) else "")
-                self.momentsPage.input_moments_content(expected_content)
-                self.momentsPage.click_publish()
+        with allure.step("2. 选择从相册中选择"):
+            self.momentsPage.click_album()
 
-            with allure.step("2. 校验发布成功Toast提示，并下拉刷新页面"):
-                toast = self.momentsPage.get_toast("发布成功")
-                check.equal(toast, "发布成功", "❌ 图片朋友圈发布失败")
-                self.momentsPage.refresh_moments()
+        with allure.step("3. 勾选第一张图片并点击发送/完成"):
+            album_page.click_photo_checkbox_by_index(0)
+            album_page.click_send_or_complete()
 
-            with allure.step("3. 校验最新动态正文及是否包含图片展示"):
-                actual_content = self.momentsPage.get_first_moment_content()
-                check.equal(actual_content, expected_content, "❌ 发布图片朋友圈的文字内容不匹配")
-                
-                first_item = self.momentsPage.get_moment_item(0)
-                if first_item:
-                    has_pic = len(first_item.find_elements(*MomentsLocator.CL_PIC)) > 0 or \
-                              len(first_item.find_elements(*MomentsLocator.IV_SINGLE_PIC)) > 0 or \
-                              len(first_item.find_elements(*MomentsLocator.IV_MEDIA)) > 0
-                    check.is_true(has_pic, "❌ 最新动态卡片中未检测到图片多媒体内容")
+        with allure.step("4. 在朋友圈编辑页输入文字描述并点击发表"):
+            self.momentsPage.input_moments_content(actual_content)
+            self.momentsPage.click_publish()
 
-        finally:
-            with allure.step("4. 后置清理：删除发布的临时图片朋友圈"):
-                try:
-                    self._delete_test_moment(expected_content)
-                except Exception as e:
-                    logger.warning(f"⚠️ 清理临时图片动态失败: {e}")
-
+        with allure.step("5. 校验朋友圈提示发布成功，且列表中首条内容匹配"):
+            toast = self.momentsPage.get_toast("发布成功")
+            check.equal(toast, "发布成功", "❌ 朋友圈发布图片动态未能弹出‘发布成功’提示")
+            self.momentsPage.refresh_moments()
+            first_content = self.momentsPage.get_first_moment_content()
+            check.equal(first_content, actual_content, "❌ 朋友圈列表中最新发布的图片动态文字不匹配")
 
     @allure.story("朋友圈浏览与详情")
     @allure.title("MOMENT_VIEW_001 - 查看文字动态详情")

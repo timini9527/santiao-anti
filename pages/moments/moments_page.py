@@ -141,44 +141,6 @@ class MomentsPage(BasePage):
         self.click_album()
         self.select_image_from_album(image_path)
         self.click_publish()
-    # 动态 - 从相册中选择图片
-    def select_image_from_album(self, image_path: str = ""):
-        """ 动态 - 从相册中选择图片（默认选择相册中的第一张图片）"""
-        if image_path:
-            try:
-                # 尝试将图片推送到手机相册目录中
-                self.driver.push_file("/sdcard/DCIM/Camera/test_image.jpg", source_path=image_path)
-                logger.info(f"🚀 [Action-moments] 已将图片推送至手机相册目录: {image_path}")
-                time.sleep(1)
-            except Exception as e:
-                logger.warning(f"⚠️ [Action-moments] 推送图片文件失败: {e}，将直接在相册中选择第一张图片")
-
-        # 尝试多重兼容性 XPATH 挑选第一张图片
-        locators = [
-            (AppiumBy.XPATH, '//android.widget.GridView/android.widget.FrameLayout[1]'),
-            (AppiumBy.XPATH, '//android.widget.GridView/android.widget.RelativeLayout[1]'),
-            (AppiumBy.XPATH, '//android.widget.GridView/android.view.ViewGroup[1]'),
-            (AppiumBy.XPATH, '//android.widget.ImageView[contains(@content-desc, "Photo") or contains(@content-desc, "图片")][1]'),
-            (AppiumBy.XPATH, '//android.widget.ImageView[1]'),
-        ]
-        
-        selected = False
-        for loc in locators:
-            elem = self.find_element(loc, timeout=2, raise_exception=False)
-            if elem:
-                elem.click()
-                logger.info(f"🚀 [Action-moments] 成功通过定位器 {loc} 选中了相册中的第一张图片")
-                selected = True
-                break
-                
-        if not selected:
-            logger.warning("⚠️ [Action-moments] 未能精准定位到相册中的第一张图片，将尝试点击相册九宫格首位估算坐标...")
-            window_size = self.driver.get_window_size()
-            width = window_size['width']
-            height = window_size['height']
-            self.click_coordinate(int(width * 0.25), int(height * 0.3))
-        
-        time.sleep(1)
 
     # 动态 - 判断朋友圈发布编辑页是否展示
     def is_publish_editor_displayed(self) -> bool:
