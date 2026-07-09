@@ -264,11 +264,9 @@ class TestMoments:
 
         allure.dynamic.title(f"评论朋友圈 - {case_id} - {desc}")
 
-        # 增加参数化用例计数器
         self.__class__._comment_test_counter += 1
         total_cases = len(self.__class__._comment_cases_data)
 
-        # 发送新的朋友圈进行测试，但整个套件中只执行一次发布
         with allure.step("1. 前置条件：确保评论专用的临时朋友圈动态已发布"):
             if self.__class__._shared_comment_moment_content is None:
                 timestamp = int(time.time())
@@ -338,7 +336,6 @@ class TestMoments:
                     except Exception as e:
                         logger.warning(f"⚠️ 清理本条截断评论失败: {e}")
 
-            # 最后一个参数化用例执行完后，删除发布的朋友圈
             if self.__class__._comment_test_counter >= total_cases:
                 with allure.step("6. 终期清理：所有评论参数化用例运行完毕，删除共享朋友圈"):
                     if self.__class__._shared_comment_moment_content:
@@ -347,7 +344,6 @@ class TestMoments:
                         except Exception as e:
                             logger.error(f"⚠️ 清理评论专用朋友圈失败: {e}")
                         finally:
-                            # 变量复位以防下轮迭代
                             self.__class__._shared_comment_moment_content = None
                             self.__class__._comment_test_counter = 0
 

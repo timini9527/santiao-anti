@@ -97,8 +97,8 @@ comment_cases:
       behavior: "success"
       toast: ""
     desc: "评论包含emoji和特殊字符"
-
-  # 边界与异常拦截用例
+  
+  # TODO：Android有bug，发送后不能及时看到
   - id: "MOMENT_INTER_010"
     priority: "P1"
     tags: ["boundary", "invalid", "over_limit"]
@@ -108,6 +108,7 @@ comment_cases:
       toast: "内容最多支持999个字"
     desc: "评论超过999字限制的超长评论，校验999字截断行为"
 
+  # TODO：Android有bug，发送后不能及时看到
   - id: "MOMENT_INTER_011"
     priority: "P0"
     tags: ["security", "invalid", "sensitive_words"]
