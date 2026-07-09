@@ -64,7 +64,8 @@ class TestMoments:
         self.momentsPage.post_text_moment(actual_content)
         toast = self.momentsPage.get_toast("发布成功")
         check.equal(toast, "发布成功", f"❌ 朋友圈发布失败")
-        # Android端有BUG，每次点击发布后必须下拉刷新才能看到最新发布
+
+        # TODO: Android端有BUG，每次点击发布后必须下拉刷新才能看到最新发布
         self.momentsPage.refresh_moments()
         check.equal(actual_content, self.momentsPage.get_first_moment_content(), f"❌ 朋友圈未能正常发布测试动态{actual_content}")
         return actual_content
@@ -272,10 +273,6 @@ class TestMoments:
             if self.__class__._shared_comment_moment_content is None:
                 actual_published = self._publish_test_moment("评论测试专用动态_")
                 self.__class__._shared_comment_moment_content = actual_published
-                logger.info(f"🆕 成功为评论测试套件发布专用动态: '{actual_published}'")
-            else:
-                logger.info(f"🔄 复用评论测试专用动态: '{self.__class__._shared_comment_moment_content}'")
-
         try:
             with allure.step(f"2. 为该动态发表评论：{desc}"):
                 self.momentsPage.click_comment_on_nth_moment(0)
@@ -350,15 +347,31 @@ class TestMoments:
     @allure.title("MOMENT_INTER_008 - 评论为空不可发送")
     def test_empty_comment_cannot_send(self):
         """测试空评论不能成功发送"""
+        test_content = "空评论测试临时动态_"
+        with allure.step("1. 前置造数据：发布一条临时朋友圈"):
+            actual_content = self._publish_test_moment(test_content)
 
-        with allure.step("1. 获取发送空评论前的评论列表"):
-            before_comments = self.momentsPage.get_comment_texts()
+        try:
+            with allure.step("2. 获取发送空评论前的评论列表"):
+                before_comments = self.momentsPage.get_comment_texts(raise_exception=False)
 
-        with allure.step("2. 不输入内容直接尝试发送评论"):
-            after_comments = self.momentsPage.try_send_empty_comment()
+            with allure.step("3. 点击评论按钮并不输入内容尝试点击发送"):
+                self.momentsPage.click_comment_on_nth_moment(0)
+                self.momentsPage.send_comment()
 
-        with allure.step("3. 校验评论列表未新增空评论"):
-            check.equal(after_comments, before_comments, "❌ 空评论不应被成功发送")
+            with allure.step("4. 校验评论列表未新增空评论且未成功发送"):
+                time.sleep(1)
+                after_comments = self.momentsPage.get_comment_texts(raise_exception=False)
+                check.equal(after_comments, before_comments, "❌ 空评论不应被成功发送，评论列表应当保持不变")
+
+        finally:
+            with allure.step("5. 后置清理：清理评论输入框并删除该临时测试动态"):
+                try:
+                    self.momentsPage.driver.hide_keyboard()
+                except Exception:
+                    pass
+                self._delete_test_moment(actual_content)
+
 
     @allure.story("发布朋友圈")
     @allure.title("MOMENT_PUB_002 - 发布图片朋友圈")
