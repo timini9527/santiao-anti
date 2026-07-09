@@ -5,7 +5,6 @@ import pytest_check as check
 from pages.main.main_page import MainPage
 from pages.moments.moments_page import MomentsPage
 from pages.home.home_page import HomePage
-from locators.moments.moments_locator import MomentsLocator
 from core.logger_utils import logger
 
 
@@ -96,36 +95,52 @@ class TestMoments:
     @allure.story("发布朋友圈")
     @allure.title("发布纯文字朋友圈 - {case_id}-状态：已完成")
     @pytest.mark.parametrize(
-        "case_id, content",
+        "case_id, content, expected_behavior",
         [
-            ("MOMENT_PUB_001", "Hello Moments! 这是一个自动化测试动态。"),
-            ("MOMENT_PUB_008", "朋友圈 Emoji 与特殊字符校验 🌟🔥🚀 ABC123 !@#$%^&*()"),
+            ("MOMENT_PUB_001", "Hello Moments! 这是一个自动化测试动态。", "success"),
+            ("MOMENT_PUB_008", "朋友圈 Emoji 与特殊字符校验 🌟🔥🚀 ABC123 !@#$%^&*()", "success"),
+            ("MOMENT_PUB_009", "朋友圈长文本展示校验：" + "自动化长文本内容" * 20, "success"),
+            ("MOMENT_PUB_011", "A" * 1005, "truncated"),
+            ("MOMENT_PUB_012", "包含敏感词的动态测试：特务，涉毒，暴恐", "blocked"),
         ],
-        ids=["纯文字朋友圈", "emoji和特殊字符文案"],
+        ids=["纯文字朋友圈", "emoji和特殊字符文案", "长文本动态", "超过999字长文案限制", "敏感词朋友圈拦截"],
     )
-    def test_post_text_moment(self, case_id, content):
-        """测试发布纯文字、emoji 和特殊字符朋友圈"""
+    def test_post_text_moment(self, case_id, content, expected_behavior):
+        """测试发布不同文字内容的朋友圈（普通、Emoji、长文本、超长限制、敏感词）"""
         allure.dynamic.title(f"发布纯文字朋友圈 - {case_id}")
 
-        with allure.step(f"1. 发布动态：{content}"):
+        with allure.step(f"1. 尝试发布动态内容"):
             self.momentsPage.post_text_moment(content)
 
-        with allure.step("2. 校验动态是否在列表首位显示"):
-            actual_content = self.momentsPage.get_first_moment_content()
-            check.equal(actual_content, content, f"❌ {case_id} 朋友圈发布内容不匹配")
+        if expected_behavior == "success":
+            with allure.step("2. 校验动态是否完整显示在列表首位"):
+                actual_content = self.momentsPage.get_first_moment_content()
+                check.equal(actual_content, content, f"❌ {case_id} 朋友圈发布内容不匹配")
 
-    @allure.story("发布朋友圈")
-    @allure.title("MOMENT_PUB_009 - 发布长文案朋友圈")
-    def test_post_long_text_moment(self):
-        """测试发布长文案朋友圈后关键内容不丢失"""
-        content = "朋友圈长文本展示校验：" + "自动化长文本内容" * 20
+        elif expected_behavior == "truncated":
+            with allure.step("2. 校验发布成功后列表首条动态被自动截断限制为 999 字符"):
+                actual_content = self.momentsPage.get_first_moment_content()
+                check.equal(len(actual_content), 999, f"❌ {case_id} 朋友圈文字长度未限制为 999 字符")
+                check.equal(actual_content, content[:999], f"❌ {case_id} 截断后的朋友圈内容不匹配")
 
-        with allure.step("1. 发布长文案动态"):
-            self.momentsPage.post_text_moment(content)
-
-        with allure.step("2. 校验列表首位包含长文案关键内容"):
-            actual_content = self.momentsPage.get_first_moment_content()
-            check.is_in("朋友圈长文本展示校验", actual_content, "❌ 长文案朋友圈关键内容未展示")
+        elif expected_behavior == "blocked":
+            with allure.step("2. 校验拦截提示 Toast 并确认页面未退出发表编辑页"):
+                toast = self.momentsPage.get_toast(expected_toast="敏感词")
+                if not toast:
+                    toast = self.momentsPage.get_toast(expected_toast="违规")
+                logger.info(f"捕获到的 Toast 提示: {toast}")
+                check.is_true(len(toast) > 0, "❌ 未能捕获到敏感词拦截提示 Toast")
+                
+                is_still_editing = self.momentsPage.is_publish_editor_displayed()
+                check.is_true(is_still_editing, "❌ 包含敏感词的朋友圈不应发布成功，但当前页面已退出编辑页")
+                
+                if is_still_editing:
+                    self.momentsPage.back()
+                    try:
+                        self.momentsPage.click_by_UiSelector_text("放弃")
+                    except Exception:
+                        pass
+                    self.momentsPage.wait_for_moments_page_load(raise_exception=False)
 
     @allure.story("发布朋友圈")
     @allure.title("MOMENT_PUB_010 - 不填写内容不可发表")
@@ -139,57 +154,6 @@ class TestMoments:
             check.is_true(is_still_editing, "❌ 空内容朋友圈不应被成功发布")
             if is_still_editing:
                 self.momentsPage.back()
-                self.momentsPage.wait_for_moments_page_load(raise_exception=False)
-
-    @allure.story("发布朋友圈")
-    @allure.title("MOMENT_PUB_011 - 发布超过999字长文案限制")
-    def test_post_moment_999_limit(self):
-        """测试发布超过999个字符的朋友圈，文案限制为999字"""
-        content = "A" * 1005
-        
-        with allure.step("1. 长按发布纯文字动态并输入1005个字"):
-            elem = self.momentsPage.find_element(MomentsLocator.IV_CAMERA, timeout=2)
-            self.momentsPage.long_press_action(found_ele=elem, hold_time=1000)
-            self.momentsPage.input_moments_content(content)
-            
-        with allure.step("2. 点击发表按钮"):
-            self.momentsPage.click_publish()
-            
-        with allure.step("3. 校验发布成功后列表首条动态被自动截断限制为 999 字符"):
-            self.momentsPage.wait_for_moments_page_load()
-            actual_content = self.momentsPage.get_first_moment_content()
-            check.equal(len(actual_content), 999, f"❌ 朋友圈文字长度未限制为 999 字符，实际长度: {len(actual_content)}")
-
-    @allure.story("发布朋友圈")
-    @allure.title("MOMENT_PUB_012 - 敏感词朋友圈不允许发布")
-    def test_post_moment_sensitive_interception(self):
-        """测试发布包含敏感词的朋友圈动态被拦截"""
-        sensitive_content = "包含敏感词的动态测试：特务，涉毒，暴恐"
-        
-        with allure.step("1. 长按发布纯文字动态并输入敏感词文案"):
-            elem = self.momentsPage.find_element(MomentsLocator.IV_CAMERA, timeout=2)
-            self.momentsPage.long_press_action(found_ele=elem, hold_time=1000)
-            self.momentsPage.input_moments_content(sensitive_content)
-            
-        with allure.step("2. 点击发表按钮"):
-            self.momentsPage.click_publish()
-            
-        with allure.step("3. 校验拦截提示 Toast 并确认页面未退出发表编辑页"):
-            toast = self.momentsPage.get_toast(expected_toast="敏感词")
-            if not toast:
-                toast = self.momentsPage.get_toast(expected_toast="违规")
-            logger.info(f"捕获到的 Toast 提示: {toast}")
-            check.is_true(len(toast) > 0, "❌ 未能捕获到敏感词拦截提示 Toast")
-            
-            is_still_editing = self.momentsPage.is_publish_editor_displayed()
-            check.is_true(is_still_editing, "❌ 包含敏感词的朋友圈不应发布成功，但当前页面已退出编辑页")
-            
-            if is_still_editing:
-                self.momentsPage.back()
-                from appium.webdriver.common.appiumby import AppiumBy
-                confirm_btn = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("放弃")')
-                if self.momentsPage.is_element_exist(confirm_btn, timeout=1.5, raise_exception=False):
-                    self.momentsPage.click(confirm_btn)
                 self.momentsPage.wait_for_moments_page_load(raise_exception=False)
 
     @allure.story("点赞与评论")
