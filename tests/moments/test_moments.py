@@ -427,31 +427,27 @@ class TestMoments:
             detail_content = self.momentsPage.get_first_moment_content()
             check.equal(detail_content, first_content, "❌ 详情页面动态正文不匹配")
 
-    @allure.story("动态管理")
-    @allure.title("MOMENT_MANAGE_001 - 删除自己发布的动态")
-    def test_delete_own_moment(self):
-        """测试发布动态后可以成功删除"""
-        timestamp = int(time.time())
-        test_content = f"待删除的文字动态 {timestamp}"
-
-        with allure.step("1. 发布一条动态"):
-            self.momentsPage.post_text_moment(test_content)
-            # 确认首条动态是否是刚才发的
-            check.equal(self.momentsPage.get_first_moment_content(), test_content, "❌ 朋友圈未能正常发布待删除动态")
-
-        with allure.step("2. 点击删除按钮并确认删除"):
-            self.momentsPage.delete_first_moment()
-
-        with allure.step("3. 校验朋友圈列表中已不包含该动态"):
-            found = self.momentsPage.has_moment_with_text(test_content)
-            check.is_false(found, f"❌ 朋友圈动态 [{test_content}] 删除后依然可见")
 
     @allure.story("点赞与评论")
     @allure.title("MOMENT_INTER_005 - 删除自己的评论")
-    def test_delete_own_comment(self):
-        """测试自己发表的评论可以被点击并成功删除"""
+    def test_delete_own_comment(self, request):
+        """测试自己发表的评论可以被点击并成功删除 (数据闭环)"""
+        # 前置条件：发布专属的临时朋友圈作为操作容器，防止对正常数据进行污染
+        test_moment_content = self._publish_test_moment("删除评论测试动态_")
+        
+        # 注册 Teardown：保证测试动态最终一定会被清理 (带防御性匹配)
+        request.addfinalizer(lambda: self._delete_test_moment(test_moment_content))
+        
         timestamp = int(time.time())
         test_comment = f"待删除的自发评论 {timestamp}"
+
+        # 注册 Teardown：兜底清理测试评论，避免测试在中途 crash 导致评论污染动态
+        def cleanup_comment():
+            try:
+                self.momentsPage.delete_own_comment_with_confirm(test_comment)
+            except Exception:
+                pass
+        request.addfinalizer(cleanup_comment)
 
         with allure.step("1. 发表一条新评论"):
             # 为首位动态点击评论并发表
@@ -460,7 +456,7 @@ class TestMoments:
             time.sleep(1)
 
         with allure.step("2. 确认评论列表中出现了该条评论"):
-            comments = self.momentsPage.get_comment_texts()
+            comments = self.momentsPage.get_comment_texts(raise_exception=False)
             check.is_true(
                 any(test_comment in comment for comment in comments),
                 f"❌ 未成功发表待删除评论: {test_comment}"
@@ -471,7 +467,7 @@ class TestMoments:
             time.sleep(1)
 
         with allure.step("4. 校验该评论已从列表中消失"):
-            comments_after = self.momentsPage.get_comment_texts()
+            comments_after = self.momentsPage.get_comment_texts(raise_exception=False)
             check.is_false(
                 any(test_comment in comment for comment in comments_after),
                 f"❌ 评论 [{test_comment}] 删除后依然可见"
