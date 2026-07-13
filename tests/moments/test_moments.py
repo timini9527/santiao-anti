@@ -378,7 +378,7 @@ class TestMoments:
 
 
     @allure.story("发布朋友圈")
-    @allure.title("MOMENT_PUB_002 - 发布图片朋友圈")
+    @allure.title("发布图片朋友圈-状态：已完成")
     def test_post_image_moment(self, request):
         """测试发布图片朋友圈 (使用现有系统相册及图片选择功能，实现数据闭环)"""
         from pages.common.album_page import CommonAlbumPage
@@ -387,9 +387,6 @@ class TestMoments:
         test_text = "发图测试_"
         actual_content = f"{test_text}{int(time.time())}"
         
-        # 注册 Teardown 清理：防御性删除我们刚刚发布的图片动态
-        request.addfinalizer(lambda: self._delete_test_moment(actual_content))
-
         with allure.step("1. 点击右上角相机按钮弹出菜单"):
             self.momentsPage.click_post_moments()
 
@@ -407,9 +404,14 @@ class TestMoments:
         with allure.step("5. 校验朋友圈提示发布成功，且列表中首条内容匹配"):
             toast = self.momentsPage.get_toast("发布成功")
             check.equal(toast, "发布成功", "❌ 朋友圈发布图片动态未能弹出‘发布成功’提示")
+            self.momentsPage.wait_for_moments_page_load()
             self.momentsPage.refresh_moments()
             first_content = self.momentsPage.get_first_moment_content()
             check.equal(first_content, actual_content, "❌ 朋友圈列表中最新发布的图片动态文字不匹配")
+        
+        with allure.step("6. 后置清理：删除发布的图片动态"):
+            self._delete_test_moment(actual_content)
+
 
     @allure.story("朋友圈浏览与详情")
     @allure.title("MOMENT_VIEW_001 - 查看文字动态详情")
