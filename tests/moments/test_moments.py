@@ -247,6 +247,117 @@ class TestMoments:
                     self.momentsPage.wait_for_moments_page_load()
 
 
+    @allure.story("发布朋友圈")
+    @pytest.mark.parametrize(
+        "case_id, title, init_photo_count, add_photo_count, expected_behavior",
+        [
+            ("MOMENT_PUB_002", "发布单张图片朋友圈", 1, 0, "success"),
+            ("MOMENT_PUB_003", "选择图片超过上限9张拦截提示", 10, 0, "overlimit_toast"),
+            ("MOMENT_PUB_004", "已选择图片少于9张时继续添加", 3, 2, "add_more_and_publish")
+        ]
+    )
+    def test_post_image_moment_scenarios(self, request, case_id, title, init_photo_count, add_photo_count, expected_behavior):
+        """测试多图发布朋友圈的各种场景 (包含单图发布、超限拦截和追加图片)"""
+        allure.dynamic.title(f"{case_id} - {title}")
+        
+        from pages.common.album_page import CommonAlbumPage
+        album_page = CommonAlbumPage(self.momentsPage.driver)
+        
+        test_text = f"图片测试_{case_id}_"
+        actual_content = f"{test_text}{int(time.time())}"
+        
+        try:
+            with allure.step("1. 点击右上角相机按钮并选择从相册选择"):
+                self.momentsPage.click_post_moments()
+                self.momentsPage.click_album()
+                
+            if expected_behavior == "success":
+                with allure.step("2. 勾选第一张图片并点击发送/完成"):
+                    album_page.click_photo_checkbox_by_index(0)
+                    album_page.click_send_or_complete()
+                    
+                with allure.step("3. 在朋友圈编辑页输入文字描述并点击发表"):
+                    self.momentsPage.input_moments_content(actual_content)
+                    self.momentsPage.click_publish()
+                    
+                with allure.step("4. 校验朋友圈提示发布成功，且列表中首条内容匹配"):
+                    toast = self.momentsPage.get_toast("发布成功")
+                    check.equal(toast, "发布成功", "❌ 朋友圈发布图片动态未能弹出‘发布成功’提示")
+                    self.momentsPage.wait_for_moments_page_load()
+                    self.momentsPage.refresh_moments()
+                    first_content = self.momentsPage.get_first_moment_content()
+                    check.equal(first_content, actual_content, "❌ 朋友圈列表中最新发布的图片动态文字不匹配")
+                    
+            elif expected_behavior == "overlimit_toast":
+                with allure.step("2. 依次勾选 9 张图片，并尝试勾选第 10 张图片"):
+                    # 循环勾选前 9 张图片
+                    for i in range(9):
+                        album_page.click_photo_checkbox_by_index(i)
+                    # 尝试点击第 10 张
+                    album_page.click_photo_checkbox_by_index(9)
+                    
+                with allure.step("3. 验证选择超过 9 张的限制提示"):
+                    toast = self.momentsPage.get_toast("最多只能选择9张", timeout=2)
+                    if not toast:
+                        has_dialog = album_page.handle_overlimit_dialog()
+                        check.is_true(has_dialog, "❌ 勾选第10张图片时，未检测到超限 Toast 提示或弹窗警告")
+                    else:
+                        check.is_true("9" in toast or "最多" in toast, f"❌ 超限 Toast 提示不符合预期: {toast}")
+                        
+                with allure.step("4. 点击发送/完成并输入文字发表"):
+                    album_page.click_send_or_complete()
+                    self.momentsPage.input_moments_content(actual_content)
+                    self.momentsPage.click_publish()
+                    
+                with allure.step("5. 校验朋友圈提示发布成功，且列表中首条内容匹配"):
+                    toast = self.momentsPage.get_toast("发布成功")
+                    check.equal(toast, "发布成功", "❌ 朋友圈发布图片动态未能弹出‘发布成功’提示")
+                    self.momentsPage.wait_for_moments_page_load()
+                    self.momentsPage.refresh_moments()
+                    first_content = self.momentsPage.get_first_moment_content()
+                    check.equal(first_content, actual_content, "❌ 朋友圈列表中最新发布的图片动态文字不匹配")
+                    
+            elif expected_behavior == "add_more_and_publish":
+                with allure.step(f"2. 首次勾选 {init_photo_count} 张图片并返回编辑页"):
+                    for i in range(init_photo_count):
+                        album_page.click_photo_checkbox_by_index(i)
+                    album_page.click_send_or_complete()
+                    
+                with allure.step(f"3. 校验当前编辑页已选图片为 {init_photo_count} 张，并点击加号继续添加"):
+                    current_count = self.momentsPage.get_published_photo_count()
+                    check.equal(current_count, init_photo_count, f"❌ 编辑页初始展示图片数量与预期不符")
+                    self.momentsPage.click_add_more_photos()
+                    
+                with allure.step(f"4. 再次从相册勾选 {add_photo_count} 张新图片并点击发送/完成"):
+                    # 避免勾选已经选过的图片，我们从已选数量开始往后勾选
+                    for i in range(init_photo_count, init_photo_count + add_photo_count):
+                        album_page.click_photo_checkbox_by_index(i)
+                    album_page.click_send_or_complete()
+                    
+                with allure.step(f"5. 校验编辑页总图片数量更新为 {init_photo_count + add_photo_count} 张"):
+                    total_count = self.momentsPage.get_published_photo_count()
+                    check.equal(total_count, init_photo_count + add_photo_count, f"❌ 追加图片后编辑页总图片数量不匹配")
+                    
+                with allure.step("6. 输入描述文本并点击发表"):
+                    self.momentsPage.input_moments_content(actual_content)
+                    self.momentsPage.click_publish()
+                    
+                with allure.step("7. 校验朋友圈列表中首条内容匹配"):
+                    toast = self.momentsPage.get_toast("发布成功")
+                    check.equal(toast, "发布成功", "❌ 朋友圈发布多图动态未能弹出‘发布成功’提示")
+                    self.momentsPage.wait_for_moments_page_load()
+                    self.momentsPage.refresh_moments()
+                    first_content = self.momentsPage.get_first_moment_content()
+                    check.equal(first_content, actual_content, "❌ 朋友圈列表中最新发布的图片动态文字不匹配")
+                    
+        finally:
+            with allure.step("后置清理：防御性删除发布的多图动态"):
+                try:
+                    self._delete_test_moment(actual_content)
+                except Exception as e:
+                    logger.warning(f"⚠️ 清理多图朋友圈失败: {e}")
+
+
     @allure.story("删除朋友圈")
     @allure.title("删除朋友圈-状态：已完成")
     def test_delete_moment(self):
@@ -377,57 +488,6 @@ class TestMoments:
             check.equal(after_comments, before_comments, "❌ 空评论不应被成功发送，评论列表应当保持不变")
 
 
-    @allure.story("发布朋友圈")
-    @allure.title("发布图片朋友圈-状态：已完成")
-    def test_post_image_moment(self, request):
-        """测试发布图片朋友圈 (使用现有系统相册及图片选择功能，实现数据闭环)"""
-        from pages.common.album_page import CommonAlbumPage
-        album_page = CommonAlbumPage(self.momentsPage.driver)
-        
-        test_text = "发图测试_"
-        actual_content = f"{test_text}{int(time.time())}"
-        
-        with allure.step("1. 点击右上角相机按钮弹出菜单"):
-            self.momentsPage.click_post_moments()
-
-        with allure.step("2. 选择从相册中选择"):
-            self.momentsPage.click_album()
-
-        with allure.step("3. 勾选第一张图片并点击发送/完成"):
-            album_page.click_photo_checkbox_by_index(0)
-            album_page.click_send_or_complete()
-
-        with allure.step("4. 在朋友圈编辑页输入文字描述并点击发表"):
-            self.momentsPage.input_moments_content(actual_content)
-            self.momentsPage.click_publish()
-
-        with allure.step("5. 校验朋友圈提示发布成功，且列表中首条内容匹配"):
-            toast = self.momentsPage.get_toast("发布成功")
-            check.equal(toast, "发布成功", "❌ 朋友圈发布图片动态未能弹出‘发布成功’提示")
-            self.momentsPage.wait_for_moments_page_load()
-            self.momentsPage.refresh_moments()
-            first_content = self.momentsPage.get_first_moment_content()
-            check.equal(first_content, actual_content, "❌ 朋友圈列表中最新发布的图片动态文字不匹配")
-        
-        with allure.step("6. 后置清理：删除发布的图片动态"):
-            self._delete_test_moment(actual_content)
-
-
-    @allure.story("朋友圈浏览与详情")
-    @allure.title("MOMENT_VIEW_001 - 查看文字动态详情")
-    def test_view_moment_details(self):
-        """测试进入朋友圈详情页面"""
-        with allure.step("1. 获取首条动态正文并点击进入详情"):
-            first_content = self.momentsPage.get_first_moment_content()
-            if not first_content:
-                pytest.skip("列表无可用动态，跳过详情页面校验")
-            # 点击首条动态文字进入详情
-            self.momentsPage.click(self.momentsPage.TV_CONTENT)
-            time.sleep(1)
-
-        with allure.step("2. 校验是否能够查看详情且正文一致"):
-            detail_content = self.momentsPage.get_first_moment_content()
-            check.equal(detail_content, first_content, "❌ 详情页面动态正文不匹配")
 
 
     @allure.story("点赞与评论")

@@ -449,5 +449,35 @@ class MomentsPage(BasePage):
         logger.info(f"🔍 [Check-moments] 朋友圈信息流中是否存在包含 [{text}] 的动态: {found}")
         return found
 
+    def click_add_more_photos(self):
+        """ 动态 - 在发布朋友圈编辑页面，点击加号按钮继续添加图片 """
+        package_id = MomentsLocator.PACKAGE_ID
+        locators = [
+            (AppiumBy.XPATH, f"//android.widget.ImageView[contains(@resource-id, 'iv_add') or contains(@resource-id, 'add')]"),
+            (AppiumBy.XPATH, f"//*[@resource-id='{package_id}/rv_pic']//android.widget.ImageView[last()]"),
+            (AppiumBy.XPATH, f"//android.widget.GridView//android.widget.ImageView[last()]"),
+            (AppiumBy.XPATH, f"//*[@resource-id='{package_id}/rv_pic']/*[last()]")
+        ]
+        for loc in locators:
+            if self.is_element_exist(loc, timeout=2, raise_exception=False):
+                self.click(loc)
+                logger.info(f"🚀 [Action-moments] 成功通过定位器 {loc} 点击了‘继续添加图片’加号按钮")
+                time.sleep(1)
+                return True
+        raise RuntimeError("❌ [Action-moments] 未能定位到发布编辑页面上的‘继续添加图片’加号按钮")
+
+    def get_published_photo_count(self) -> int:
+        """ 动态 - 获取朋友圈发布编辑页面已选中的图片数量 """
+        package_id = MomentsLocator.PACKAGE_ID
+        elems = self.find_elements((AppiumBy.XPATH, f"//*[@resource-id='{package_id}/rv_pic']//android.widget.ImageView"), timeout=2, expect_missing=True)
+        if not elems:
+            elems = self.find_elements((AppiumBy.XPATH, f"//android.widget.GridView//android.widget.ImageView"), timeout=2, expect_missing=True)
+        
+        count = len(elems) if elems else 0
+        if 0 < count < 9:
+            count -= 1
+        logger.info(f"🔍 [Check-moments] 发布编辑页已选图片数量为: {count}")
+        return count
+
 
 
