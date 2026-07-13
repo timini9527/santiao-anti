@@ -39,6 +39,20 @@ class MomentsLocator:
     DIALOG_CANCEL_BTN = CommonLocator.DIALOG_CANCEL_BTN                 # 取消按钮
     BOTTOM_TEXT = (AppiumBy.XPATH, '//*[contains(@text, "没有更多") or contains(@text, "到底了") or contains(@text, "已加载全部")]')
     
+    # 图片和视频区域
+    RV_MEDIA_ID = f'{PACKAGE_ID}/rv_media'                              # 图片和视频列表
+    RV_MEDIA = (AppiumBy.ID, RV_MEDIA_ID)                  
+    # 最后一个元素添加按钮
+    RV_PIC_LAST_VIDEO_GROUP = (AppiumBy.XPATH, f'//*[@resource-id="{RV_MEDIA_ID}"]/android.view.ViewGroup[last()]')
+
+    IV_VIDEO = (AppiumBy.ID, f'{PACKAGE_ID}/iv_video')                  # 朋友圈视频
+    IV_PLAY = (AppiumBy.ID, f'{PACKAGE_ID}/iv_play')                    # 朋友圈播放按钮
+
+
+
+    # 弹窗确认按钮
+    DIALOG_OK_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/btnOk')               # 弹窗确认按钮
+
     TV_EXPEND_ID = f'{PACKAGE_ID}/tv_expand'
     TV_EXPAND = (AppiumBy.ID, TV_EXPEND_ID)                             # 全文展开按钮
     TV_EXPAND_TEXT_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{TV_EXPEND_ID}" and @text="全文"]')  # 全文展开按钮

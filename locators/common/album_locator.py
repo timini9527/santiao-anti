@@ -52,3 +52,44 @@ class CommonAlbumLocator:
     # 选中超过10张的弹窗
     TV_CONTENT = (AppiumBy.ID, f'{PACKAGE_ID}/tv_content')      # 选中超过10张的弹窗内容
     BTN_OK = (AppiumBy.ID, f'{PACKAGE_ID}/btnOk')               # 确认按钮
+
+
+    # ==================================================================================================================
+    # 定向过滤媒体定位器（纯图片、不含视频、仅视频、长图/WebP/GIF等）
+    # ==================================================================================================================
+    # 仅纯图片元素
+    PHOTO_ONLY_IMAGE_ITEM = (AppiumBy.XPATH, f'//*[./*[@resource-id="{PHOTO_ITEM_ID}"]'
+                                            f'and not(./*[@resource-id="{PHOTO_VIDEO_DURATTON_VIEW_ID}"])'
+                                            f'and not(./*[@resource-id="{PHOTO_LONG_IMAGE_VIEW_ID}"])]'
+                                            f'/*[@resource-id="{PHOTO_ITEM_ID}"]')
+    # 仅纯图片勾选按钮
+    PHOTO_CHECK_BUTTON_NOT_MEDIA = (AppiumBy.XPATH, f'//*[./*[@resource-id="{PHOTO_ITEM_ID}"]'
+                                                    f' and not(./*[@resource-id="{PHOTO_VIDEO_DURATTON_VIEW_ID}"])'
+                                                    f' and not(./*[@resource-id="{PHOTO_LONG_IMAGE_VIEW_ID}"])]'
+                                                    f'/*[@resource-id="{PHOTO_CHECK_BUTTON_ID}"]')
+
+    # 仅不包含视频元素
+    PHOTO_NOT_VIDEO_ITEM = (AppiumBy.XPATH, f'//*[./*[@resource-id="{PHOTO_ITEM_ID}"]'
+                                            f'and not(./*[@resource-id="{PHOTO_VIDEO_DURATTON_VIEW_ID}"])]'
+                                            f'/*[@resource-id="{PHOTO_ITEM_ID}"]')
+    # 仅不包含视频的勾选按钮
+    PHOTO_CHECK_BUTTON_NOT_VIDEO = (AppiumBy.XPATH, f'//*[./*[@resource-id="{PHOTO_ITEM_ID}"]'
+                                                    f' and not(./*[@resource-id="{PHOTO_VIDEO_DURATTON_VIEW_ID}"])]'
+                                                    f'/*[@resource-id="{PHOTO_CHECK_BUTTON_ID}"]')
+
+    # 仅视频元素
+    PHOTO_VIDEO_ITEM = (AppiumBy.XPATH,     f'//*[@resource-id="{PHOTO_VIDEO_DURATTON_VIEW_ID}"]'
+                                            f'/preceding-sibling::*[@resource-id="{PHOTO_ITEM_ID}"]')
+    # 仅视频勾选按钮
+    PHOTO_CHECK_BUTTON_VIDEO      = (AppiumBy.XPATH, f'//*[@resource-id="{PHOTO_VIDEO_DURATTON_VIEW_ID}"]'
+                                                     f'/preceding-sibling::*[@resource-id="{PHOTO_CHECK_BUTTON_ID}"]')
+    
+    # 仅长图、webp图片、gif图片元素
+    PHOTO_IMAGE_LONG_WEBP_GIF_ITEM = (AppiumBy.XPATH, f'//*[@resource-id="{PHOTO_LONG_IMAGE_VIEW_ID}"]'
+                                            f'/preceding-sibling::*[@resource-id="{PHOTO_ITEM_ID}"]')
+    # 仅长图、webp图片、gif图片勾选按钮
+    PHOTO_CHECK_BUTTON_IMAGE_LONG_WEBP_GIF = (AppiumBy.XPATH, f'//*[@resource-id="{PHOTO_LONG_IMAGE_VIEW_ID}"]'
+                                                     f'/preceding-sibling::*[@resource-id="{PHOTO_CHECK_BUTTON_ID}"]')
+
+    PHOTO_CHECK_BUTTON_LONG_WEBP_GIF = PHOTO_CHECK_BUTTON_IMAGE_LONG_WEBP_GIF
+    PHOTO_ONLY_VIDEO_ITEM = PHOTO_VIDEO_ITEM

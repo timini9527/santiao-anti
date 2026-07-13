@@ -64,10 +64,11 @@ class CommonAlbumPage(BasePage):
         Args:
             index: 图片索引，0 为第一张
         """
-        check_btns = self.find_elements(CommonAlbumLocator.PHOTO_CHECK_BUTTON_CONTAINER, timeout=3, expect_missing=True)
-        if not check_btns:
-            check_btns = self.find_elements(CommonAlbumLocator.PHOTO_CHECK_BUTTON, timeout=2, expect_missing=True)
-        
+        locator = CommonAlbumLocator.PHOTO_CHECK_BUTTON
+        if self.is_element_exist(CommonAlbumLocator.PHOTO_CHECK_BUTTON_CONTAINER, timeout=1):
+            locator = CommonAlbumLocator.PHOTO_CHECK_BUTTON_CONTAINER
+            
+        check_btns = self.find_elements(locator, timeout=2, expect_missing=True)
         if not check_btns:
             raise RuntimeError("❌ [CommonAlbumPage] 未能在相册中找到任何勾选数字圈！")
             
@@ -136,10 +137,12 @@ class CommonAlbumPage(BasePage):
     def click_send_or_complete(self):
         """点击右下角“发送/完成”按钮提交选择"""
         logger.info("💾 [CommonAlbumPage] 点击【发送/完成】按钮")
-        if self.is_element_exist(CommonAlbumLocator.PHOTO_SEND_TEXT, timeout=2):
-            self.click(CommonAlbumLocator.PHOTO_SEND_TEXT)
-        elif self.is_element_exist(CommonAlbumLocator.PHOTO_SEND_CONTAINER, timeout=2):
-            self.click(CommonAlbumLocator.PHOTO_SEND_CONTAINER)
+        locator = CommonAlbumLocator.PHOTO_SEND_TEXT
+        if not self.is_element_exist(locator, timeout=2):
+            locator = CommonAlbumLocator.PHOTO_SEND_CONTAINER
+
+        if self.is_element_exist(locator, timeout=1):
+            self.click(locator)
         else:
             raise RuntimeError("❌ [CommonAlbumPage] 未找到【发送/完成】按钮")
         time.sleep(1)
@@ -159,13 +162,9 @@ class CommonAlbumPage(BasePage):
         if self.is_element_exist(CommonAlbumLocator.FB_ACTION, timeout=2):
             self.click(CommonAlbumLocator.FB_ACTION)
             logger.info("✅ [CommonAlbumPage] 已点击右上角完成/操作按钮")
-        # 2. 其次尝试点击保存图片按钮 (ACTION_SAVE_IMAGE)
-        elif self.is_element_exist(CommonAlbumLocator.ACTION_SAVE_IMAGE, timeout=2):
-            self.click(CommonAlbumLocator.ACTION_SAVE_IMAGE)
-            logger.info("✅ [CommonAlbumPage] 已点击保存图片按钮")
         else:
-            # 3. 兜底尝试点击系统或第三方裁剪库的确认按钮
-            system_crop = (AppiumBy.XPATH, "//*[@text='确定' or @text='完成' or contains(@resource-id, 'ok') or contains(@resource-id, 'confirm')]")
+            # 2. 兜底尝试点击系统或第三方裁剪库的确认按钮
+            system_crop = (AppiumBy.XPATH, "//*[@text='确定' or @text='完成' or @text='保存' or contains(@resource-id, 'ok') or contains(@resource-id, 'confirm') or contains(@resource-id, 'save')]")
             if self.is_element_exist(system_crop, timeout=2):
                 self.click(system_crop)
                 logger.info("✅ [CommonAlbumPage] 已点击系统裁剪确认按钮")
@@ -193,25 +192,114 @@ class CommonAlbumPage(BasePage):
         if self.is_element_exist(CommonAlbumLocator.TOP_BACK_BUTTON, timeout=2):
             self.click(CommonAlbumLocator.TOP_BACK_BUTTON)
             logger.info("✅ [CommonAlbumPage] 已点击左上角返回按钮")
-        elif self.is_element_exist(CommonAlbumLocator.ACTION_CANCEL, timeout=2):
-            self.click(CommonAlbumLocator.ACTION_CANCEL)
-            logger.info("✅ [CommonAlbumPage] 已点击取消按钮")
+        elif self.is_element_exist(CommonAlbumLocator.IV_BACK, timeout=2):
+            self.click(CommonAlbumLocator.IV_BACK)
+            logger.info("✅ [CommonAlbumPage] 已点击通用返回按钮")
         else:
             self.back()
             logger.info("✅ [CommonAlbumPage] 已执行物理 Back 返回")
         time.sleep(1)
 
     # 相册-处理超过张数限制（例如选择超过10张）的弹窗警告
-    def handle_overlimit_dialog(self) -> bool:
+    def handle_overlimit_dialog(self) -> tuple[bool, str]:
         """
         处理超过张数限制（例如选择超过10张）的弹窗警告
         Returns:
-            bool: 是否成功拦截并点击确认
+            tuple[bool, str]: (是否成功拦截并点击确认, 弹窗提示信息)
         """
         if self.is_element_exist(CommonAlbumLocator.TV_CONTENT, timeout=2):
             msg = self.get_attribute(CommonAlbumLocator.TV_CONTENT, "text")
             logger.warning(f"⚠️ [CommonAlbumPage] 检测到限额弹窗警告: '{msg}'")
             self.click(CommonAlbumLocator.BTN_OK)
             logger.info("✅ [CommonAlbumPage] 已点击限额弹窗确认按钮")
-            return True
-        return False
+            return True, msg
+        return False, ""
+
+    # ==================================================================================================================
+    # 定向过滤媒体选择优化方法
+    # ==================================================================================================================
+    # 相册-仅获取相册中的纯图片元素列表
+    def get_album_only_images(self) -> List[WebElement]:
+        """仅获取相册中的纯图片元素列表"""
+        images = self.find_elements(CommonAlbumLocator.PHOTO_ONLY_IMAGE_ITEM, timeout=3, expect_missing=True)
+        logger.info(f"📸 [CommonAlbumPage] 获取到仅图片元素数量: {len(images)}")
+        return images if images else []
+
+    # 相册-仅获取相册中的视频元素列表
+    def get_album_only_videos(self) -> List[WebElement]:
+        """仅获取相册中的视频元素列表"""
+        videos = self.find_elements(CommonAlbumLocator.PHOTO_ONLY_VIDEO_ITEM, timeout=3, expect_missing=True)
+        logger.info(f"🎥 [CommonAlbumPage] 获取到仅视频元素数量: {len(videos)}")
+        return videos if videos else []
+
+    # 相册-仅勾选纯图片按钮
+    def click_only_photo_checkbox_by_index(self, index: int = 0):
+        """
+        按照索引仅勾选纯图片按钮
+        Args:
+            index: 纯图片索引，0 为第一张
+        """
+        check_btns = self.find_elements(CommonAlbumLocator.PHOTO_CHECK_BUTTON_NOT_MEDIA, timeout=3, expect_missing=True)
+        if not check_btns:
+            raise RuntimeError("❌ [CommonAlbumPage] 未能在相册中找到任何仅纯图片勾选圈！")
+            
+        if abs(index) >= len(check_btns):
+            logger.warning(f"⚠️ [CommonAlbumPage] 勾选仅图片索引 {index} 溢出，降级勾选第一张")
+            index = 0
+        check_btns[index].click()
+        logger.info(f"✅ [CommonAlbumPage] 成功勾选了相册中的第 {index + 1} 张纯图片")
+        time.sleep(0.1)
+
+    # 相册-仅勾选视频按钮
+    def click_only_video_checkbox_by_index(self, index: int = 0):
+        """
+        按照索引仅勾选视频按钮
+        Args:
+            index: 视频索引，0 为第一个
+        """
+        check_btns = self.find_elements(CommonAlbumLocator.PHOTO_CHECK_BUTTON_VIDEO, timeout=3, expect_missing=True)
+        if not check_btns:
+            raise RuntimeError("❌ [CommonAlbumPage] 未能在相册中找到任何仅视频勾选圈！")
+            
+        if abs(index) >= len(check_btns):
+            logger.warning(f"⚠️ [CommonAlbumPage] 勾选仅视频索引 {index} 溢出，降级勾选第一个")
+            index = 0
+        check_btns[index].click()
+        logger.info(f"✅ [CommonAlbumPage] 成功勾选了相册中的第 {index + 1} 个视频")
+        time.sleep(0.1)
+
+    # 相册-勾选不含视频的媒体勾选圈
+    def click_photo_checkbox_not_video_by_index(self, index: int = 0):
+        """
+        按照索引勾选非视频（包含图片、长图、webp、gif等）的媒体勾选圈
+        Args:
+            index: 非视频元素索引
+        """
+        check_btns = self.find_elements(CommonAlbumLocator.PHOTO_CHECK_BUTTON_NOT_VIDEO, timeout=3, expect_missing=True)
+        if not check_btns:
+            raise RuntimeError("❌ [CommonAlbumPage] 未能在相册中找到任何非视频媒体勾选圈！")
+            
+        if abs(index) >= len(check_btns):
+            logger.warning(f"⚠️ [CommonAlbumPage] 勾选非视频索引 {index} 溢出，降级勾选第一个")
+            index = 0
+        check_btns[index].click()
+        logger.info(f"✅ [CommonAlbumPage] 成功勾选了相册中的第 {index + 1} 个非视频媒体")
+        time.sleep(0.5)
+
+    # 相册-仅勾选长图、webp、gif等勾选圈
+    def click_photo_checkbox_long_webp_gif_by_index(self, index: int = 0):
+        """
+        按照索引勾选长图、webp、gif等非普通图片的勾选圈
+        Args:
+            index: 长图/WebP/GIF元素索引
+        """
+        check_btns = self.find_elements(CommonAlbumLocator.PHOTO_CHECK_BUTTON_LONG_WEBP_GIF, timeout=3, expect_missing=True)
+        if not check_btns:
+            raise RuntimeError("❌ [CommonAlbumPage] 未能在相册中找到任何长图/WebP/GIF等特定勾选圈！")
+            
+        if abs(index) >= len(check_btns):
+            logger.warning(f"⚠️ [CommonAlbumPage] 勾选长图/WebP/GIF索引 {index} 溢出，降级勾选第一个")
+            index = 0
+        check_btns[index].click()
+        logger.info(f"✅ [CommonAlbumPage] 成功勾选了相册中的第 {index + 1} 个长图/WebP/GIF媒体")
+        time.sleep(0.5)

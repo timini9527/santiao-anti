@@ -101,6 +101,36 @@ class MomentsPage(BasePage):
             logger.info(f"⚠️ [Action-moments]获取朋友圈列表的第 {index} 个Item为空")
         return None
 
+    # 动态 - 判断朋友圈列表是否包含图片/视频
+    def is_moment_contains_media(self, motype: int = 1, index: int = 0) -> bool:
+        """动态 - 判断指定朋友圈列表项是否包含图片/视频。
+
+        motype: 1=图片, 2=视频
+        """
+        locator_map = {
+            1: MomentsLocator.IV_MEDIA,
+            2: MomentsLocator.IV_SINGLE_PIC,
+        }
+        locator = locator_map.get(motype)
+        if locator is None:
+            raise ValueError(f"不支持的朋友圈媒体类型: {motype}")
+
+        moment_item = self.get_moment_item(index=index)
+        if moment_item is None:
+            logger.warning(f"⚠️ [Check-moments] 未找到第 {index} 条朋友圈，无法校验媒体类型 {motype}")
+            return False
+
+        media_elements = moment_item.find_elements(*locator)
+        has_media = len(media_elements) > 0
+        media_name = "图片" if motype == 1 else "视频"
+        if has_media:
+            logger.info(f"🔍 [Check-moments] 第 {index} 条朋友圈包含{media_name}")
+        else:
+            logger.warning(f"⚠️ [Check-moments] 第 {index} 条朋友圈不包含{media_name}")
+        return has_media
+
+
+
     # 动态 - 点击全文展开或收起
     def click_expand_or_shrink_moment(self, is_expand: bool = True, index: int = 0):
         """ 动态 - 点击全文展开或收起"""
@@ -161,9 +191,10 @@ class MomentsPage(BasePage):
         return is_still_editing
 
     # 动态 - 获取第一条动态的正文内容
-    def get_first_moment_content(self) -> str:
+    def get_first_moment_content(self, except_int: int=1) -> str:
         """ 动态 - 获取朋友圈第一条动态的正文内容"""
-        content = self.get_attribute(MomentsLocator.TV_CONTENT, 'text')
+        raise_exception = True if except_int == 1 else False
+        content = self.get_attribute(MomentsLocator.TV_CONTENT, 'text', raise_exception=raise_exception)
         if content == "":
             logger.warning(f"⚠️ [Check-moments] 朋友圈第一条内容为空")
         else:
@@ -208,7 +239,7 @@ class MomentsPage(BasePage):
     # 动态 - 取消删除动态
     def cancel_delete_moment(self):
         """ 动态 - 取消删除动态"""
-        self.click(MomentsLocator.BTN_CANCEL)
+        self.click(MomentsLocator.DIALOG_CANCEL_BTN)
         logger.info("🚀 [Action-moments]点击了删除取消对话框的取消按钮")
         time.sleep(0.5)
 
@@ -218,6 +249,56 @@ class MomentsPage(BasePage):
         self.delete_moment()
         self.confirm_delete_moment()
         logger.info("🚀 [Action-moments]点击了朋友圈动态的删除按钮")
+
+    # 动态 - 确认对话框的确认按钮
+    def click_ok_dialog(self):
+        """ 动态 - 确认对话框的确认按钮"""
+        self.click(MomentsLocator.DIALOG_OK_BTN)
+        logger.info("🚀 [Action-moments]点击了确认对话框的确认按钮")
+
+
+    # ============================================================================
+    # 图片动态 - 发送图片相关
+    # ============================================================================
+    # 图片动态 - 获取图片element
+    def get_photo_elements(self) -> list[WebElement]:
+        """ 图片动态 - 获取图片element"""
+        photo_elements = self.find_elements(MomentsLocator.IV_MEDIA, timeout=2)
+        if not photo_elements:
+            logger.warning(f"⚠️ [Check-moments] 当前页面不可见图片")
+            return []
+        logger.info(f"🔍 [Check-moments] 当前可见图片数量: {len(photo_elements)}")
+        return photo_elements
+    
+    # 图片动态 - 获取第 n 个 element
+    def get_photo_element(self, index: int = 0) -> WebElement:
+        """ 图片动态 - 获取第 n 个 element"""
+        photo_element = self.get_photo_elements()[index]
+        logger.info(f"🔍 [Check-moments] 第 {index} 个 element: { '存在' if photo_element else '不存在'}")
+        return photo_element
+    
+    # 图片动态 - 判断最后一个 element是否存在
+    def is_last_photo_element(self) -> bool:
+        """ 图片动态 - 判断最后一个 element是否存在"""
+        is_last_photo_element = self.is_element_exist(MomentsLocator.RV_PIC_LAST_VIDEO_GROUP, timeout=3)
+        if is_last_photo_element:
+            logger.info(f"🔍 [Check-moments] 最后一个 element: 存在")
+        else:
+            logger.warning(f"⚠️ [Check-moments] 最后一个 element: 不存在")
+        return is_last_photo_element
+    
+    # 图片动态 - 点击最后一个 element 进行添加图片或视频
+    def click_last_photo_element(self):
+        """ 图片动态 - 点击最后一个 element 进行添加图片或视频"""
+        self.click(MomentsLocator.RV_PIC_LAST_VIDEO_GROUP)
+        logger.info("🚀 [Action-moments]点击了最后一个 element 进行添加图片或视频")
+    
+    # 图片动态 - 获取已选择图片的数量
+    def get_selected_photo_count(self):
+        """ 图片动态 - 获取已选择图片的数量"""
+        count = len(self.get_photo_elements())
+        logger.info(f"🔍 [Check-moments] 已选择图片数量: {count}")
+        return count
 
 
     # ============================================================================
