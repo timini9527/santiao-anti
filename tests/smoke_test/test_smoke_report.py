@@ -11,13 +11,11 @@ from strategy.chat.chat_strategy import PRIVATE_USER1
 from utils.file_reader.data_loader import load_yaml_data
 
 
-@allure.epic("IM核心功能测试")
-@allure.feature("冒烟测试-举报模块-聊天举报")
-class TestSmokeReport:
-    """聊天消息举报与投诉功能冒烟用例"""
+class BaseSmokeReport:
+    """举报模块测试基类"""
 
     @pytest.fixture(autouse=True)
-    def setup(self, driver_sender):
+    def setup_base(self, driver_sender):
         self.chatListPage = ChatListPage(driver_sender)
         self.chatSettingPage = ChatSettingPage(driver_sender)
         self.reportPage = ReportPage(driver_sender)
@@ -35,6 +33,12 @@ class TestSmokeReport:
                 self.mainPage.go_to_main_page()
             except Exception as e:
                 pass
+
+
+@allure.epic("IM核心功能测试")
+@allure.feature("冒烟测试-举报模块-聊天举报")
+class TestSmokeReport(BaseSmokeReport):
+    """聊天消息举报与投诉功能冒烟用例"""
 
     @allure.story("投诉分类列表结构验证")
     @allure.title("投诉分类列表结构验证-状态：已完成")

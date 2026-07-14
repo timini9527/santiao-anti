@@ -21,13 +21,11 @@ from pages.chat_options.contact.contact_detail_page import ContactDetailPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2
 
 
-@allure.epic("IM核心功能测试")
-@allure.feature("冒烟测试-单聊-多媒体与附件")
-class TestSmokeChatOptions:
-    """单聊发送各种多媒体与附件（语音、图片、视频、位置、文件、表情包、名片）冒烟用例"""
+class BaseSmokeChatOptions:
+    """单聊多媒体与附件测试基类"""
 
     @pytest.fixture(autouse=True)
-    def setup(self, driver_sender):
+    def setup_base(self, driver_sender):
         self.mainPage = MainPage(driver_sender)
         self.chatListPage = ChatListPage(driver_sender)
         self.chatPage = ChatPage(driver_sender)
@@ -47,6 +45,12 @@ class TestSmokeChatOptions:
             self.mainPage.go_to_main_page()
         except Exception:
             pass
+
+
+@allure.epic("IM核心功能测试")
+@allure.feature("冒烟测试-单聊-多媒体与附件")
+class TestSmokeChatOptions(BaseSmokeChatOptions):
+    """单聊发送各种多媒体与附件（语音、图片、视频、位置、文件、表情包、名片）冒烟用例"""
 
     @allure.story("发送语音消息")
     @allure.title("基础语音发送测试-状态：已完成")

@@ -9,10 +9,8 @@ from pages.common.album_page import CommonAlbumPage
 from core.logger_utils import logger
 
 
-@allure.epic("IM核心功能测试")
-@allure.feature("冒烟测试-朋友圈与动态")
-class TestSmokeMoments:
-    """朋友圈/动态模块核心冒烟用例集 (闭环与鲁棒性保障)"""
+class BaseSmokeMoments:
+    """朋友圈/动态模块测试基类"""
 
     @pytest.fixture(scope="class", autouse=True)
     def class_setup(self, request, driver_sender):
@@ -33,7 +31,7 @@ class TestSmokeMoments:
                 logger.error(f"类级 Teardown 失败，未能返回首页: {e}")
 
     @pytest.fixture(autouse=True)
-    def method_setup(self, driver_sender):
+    def setup_base(self, driver_sender):
         """方法级别前置与后置：确保页面对象就绪并在每次执行后清理编辑区残留"""
         self.mainPage = MainPage(driver_sender)
         self.momentsPage = MomentsPage(driver_sender)
@@ -75,6 +73,12 @@ class TestSmokeMoments:
             check.is_false(found, f"❌ 临时朋友圈 [{content}] 删除后依然在列表中可见")
         else:
             logger.warning(f"⚠️ [Teardown] 列表中首条朋友圈为 [{first_content}]，不匹配期望删除的 [{content}]，跳过删除")
+
+
+@allure.epic("IM核心功能测试")
+@allure.feature("冒烟测试-朋友圈与动态")
+class TestSmokeMoments(BaseSmokeMoments):
+    """朋友圈/动态模块核心冒烟用例集 (闭环与鲁棒性保障)"""
 
     @allure.story("动态发布与验证")
     @allure.title("朋友圈基础冒烟-进入与刷新信息流")
@@ -183,28 +187,54 @@ class TestSmokeMoments:
             check.is_true(self.momentsPage.wait_for_moments_page_load(), "❌ 退出编辑后未成功返回朋友圈主页")
 
     @allure.story("动态点赞与评论")
-    @allure.title("对动态进行点赞、评论与删除评论 (互动冒烟闭环)")
-    def test_smoke_interaction_flow(self):
-        """测试朋友圈互动的基本功能 (点赞/取消点赞、评论/删除评论 闭环测试)"""
-        moment_content = f"互动冒烟专用_{int(time.time())}"
-        test_comment = f"冒烟评论内容_{int(time.time())}"
-
-        with allure.step("1. 前置准备：发布一条供测试互动的文字动态"):
+    @allure.title("点赞并取消点赞 (点赞冒烟闭环)")
+    def test_smoke_like_moment(self):
+        """测试对朋友圈动态点赞后可再次取消点赞 (包含状态刷新与数据清理)"""
+        moment_content = f"点赞冒烟测试_{int(time.time())}"
+        with allure.step("1. 前置准备：发布一条测试动态"):
             self.momentsPage.long_press_post_moments(1000)
             self.momentsPage.input_moments_content(moment_content)
             self.momentsPage.click_publish()
             self._verify_moment_published(moment_content)
 
         try:
-            with allure.step("2. 对该动态执行点赞并验证"):
+            with allure.step("2. 获取该动态的初始点赞状态并执行点赞"):
                 before_like = self.momentsPage.get_nth_moment_like_users(0)
-                check.equal(before_like, [], "❌ 刚发布的新动态不应该有点赞用户")
+                check.equal(before_like, [], "❌ 新发布的动态点赞状态应该为空")
                 
                 self.momentsPage.click_like_nth_moment(0)
                 after_like = self.momentsPage.get_nth_moment_like_users(0)
                 check.is_true(len(after_like) > 0, "❌ 点赞后点赞用户列表未更新")
 
-            with allure.step("3. 发表评论并校验列表展示"):
+            with allure.step("3. 刷新后校验点赞状态仍保持"):
+                self.momentsPage.refresh_moments()
+                current_like = self.momentsPage.get_nth_moment_like_users(0)
+                check.is_true(len(current_like) > 0, "❌ 刷新后点赞状态未保持")
+
+            with allure.step("4. 执行取消点赞并刷新校验"):
+                self.momentsPage.click_like_nth_moment(0)
+                self.momentsPage.refresh_moments()
+                final_like = self.momentsPage.get_nth_moment_like_users(0)
+                check.equal(final_like, [], "❌ 取消点赞并刷新后，点赞列表未恢复为空")
+        finally:
+            with allure.step("5. 后置清理：删除用于点赞测试的临时动态"):
+                self._delete_test_moment(moment_content)
+
+    @allure.story("动态点赞与评论")
+    @allure.title("发表评论并删除评论 (评论冒烟闭环)")
+    def test_smoke_comment_moment(self):
+        """测试对朋友圈发表评论后刷新可见，并能成功删除 (包含数据闭环)"""
+        moment_content = f"评论冒烟测试_{int(time.time())}"
+        test_comment = f"冒烟测试评论_{int(time.time())}"
+        
+        with allure.step("1. 前置准备：发布一条测试动态"):
+            self.momentsPage.long_press_post_moments(1000)
+            self.momentsPage.input_moments_content(moment_content)
+            self.momentsPage.click_publish()
+            self._verify_moment_published(moment_content)
+
+        try:
+            with allure.step("2. 发表一条测试评论并校验列表展示"):
                 self.momentsPage.click_comment_on_nth_moment(0)
                 self.momentsPage.post_comment(test_comment)
                 time.sleep(1)
@@ -212,24 +242,25 @@ class TestSmokeMoments:
                 comments = self.momentsPage.get_comment_texts(raise_exception=False)
                 check.is_true(
                     any(test_comment in comment for comment in comments),
-                    f"❌ 列表中未找到刚才发表的评论: [{test_comment}]"
+                    f"❌ 列表中未找到发表的评论: [{test_comment}]"
                 )
 
-            with allure.step("4. 点击并删除刚才发表的评论并校验已消失"):
+            with allure.step("3. 刷新朋友圈校验评论仍存在"):
+                self.momentsPage.refresh_moments()
+                comments_after_refresh = self.momentsPage.get_comment_texts(raise_exception=False)
+                check.is_true(
+                    any(test_comment in comment for comment in comments_after_refresh),
+                    f"❌ 刷新后评论不应消失: [{test_comment}]"
+                )
+
+            with allure.step("4. 点击并删除该条评论并校验已消失"):
                 self.momentsPage.delete_own_comment_with_confirm(test_comment)
                 time.sleep(1)
-                
-                comments_after = self.momentsPage.get_comment_texts(raise_exception=False)
+                comments_deleted = self.momentsPage.get_comment_texts(raise_exception=False)
                 check.is_false(
-                    any(test_comment in comment for comment in comments_after),
-                    f"❌ 评论 [{test_comment}] 删除后依然在列表中可见"
+                    any(test_comment in comment for comment in comments_deleted),
+                    f"❌ 评论删除后依然在列表中可见"
                 )
-
-            with allure.step("5. 取消对该动态的点赞"):
-                self.momentsPage.click_like_nth_moment(0)
-                after_cancel_like = self.momentsPage.get_nth_moment_like_users(0)
-                check.equal(after_cancel_like, [], "❌ 取消点赞后，点赞列表未清空")
-
         finally:
-            with allure.step("6. 后置清理：删除用于互动的临时动态"):
+            with allure.step("5. 后置清理：删除用于评论测试的临时动态"):
                 self._delete_test_moment(moment_content)
