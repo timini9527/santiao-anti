@@ -40,6 +40,9 @@ class HomeLocator:
     # 动态
     DYNAMIC = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().description("动态")')
 
+    # 动态未读消息红点
+    DYNAMIC_UNREAD_MSG = (AppiumBy.XPATH, f'//*[@content-desc="动态"]/following-sibling::android.view.View/android.widget.TextView')
+
 
     # 会话列表整个框
     CONVERSATION_LIST = (AppiumBy.ID, f"{PACKAGE_ID}/rv_conversation")

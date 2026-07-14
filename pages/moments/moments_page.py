@@ -130,7 +130,6 @@ class MomentsPage(BasePage):
         return has_media
 
 
-
     # 动态 - 点击全文展开或收起
     def click_expand_or_shrink_moment(self, is_expand: bool = True, index: int = 0):
         """ 动态 - 点击全文展开或收起"""
@@ -154,6 +153,26 @@ class MomentsPage(BasePage):
             logger.warning(f"⚠️ [Check-moments] 当前页面第 {index} 个Item没有找到展开或收起按钮")
     
 
+    # 动态 - 获取新消息提醒
+    def get_new_message_tips(self, raise_exception: bool = True) -> str:
+        """ 动态 - 获取新消息提醒"""
+        new_message = self.get_attribute(MomentsLocator.TV_NEW_MESSAGE_TEXT, "text", raise_exception=raise_exception)
+        if new_message:
+            logger.info(f"🚀 [Action-moments]获取新消息提醒: {new_message}")
+        else:
+            logger.warning(f"⚠️ [Action-moments]获取新消息提醒为空")
+        return new_message
+
+    # 动态 - 点击新消息提醒
+    def click_new_message(self, raise_exception: bool = True):
+        """ 动态 - 点击新消息提醒"""
+        if self.is_element_exist(MomentsLocator.TV_NEW_MESSAGE_TEXT, raise_exception=raise_exception):
+            self.click(MomentsLocator.TV_NEW_MESSAGE_TEXT)
+            logger.info("🚀 [Action-moments]点击新消息提醒")
+        else:
+            logger.warning("⚠️ [Action-moments]未找到新消息提醒")
+
+
     # ============================================================================
     # 朋友圈 - 快速发布动态
     # ============================================================================
@@ -164,14 +183,6 @@ class MomentsPage(BasePage):
         self.input_moments_content(text)
         self.click_publish()
     
-    # 动态 - 快速发布一条图片动态
-    def post_image_moment(self, image_path: str):
-        """ 动态 - 快速发布一条图片动态"""
-        self.click_post_moments()
-        self.click_album()
-        self.select_image_from_album(image_path)
-        self.click_publish()
-
     # 动态 - 判断朋友圈发布编辑页是否展示
     def is_publish_editor_displayed(self) -> bool:
         """ 动态 - 判断朋友圈发布编辑页是否展示"""
@@ -480,7 +491,7 @@ class MomentsPage(BasePage):
                     self.click(item)
                     time.sleep(0.5)
                     delete_btn = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("删除")')
-                    if self.is_element_exist(delete_btn, timeout=1.5, raise_exception=False):
+                    if self.is_element_exist(delete_btn, timeout=2, raise_exception=False):
                         logger.info(f"🔍 [Check-moments] 探测到此项为自己发布的评论，保持点击状态")
                         return
                     else:
@@ -530,35 +541,210 @@ class MomentsPage(BasePage):
         logger.info(f"🔍 [Check-moments] 朋友圈信息流中是否存在包含 [{text}] 的动态: {found}")
         return found
 
-    def click_add_more_photos(self):
-        """ 动态 - 在发布朋友圈编辑页面，点击加号按钮继续添加图片 """
-        package_id = MomentsLocator.PACKAGE_ID
-        locators = [
-            (AppiumBy.XPATH, f"//android.widget.ImageView[contains(@resource-id, 'iv_add') or contains(@resource-id, 'add')]"),
-            (AppiumBy.XPATH, f"//*[@resource-id='{package_id}/rv_pic']//android.widget.ImageView[last()]"),
-            (AppiumBy.XPATH, f"//android.widget.GridView//android.widget.ImageView[last()]"),
-            (AppiumBy.XPATH, f"//*[@resource-id='{package_id}/rv_pic']/*[last()]")
-        ]
-        for loc in locators:
-            if self.is_element_exist(loc, timeout=2, raise_exception=False):
-                self.click(loc)
-                logger.info(f"🚀 [Action-moments] 成功通过定位器 {loc} 点击了‘继续添加图片’加号按钮")
-                time.sleep(1)
-                return True
-        raise RuntimeError("❌ [Action-moments] 未能定位到发布编辑页面上的‘继续添加图片’加号按钮")
+    # ============================================================================
+    # 隐私设置-多端校验相关功能
+    # ============================================================================
+    # 动态 - 设置朋友圈发布时的可见范围
+    def set_moment_visibility(self, visibility: str = "public", target_friend: str = None, target_tag: str = None, is_ex: bool = True):
+        """
+        动态 - 设置朋友圈发布时的可见范围
+        :param visibility: 可见范围类型: public/公开, private/私密, partial/部分可见, exclude/不给谁看
+        :param target_friend: 好友昵称（当选择部分可见或排除可见时需要）
+        :param target_tag: 标签名称（当选择部分可见或排除可见，且想按标签选择时需要）
+        :param is_ex: 是否为排除可见
+        """
+        if visibility in ["public", "公开"]:
+            logger.info("ℹ️ [Action-moments] 默认公开可见性，跳过隐私设置")
+            return
 
-    def get_published_photo_count(self) -> int:
-        """ 动态 - 获取朋友圈发布编辑页面已选中的图片数量 """
-        package_id = MomentsLocator.PACKAGE_ID
-        elems = self.find_elements((AppiumBy.XPATH, f"//*[@resource-id='{package_id}/rv_pic']//android.widget.ImageView"), timeout=2, expect_missing=True)
-        if not elems:
-            elems = self.find_elements((AppiumBy.XPATH, f"//android.widget.GridView//android.widget.ImageView"), timeout=2, expect_missing=True)
+        from pages.common.contact_select_page import ContactSelectPage
         
-        count = len(elems) if elems else 0
-        if 0 < count < 9:
-            count -= 1
-        logger.info(f"🔍 [Check-moments] 发布编辑页已选图片数量为: {count}")
-        return count
+        # 1. 点击可见范围进入选择页
+        self.click(MomentsLocator.CL_VISIBLE_USER)
+        
+        # 2. 根据类型选择
+        if visibility in ["private", "私密"]:
+            self.click(MomentsLocator.CL_PRIVATE)
+            logger.info("🚀 [Action-moments] 设置可见性为：私密")
+        elif visibility in ["partial", "部分可见", "exclude", "不给谁看"]:
+            is_partial = visibility in ["partial", "部分可见"]
+            container = MomentsLocator.LL_PARTIAL_CONTAINER if is_partial else MomentsLocator.LL_EXCLUDE_CONTAINER
+            
+            self.click(container)
+            logger.info(f"🚀 [Action-moments] 点击{'部分可见' if is_partial else '不给谁看'}")
+            
+            # 选择标签
+            if target_tag:
+                if is_partial:
+                    self.click_partial_select_tag()
+                else:
+                    self.click_exclude_select_tag()
+                logger.info(f"🚀 [Action-moments] 已选择标签: {target_tag}")
+            # 选择朋友
+            elif target_friend:
+                select_btn = MomentsLocator.CL_PARTIAL_SELECT_FRIEND if is_partial else MomentsLocator.CL_EXCLUDE_SELECT_FRIEND
+                self.click(select_btn)
+                contact_select = ContactSelectPage(self.driver)
+                contact_select.wait_for_contact_select_page_load()
+                contact_select.click_contact_by_name(target_friend)
+                contact_select.click_fb_action()
+                contact_select.click_confirm()
+                logger.info(f"🚀 [Action-moments] 已选择好友: {target_friend}")
+                
+        if is_ex:
+            self.click_publish()
 
+    # 动态 - 发布指定可见性的纯文字朋友圈
+    def post_moment_with_visibility(self, text: str, visibility: str = "public", target_friend: str = None, target_tag: str = None, is_ex: bool = True):
+        """ 动态 - 快速发布一条纯文字动态，并指定可见范围 """
+        self.long_press_post_moments(1000)
+        self.input_moments_content(text)
+        self.set_moment_visibility(visibility, target_friend, target_tag, is_ex=is_ex)
+        if is_ex:
+            self.click_publish()
+    
+    # 动态选项 - 点击部分可见的标签选项
+    def click_partial_select_tag(self):
+        """ 动态选项 - 点击部分可见的标签选项"""
+        self.click(MomentsLocator.CL_PARTIAL_SELECT_TAG)
+        logger.info("🚀 [Action-moments] 点击部分可见的选项")
+    
+    # 动态选项 - 点击谁不可见的选项
+    def click_exclude_select_tag(self):
+        """ 动态选项 - 点击谁不可见的选项"""
+        self.click(MomentsLocator.CL_EXCLUDE_SELECT_TAG)
+        logger.info("🚀 [Action-moments] 点击谁不可见的选项")
+
+    
+
+    # 动态选项 - 获取可见范围选项的好友副标题文本
+    def get_partial_friend_subtitle(self) -> str:
+        """ 动态选项 - 获取可见范围选项的好友副标题文本"""
+        subtitle = self.get_attribute(MomentsLocator.TV_PARTIAL_FRIEND_SUBTITLE, "text")
+        if subtitle:
+            logger.info(f"🔍 [Check-moments] 获取可见范围选项的好友副标题文本: {subtitle}")
+        else:
+            logger.warning("⚠️ [Check-moments] 未获取可见范围选项的好友副标题文本，请检查是否已选择朋友")
+        return subtitle
+    
+    # 动态选项 - 获取谁不可见的选项的好友副标题文本
+    def get_exclude_friend_subtitle(self) -> str:
+        """ 动态选项 - 获取谁不可见的选项的好友副标题文本"""
+        subtitle = self.get_attribute(MomentsLocator.TV_EXCLUDE_FRIEND_SUBTITLE, "text")
+        if subtitle:
+            logger.info(f"🔍 [Check-moments] 获取谁不可见的选项的好友副标题文本: {subtitle}")
+        else:
+            logger.warning("⚠️ [Check-moments] 未获取可见范围选项的好友副标题文本，请检查是否已选择朋友")
+        return subtitle
+
+    # 动态选项 - 获取可见范围选项的标题文本
+    def get_visible_title_and_friends(self) -> tuple:
+        """ 动态选项 - 获取可见范围选项的标题和副标题文本"""
+        title = self.get_attribute(MomentsLocator.TV_VISIBLE_TITLE, "text")
+        subtitle = self.get_attribute(MomentsLocator.TV_VISIBLE_FRIENDS, "text")
+        if title and subtitle:
+            logger.info(f"🔍 [Check-moments] 获取可见范围选项的标题文本: {title}")
+            logger.info(f"🔍 [Check-moments] 获取可见范围选项的副标题文本: {subtitle}")
+        else:
+            logger.warning("⚠️ [Check-moments] 未获取可见范围选项的标题文本，请检查是否已选择朋友")
+        return title, subtitle
+    
+    # 动态选项 - 获取部分可见范围选项的标题文本
+    def get_partial_custom_title_and_subtitle(self) -> tuple:
+        """ 动态选项 - 获取部分可见范围选项的标题和副标题文本"""
+        title = self.get_attribute(MomentsLocator.TV_PARTIAL_TAG_TITLE, "text")
+        subtitle = self.get_attribute(MomentsLocator.TV_PARTIAL_TAG_SUBTITLE, "text")
+        if title and subtitle:
+            logger.info(f"🔍 [Check-moments] 获取部分可见范围选项的标题文本: {title}")
+            logger.info(f"🔍 [Check-moments] 获取部分可见范围选项的副标题文本: {subtitle}")
+        else:
+            logger.warning("⚠️ [Check-moments] 未获取部分可见范围选项的标题文本，请检查是否已选择朋友")
+        return title, subtitle
+
+
+    # 动态标签页 - 输入搜索框内容
+    def input_search_content(self, content: str):
+        """ 动态标签页 - 输入搜索框内容"""
+        self.send_keys(MomentsLocator.ET_SEARCH, content)
+        logger.info(f"🚀 [Action-moments] 输入搜索框内容: {content}")
+
+    # 动态标签页 - 私有方法 - 确保目标元素可见，若不直接可见则通过搜索过滤使其可见
+    def _search_and_filter_tag(self, tag_name: str, target_locator: tuple[str, str], timeout: int = 2) -> bool:
+        """ 动态标签页 - 私有方法 - 确保目标元素可见，若不直接可见则通过搜索过滤使其可见 """
+        if self.is_element_exist(target_locator, timeout=timeout):
+            return True
+        logger.info(f"🔍 [Action-moments] 未直接找到标签 {tag_name} 对应元素，尝试输入搜索过滤")
+        self.input_search_content(tag_name)
+        return self.is_element_exist(target_locator, timeout=3)
+
+    # 动态标签页 - 通过标签名内部的成员数量
+    def get_tag_member_count_by_tag_name(self, tag_name: str) -> int:
+        """ 动态标签页 - 通过标签名内部的成员数量"""
+        import re
+        locator = MomentsLocator.get_tag_name_text_by_name(tag_name)
+        if self._search_and_filter_tag(tag_name, locator):
+            tag_text = self.get_attribute(locator, "text")
+            match = re.search(rf"{re.escape(tag_name)}\s*[（(](\d+)[）)]", tag_text)
+            if match:
+                count = int(match.group(1))
+                logger.info(f"🔍 [Check-moments] 获取标签: {tag_text} 的成员数量: {count}")
+                return count
+        logger.warning(f"⚠️ [Check-moments] 未获取到标签 {tag_name} 的成员数量")
+        return 0
+    
+    # 动态标签页 - 通过标签名称进行点击
+    def click_tag_by_name(self, tag_name: str):
+        """ 动态标签页 - 通过标签名称进行点击"""
+        locator = MomentsLocator.get_tag_name_text_by_name(tag_name)
+        if self._search_and_filter_tag(tag_name, locator):
+            self.click(locator)
+            logger.info(f"🚀 [Action-moments] 点击标签: {tag_name}")
+        else:
+            logger.warning(f"⚠️ [Action-moments] 未找到标签: {tag_name}，无法点击")
+    
+    # 动态标签页 - 通过标签名称进行点击箭头
+    def click_tag_arrow_by_name(self, tag_name: str):
+        """ 动态标签页 - 通过标签名称进行点击箭头"""
+        locator = MomentsLocator.get_tag_more_btn_by_name(tag_name)
+        if self._search_and_filter_tag(tag_name, locator):
+            self.click(locator)
+            logger.info(f"🚀 [Action-moments] 点击标签 {tag_name} 的箭头")
+        else:
+            logger.warning(f"⚠️ [Action-moments] 未找到标签 {tag_name} 的箭头，无法点击")
+    
+    # 动态标签页 - 获取标签可见的名称列表
+    def get_visible_tag_names(self, tag_name: str) -> list[str]:
+        """ 动态标签页 - 获取标签可见的朋友名称列表"""
+        locator = MomentsLocator.get_tag_friends_by_name(tag_name)
+        if self._search_and_filter_tag(tag_name, locator):
+            tag_name_text = self.get_attribute(locator, "text")
+            if tag_name_text:
+                tag_name_list = [name.strip() for name in tag_name_text.split(", ") if name.strip()]
+                logger.info(f"🔍 [Check-moments] 获取标签 {tag_name} 的朋友名称列表: {tag_name_list}")
+                return tag_name_list
+        logger.warning(f"⚠️ [Check-moments] 未获取到标签 {tag_name} 的朋友名称列表")
+        return []    
+    
+    # 动态标签页 - 点击添加按钮
+    def click_tag_add_button(self):
+        """ 动态标签页 - 点击添加按钮"""
+        self.click(MomentsLocator.TV_ADD)
+        logger.info("🚀 [Action-moments] 点击添加按钮")
+
+    # 动态标签页 - 点击删除按钮
+    def click_tag_delete_button(self):
+        """ 动态标签页 - 点击删除按钮"""
+        self.click(MomentsLocator.TV_REMOVE)
+        logger.info("🚀 [Action-moments] 点击删除按钮")
+    
+    # 动态标签页 - 添加标签好友
+    def click_tag_add_friend_button(self, target_friend: str = None):
+        """ 动态标签页 - 添加标签好友"""
+        from pages.common.contact_select_page import ContactSelectPage
+        contact_select = ContactSelectPage(self.driver)
+        # contact_select.wait_for_contact_select_page_load()
+        contact_select.click_contact_by_name(target_friend)
+        contact_select.click_fb_action()
+        logger.info(f"🚀 [Action-moments] 已选择好友: {target_friend}")
 
 

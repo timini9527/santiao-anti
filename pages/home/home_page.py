@@ -109,6 +109,13 @@ class HomePage(BasePage):
         """ 主页 - 点击动态 """
         self.click(HomeLocator.DYNAMIC, force_wait=True)
         logger.info("[Action-Home] 主页 - 点击动态")
+    
+    # 主页 - 获取动态未读消息红点数量
+    def get_dynamic_unread_msg_count(self):
+        """ 主页 - 获取动态未读消息红点数量 """
+        text = self.get_attribute(HomeLocator.DYNAMIC_UNREAD_MSG, 'text')
+        logger.info(f"[Action-Home] 主页 - 动态未读消息红点数量: {text}")
+        return text
 
     # 主页 - 点击第一个会话
     def click_conversation(self, index=0):
@@ -423,6 +430,7 @@ class HomePage(BasePage):
 
         
 
+    
 
 
 

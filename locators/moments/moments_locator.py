@@ -138,9 +138,15 @@ class MomentsLocator:
     TV_TAG_NAME = (AppiumBy.ID, f'{PACKAGE_ID}/tv_tag_name')                # 标签名称
     TV_TAG_FRIENDS = (AppiumBy.ID, f'{PACKAGE_ID}/tv_tag_friends')          # 标签好友数量
     IV_MORE = (AppiumBy.ID, f'{PACKAGE_ID}/iv_more')                        # 更多按钮
+
+    # TV_TAG_ITEM = (AppiumBy.XPATH, f'//android.widget.TextView[contains(@text, "测试标签")]/..')
     
     TV_ADD = (AppiumBy.ID, f'{PACKAGE_ID}/tv_add')                          # 添加好友
     TV_REMOVE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_remove')                    # 删除好友    
+
+    # 二次标签选择或朋友标签元素
+    TV_VISIBLE_TITLE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_visible_title')      # 标签可见标题
+    TV_VISIBLE_FRIENDS = (AppiumBy.ID, f'{PACKAGE_ID}/tv_visible_friends')  # 标签可见好友
 
     # 删除底部展开页面
     CL_REMOVE = (AppiumBy.ID, f'{PACKAGE_ID}/cl_remove')                    # 删除选项
@@ -151,5 +157,24 @@ class MomentsLocator:
     CB_ALL_SELECT = (AppiumBy.ID, f'{PACKAGE_ID}/cb_all_select')            # 全选
     
 
+    @classmethod
+    def get_tag_item_by_text(cls, tag_name: str) -> tuple[str, str]:
+        """获取标签名称的通用定位器，支持动态传入标签名称"""
+        return (AppiumBy.XPATH, f'//android.widget.TextView[contains(@text, "{tag_name}")]/..')
+
+    @classmethod
+    def get_tag_friends_by_name(cls, tag_name: str) -> tuple[str, str]:
+        """获取指定标签名称底下的好友名字文本定位器"""
+        return (AppiumBy.XPATH, f'//android.widget.TextView[contains(@text, "{tag_name}")]/../*[@resource-id="{cls.PACKAGE_ID}/tv_tag_friends"]')
+
+    @classmethod
+    def get_tag_name_text_by_name(cls, tag_name: str) -> tuple[str, str]:
+        """获取指定标签名称所在的TextView文本定位器"""
+        return (AppiumBy.XPATH, f'//android.widget.TextView[@resource-id="{cls.PACKAGE_ID}/tv_tag_name" and contains(@text, "{tag_name}")]')
+
+    @classmethod
+    def get_tag_more_btn_by_name(cls, tag_name: str) -> tuple[str, str]:
+        """获取指定标签名称右侧的更多/编辑箭头按钮定位器"""
+        return (AppiumBy.XPATH, f'//android.widget.TextView[contains(@text, "{tag_name}")]/../*[@resource-id="{cls.PACKAGE_ID}/iv_more"]')
 
 
