@@ -661,6 +661,18 @@ class MomentsPage(BasePage):
             logger.warning("⚠️ [Check-moments] 未获取部分可见范围选项的标题文本，请检查是否已选择朋友")
         return title, subtitle
 
+    # 动态选项 - 获取不给谁看（排除可见）选项的标题文本
+    def get_exclude_custom_title_and_subtitle(self) -> tuple:
+        """ 动态选项 - 获取不给谁看（排除可见）选项的标题和副标题文本"""
+        title = self.get_attribute(MomentsLocator.TV_EXCLUDE_TAG_TITLE, "text")
+        subtitle = self.get_attribute(MomentsLocator.TV_EXCLUDE_TAG_SUBTITLE, "text")
+        if title and subtitle:
+            logger.info(f"🔍 [Check-moments] 获取不给谁看（排除可见）选项的标题文本: {title}")
+            logger.info(f"🔍 [Check-moments] 获取不给谁看（排除可见）选项的副标题文本: {subtitle}")
+        else:
+            logger.warning("⚠️ [Check-moments] 未获取排除可见选项的标题文本，请检查是否已选择标签")
+        return title, subtitle
+
 
     # 动态标签页 - 输入搜索框内容
     def input_search_content(self, content: str):

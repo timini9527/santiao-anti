@@ -262,6 +262,49 @@ class TestMomentsDouble:
 
 
     @allure.story("社交可见性与互为好友规则")
+    @allure.title("不给谁看（按标签排除）：不给指定标签里的用户看，标签外用户可见")
+    def test_exclude_visibility_tag_double(self, request):
+        """测试发送端发布不给谁看（不给指定标签里的用户看）动态后，标签内的接收端无法查看"""
+        with allure.step("1. 发送端发布不给谁看（不给指定标签里的用户看）动态"):
+            exclude_content = self._sender_post_moment("不给谁看标签动态", visibility="exclude", target_tag="测试标签", is_ex=False)
+            self._register_moment_cleanup(request, exclude_content)
+
+            count = self.momentsS.get_tag_member_count_by_tag_name("测试标签")
+            if count == 0:
+                self.momentsS.click_tag_arrow_by_name("测试标签")
+                self.momentsS.click_tag_add_button()
+                self.momentsS.click_tag_add_friend_button(PRIVATE_USER1.name)
+            tag_user_names = self.momentsS.get_visible_tag_names("测试标签")
+            check.is_in(PRIVATE_USER1.name, tag_user_names, "❌ 不给谁看动态的标签名称不包含指定好友")
+
+            self.momentsS.click_tag_by_name("测试标签")
+            self.momentsS.click_publish()
+            
+            _, subtitle = self.momentsS.get_exclude_custom_title_and_subtitle()
+            check.is_in("测试标签", subtitle, "❌ 不给谁看动态的副标题不包含指定标签")
+            self.momentsS.click_publish()
+
+        with allure.step("2. 二次验证选择可见范围标题和副标题"):     
+            title, subtitle = self.momentsS.get_visible_title_and_friends()
+            check.is_in("谁不可看", title, "❌ 二次验证选择可见范围标题不包含谁可以看")
+            check.is_in("测试标签", subtitle, "❌ 不给谁看动态的副标题不包含指定标签")
+            self.momentsS.click_publish()
+        
+        with allure.step("3. 接收端进入朋友圈并刷新"):
+            self._receiver_prepare_moments_feed()
+
+        with allure.step("4. 校验接收端无法查看到该动态（因为已被标签排除）"):
+            visible_contents = self.momentsR.get_visible_moment_contents()
+            check.is_false(
+                exclude_content in visible_contents,
+                f"❌ 接收端在被排除的标签中，但不应该能看到发送端的朋友圈 [{exclude_content}]"
+            )
+
+        with allure.step("5. 后置清理：发送端删除该排除可见动态"):
+            self._delete_test_moment(exclude_content)
+
+
+    @allure.story("社交可见性与互为好友规则")
     @allure.title("不给谁看：发送端排除接收端，接收端不可见-状态：已完成")
     def test_exclude_visibility_double(self, request):
         """测试发送端发布不给谁看（排除接收端）动态后，接收端刷新列表无法查看"""
