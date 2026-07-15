@@ -8,8 +8,6 @@ from pages.home.home_page import HomePage
 from pages.friend.add_friend_page import AddFriendPage
 from pages.chat_options.contact.contact_detail_page import ContactDetailPage
 from pages.common.contact_select_page import ContactSelectPage
-from locators.common.common_locator import CommonLocator
-from appium.webdriver.common.appiumby import AppiumBy
 
 
 @allure.epic("IM核心功能测试")
@@ -71,10 +69,7 @@ class TestAddFriend:
     def test_add_friend_search_empty_input(self):
         """测试在添加好友搜索框中不输入任何内容，确认是否不发起搜索或不进行跳转"""
         with allure.step("1. 进入添加朋友页面"):
-            self.mainPage.go_to_main_page()
-            self.homePage.click_add_button()
-            self.homePage.click_add_friend()
-            self.addFriendPage.wait_for_add_friend_page()
+            self._home_to_add_friend()
 
         with allure.step("2. 点击搜索框，保持为空状态"):
             self.addFriendPage.click_search_input()
@@ -91,9 +86,7 @@ class TestAddFriend:
     def test_add_friend_search_spaces_blocked(self):
         """测试在添加好友搜索框输入空格，点击确认搜索时，被系统拦截并留在当前页"""
         with allure.step("1. 进入添加朋友页面"):
-            self.mainPage.go_to_main_page()
-            self.homePage.click_add_button()
-            self.homePage.click_add_friend()
+            self._home_to_add_friend()
 
         with allure.step("2. 在搜索框输入空格并点击确认搜索"):
             self.addFriendPage.search_friend_by_content("   ")
@@ -110,9 +103,7 @@ class TestAddFriend:
         non_existent_key = "19999999999"
 
         with allure.step("1. 进入添加朋友页面"):
-            self.mainPage.go_to_main_page()
-            self.homePage.click_add_button()
-            self.homePage.click_add_friend()
+            self._home_to_add_friend()
 
         with allure.step(f"2. 输入不存在的手机号关键字 {non_existent_key} 并确认搜索"):
             self.addFriendPage.search_friend_by_content(non_existent_key)
@@ -129,9 +120,7 @@ class TestAddFriend:
         search_key = "38100000224"
 
         with allure.step("1. 进入添加朋友页面"):
-            self.mainPage.go_to_main_page()
-            self.homePage.click_add_button()
-            self.homePage.click_add_friend()
+            self._home_to_add_friend()
 
         with allure.step(f"2. 输入有效搜索关键字 {search_key}，搜索并点击进入结果项"):
             self.addFriendPage.search_friend_by_content(search_key)
@@ -156,9 +145,7 @@ class TestAddFriend:
         verify_message = "测试验证信息：你好，我是自动化测试助手。"
 
         with allure.step("1. 搜索目标账号并跳转到详情页"):
-            self.mainPage.go_to_main_page()
-            self.homePage.click_add_button()
-            self.homePage.click_add_friend()
+            self._home_to_add_friend()
             self.addFriendPage.search_friend_by_content(search_key)
             self.addFriendPage.click_confirm_search()
             self.addFriendPage.click_search_result_item()
