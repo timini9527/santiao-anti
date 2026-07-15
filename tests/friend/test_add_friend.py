@@ -42,7 +42,7 @@ class TestAddFriend:
 
 
     @allure.story("添加好友入口")
-    @allure.title("ADD_ENTRY_002 - 从首页加号进入添加朋友页并校验")
+    @allure.title("从首页加号进入添加朋友页并校验")
     def test_add_friend_entry_via_home_add_button(self):
         """测试从首页加号进入添加朋友页面，并校验页面标题和基础元素展示"""
         with allure.step("1. 在首页点击右上角加号并选择添加朋友"):
@@ -52,15 +52,12 @@ class TestAddFriend:
             entry_text = self.addFriendPage.get_search_input_text()
             check.is_in("三条号/手机号", entry_text, "❌ 添加朋友页搜素框的占位文本不匹配，未展示三条号/手机号等")
 
-
-    @allure.title("ADD_ENTRY_004 - 进入添加朋友页并点击返回")
+    @allure.story("添加好友页面")
+    @allure.title("进入添加朋友页并点击返回")
     def test_add_friend_page_back(self):
         """测试进入添加朋友页面后，点击左上角返回按钮，能够成功返回主页"""
         with allure.step("1. 进入添加朋友页面并等待加载"):
-            self.mainPage.go_to_main_page()
-            self.homePage.click_add_button()
-            self.homePage.click_add_friend()
-            self.addFriendPage.wait_for_add_friend_page()
+            self._home_to_add_friend()
 
         with allure.step("2. 点击左上角返回按钮"):
             self.addFriendPage.click_back()
@@ -69,8 +66,8 @@ class TestAddFriend:
             is_on_home = self.homePage.wait_home_page(timeout=5)
             check.is_true(is_on_home, "❌ 点击返回按钮后，未能成功退回主页面")
 
-
-    @allure.title("ADD_SEARCH_009 - 搜索框为空时的拦截校验")
+    @allure.story("搜索")
+    @allure.title("搜索框为空时的拦截校验")
     def test_add_friend_search_empty_input(self):
         """测试在添加好友搜索框中不输入任何内容，确认是否不发起搜索或不进行跳转"""
         with allure.step("1. 进入添加朋友页面"):
@@ -89,7 +86,8 @@ class TestAddFriend:
             check.is_false(is_confirm_visible, "❌ 未输入内容时，确认搜索按钮异常显示，预期不应发起搜索")
 
 
-    @allure.title("ADD_SEARCH_010 - 搜索框输入空格时的拦截校验")
+    @allure.story("搜索")
+    @allure.title("搜索框输入空格时的拦截校验")
     def test_add_friend_search_spaces_blocked(self):
         """测试在添加好友搜索框输入空格，点击确认搜索时，被系统拦截并留在当前页"""
         with allure.step("1. 进入添加朋友页面"):
@@ -105,7 +103,8 @@ class TestAddFriend:
             is_on_page = self.addFriendPage.wait_for_add_friend_page(timeout=5)
             check.is_true(is_on_page, "❌ 输入空格进行搜索后跳转了页面，预期应在原页面拦截")
 
-    @allure.title("ADD_SEARCH_004 - 搜索不存在账号 - 验证用户不存在Toast提示")
+    @allure.story("搜索")
+    @allure.title("搜索不存在账号 - 验证用户不存在Toast提示")
     def test_add_friend_search_non_existent_account(self):
         """测试搜索不存在的手机号，校验应用会弹出对应的用户不存在Toast"""
         non_existent_key = "19999999999"
@@ -123,7 +122,8 @@ class TestAddFriend:
             toast_msg = self.addFriendPage.get_toast("用户不存在")
             check.equal(toast_msg, "用户不存在", "❌ 搜索不存在账号时，未弹出预期 [用户不存在] 提示")
 
-    @allure.title("ADD_SEARCH_002 - 通过手机号搜索正常账号并校验资料详情")
+    @allure.story("搜索")
+    @allure.title("通过手机号搜索正常账号并校验资料详情")
     def test_add_friend_search_success_and_view_profile(self):
         """测试搜索正常测试账号，成功进入资料详情页并校验详情字段展示"""
         search_key = "38100000224"
@@ -148,7 +148,8 @@ class TestAddFriend:
             st_id = self.contactDetailPage.get_st_id()
             check.is_true(bool(st_id), "❌ 资料页三条ID为空")
 
-    @allure.title("ADD_REQ_001 - 发送好友验证申请流")
+    @allure.story("申请")
+    @allure.title("发送好友验证申请流")
     def test_add_friend_request_flow(self):
         """测试发起好友申请，填写验证备注信息并发送的完整添加好友申请流"""
         search_key = "38100000224"
