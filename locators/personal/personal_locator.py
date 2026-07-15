@@ -54,19 +54,30 @@ class PersonalLocator:
     ME_AREA_PROVINCE = (AppiumBy.ID, f'{PACKAGE_ID}/area_name') # 省区
 
 
+    # 添加好友页面 - 头像
+    ADD_FRIEND_IV_AVATAR = (AppiumBy.ID, f'{PACKAGE_ID}/iv_avatar')
+    # 添加好友页面 - 昵称
+    ADD_FRIEND_TV_NAME = (AppiumBy.ID, f'{PACKAGE_ID}/tv_name')
+    ADD_FRIEND_TV_NAME_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{PACKAGE_ID}/tv_name"]//android.widget.TextView')
+    # 添加好友页面 - 所在地
+    ADD_FRIEND_TV_LOCATION = (AppiumBy.ID, f'{PACKAGE_ID}/tv_location')
+    # 添加好友页面 - 好友资料容器
+    ADD_FRIEND_LL= (AppiumBy.ID, f'{PACKAGE_ID}/ll')
+    # 好友资料容器 - 备注容器
+    ADD_FRIEND_TV_REMARK = (AppiumBy.ID, f'{PACKAGE_ID}/title_remark')
+    # 好友资料容器 - 资料卡标题容器
+    ADD_FRIEND_TV_PROFILE_CARD_TITLE = (AppiumBy.ID, f'{PACKAGE_ID}/profile_card_title')
+    # 好友资料容器 - 资料卡描述容器
+    ADD_FRIEND_TV_PROFILE_CARD_DESC = (AppiumBy.ID, f'{PACKAGE_ID}/profile_card_desc')
 
+    # 添加好友页面 - 好友动态
+    ADD_FRIEND_TITLE_MOMENTS = (AppiumBy.ID, f'{PACKAGE_ID}/title_moments')  
+    ADD_FRIEND_TITLE_TV = (AppiumBy.ID, f'{PACKAGE_ID}/title_tv')
 
-
-
-
-
-
-
-
-
-
-
-
+    # 添加好友页面 - 未添加好友
+    ADD_FRIEND_TV_NOT_FRIENDS = (AppiumBy.ID, f'{PACKAGE_ID}/cl_un_friends')
+    ADD_FRIEND_TV_ADD_FRIEND = (AppiumBy.ID, f'{PACKAGE_ID}/add_friend')
+    ADD_FRIEND_TV_ADD_FRIEND_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{PACKAGE_ID}/add_friend"]//android.widget.TextView')
 
 
 

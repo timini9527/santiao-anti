@@ -108,3 +108,71 @@ class PersonalPage(BasePage):
             logger.info(f"[Action] 获取元素 {PersonalLocator.ME_NICKNAME}  没有找到，返回")
         return False
 
+    # =================================================================================
+    # 添加好友详情卡片相关业务动作
+    # =================================================================================
+    # 添加好友详情 - 获取添加好友详情页的昵称
+    def get_add_friend_name(self) -> str:
+        """ 添加好友详情 - 获取添加好友详情页的昵称 """
+        name = self.get_attribute(PersonalLocator.ADD_FRIEND_TV_NAME_XPATH, "text")
+        if name:
+            logger.info(f" 🧐 [Action - Personal] 获取添加好友页面昵称: {name}")
+        else:
+            logger.error(f" ❌ [Action - Personal] 未找到添加好友页面昵称")
+        return name
+
+    # 添加好友详情 - 获取添加好友详情页的所在地
+    def get_add_friend_location(self) -> str:
+        """ 添加好友详情 - 获取添加好友详情页的所在地 """
+        location = self.get_attribute(PersonalLocator.ADD_FRIEND_TV_LOCATION, "text")
+        if location:
+            logger.info(f" 🧐 [Action - Personal] 获取添加好友页面所在地: {location}")
+        else:
+            logger.error(f" ❌ [Action - Personal] 未找到添加好友页面所在地")
+        return location
+
+    # 添加好友详情 - 点击好友动态
+    def click_add_friend_moments(self):
+        """ 添加好友详情 - 点击好友动态 """
+        self.click(PersonalLocator.ADD_FRIEND_TITLE_MOMENTS)
+        logger.info("⚙️ [Action - Personal] 点击添加好友详情页的好友动态")
+
+    # 添加好友详情 - 获取资料卡标题
+    def get_add_friend_profile_card_title(self) -> str:
+        """ 添加好友详情 - 获取资料卡标题 """
+        title = self.get_attribute(PersonalLocator.ADD_FRIEND_TV_PROFILE_CARD_TITLE, "text")
+        if title:
+            logger.info(f" 🧐 [Action - Personal] 获取添加好友页面资料卡标题: {title}")
+        else:
+            logger.error(f" ❌ [Action - Personal] 未找到添加好友页面资料卡标题")
+        return title
+
+    # 添加好友详情 - 获取资料卡描述
+    def get_add_friend_profile_card_desc(self) -> str:
+        """ 添加好友详情 - 获取资料卡描述 """
+        desc = self.get_attribute(PersonalLocator.ADD_FRIEND_TV_PROFILE_CARD_DESC, "text")
+        if desc:
+            logger.info(f" 🧐 [Action - Personal] 获取添加好友页面资料卡描述: {desc}")
+        else:
+            logger.error(f" ❌ [Action - Personal] 未找到添加好友页面资料卡描述")
+        return desc
+
+    # 添加好友详情 - 共同好友页面 - 检查是否显示为未添加好友
+    def is_add_friend_unfriend_visible(self) -> bool:
+        """ 添加好友详情 - 共同好友页面 - 检查是否显示为未添加好友 """
+        res = self.is_element_exist(PersonalLocator.ADD_FRIEND_TV_ADD_FRIEND_XPATH)
+        if res:
+            logger.info(f" 🧐 [Action - Personal] 添加好友页面 - 显示为未添加好友")
+        else:
+            logger.error(f" ❌ [Action - Personal] 添加好友页面 - 未显示未添加好友")
+        return res
+
+    # 添加好友详情 - 共同好友页面 - 点击添加好友按钮
+    def click_add_friend_button(self):
+        """ 添加好友详情 - 共同好友页面 - 点击添加好友按钮 """
+        if not self.is_add_friend_unfriend_visible():
+            logger.error(f" ❌ [Action - Personal] 添加好友页面 - 未显示未添加好友")
+            return
+        self.click(PersonalLocator.ADD_FRIEND_TV_ADD_FRIEND_XPATH)
+        logger.info("⚙️ [Action - Personal] 点击添加好友按钮")
+

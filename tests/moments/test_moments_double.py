@@ -6,6 +6,7 @@ from core.logger_utils import logger
 from pages.main.main_page import MainPage
 from pages.moments.moments_page import MomentsPage
 from pages.home.home_page import HomePage
+from pages.common.album_page import CommonAlbumPage
 from strategy.chat.chat_strategy import PRIVATE_USER1
 
 
@@ -162,6 +163,54 @@ class TestMomentsDouble:
             check.is_false(found, f"❌ 发送端删除朋友圈后，接收端仍然能查看到 [{test_content}]")
 
 
+    @allure.story("发布朋友圈")
+    @allure.title("富媒体发布双端校验-状态：已完成")
+    @pytest.mark.parametrize(
+        "media_type, count, motype, desc",
+        [
+            ("image", 3, 1, "多图朋友圈发布"),
+            ("video", 1, 2, "视频朋友圈发布")
+        ],
+        ids=["发布多图朋友圈", "发布视频朋友圈"]
+    )
+    def test_post_media_moment_scenarios_double(self, request, media_type, count, motype, desc):
+        """测试发送端发布富媒体朋友圈（图片/视频），接收端能够同步查看且媒体资源类型匹配"""
+        allure.dynamic.title(f"富媒体发布双端校验: {desc}")
+        
+        timestamp = int(time.time())
+        test_content = f"双端{desc}动态 {timestamp}"
+        self._register_moment_cleanup(request, test_content)
+
+        with allure.step(f"1. 发送端进入相册并选择 {desc} 资源"):
+            self.momentsS.click_post_moments()
+            self.momentsS.click_album()
+            album_page_s = CommonAlbumPage(self.momentsS.driver)
+            if media_type == "image":
+                for i in range(count):
+                    album_page_s.click_only_photo_checkbox_by_index(i)
+            elif media_type == "video":
+                album_page_s.click_only_video_checkbox_by_index(0)
+            album_page_s.click_send_or_complete()
+
+        with allure.step("2. 发送端输入描述并发布"):
+            self.momentsS.input_moments_content(test_content)
+            self.momentsS.click_publish()
+            self.momentsS.wait_for_moments_page_load(timeout=60)
+            self.momentsS.refresh_moments()
+            
+            first_content = self.momentsS.get_first_moment_content(0)
+            check.equal(first_content, test_content, f"❌ 发送端发布 {desc} 动态内容不匹配")
+            check.is_true(self.momentsS.is_moment_contains_media(motype=motype), f"❌ 发送端发布朋友圈中未包含预期媒体资源(motype={motype})")
+
+        with allure.step("3. 接收端进入朋友圈刷新并校验"):
+            actual_content = self._receiver_prepare_moments_feed(test_content)
+            check.equal(actual_content, test_content, f"❌ 接收端未能同步看到发送端发布 {desc} 动态")
+            check.is_true(self.momentsR.is_moment_contains_media(motype=motype), f"❌ 接收端未能同步查看到预期媒体资源(motype={motype})")
+
+        with allure.step(f"4. 后置清理：发送端删除该 {desc} 动态"):
+            self._delete_test_moment(test_content)
+
+
     # ----------------------------------------------------------------------------
     # 2. 社交可见性设置（隐私规则）
     # ----------------------------------------------------------------------------
@@ -188,151 +237,85 @@ class TestMomentsDouble:
 
     
     @allure.story("社交可见性与互为好友规则")
-    @allure.title("部分可见：发送端设置仅标签里的用户可见，标签外用户不可见-状态：已完成")
-    def test_partial_visibility_tag_double(self, request):
-        """测试发送端发布部分可见（仅标签里的用户可见）动态后，接收端无法查看"""
-        with allure.step("1. 发送端发布部分可见（仅标签里的用户可见）动态"):
-            partial_content = self._sender_post_moment("部分可见（仅标签里的用户可见）动态", visibility="partial", target_tag="测试标签", is_ex=False)
-            self._register_moment_cleanup(request, partial_content)
-
-            count = self.momentsS.get_tag_member_count_by_tag_name("测试标签")
-            if count == 0:
-                self.momentsS.click_tag_arrow_by_name("测试标签")
-                self.momentsS.click_tag_add_button()
-                self.momentsS.click_tag_add_friend_button(PRIVATE_USER1.name)
-            tag_user_names = self.momentsS.get_visible_tag_names("测试标签")
-            check.is_in(PRIVATE_USER1.name, tag_user_names, "❌ 部分可见动态的标签名称不包含指定好友")
-
-            self.momentsS.click_tag_by_name("测试标签")
-            self.momentsS.click_publish()
-            
-            _, subtitle = self.momentsS.get_partial_custom_title_and_subtitle()
-            check.is_in("测试标签", subtitle, "❌ 部分可见动态的副标题不包含指定好友")
-            self.momentsS.click_publish()
-
-        with allure.step("2. 二次验证选择可见范围标题和副标题"):
-            title, subtitle = self.momentsS.get_visible_title_and_friends()
-            check.is_in("谁可以看", title, "❌ 二次验证选择可见范围标题不包含谁可以看")
-            check.is_in("测试标签", subtitle, "❌ 部分可见动态的副标题不包含指定好友")
-            self.momentsS.click_publish()
-
-        with allure.step("3. 接收端进入朋友圈刷新"):
-            self._receiver_prepare_moments_feed()
-
-        with allure.step("3. 校验接收端无法查看到该部分可见（仅标签里的用户可见）文案"):
-            visible_contents = self.momentsR.get_visible_moment_contents()
-            check.is_true(
-                partial_content in visible_contents,
-                f"❌ 接收端被设置为‘仅标签里的用户可见’，但未看到发送端的朋友圈 [{partial_content}]"
-            )
+    @allure.title("发送端发布部分可见/不给谁看朋友圈，接收端可见/不可见-状态：已完成")
+    @pytest.mark.parametrize(
+        "visibility, target_type, expect_visible, desc",
+        [
+            ("partial", "friend", True, "部分可见-指定好友"),
+            ("partial", "tag", True, "部分可见-按标签"),
+            ("exclude", "friend", False, "不给谁看-指定好友"),
+            ("exclude", "tag", False, "不给谁看-按标签"),
+        ],
+        ids=["部分可见-指定好友", "部分可见-按标签", "不给谁看-指定好友", "不给谁看-按标签"]
+    )
+    def test_privacy_visibility_scenarios_double(self, request, visibility, target_type, expect_visible, desc):
+        """统一测试朋友圈各种可见性隐私设置（部分可见/不给谁看、指定好友/指定标签）的双端表现"""
+        allure.dynamic.title(f"可见性双端校验: {desc}")
         
-        with allure.step("4. 后置清理：删除测试动态"):
-            self._delete_test_moment(partial_content)
-    
+        target_friend = PRIVATE_USER1.name if target_type == "friend" else None
+        target_tag = "测试标签" if target_type == "tag" else None
+        
+        with allure.step(f"1. 发送端发布朋友圈动态并设置 {desc}"):
+            post_content = self._sender_post_moment(
+                f"{desc}动态", 
+                visibility=visibility, 
+                target_friend=target_friend, 
+                target_tag=target_tag, 
+                is_ex=False
+            )
+            self._register_moment_cleanup(request, post_content)
 
-    @allure.story("社交可见性与互为好友规则")
-    @allure.title("部分可见：发送端设置仅接收端可见，接收端可同步查看-状态：已完成")
-    def test_partial_visibility_double(self, request):
-        """测试发送端发布部分可见（仅接收端可见）动态后，接收端能够正常查看"""
-        with allure.step(f"1. 发送端发布部分可见动态，指定可见好友: {PRIVATE_USER1.name}"):
-            partial_content = self._sender_post_moment("部分可见动态", visibility="partial", target_friend=PRIVATE_USER1.name, is_ex=False)
-            self._register_moment_cleanup(request, partial_content)
-            subtitle = self.momentsS.get_partial_friend_subtitle()
-            check.is_in(PRIVATE_USER1.name, subtitle, "❌ 部分可见动态的副标题不包含指定好友")
+            if target_type == "tag":
+                count = self.momentsS.get_tag_member_count_by_tag_name(target_tag)
+                if count == 0:
+                    self.momentsS.click_tag_arrow_by_name(target_tag)
+                    self.momentsS.click_tag_add_button()
+                    self.momentsS.click_tag_add_friend_button(PRIVATE_USER1.name)
+                tag_user_names = self.momentsS.get_visible_tag_names(target_tag)
+                check.is_in(PRIVATE_USER1.name, tag_user_names, "❌ 动态关联的标签成员不包含指定好友")
+                self.momentsS.click_tag_by_name(target_tag)
+                self.momentsS.click_publish()
+                
+                if visibility == "partial":
+                    _, subtitle = self.momentsS.get_partial_custom_title_and_subtitle()
+                else:
+                    _, subtitle = self.momentsS.get_exclude_custom_title_and_subtitle()
+                check.is_in(target_tag, subtitle, f"❌ {desc}动态的副标题未包含指定标签")
+            else:
+                if visibility == "partial":
+                    subtitle = self.momentsS.get_partial_friend_subtitle()
+                else:
+                    subtitle = self.momentsS.get_exclude_friend_subtitle()
+                check.is_in(PRIVATE_USER1.name, subtitle, f"❌ {desc}动态的副标题未包含指定好友")
+                
             self.momentsS.click_publish()
 
         with allure.step("2. 二次验证选择可见范围标题和副标题"):     
             title, subtitle = self.momentsS.get_visible_title_and_friends()
-            check.is_in("谁可以看", title, "❌ 二次验证选择可见范围标题不包含谁可以看")
-            check.is_in(PRIVATE_USER1.name, subtitle, "❌ 部分可见动态的副标题不包含指定好友")
-            self.momentsS.click_publish()
-        
-        with allure.step("3. 接收端进入朋友圈并刷新"):
-            self._receiver_prepare_moments_feed(partial_content)
-
-        with allure.step("4. 校验接收端能够正常查看到该部分可见动态"):
-            visible_contents = self.momentsR.get_visible_moment_contents()
-            check.is_true(
-                partial_content in visible_contents,
-                f"❌ 接收端被设置为‘部分可见’，但未看到发送端的朋友圈 [{partial_content}]"
-            )
-
-        with allure.step("5. 后置清理：发送端删除该部分可见动态"):
-            self.momentsS.delete_first_moment()
-
-
-    @allure.story("社交可见性与互为好友规则")
-    @allure.title("不给谁看（按标签排除）：不给指定标签里的用户看，标签外用户可见")
-    def test_exclude_visibility_tag_double(self, request):
-        """测试发送端发布不给谁看（不给指定标签里的用户看）动态后，标签内的接收端无法查看"""
-        with allure.step("1. 发送端发布不给谁看（不给指定标签里的用户看）动态"):
-            exclude_content = self._sender_post_moment("不给谁看标签动态", visibility="exclude", target_tag="测试标签", is_ex=False)
-            self._register_moment_cleanup(request, exclude_content)
-
-            count = self.momentsS.get_tag_member_count_by_tag_name("测试标签")
-            if count == 0:
-                self.momentsS.click_tag_arrow_by_name("测试标签")
-                self.momentsS.click_tag_add_button()
-                self.momentsS.click_tag_add_friend_button(PRIVATE_USER1.name)
-            tag_user_names = self.momentsS.get_visible_tag_names("测试标签")
-            check.is_in(PRIVATE_USER1.name, tag_user_names, "❌ 不给谁看动态的标签名称不包含指定好友")
-
-            self.momentsS.click_tag_by_name("测试标签")
-            self.momentsS.click_publish()
-            
-            _, subtitle = self.momentsS.get_exclude_custom_title_and_subtitle()
-            check.is_in("测试标签", subtitle, "❌ 不给谁看动态的副标题不包含指定标签")
-            self.momentsS.click_publish()
-
-        with allure.step("2. 二次验证选择可见范围标题和副标题"):     
-            title, subtitle = self.momentsS.get_visible_title_and_friends()
-            check.is_in("谁不可看", title, "❌ 二次验证选择可见范围标题不包含谁可以看")
-            check.is_in("测试标签", subtitle, "❌ 不给谁看动态的副标题不包含指定标签")
-            self.momentsS.click_publish()
-        
-        with allure.step("3. 接收端进入朋友圈并刷新"):
-            self._receiver_prepare_moments_feed()
-
-        with allure.step("4. 校验接收端无法查看到该动态（因为已被标签排除）"):
-            visible_contents = self.momentsR.get_visible_moment_contents()
-            check.is_false(
-                exclude_content in visible_contents,
-                f"❌ 接收端在被排除的标签中，但不应该能看到发送端的朋友圈 [{exclude_content}]"
-            )
-
-        with allure.step("5. 后置清理：发送端删除该排除可见动态"):
-            self._delete_test_moment(exclude_content)
-
-
-    @allure.story("社交可见性与互为好友规则")
-    @allure.title("不给谁看：发送端排除接收端，接收端不可见-状态：已完成")
-    def test_exclude_visibility_double(self, request):
-        """测试发送端发布不给谁看（排除接收端）动态后，接收端刷新列表无法查看"""
-        with allure.step(f"1. 发送端发布排除可见动态，指定排除好友: {PRIVATE_USER1.name}"):
-            exclude_content = self._sender_post_moment("排除可见动态", visibility="exclude", target_friend=PRIVATE_USER1.name, is_ex=False)
-            self._register_moment_cleanup(request, exclude_content)
-            subtitle = self.momentsS.get_exclude_friend_subtitle()
-            check.is_in(PRIVATE_USER1.name, subtitle, "❌ 排除可见动态的副标题不包含指定好友")
-            self.momentsS.click_publish()
-
-        with allure.step("2. 二次验证选择可见范围标题和副标题"):     
-            title, subtitle = self.momentsS.get_visible_title_and_friends()
-            check.is_in("谁不可看", title, "❌ 二次验证选择可见范围标题不包含不给谁看")
-            check.is_in(PRIVATE_USER1.name, subtitle, "❌ 排除可见动态的副标题不包含指定好友")
+            expected_title = "谁可以看" if visibility == "partial" else "谁不可看"
+            expected_subtitle = target_tag if target_type == "tag" else PRIVATE_USER1.name
+            check.is_in(expected_title, title, f"❌ 二次验证选择可见范围标题不包含预期文案 {expected_title}")
+            check.is_in(expected_subtitle, subtitle, f"❌ 二次验证副标题不包含预期文案 {expected_subtitle}")
             self.momentsS.click_publish()
         
         with allure.step("3. 接收端进入朋友圈并下拉刷新"):
             self._receiver_prepare_moments_feed()
 
-        with allure.step("4. 校验接收端无法查看到该排除动态"):
+        with allure.step(f"4. 校验接收端是否能查看到该动态 (期望可见性: {expect_visible})"):
             visible_contents = self.momentsR.get_visible_moment_contents()
-            check.is_false(
-                exclude_content in visible_contents,
-                f"❌ 错误：接收端已被设置为‘不给谁看’，但依然能看到发送端的朋友圈 [{exclude_content}]"
-            )
+            if expect_visible:
+                check.is_true(
+                    post_content in visible_contents,
+                    f"❌ 预期接收端能够查看到该动态，但未查看到 [{post_content}]"
+                )
+            else:
+                check.is_false(
+                    post_content in visible_contents,
+                    f"❌ 预期接收端无法查看到该动态，但依然查看到了 [{post_content}]"
+                )
 
-        with allure.step("5. 后置清理：发送端删除该排除可见动态"):
-            self.momentsS.delete_first_moment()
+        with allure.step("5. 后置清理：发送端删除该测试动态"):
+            self._delete_test_moment(post_content)
 
 
     # ----------------------------------------------------------------------------

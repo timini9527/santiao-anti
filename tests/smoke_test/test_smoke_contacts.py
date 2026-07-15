@@ -9,6 +9,9 @@ from pages.common.contact_select_page import ContactSelectPage
 from strategy.chat.chat_strategy import PRIVATE_USER1
 from locators.common.contact_select_locator import ContactSelectLocator
 
+
+
+
 class BaseSmokeContacts:
     """联系人与好友模块测试基类"""
 
