@@ -127,6 +127,18 @@ class NewFriendPage(BasePage):
             logger.error(f"❌ [Action - NewFriend] 未找到 {sender_name} 右侧的接受按钮: {e}")
             return False
     
+    # 申请列表 - 点击拒绝按钮，通过nickname
+    def click_refuse_btn_by_name(self, nickname: str) -> bool:
+        """ 申请列表 - 点击指定昵称好友的“拒绝/不同意”按钮 """
+        locator = NewFriendLocator.get_refuse_btn_by_name(nickname)
+        try:
+            self.click(locator, timeout=5)
+            logger.info(f"✅ [Action - NewFriend] 点击了 {nickname} 右侧的拒绝按钮")
+            return True
+        except Exception as e:
+            logger.error(f"❌ [Action - NewFriend] 点击 {nickname} 右侧的拒绝按钮失败: {e}")
+            return False
+
     # 申请列表 - 点击删除按钮
     def click_delete_btn(self) -> bool:
         """ 申请列表 - 点击删除按钮 """

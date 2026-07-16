@@ -227,10 +227,15 @@ class ContactDetailPage(CommonPage):
     # 点击右上角更多并删除好友
     def delete_contact(self) -> bool:
         """ 在好友详情页中，点击更多并删除该好友 """
-        self.click_iv_right()
-        self.click_unfriend_tv_unfriend()
-        self.confirm_delete_comment()
-        logger.info("⚙️ [Action - ContactDetail] 点击右上角更多并删除好友")
+        try:
+            self.click_iv_right()
+            self.click_unfriend_tv_unfriend()
+            self.confirm_delete_comment()
+            logger.info("⚙️ [Action - ContactDetail] 点击右上角更多并删除好友成功")
+            return True
+        except Exception as e:
+            logger.error(f"❌ [Action - ContactDetail] 删除好友失败: {e}")
+            return False
 
     # 设置好友备注名
     def set_contact_remark(self, remark_name: str) -> bool:
