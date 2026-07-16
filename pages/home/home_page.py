@@ -430,7 +430,71 @@ class HomePage(BasePage):
 
         
 
+    # ================================================================================
+    # 好友页面相关
+    # ================================================================================
+    # 好友页面 - 等待好友页面加载完成
+    def wait_for_friend_page_load(self, timeout: int = 10) -> bool:
+        """ 好友页面 - 等待好友页面加载完成  """
+        is_exit = self.get_attribute(HomeLocator.TV_TITLE, 'text', timeout=timeout) == '好友'
+        if not is_exit:
+            logger.warning(f"⚠️ 当前页面不是好友页面")
+        logger.info(f"✅ 好友页面加载完成")
+        return is_exit
     
+    # 好友页面 - 新的朋友文本
+    def get_new_friend_text(self) -> str:
+        """ 好友页面 - 获取新的朋友文本 """
+        text = self.get_attribute(HomeLocator.NEW_FRIEND_TV, 'text')
+        logger.info(f"🆕 [Action - Home] 好友页面 - 新的朋友: {text}")
+        return text
 
+    # 好友页面 - 点击新的朋友
+    def click_new_friend(self):
+        """ 好友页面 - 点击新的朋友 """
+        self.click(HomeLocator.NEW_FRIEND_TV)
+        logger.info("🆕 [Action - Home] 好友页面 - 点击新的朋友")
+    
+    # 获取新朋友未读消息数
+    def get_new_friend_unread_count(self, raise_exception: bool = True, timeout: int = 2) -> int:
+        """ 好友页面 - 获取新朋友未读消息数 """
+        elem = self.find_element(HomeLocator.NEW_FRIEND_FB_BADGE_COUNT_XPATH, timeout=timeout, raise_exception=raise_exception)
+        if not elem:
+            return 0
+        text = elem.get_attribute('text')
+        logger.info(f"🆕 [Action - Home] 好友页面 - 新的朋友未读消息数: {text}")
+        return int(text)
 
+    # 分组管理 - 获取分组管理文本
+    def get_category_manager_text(self) -> str:
+        """ 分组管理 - 获取分组管理文本 """
+        text = self.get_attribute(HomeLocator.CATEGORY_MANAGER_TV, 'text')
+        logger.info(f"🆕 [Action - Home] 分组管理 - 分组管理: {text}")
+        return text
 
+    # 分组管理 - 点击分组管理
+    def click_category_manager(self):
+        """ 分组管理 - 点击分组管理 """
+        self.click(HomeLocator.CATEGORY_MANAGER_TV)
+        logger.info("🆕 [Action - Home] 分组管理 - 点击分组管理")    
+
+    # 好友页面 - 根据好友姓名点击好友项进入资料详情
+    def click_contact_by_name(self, name: str) -> bool:
+        """
+        好友页面 - 根据好友姓名点击好友项进入资料详情
+        Args:
+            name: 好友姓名/昵称
+        Returns:
+            bool: 是否操作成功
+        """
+        from appium.webdriver.common.appiumby import AppiumBy
+        locator = (AppiumBy.XPATH, f'//*[@resource-id="{HomeLocator.PACKAGE_ID}/tv_name" and @text="{name}"]')
+        try:
+            self.click(locator, timeout=5)
+            logger.info(f"👤 [Action - Home] 好友页面 - 找到并点击好友: {name}")
+            return True
+        except Exception as e:
+            logger.error(f"❌ [Action - Home] 好友页面 - 未找到好友项: {name}, 错误: {e}")
+            return False
+
+    

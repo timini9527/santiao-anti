@@ -43,8 +43,8 @@ devices:
       # udid: "daccd58aaff4"
       # platformVersion: "12.0"
       # udid: "20a5fa17"
-      # udid: "emulator-5554"  # 模拟器
-      udid: "emulator-5556"  # 模拟器
+      udid: "emulator-5554"  # 模拟器
+      # udid: "emulator-5556"  # 模拟器
       deviceName: "SenderPhone"
       systemPort: 8200         # 关键！Android UIA2 通信端口，必须唯一
       appiumServerUrl: "http://127.0.0.1:4723"
@@ -56,8 +56,8 @@ devices:
   #    platformVersion: "11.0"
   #    udid: "dfa6dc15"      # 通过 adb devices 获取
       platformVersion: "12.0"
-      udid: "emulator-5558"  # 模拟器
-      # udid: "emulator-5560"  # 模拟器（注意：此处的 udid 优先被 Web 回执中的 "设备1" 动态覆盖）
+      # udid: "emulator-5558"  # 模拟器
+      udid: "emulator-5560"  # 模拟器（注意：此处的 udid 优先被 Web 回执中的 "设备1" 动态覆盖）
       deviceName: "ReceiverPhone"
       systemPort: 8201         # 关键！必须与 Sender 不同
       appiumServerUrl: "http://127.0.0.1:4724" # 建议启动两个Appium服务避免拥堵

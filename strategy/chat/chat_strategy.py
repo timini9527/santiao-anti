@@ -11,9 +11,11 @@ class ChatSessionStrategy:
     """
     会话策略类：封装不同会话类型的差异数据
     """
-    desc: str       # 描述 (用于 Allure 报告显示)
-    name: str       # 会话名称 (私聊名 或 群聊名)
-    is_admin: bool = False  # 身份标识：是否为管理员/群主 (影响长按菜单项)
+    desc: str                                                       # 描述 (用于 Allure 报告显示)
+    name: str                                                       # 会话名称 (私聊名 或 群聊名)
+    phone: str = ""                                                 # 搜索的手机号或STID或群ID
+    st_id: str = ""                                                 # 搜索的STID
+    is_admin: bool = False                                          # 身份标识：是否为管理员/群主 (影响长按菜单项)
     notice_locator: tuple = HomeLocator.CONVERSATION_MUTE_TEXT      # 默认通知校验元素
     top_locator: tuple = HomeLocator.CONVERSATION_TOP_TEXT          # 默认置顶校验元素
     delete_locator: tuple = HomeLocator.CONVERSATION_DELETE_TEXT    # 默认删除校验元素
@@ -32,31 +34,45 @@ if receipt_str:
 
 # --- 定义具体策略实例 ---
 # 1. 私聊策略
+# PRIVATE_USER = ChatSessionStrategy(
+#     desc="私聊模式",
+#     name=os.environ.get("PRIVATE_CHAT_NAME") or "1234567890",
+#     phone="38100000225",
+#     st_id=""
+# )
 PRIVATE_USER1 = ChatSessionStrategy(
     desc="私聊模式",
-    name=os.environ.get("PRIVATE_CHAT_NAME") or "测试0222"
+    name=os.environ.get("PRIVATE_CHAT_NAME") or "测试0222",
+    phone="38100000222",
+    st_id="MN0123"
 )
 PRIVATE_USER2 = ChatSessionStrategy(
     desc="私聊模式",
-    name=web_receipt.get("私聊用户1") or "测试0224"
+    name=web_receipt.get("私聊用户1") or "测试0224",
+    phone="38100000224",
+    st_id=""
 )
 PRIVATE_USER3 = ChatSessionStrategy(
     desc="私聊模式",
-    name=web_receipt.get("私聊用户2") or "测试0225"
+    name=web_receipt.get("私聊用户2") or "测试0225",
+    phone="38100000225"
 )
 
 PRIVATE_USER4 = ChatSessionStrategy(
     desc="私聊模式",
-    name=web_receipt.get("私聊用户3") or "测试0229"
+    name=web_receipt.get("私聊用户3") or "测试0229",
+    phone="38100000229"
 )
 # 停用或注销用户
 PRIVATE_DISABLE1 = ChatSessionStrategy(
     desc="私聊模式",
-    name=web_receipt.get("私聊用户4") or "测试0221"
+    name=web_receipt.get("私聊用户4") or "测试0221",
+    phone="38100000221"
 )
 PRIVATE_DISABLE2 = ChatSessionStrategy(
     desc="私聊模式",
-    name=web_receipt.get("私聊用户5") or "ST_FdhwIr7"
+    name=web_receipt.get("私聊用户5") or "ST_FdhwIr7",
+    phone=""
 )
 # 2. 群聊策略
 GROUP_STRATEGY = ChatSessionStrategy(

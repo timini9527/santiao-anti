@@ -44,6 +44,27 @@ class HomeLocator:
     DYNAMIC_UNREAD_MSG = (AppiumBy.XPATH, f'//*[@content-desc="动态"]/following-sibling::android.view.View/android.widget.TextView')
 
 
+    TV_TITLE = CommonLocator.TOP_TV_TITLE
+
+
+    # 好友页面 
+    NEW_FRIEND = (AppiumBy.ID, f'{PACKAGE_ID}/ll_new_friends')         # 新的朋友容器
+    NEW_FRIEND_IV = (AppiumBy.ID, f'{PACKAGE_ID}/new_friends_iv')      # 新的朋友图标
+    NEW_FRIEND_TV = (AppiumBy.ID, f'{PACKAGE_ID}/new_friends_tv')      # 新的朋友文本
+    NEW_FRIEND_FB_BADGE_COUNT_ID = f'{PACKAGE_ID}/fb_badge_count'
+    NEW_FRIEND_FB_BADGE_COUNT = (AppiumBy.ID, NEW_FRIEND_FB_BADGE_COUNT_ID)     # 新的朋友未读消息数
+    NEW_FRIEND_FB_BADGE_COUNT_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{NEW_FRIEND_FB_BADGE_COUNT_ID}"]/android.widget.TextView')     # 新的朋友未读消息数文本
+    
+    # 分组管理下的分类标签
+    CATEGORY_MANAGER_ROOT = f'//*[@resource-id="{PACKAGE_ID}/ll_category"]'
+    CATEGORY_MANAGER = (AppiumBy.ID, f'{PACKAGE_ID}/ll_category')                   # 分组管理容器
+    CATEGORY_MANAGER_IV = (AppiumBy.ID, f'{PACKAGE_ID}/category_manager_iv')        # 分组管理图标
+    # 分组管理名称
+    CATEGORY_MANAGER_TV = (AppiumBy.ID, f'//*[@resource-id="{CATEGORY_MANAGER_ROOT}"]//android.widget.TextView')        # 分组管理文本
+    
+
+
+
     # 会话列表整个框
     CONVERSATION_LIST = (AppiumBy.ID, f"{PACKAGE_ID}/rv_conversation")
     # 会话

@@ -2,6 +2,10 @@ import time
 from common.base_page import BasePage
 from locators.friend.add_friend_locator import AddFriendLocator
 from core.logger_utils import logger
+from selenium.webdriver.remote.webelement import WebElement
+
+
+
 
 class AddFriendPage(BasePage):
     """添加朋友页面对象"""
@@ -72,13 +76,13 @@ class AddFriendPage(BasePage):
         logger.info("⚙️ [Action - AddFriend] 添加朋友页 - 点击确认搜索")
     
     # 添加朋友 - 获取搜索结果昵称 item
-    def get_search_result_item(self) -> WebElement | None:
+    def get_search_result_item(self, raise_exception: bool = True) -> WebElement | None:
         """ 添加朋友 - 获取搜索结果item """
-        item = self.find_element(AddFriendLocator.RESULT_ITEM_TV_NAME)
+        item = self.find_element(AddFriendLocator.RESULT_ITEM_TV_NAME, timeout=2, raise_exception=raise_exception)
         if item:
             logger.info("🔍 [Action - AddFriend] 搜索结果item获取成功")
         else:
-            logger.error("❌ [Action - AddFriend] 搜索结果item获取失败")
+            logger.warning("⚠️ [Action - AddFriend] 搜索结果item获取失败")
         return item
 
     # 添加朋友 - 获取搜索结果item中的昵称
@@ -119,5 +123,27 @@ class AddFriendPage(BasePage):
         self.click_finish()
         logger.info("⚙️ [Action - AddFriend] 添加朋友页 - 发送申请")
 
-    
+    # 添加朋友 - 获取搜索结果item中的消息
+    def get_search_result_item_message(self) -> str:
+        """ 添加朋友 - 获取搜索结果item中的消息 """
+        message = self.get_attribute(AddFriendLocator.RESULT_ITEM_TV_MESSAGE, "text")
+        if message:
+            logger.info(f"🔍 [Action - AddFriend] 搜索结果item中的消息: {message}")
+        else:
+            logger.warning("⚠️ [Action - AddFriend] 搜索结果item中的消息获取失败")
+        return message
+
+    # =================================================================================
+    # 发送好友验证页面
+    # =================================================================================
+    # 添加朋友 - 等待发送朋友验证页面出现
+    def wait_for_send_friend_verify_page(self, timeout=10) -> bool:
+        """ 添加朋友 - 等待发送朋友验证页面出现 """
+        isExit = self.get_attribute(AddFriendLocator.TV_TITLE, "text", timeout=timeout) == "朋友验证"
+        if isExit:
+            logger.info("⏳ [Wait - AddFriend] 等待发送朋友验证页面")
+        else:
+            logger.error("❌ [Wait - AddFriend] 未能成功进入发送朋友验证页面")
+        return isExit
+
 
