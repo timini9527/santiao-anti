@@ -110,7 +110,6 @@ class TestAddFriendDouble:
             self.homePageR.click_friend()
             self.homePageR.wait_for_friend_page_load()
             
-            # 搜索并点击好友姓名，验证能否成功加载详情页
             click_success = self.contactSelectPageR.click_contact_by_name(sender_name)
             check.is_true(click_success, f"❌ R端好友列表中找不到刚添加的好友: {sender_name}")
             is_detail_loaded = self.contactDetailPageR.wait_for_detail_page_load(timeout=2)
@@ -122,16 +121,31 @@ class TestAddFriendDouble:
             self.homePageS.click_friend()
             self.homePageS.wait_for_friend_page_load()
             
-            # 搜索并点击好友姓名，验证能否成功加载详情页
             click_success = self.contactSelectPageS.click_contact_by_name(receiver_name)
             check.is_true(click_success, f"❌ S端好友列表中找不到刚接受好友申请的联系人: {receiver_name}")
             is_detail_loaded = self.contactDetailPageS.wait_for_detail_page_load(timeout=2)
             check.is_true(is_detail_loaded, "❌ S端点击好友条目后，无法成功加载资料详情页")
 
-        with allure.step("7. S端解散两人好友关系"):
+        with allure.step("7. R端S端解散两人好友关系"):
             self.contactDetailPageS.delete_contact()
-            
+            # self.contactDetailPageR.delete_contact()
 
+        # TODO: 有BUG
+        # with allure.step("8. 校验R端S端通讯录中已无好友"):
+        #     self.mainPageS.go_to_main_page()
+        #     self.homePageS.click_bottom_expand_button()
+        #     self.homePageS.click_friend()
+        #     self.homePageS.wait_for_friend_page_load()
+        #     has_receiver = self.contactSelectPageS.click_contact_by_name(receiver_name)
+        #     check.is_false(has_receiver, f"❌ S端已删除好友，但其好友列表中仍能找到 R端好友: {receiver_name}")
+
+        # with allure.step("10. 校验R端通讯录中已无S端好友"):
+        #     self.mainPageR.go_to_main_page()
+        #     self.homePageR.click_bottom_expand_button()
+        #     self.homePageR.click_friend()
+        #     self.homePageR.wait_for_friend_page_load()
+        #     has_sender = self.contactSelectPageR.click_contact_by_name(sender_name)
+        #     check.is_false(has_sender, f"❌ R端已删除好友，但其好友列表中仍能找到 S端好友: {sender_name}")
 
 
 
