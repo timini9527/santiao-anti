@@ -69,15 +69,3 @@ class NewFriendLocator:
             f'/ancestor::*[@resource-id="{cls.CL_ITEM_ID}"]'
             f'//*[contains(@text, "{status_text}")]'
         )
-
-    # 动态匹配特定发送人的拒绝按钮
-    @classmethod
-    def get_refuse_btn_by_name(cls, sender_name: str) -> tuple:
-        """根据发送人昵称，动态定位其右侧的[拒绝]按钮"""
-        return (
-            AppiumBy.XPATH,
-            f'//*[@resource-id="{cls.TV_NAME_ID}"]//*[contains(@text, "{sender_name}")]'
-            f'/ancestor::*[@resource-id="{cls.CL_ITEM_ID}"]'
-            f'//*[contains(@text, "拒绝") or contains(@text, "不同意")]'
-        )
-

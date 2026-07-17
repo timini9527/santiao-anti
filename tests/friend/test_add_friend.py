@@ -40,7 +40,7 @@ class TestAddFriend:
 
 
     @allure.story("添加好友页面")
-    @allure.title("进入添加朋友页校验并点击返回")
+    @allure.title("进入添加朋友页校验并点击返回-状态：已完成")
     def test_add_friend_entry_and_back(self):
         """测试从首页加号进入添加朋友页面，校验占位符，然后点击返回能成功回到主页"""
         with allure.step("1. 进入添加朋友页面并等待加载"):
@@ -59,7 +59,7 @@ class TestAddFriend:
 
 
     @allure.story("搜索")
-    @allure.title("搜索框为空/空格时的拦截校验")
+    @allure.title("搜索框为空/空格时的拦截校验-状态：已完成")
     def test_add_friend_search_empty_input(self):
         """测试在添加好友搜索框中不输入内容或输入空格，确认系统不展示搜索结果"""
         with allure.step("1. 进入添加朋友页面"):
@@ -73,7 +73,7 @@ class TestAddFriend:
             check.is_false(is_result, "❌ 搜索为空或空格时，异常出现了搜索结果项")
 
     @allure.story("搜索")
-    @allure.title("搜索不存在账号 - 验证未找到好友提示")
+    @allure.title("搜索不存在账号 - 验证未找到好友提示-状态：已完成")
     def test_add_friend_search_non_existent_account(self):
         """测试搜索不存在的账号，校验列表抛出未找到提示"""
         non_existent_key = "199999999991"
@@ -90,7 +90,7 @@ class TestAddFriend:
             check.equal("未找到好友/群组", msg, "❌ 搜索不存在账号时，未弹出预期 [未找到好友/群组] 提示")
 
     @allure.story("搜索")
-    @allure.title("通过手机号搜索正常账号并校验资料详情")
+    @allure.title("通过手机号搜索正常账号并校验资料详情-状态：已完成")
     def test_add_friend_search_success_and_view_profile(self):
         """测试搜索正常测试账号，成功进入资料详情页并校验详情字段展示"""
         search_key = PRIVATE_USER1.phone
@@ -116,7 +116,7 @@ class TestAddFriend:
 
 
     @allure.story("申请")
-    @allure.title("发送好友验证申请流")
+    @allure.title("发送好友验证申请流-状态：已完成")
     def test_add_friend_request_flow(self):
         """测试发起好友申请，填写验证备注信息并发送的完整添加好友申请流"""
         search_key = PRIVATE_USER4.phone
