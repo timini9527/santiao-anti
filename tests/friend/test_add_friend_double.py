@@ -12,7 +12,7 @@ from pages.common.contact_select_page import ContactSelectPage
 from pages.friend.new_friend_page import NewFriendPage
 from pages.chat.core.chat_page import ChatPage
 from appium.webdriver.common.appiumby import AppiumBy
-from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER3
+from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER3, PRIVATE_USER2
 
 
 @allure.epic("IM核心功能测试")
@@ -73,7 +73,7 @@ class TestAddFriendDouble:
         check.is_in("发送成功", toast, "❌ S端点击发送好友申请后，未弹出 [发送成功] Toast 提示")
 
 
-        
+
     def _go_to_new_friend_page(self, side='R'):
         """辅助方法：进入‘新的朋友’申请列表页"""
         homePage = self.homePageR if side == 'R' else self.homePageS
@@ -107,14 +107,22 @@ class TestAddFriendDouble:
         click_ok = newFriendPage.click_accept_btn_by_name(applicant_name)
         return click_ok
 
-    @allure.story("申请处理")
-    @allure.title("双端协作 - 同意好友申请并交叉校验通讯录")
-    def test_double_add_friend_agree(self):
-        """测试 S 端发起申请，R 端在新朋友列表接受，双方成功建立好友关系并校验通讯录"""
-        sender_name = PRIVATE_USER3.name      
-        receiver_name = PRIVATE_USER1.name    
+    def _prepare_friend_relation_data(self) -> tuple:
+        """ 提炼方法：获取双端测试的默认好友关系数据，不需要传参，直接返回元组 """
+        sender_name = PRIVATE_USER2.name
+        receiver_name = PRIVATE_USER1.name
         receiver_phone = PRIVATE_USER1.phone
         verify_message = f"你好，我是 {sender_name}，申请加你为好友。"
+        return sender_name, receiver_name, receiver_phone, verify_message
+
+
+
+
+    @allure.story("申请处理")
+    @allure.title("双端协作 - 同意好友申请并交叉校验通讯录-状态：已完成")
+    def test_double_add_friend_agree(self):
+        """测试 S 端发起申请，R 端在新朋友列表接受，双方成功建立好友关系并校验通讯录"""
+        sender_name, receiver_name, receiver_phone, verify_message = self._prepare_friend_relation_data()
 
         with allure.step("1. S端向R端发送好友验证申请"):
             self._sender_send_friend_request(receiver_phone, verify_message)
@@ -123,10 +131,9 @@ class TestAddFriendDouble:
             click_ok = self._accept_friend_request(sender_name, side='R')
             check.is_true(click_ok, f"❌ R端在新朋友列表中未找到 {sender_name} 的接受按钮")
 
-        with allure.step("3. 校验R端申请列表状态变更为‘已添加’或‘已同意’"):
-            is_agreed = self.newFriendPageR.verify_apply_status(sender_name, "已添加") or \
-                        self.newFriendPageR.verify_apply_status(sender_name, "已同意")
-            check.is_true(is_agreed, "❌ R端接受好友申请后，新朋友列表内状态文本未成功流转为已添加/已同意")
+        with allure.step("3. 校验R端申请列表状态变更为‘已添加’"):
+            is_agreed = self.newFriendPageR.verify_apply_status(sender_name, "已添加")
+            check.is_true(is_agreed, "❌ R端接受好友申请后，新朋友列表内状态文本未成功流转为已添加")
 
         with allure.step("4. 交叉校验通讯录：R端好友列表中应能成功点击进入 S 端详情"):
             click_success = self._go_to_contact_detail_from_list(sender_name, side='R')
@@ -139,14 +146,13 @@ class TestAddFriendDouble:
         with allure.step("6. S端删除好友以进行后置清理"):
             self.contactDetailPageS.delete_contact()
 
+
+
     @allure.story("申请处理")
     @allure.title("双端协作 - 同意好友申请并设置备注且验证")
     def test_double_add_friend_with_remark(self):
         """测试 S 端发起申请，R 端进入申请详情并同意且设置备注，验证 R 端通讯录中以备注名显示该好友 (对应 ADD_HANDLE_004 P0)"""
-        sender_name = PRIVATE_USER1.name      
-        receiver_name = PRIVATE_USER4.name    
-        receiver_phone = PRIVATE_USER4.phone  
-        verify_message = f"你好，我是 {sender_name}，加个好友。"
+        sender_name, receiver_name, receiver_phone, verify_message = self._prepare_friend_relation_data()
         remark_name = f"{sender_name}_测试备注"
 
         with allure.step("1. S端向R端发送好友验证申请"):
@@ -165,23 +171,20 @@ class TestAddFriendDouble:
             self.addFriendPageR.input_remark(remark_name)
             self.addFriendPageR.click_finish()
 
-        with allure.step("4. 校验R端申请列表状态变更为‘已添加’或‘已同意’"):
-            is_agreed = self.newFriendPageR.verify_apply_status(sender_name, "已添加") or \
-                        self.newFriendPageR.verify_apply_status(sender_name, "已同意")
+        with allure.step("4. 校验R端申请列表状态变更为‘已添加’"):
+            is_agreed = self.newFriendPageR.verify_apply_status(sender_name, "已添加")
             check.is_true(is_agreed, "❌ R端设置备注同意好友申请后，新朋友列表内状态文本未成功流转为已添加")
 
         with allure.step(f"5. 验证 R端通讯录列表中成功以备注名 {remark_name} 显示该好友"):
             click_success = self._go_to_contact_detail_from_list(remark_name, side='R')
             check.is_true(click_success, f"❌ R端好友列表中找不到刚设置备注的好友: {remark_name}")
 
+
     @allure.story("申请处理")
     @allure.title("双端协作 - 删除好友后重新添加并交叉验证聊天消息能力恢复")
     def test_double_add_friend_after_deleted(self):
         """测试 S 端删除好友 R -> 交叉校验确认非好友 -> S 重新申请 -> R 同意 -> 双方聊天功能恢复 (对应 ADD_LIMIT_003 P0 & ADD_SYNC_008 P1)"""
-        sender_name = PRIVATE_USER1.name      
-        receiver_name = PRIVATE_USER4.name    
-        receiver_phone = PRIVATE_USER4.phone  
-        verify_message = f"你好，我是 {sender_name}，重新加你为好友。"
+        sender_name, receiver_name, receiver_phone, verify_message = self._prepare_friend_relation_data()
 
         with allure.step("1. 确认前置：确保双方已经是好友关系"):
             is_friend = self._go_to_contact_detail_from_list(receiver_name, side='S')
