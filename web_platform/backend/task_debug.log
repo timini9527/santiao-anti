@@ -1,11 +1,10 @@
-=== 任务启动: task_7hidjg18d_1783418469276 ===
-[Web Console] 准备拉起 Pytest 进程，命令: ['D:\\data\\Python313\\python.exe', '-u', '-m', 'pytest', 'tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_send_text_message', '-vs', '--color=yes', '-p', 'web_platform.backend.pytest_status_plugin', '--alluredir=reports\\tmp_task_7hidjg18d_1783418469276']
-[Web Console] Pytest 进程拉起成功，PID: 15444
+=== 任务启动: task_ypdx2ju1v_1784166116090 ===
+[Web Console] 准备拉起 Pytest 进程，命令: ['D:\\data\\Python313\\python.exe', '-u', '-m', 'pytest', 'tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore', '-vs', '--color=yes', '-p', 'web_platform.backend.pytest_status_plugin', '--alluredir=reports\\tmp_task_ypdx2ju1v_1784166116090']
+[Web Console] Pytest 进程拉起成功，PID: 16772
 [Web Console] 后台生命周期协程已触发创建
-[Web Console] 开始任务 task_7hidjg18d_1783418469276 的生命周期监听流程
+[Web Console] 开始任务 task_ypdx2ju1v_1784166116090 的生命周期监听流程
 [run_task_lifecycle] 启动 gather 并发监听
 [consume_queue] 异步消费协程启动...
-[read_to_queue] 线程读取开始...
 [Pytest Process Out] [1m============================= test session starts =============================[0m
 [consume_queue] 消费并准备广播: [1m============================= test session starts =============================[0m
 [Pytest Process Out] platform win32 -- Python 3.13.5, pytest-9.0.2, pluggy-1.6.0 -- D:\data\Python313\python.exe
@@ -14,112 +13,685 @@
 [consume_queue] 消费并准备广播: cachedir: .pytest_cache
 [Pytest Process Out] metadata: {'Python': '3.13.5', 'Platform': 'Windows-11-10.0.22631-SP0', 'Packages': {'pytest': '9.0.2', 'pluggy': '1.6.0'}, 'Plugins': {'allure-pytest': '2.15.2', 'anyio': '4.12.1', 'check': '2.7.6', 'cov': '7.1.0', 'html': '4.1.1', 'metadata': '3.1.1', 'rerunfailures': '16.1', 'xdist': '3.8.0'}, 'JAVA_HOME': 'D:\\data\\java\\jdk1.8.0_471'}
 [Pytest Process Out] rootdir: d:\projects\santiao-anti
-[consume_queue] 消费并准备广播: metadata: {'Python': '3.13.5', 'Platform': 'Windows-11-10.0.22631-SP0', 'Packages': {'pytest': '9.0.2', 'pluggy': '1.6.0'}, 'Plugins': {'allure-pytest': '2.15.2', 'anyio': '4.12.1', 'check': '2.7.6', 'cov': '7.1.0', 'html': '4.1.1', 'metadata': '3.1.1', 'rerunfailures': '16.1', 'xdist': '3.8.0'}, 'JAVA_HOME': 'D:\\data\\java\\jdk1.8.0_471'}
+n': '3.13.5', 'Platform': 'Windows-11-10.0.22631-SP0', 'Packages': {'pytest': '9.0.2', 'pluggy': '1.6.0'}, 'Plugins': {'allure-pytest': '2.15.2', 'anyio': '4.12.1', 'check': '2.7.6', 'cov': '7.1.0', 'html': '4.1.1', 'metadata': '3.1.1', 'rerunfailures': '16.1', 'xdist': '3.8.0'}, 'JAVA_HOME': 'D:\\data\\java\\jdk1.8.0_471'}
 [consume_queue] 消费并准备广播: rootdir: d:\projects\santiao-anti
 [consume_queue] 消费并准备广播: configfile: pytest.ini
 1, check-2.7.6, cov-7.1.0, html-4.1.1, metadata-3.1.1, rerunfailures-16.1, xdist-3.8.0
 [consume_queue] 消费并准备广播: plugins: allure-pytest-2.15.2, anyio-4.12.1, check-2.7.6, cov-7.1.0, html-4.1.1, metadata-3.1.1, rerunfailures-16.1, xdist-3.8.0
-[Pytest Process Out] [1mcollecting ... [0m[1;32m[2026-07-07 18:09:09,817] [INFO   ] [data_loader.py        :30  ] [find_file           ] - ✅ 快速定位文件成功：D:\projects\santiao-anti\data\chat\chat.yaml[0m
-[consume_queue] 消费并准备广播: [1mcollecting ... [0m[1;32m[2026-07-07 18:09:09,817] [INFO   ] [data_loader.py        :30  ] [find_file           ] - ✅ 快速定位文件成功：D:\projects\santiao-anti\data\chat\chat.yaml[0m
-[Pytest Process Out] collected 1 item
-[consume_queue] 消费并准备广播: collected 1 item
-[Pytest Process Out] 
+[Pytest Process Out] [1mcollecting ... [0m[1;32m[2026-07-16 09:51:22,949] [INFO   ] [data_loader.py        :30  ] [find_file           ] - ✅ 快速定位文件成功：D:\projects\santiao-anti\data\chat\chat.yaml[0m
+[consume_queue] 消费并准备广播: [1mcollecting ... [0m[1;32m[2026-07-16 09:51:22,949] [INFO   ] [data_loader.py        :30  ] [find_file           ] - ✅ 快速定位文件成功：D:\projects\santiao-anti\data\chat\chat.yaml[0m
+[Pytest Process Out] collected 6 items
+[consume_queue] 消费并准备广播: collected 6 items
 [consume_queue] 消费并准备广播: 
-[Pytest Process Out] tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_send_text_message [1;32m[2026-07-07 18:09:09,850] [INFO   ] [data_loader.py        :30  ] [find_file           ] - ✅ 快速定位文件成功：D:\projects\santiao-anti\config\devices.yaml[0m
-[consume_queue] 消费并准备广播: tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_send_text_message [1;32m[2026-07-07 18:09:09,850] [INFO   ] [data_loader.py        :30  ] [find_file           ] - ✅ 快速定位文件成功：D:\projects\santiao-anti\config\devices.yaml[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:09,857] [INFO   ] [driver_factory.py     :21  ] [get_driver          ] - [DriverFactory] 当前指定的执行环境为: dev[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:09,857] [INFO   ] [driver_factory.py     :21  ] [get_driver          ] - [DriverFactory] 当前指定的执行环境为: dev[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:09,945] [INFO   ] [driver_factory.py     :52  ] [get_driver          ] - 🧹 [DriverFactory] 已清理原始配置端口的 adb 转发规则: tcp:8200[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:09,945] [INFO   ] [driver_factory.py     :52  ] [get_driver          ] - 🧹 [DriverFactory] 已清理原始配置端口的 adb 转发规则: tcp:8200[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:10,146] [INFO   ] [driver_factory.py     :56  ] [get_driver          ] - 🧹 [DriverFactory] 已强杀手机端残留的 UiAutomator2 Server 进程 (设备: emulator-5554)[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:10,146] [INFO   ] [driver_factory.py     :56  ] [get_driver          ] - 🧹 [DriverFactory] 已强杀手机端残留的 UiAutomator2 Server 进程 (设备: emulator-5554)[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:10,201] [INFO   ] [driver_factory.py     :84  ] [get_driver          ] - 🔌 [DriverFactory] 动态分配 systemPort: 8200 (原始配置: 8200)[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:10,202] [INFO   ] [driver_factory.py     :91  ] [get_driver          ] - [DriverFactory] 环境变量动态覆盖：UDID1=20a5fa17, UDID2=20a5fa17, Appium1=192.168.1.26:4723, Appium2=192.168.1.26:4724[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:10,202] [INFO   ] [driver_factory.py     :91  ] [get_driver          ] - [DriverFactory] 环境变量动态覆盖：UDID1=20a5fa17, UDID2=20a5fa17, Appium1=192.168.1.26:4723, Appium2=192.168.1.26:4724[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:10,202] [INFO   ] [driver_factory.py     :126 ] [get_driver          ] - [DriverFactory] 覆盖 sender Appium 地址为: http://192.168.1.26:4723[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:10,203] [INFO   ] [driver_factory.py     :136 ] [get_driver          ] - [DriverFactory] 启动设备: sender |
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:10,202] [INFO   ] [driver_factory.py     :126 ] [get_driver          ] - [DriverFactory] 覆盖 sender Appium 地址为: http://192.168.1.26:4723[0m
-[Pytest Process Out] UDID: 20a5fa17 |
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:10,203] [INFO   ] [driver_factory.py     :136 ] [get_driver          ] - [DriverFactory] 启动设备: sender |
+[Pytest Process Out] tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_send_text_message [1;32m[2026-07-16 09:51:22,967] [INFO   ] [data_loader.py        :30  ] [find_file           ] - ✅ 快速定位文件成功：D:\projects\santiao-anti\config\devices.yaml[0m
+[consume_queue] 消费并准备广播: tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_send_text_message [1;32m[2026-07-16 09:51:22,967] [INFO   ] [data_loader.py        :30  ] [find_file           ] - ✅ 快速定位文件成功：D:\projects\santiao-anti\config\devices.yaml[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:22,971] [INFO   ] [driver_factory.py     :21  ] [get_driver          ] - [DriverFactory] 当前指定的执行环境为: dev[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:22,971] [INFO   ] [driver_factory.py     :21  ] [get_driver          ] - [DriverFactory] 当前指定的执行环境为: dev[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:23,046] [INFO   ] [driver_factory.py     :52  ] [get_driver          ] - 🧹 [DriverFactory] 已清理原始配置端口的 adb 转发规则: tcp:8200[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:23,046] [INFO   ] [driver_factory.py     :52  ] [get_driver          ] - 🧹 [DriverFactory] 已清理原始配置端口的 adb 转发规则: tcp:8200[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:23,206] [INFO   ] [driver_factory.py     :56  ] [get_driver          ] - 🧹 [DriverFactory] 已强杀手机端残留的 UiAutomator2 Server 进程 (设备: emulator-5556)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:23,206] [INFO   ] [driver_factory.py     :56  ] [get_driver          ] - 🧹 [DriverFactory] 已强杀手机端残留的 UiAutomator2 Server 进程 (设备: emulator-5556)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:23,226] [INFO   ] [driver_factory.py     :84  ] [get_driver          ] - 🔌 [DriverFactory] 动态分配 systemPort: 8200 (原始配置: 8200)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:23,226] [INFO   ] [driver_factory.py     :91  ] [get_driver          ] - [DriverFactory] 环境变量动态覆盖：UDID1=daccd58aaff4, UDID2=None, Appium1=192.168.137.1:4723, Appium2=192.168.137.1:4724[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:23,226] [INFO   ] [driver_factory.py     :84  ] [get_driver          ] - 🔌 [DriverFactory] 动态分配 systemPort: 8200 (原始配置: 8200)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:23,226] [INFO   ] [driver_factory.py     :126 ] [get_driver          ] - [DriverFactory] 覆盖 sender Appium 地址为: http://192.168.137.1:4723[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:23,226] [INFO   ] [driver_factory.py     :91  ] [get_driver          ] - [DriverFactory] 环境变量动态覆盖：UDID1=daccd58aaff4, UDID2=None, Appium1=192.168.137.1:4723, Appium2=192.168.137.1:4724[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:23,226] [INFO   ] [driver_factory.py     :136 ] [get_driver          ] - [DriverFactory] 启动设备: sender |
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:23,226] [INFO   ] [driver_factory.py     :126 ] [get_driver          ] - [DriverFactory] 覆盖 sender Appium 地址为: http://192.168.137.1:4723[0m
+[Pytest Process Out] UDID: daccd58aaff4 |
 [Pytest Process Out] Port: 8200 |
-[consume_queue] 消费并准备广播: UDID: 20a5fa17 |
-[Pytest Process Out] Appium Server URL: http://192.168.1.26:4723[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:23,226] [INFO   ] [driver_factory.py     :136 ] [get_driver          ] - [DriverFactory] 启动设备: sender |
+[Pytest Process Out] Appium Server URL: http://192.168.137.1:4723[0m
 [consume_queue] 消费并准备广播: Port: 8200 |
-[consume_queue] 消费并准备广播: Appium Server URL: http://192.168.1.26:4723[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:10,290] [INFO   ] [driver_factory.py     :148 ] [get_driver          ] - 🧹 [DriverFactory] 已清理新分配端口的 adb 转发规则: tcp:8200[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:10,290] [INFO   ] [driver_factory.py     :162 ] [get_driver          ] - [DriverFactory] 正在对 Appium 进行连接探测: http://192.168.1.26:4723/status[0m
-200[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:10,290] [INFO   ] [driver_factory.py     :162 ] [get_driver          ] - [DriverFactory] 正在对 Appium 进行连接探测: http://192.168.1.26:4723/status[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:19,223] [INFO   ] [chat_list_page.py     :114 ] [common_enter_chat   ] - 👉 准备进入会话: 【test209-11】[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:19,225] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:19,223] [INFO   ] [chat_list_page.py     :114 ] [common_enter_chat   ] - 👉 准备进入会话: 【test209-11】[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:19,225] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:21,800] [INFO   ] [chat_page.py          :60  ] [wait_for_chat_page_load] - ⏳ [Wait] 等待聊天主页面加载完成，超时时间 10 秒[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:21,800] [INFO   ] [chat_page.py          :60  ] [wait_for_chat_page_load] - ⏳ [Wait] 等待聊天主页面加载完成，超时时间 10 秒[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:21,800] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/chat_input') (模式: visibility)[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:21,800] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/chat_input') (模式: visibility)[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:22,971] [INFO   ] [chat_page.py          :63  ] [wait_for_chat_page_load] - ✅ [Wait] 聊天主页面加载完成, 元素个数为 1[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:22,972] [INFO   ] [chat_list_page.py     :100 ] [enter_session       ] - ✅ 进入会话: test209-11 (匹配模式: exact)[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:22,971] [INFO   ] [chat_page.py          :63  ] [wait_for_chat_page_load] - ✅ [Wait] 聊天主页面加载完成, 元素个数为 1[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:22,972] [INFO   ] [chat_list_page.py     :117 ] [common_enter_chat   ] - ✅ 在首页列表中找到并成功进入: test209-11[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:22,972] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/text_input') (模式: visibility)[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:22,972] [INFO   ] [chat_list_page.py     :100 ] [enter_session       ] - ✅ 进入会话: test209-11 (匹配模式: exact)[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:22,972] [INFO   ] [chat_list_page.py     :117 ] [common_enter_chat   ] - ✅ 在首页列表中找到并成功进入: test209-11[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:22,972] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/text_input') (模式: visibility)[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:23,320] [INFO   ] [base_page.py          :314 ] [send_keys           ] - [Action] 输入消息: 你好，这是一条自动化测试消息。[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:23,321] [INFO   ] [chat_page.py          :185 ] [input_text          ] - 🚀[Action-chat] - chat 输入框输入数据: 你好，这是一条自动化测试消息。[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:23,320] [INFO   ] [base_page.py          :314 ] [send_keys           ] - [Action] 输入消息: 你好，这是一条自动化测试消息。[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:23,321] [INFO   ] [chat_page.py          :185 ] [input_text          ] - 🚀[Action-chat] - chat 输入框输入数据: 你好，这是一条自动化测试消息。[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:23,321] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/input_send_bnt') (模式: clickable)[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:23,321] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/input_send_bnt') (模式: clickable)[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:23,552] [INFO   ] [base_page.py          :294 ] [click               ] - 🖱️ 以 clickable 模式点击元素: ('id', 'com.santiaotalk.im:id/input_send_bnt')[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:23,552] [INFO   ] [base_page.py          :294 ] [click               ] - 🖱️ 以 clickable 模式点击元素: ('id', 'com.santiaotalk.im:id/input_send_bnt')[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:23,658] [INFO   ] [chat_page.py          :209 ] [click_send_button   ] - 🚀[Action-chat] - chat 点击发送按钮[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:23,658] [INFO   ] [chat_page.py          :209 ] [click_send_button   ] - 🚀[Action-chat] - chat 点击发送按钮[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:24,159] [INFO   ] [chat_page.py          :358 ] [send_message        ] - 🚀[Action-chat] - chat 发送消息: 你好，这是一条自动化测试消息。[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:24,159] [INFO   ] [chat_page.py          :358 ] [send_message        ] - 🚀[Action-chat] - chat 发送消息: 你好，这是一条自动化测试消息。[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:24,661] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/iv_avatar"]/preceding-sibling::*[@resource-id="com.santiaotalk.im:id/message_layout"]//*[@resource-id="com.santiaotalk.im:id/text_message_view"]/android.widget.TextView') (模式: visibility)[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:24,661] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/iv_avatar"]/preceding-sibling::*[@resource-id="com.santiaotalk.im:id/message_layout"]//*[@resource-id="com.santiaotalk.im:id/text_message_view"]/android.widget.TextView') (模式: visibility)[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:25,328] [INFO   ] [chat_page.py          :370 ] [find_message_content] - [Assert] 获取 sent 第 -1 条文本消息的内容: 你好，这是一条自动化测试消息。[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:25,328] [INFO   ] [chat_page.py          :370 ] [find_message_content] - [Assert] 获取 sent 第 -1 条文本消息的内容: 你好，这是一条自动化测试消息。[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:25,329] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:25,329] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:25,330] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:25,330] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:26,998] [INFO   ] [except_utils.py       :87  ] [wrapper             ] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:26,998] [INFO   ] [except_utils.py       :87  ] [wrapper             ] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:27,268] [INFO   ] [base_page.py          :320 ] [back                ] - 🔙 [Action] 系统返回[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:27,268] [INFO   ] [base_page.py          :320 ] [back                ] - 🔙 [Action] 系统返回[0m
-[Pytest Process Out] [1;33m[2026-07-07 18:09:28,768] [WARNING] [main_page.py          :49  ] [go_to_main_page     ] -  🍎 未找到会话列表标题或标题不匹配，继续返回，剩余尝试次数：9[0m
-[consume_queue] 消费并准备广播: [1;33m[2026-07-07 18:09:28,768] [WARNING] [main_page.py          :49  ] [go_to_main_page     ] -  🍎 未找到会话列表标题或标题不匹配，继续返回，剩余尝试次数：9[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:28,769] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:28,769] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:28,769] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:28,769] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:28,847] [INFO   ] [base_page.py          :277 ] [get_attribute       ] - ✅ base - 属性获取成功: text = 三条(5)[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:28,847] [INFO   ] [base_page.py          :277 ] [get_attribute       ] - ✅ base - 属性获取成功: text = 三条(5)[0m
-[Pytest Process Out] [1;32m[2026-07-07 18:09:28,847] [INFO   ] [main_page.py          :39  ] [go_to_main_page     ] -  🍏 已找到会话列表标题 三条(5)，回到主页面会话列表[0m
-[consume_queue] 消费并准备广播: [1;32m[2026-07-07 18:09:28,847] [INFO   ] [main_page.py          :39  ] [go_to_main_page     ] -  🍏 已找到会话列表标题 三条(5)，回到主页面会话列表[0m
-[Pytest Process Out] 
-[consume_queue] 消费并准备广播: 
-[Pytest Process Out] [Teardown] 关闭发送方驱动
-[consume_queue] 消费并准备广播: [Teardown] 关闭发送方驱动
+[consume_queue] 消费并准备广播: Appium Server URL: http://192.168.137.1:4723[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:23,309] [INFO   ] [driver_factory.py     :148 ] [get_driver          ] - 🧹 [DriverFactory] 已清理新分配端口的 adb 转发规则: tcp:8200[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:23,309] [INFO   ] [driver_factory.py     :148 ] [get_driver          ] - 🧹 [DriverFactory] 已清理新分配端口的 adb 转发规则: tcp:8200[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:23,310] [INFO   ] [driver_factory.py     :162 ] [get_driver          ] - [DriverFactory] 正在对 Appium 进行连接探测: http://192.168.137.1:4723/status[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:23,310] [INFO   ] [driver_factory.py     :162 ] [get_driver          ] - [DriverFactory] 正在对 Appium 进行连接探测: http://192.168.137.1:4723/status[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:34,233] [INFO   ] [chat_list_page.py     :114 ] [common_enter_chat   ] - 👉 准备进入会话: 【测试0222】[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:34,233] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:34,233] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)[0m
+[Pytest Process Out] [1;31m[2026-07-16 09:51:35,241] [ERROR  ] [except_utils.py       :132 ] [wrapper             ] - ❌ 查找元素列表失败: ('id', 'com.santiaotalk.im:id/tv_name')[0m
+[consume_queue] 消费并准备广播: [1;31m[2026-07-16 09:51:35,241] [ERROR  ] [except_utils.py       :132 ] [wrapper             ] - ❌ 查找元素列表失败: ('id', 'com.santiaotalk.im:id/tv_name')[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:36,580] [INFO   ] [except_utils.py       :32  ] [_take_screenshot_on_failure] - 📸 已保存异常截图至: d:\projects\santiao-anti\screenshots\Error_2026-07-16_095135___id____com_santiaotalk_im_id_.png[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:36,580] [INFO   ] [except_utils.py       :32  ] [_take_screenshot_on_failure] - 📸 已保存异常截图至: d:\projects\santiao-anti\screenshots\Error_2026-07-16_095135___id____com_santiaotalk_im_id_.png[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:37,081] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:37,081] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:40,788] [INFO   ] [chat_page.py          :60  ] [wait_for_chat_page_load] - ⏳ [Wait] 等待聊天主页面加载完成，超时时间 10 秒[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:40,788] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/chat_input') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:40,788] [INFO   ] [chat_page.py          :60  ] [wait_for_chat_page_load] - ⏳ [Wait] 等待聊天主页面加载完成，超时时间 10 秒[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:40,788] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/chat_input') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:44,073] [INFO   ] [chat_page.py          :63  ] [wait_for_chat_page_load] - ✅ [Wait] 聊天主页面加载完成, 元素个数为 1[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:44,073] [INFO   ] [chat_page.py          :63  ] [wait_for_chat_page_load] - ✅ [Wait] 聊天主页面加载完成, 元素个数为 1[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:44,074] [INFO   ] [chat_list_page.py     :100 ] [enter_session       ] - ✅ 进入会话: 测试0222 (匹配模式: exact)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:44,074] [INFO   ] [chat_list_page.py     :100 ] [enter_session       ] - ✅ 进入会话: 测试0222 (匹配模式: exact)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:44,074] [INFO   ] [chat_list_page.py     :117 ] [common_enter_chat   ] - ✅ 在首页列表中找到并成功进入: 测试0222[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:44,074] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/text_input') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:44,074] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/text_input') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:44,473] [INFO   ] [base_page.py          :314 ] [send_keys           ] - [Action] 输入消息: 你好，这是一条自动化测试消息。[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:44,474] [INFO   ] [chat_page.py          :185 ] [input_text          ] - 🚀[Action-chat] - chat 输入框输入数据: 你好，这是一条自动化测试消息。[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:44,474] [INFO   ] [chat_page.py          :185 ] [input_text          ] - 🚀[Action-chat] - chat 输入框输入数据: 你好，这是一条自动化测试消息。[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:44,474] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/input_send_bnt') (模式: clickable)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:44,474] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/input_send_bnt') (模式: clickable)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:44,793] [INFO   ] [base_page.py          :294 ] [click               ] - 🖱️ 以 clickable 模式点击元素: ('id', 'com.santiaotalk.im:id/input_send_bnt')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:44,793] [INFO   ] [base_page.py          :294 ] [click               ] - 🖱️ 以 clickable 模式点击元素: ('id', 'com.santiaotalk.im:id/input_send_bnt')[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:44,959] [INFO   ] [chat_page.py          :209 ] [click_send_button   ] - 🚀[Action-chat] - chat 点击发送按钮[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:44,959] [INFO   ] [chat_page.py          :209 ] [click_send_button   ] - 🚀[Action-chat] - chat 点击发送按钮[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:45,460] [INFO   ] [chat_page.py          :358 ] [send_message        ] - 🚀[Action-chat] - chat 发送消息: 你好，这是一条自动化测试消息。[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:45,460] [INFO   ] [chat_page.py          :358 ] [send_message        ] - 🚀[Action-chat] - chat 发送消息: 你好，这是一条自动化测试消息。[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:45,961] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/iv_avatar"]/preceding-sibling::*[@resource-id="com.santiaotalk.im:id/message_layout"]//*[@resource-id="com.santiaotalk.im:id/text_message_view"]/android.widget.TextView') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:45,961] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/iv_avatar"]/preceding-sibling::*[@resource-id="com.santiaotalk.im:id/message_layout"]//*[@resource-id="com.santiaotalk.im:id/text_message_view"]/android.widget.TextView') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:46,969] [INFO   ] [chat_page.py          :370 ] [find_message_content] - [Assert] 获取 sent 第 -1 条文本消息的内容: 你好，这是一条自动化测试消息。[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:46,969] [INFO   ] [chat_page.py          :370 ] [find_message_content] - [Assert] 获取 sent 第 -1 条文本消息的内容: 你好，这是一条自动化测试消息。[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:46,970] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:46,970] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:46,970] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:48,470] [INFO   ] [except_utils.py       :87  ] [wrapper             ] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:48,470] [INFO   ] [except_utils.py       :87  ] [wrapper             ] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:48,854] [INFO   ] [base_page.py          :320 ] [back                ] - 🔙 [Action] 系统返回[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:48,854] [INFO   ] [base_page.py          :320 ] [back                ] - 🔙 [Action] 系统返回[0m
+[Pytest Process Out] [1;33m[2026-07-16 09:51:50,355] [WARNING] [main_page.py          :28  ] [go_to_main_page     ] -  🍎 未找到会话列表标题或标题不匹配，继续返回，剩余尝试次数：9[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:50,355] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+�剩余尝试次数：9[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:50,355] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:50,355] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:50,355] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:50,574] [INFO   ] [base_page.py          :277 ] [get_attribute       ] - ✅ base - 属性获取成功: text = 三条(464)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:50,574] [INFO   ] [base_page.py          :277 ] [get_attribute       ] - ✅ base - 属性获取成功: text = 三条(464)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:50,575] [INFO   ] [main_page.py          :18  ] [go_to_main_page     ] -  🍏 已找到会话列表标题 三条(464)，回到主页面会话列表[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:50,575] [INFO   ] [main_page.py          :18  ] [go_to_main_page     ] -  🍏 已找到会话列表标题 三条(464)，回到主页面会话列表[0m
 [Pytest Process Out] [32mPASSED[0m
+[consume_queue] 消费并准备广播: [32mPASSED[0m
 [Pytest Process Out] [TEST_RESULT] nodeid=tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_send_text_message status=passed
-[consume_queue] 消费并准备广播: [TEST_RESULT] nodeid=tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_send_text_message status=passed
+[Pytest Process Out] 
+��准备广播: [TEST_RESULT] nodeid=tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_send_text_message status=passed
+[consume_queue] 消费并准备广播: 
+[Pytest Process Out] tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_get_chat_nickname [1;32m[2026-07-16 09:51:51,581] [INFO   ] [chat_list_page.py     :114 ] [common_enter_chat   ] - 👉 准备进入会话: 【测试0222】[0m
+[consume_queue] 消费并准备广播: tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_get_chat_nickname [1;32m[2026-07-16 09:51:51,581] [INFO   ] [chat_list_page.py     :114 ] [common_enter_chat   ] - 👉 准备进入会话: 【测试0222】[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:51,581] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:51,581] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:52,903] [INFO   ] [chat_page.py          :60  ] [wait_for_chat_page_load] - ⏳ [Wait] 等待聊天主页面加载完成，超时时间 10 秒[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:52,903] [INFO   ] [chat_page.py          :60  ] [wait_for_chat_page_load] - ⏳ [Wait] 等待聊天主页面加载完成，超时时间 10 秒[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:52,903] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/chat_input') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:52,903] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/chat_input') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:54,761] [INFO   ] [chat_page.py          :63  ] [wait_for_chat_page_load] - ✅ [Wait] 聊天主页面加载完成, 元素个数为 1[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:54,761] [INFO   ] [chat_page.py          :63  ] [wait_for_chat_page_load] - ✅ [Wait] 聊天主页面加载完成, 元素个数为 1[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:54,761] [INFO   ] [chat_list_page.py     :100 ] [enter_session       ] - ✅ 进入会话: 测试0222 (匹配模式: exact)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:54,761] [INFO   ] [chat_list_page.py     :117 ] [common_enter_chat   ] - ✅ 在首页列表中找到并成功进入: 测试0222[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:54,761] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'right_bnt') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:54,761] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'right_bnt') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:54,832] [INFO   ] [base_page.py          :294 ] [click               ] - 🖱️ 以 visibility 模式点击元素: ('id', 'right_bnt')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:54,832] [INFO   ] [base_page.py          :294 ] [click               ] - 🖱️ 以 visibility 模式点击元素: ('id', 'right_bnt')[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:54,909] [INFO   ] [chat_page.py          :121 ] [click_more_button   ] - 🚀[Action-chat] - chat 点击更多按钮[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:54,909] [INFO   ] [chat_page.py          :121 ] [click_more_button   ] - 🚀[Action-chat] - chat 点击更多按钮[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:55,210] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_title') -> attr='text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:55,210] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_title') -> attr='text'[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:55,210] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_title') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:55,210] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_title') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:55,329] [INFO   ] [base_page.py          :277 ] [get_attribute       ] - ✅ base - 属性获取成功: text = 聊天信息[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:55,329] [INFO   ] [base_page.py          :277 ] [get_attribute       ] - ✅ base - 属性获取成功: text = 聊天信息[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:55,329] [INFO   ] [chat_setting_page.py  :14  ] [wait_for_setting_page_load] - ⏳ [Action] ChatSettingPage - 页面加载成功[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:55,330] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/setting_friend_name') -> attr='text'[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:55,330] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/setting_friend_name') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:55,330] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/setting_friend_name') -> attr='text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:55,330] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/setting_friend_name') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:55,574] [INFO   ] [base_page.py          :277 ] [get_attribute       ] - ✅ base - 属性获取成功: text = 测试0222[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:55,574] [INFO   ] [base_page.py          :277 ] [get_attribute       ] - ✅ base - 属性获取成功: text = 测试0222[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:55,574] [INFO   ] [chat_setting_page.py  :43  ] [get_friend_name     ] - ⚙️ [Action] ChatSettingPage - 获取聊天对象昵称: 测试0222[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:55,574] [INFO   ] [chat_setting_page.py  :43  ] [get_friend_name     ] - ⚙️ [Action] ChatSettingPage - 获取聊天对象昵称: 测试0222[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:55,575] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:55,575] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:55,575] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:55,575] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:56,901] [INFO   ] [except_utils.py       :87  ] [wrapper             ] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:56,901] [INFO   ] [except_utils.py       :87  ] [wrapper             ] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:57,115] [INFO   ] [base_page.py          :320 ] [back                ] - 🔙 [Action] 系统返回[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:57,115] [INFO   ] [base_page.py          :320 ] [back                ] - 🔙 [Action] 系统返回[0m
+[Pytest Process Out] [1;33m[2026-07-16 09:51:58,616] [WARNING] [main_page.py          :28  ] [go_to_main_page     ] -  🍎 未找到会话列表标题或标题不匹配，继续返回，剩余尝试次数：9[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:58,616] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+�剩余尝试次数：9[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:58,616] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:58,616] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:58,616] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:51:59,703] [INFO   ] [except_utils.py       :87  ] [wrapper             ] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:51:59,703] [INFO   ] [except_utils.py       :87  ] [wrapper             ] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:00,758] [INFO   ] [base_page.py          :320 ] [back                ] - 🔙 [Action] 系统返回[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:00,758] [INFO   ] [base_page.py          :320 ] [back                ] - 🔙 [Action] 系统返回[0m
+[Pytest Process Out] [1;33m[2026-07-16 09:52:02,259] [WARNING] [main_page.py          :28  ] [go_to_main_page     ] -  🍎 未找到会话列表标题或标题不匹配，继续返回，剩余尝试次数：8[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:02,259] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+�剩余尝试次数：8[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:02,259] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:02,260] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:02,260] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:02,486] [INFO   ] [base_page.py          :277 ] [get_attribute       ] - ✅ base - 属性获取成功: text = 三条(464)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:02,486] [INFO   ] [base_page.py          :277 ] [get_attribute       ] - ✅ base - 属性获取成功: text = 三条(464)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:02,486] [INFO   ] [main_page.py          :18  ] [go_to_main_page     ] -  🍏 已找到会话列表标题 三条(464)，回到主页面会话列表[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:02,486] [INFO   ] [main_page.py          :18  ] [go_to_main_page     ] -  🍏 已找到会话列表标题 三条(464)，回到主页面会话列表[0m
+[Pytest Process Out] [32mPASSED[0m
+[consume_queue] 消费并准备广播: [32mPASSED[0m
+st/test_smoke_chat.py::TestSmokeChatCore::test_get_chat_nickname status=passed
+[consume_queue] 消费并准备广播: [TEST_RESULT] nodeid=tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_get_chat_nickname status=passed
 [Pytest Process Out] 
 [consume_queue] 消费并准备广播: 
+[Pytest Process Out] tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_chat_password_switch [1;32m[2026-07-16 09:52:03,491] [INFO   ] [chat_list_page.py     :114 ] [common_enter_chat   ] - 👉 准备进入会话: 【测试0222】[0m
+[consume_queue] 消费并准备广播: tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_chat_password_switch [1;32m[2026-07-16 09:52:03,491] [INFO   ] [chat_list_page.py     :114 ] [common_enter_chat   ] - 👉 准备进入会话: 【测试0222】[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:03,491] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:03,491] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:04,749] [INFO   ] [chat_page.py          :60  ] [wait_for_chat_page_load] - ⏳ [Wait] 等待聊天主页面加载完成，超时时间 10 秒[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:04,749] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/chat_input') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:04,749] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/chat_input') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:06,580] [INFO   ] [chat_page.py          :63  ] [wait_for_chat_page_load] - ✅ [Wait] 聊天主页面加载完成, 元素个数为 1[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:06,580] [INFO   ] [chat_list_page.py     :100 ] [enter_session       ] - ✅ 进入会话: 测试0222 (匹配模式: exact)[0m
+成, 元素个数为 1[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:06,580] [INFO   ] [chat_list_page.py     :100 ] [enter_session       ] - ✅ 进入会话: 测试0222 (匹配模式: exact)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:06,581] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'right_bnt') (模式: visibility)[0m
+22[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:06,581] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'right_bnt') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:06,688] [INFO   ] [base_page.py          :294 ] [click               ] - 🖱️ 以 visibility 模式点击元素: ('id', 'right_bnt')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:06,688] [INFO   ] [base_page.py          :294 ] [click               ] - 🖱️ 以 visibility 模式点击元素: ('id', 'right_bnt')[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:06,759] [INFO   ] [chat_page.py          :121 ] [click_more_button   ] - 🚀[Action-chat] - chat 点击更多按钮[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:06,759] [INFO   ] [chat_page.py          :121 ] [click_more_button   ] - 🚀[Action-chat] - chat 点击更多按钮[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:07,060] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_title') -> attr='text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:07,060] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_title') -> attr='text'[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:07,061] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_title') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:07,061] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_title') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:07,304] [INFO   ] [base_page.py          :277 ] [get_attribute       ] - ✅ base - 属性获取成功: text = 聊天信息[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:07,304] [INFO   ] [base_page.py          :277 ] [get_attribute       ] - ✅ base - 属性获取成功: text = 聊天信息[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:07,304] [INFO   ] [chat_setting_page.py  :14  ] [wait_for_setting_page_load] - ⏳ [Action] ChatSettingPage - 页面加载成功[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:07,304] [INFO   ] [chat_setting_page.py  :14  ] [wait_for_setting_page_load] - ⏳ [Action] ChatSettingPage - 页面加载成功[0m
+::android.widget.CheckBox") -> attr='checked'[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:07,304] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', "//*[@text='聊天密码']/following-sibling::android.widget.CheckBox") (模式: visibility)[0m
+'checked'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:07,304] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', "//*[@text='聊天密码']/following-sibling::android.widget.CheckBox") (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:07,479] [INFO   ] [base_page.py          :277 ] [get_attribute       ] - ✅ base - 属性获取成功: checked = false[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:07,479] [INFO   ] [base_page.py          :277 ] [get_attribute       ] - ✅ base - 属性获取成功: checked = false[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:07,479] [INFO   ] [chat_setting_page.py  :129 ] [get_switch_chat_pwd_status] - 🚀[Action] ChatSettingPage - 获取聊天密码状态: false[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:07,480] [INFO   ] [base_page.py          :782 ] [swipe_page_quickly  ] - 极速滑动自动探测边界启动 (Max:10次)[0m
+ 获取聊天密码状态: false[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:07,480] [INFO   ] [base_page.py          :782 ] [swipe_page_quickly  ] - 极速滑动自动探测边界启动 (Max:10次)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:07,716] [INFO   ] [base_page.py          :673 ] [swipe               ] - 滑动轨迹: (360, 1248) -> (360, 312) | 时长: 100ms[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:07,716] [INFO   ] [base_page.py          :673 ] [swipe               ] - 滑动轨迹: (360, 1248) -> (360, 312) | 时长: 100ms[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:08,804] [INFO   ] [base_page.py          :609 ] [is_page_source_changed] - 页面 DOM 是否发生变化: False[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:08,804] [INFO   ] [base_page.py          :609 ] [is_page_source_changed] - 页面 DOM 是否发生变化: False[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:08,805] [INFO   ] [base_page.py          :611 ] [is_page_source_changed] - ✅ 页面 DOM 已无变化，认定已至边界！[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:08,805] [INFO   ] [base_page.py          :611 ] [is_page_source_changed] - ✅ 页面 DOM 已无变化，认定已至边界！[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:08,805] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', "//*[@text='聊天密码']/following-sibling::android.widget.CheckBox") (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:08,805] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', "//*[@text='聊天密码']/following-sibling::android.widget.CheckBox") (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:08,945] [INFO   ] [base_page.py          :294 ] [click               ] - 🖱️ 以 visibility 模式点击元素: ('xpath', "//*[@text='聊天密码']/following-sibling::android.widget.CheckBox")[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:08,945] [INFO   ] [base_page.py          :294 ] [click               ] - 🖱️ 以 visibility 模式点击元素: ('xpath', "//*[@text='聊天密码']/following-sibling::android.widget.CheckBox")[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:09,012] [INFO   ] [chat_setting_page.py  :116 ] [click_switch_chat_pwd] - 🎚️ [Action] ChatSettingPage - 切换【聊天密码】[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:09,012] [INFO   ] [chat_setting_page.py  :116 ] [click_switch_chat_pwd] - 🎚️ [Action] ChatSettingPage - 切换【聊天密码】[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:09,013] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:09,013] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:09,013] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:10,330] [INFO   ] [except_utils.py       :87  ] [wrapper             ] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:10,330] [INFO   ] [except_utils.py       :87  ] [wrapper             ] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:10,552] [INFO   ] [base_page.py          :320 ] [back                ] - 🔙 [Action] 系统返回[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:10,552] [INFO   ] [base_page.py          :320 ] [back                ] - 🔙 [Action] 系统返回[0m
+[Pytest Process Out] [1;33m[2026-07-16 09:52:12,053] [WARNING] [main_page.py          :28  ] [go_to_main_page     ] -  🍎 未找到会话列表标题或标题不匹配，继续返回，剩余尝试次数：9[0m
+[consume_queue] 消费并准备广播: [1;33m[2026-07-16 09:52:12,053] [WARNING] [main_page.py          :28  ] [go_to_main_page     ] -  🍎 未找到会话列表标题或标题不匹配，继续返回，剩余尝试次数：9[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:12,053] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:12,053] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:12,054] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:13,061] [INFO   ] [except_utils.py       :87  ] [wrapper             ] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:13,061] [INFO   ] [except_utils.py       :87  ] [wrapper             ] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:14,087] [INFO   ] [base_page.py          :320 ] [back                ] - 🔙 [Action] 系统返回[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:14,087] [INFO   ] [base_page.py          :320 ] [back                ] - 🔙 [Action] 系统返回[0m
+[Pytest Process Out] [1;33m[2026-07-16 09:52:15,588] [WARNING] [main_page.py          :28  ] [go_to_main_page     ] -  🍎 未找到会话列表标题或标题不匹配，继续返回，剩余尝试次数：8[0m
+[consume_queue] 消费并准备广播: [1;33m[2026-07-16 09:52:15,588] [WARNING] [main_page.py          :28  ] [go_to_main_page     ] -  🍎 未找到会话列表标题或标题不匹配，继续返回，剩余尝试次数：8[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:15,589] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+'text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:15,589] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:15,779] [INFO   ] [base_page.py          :277 ] [get_attribute       ] - ✅ base - 属性获取成功: text = 三条(464)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:15,779] [INFO   ] [main_page.py          :18  ] [go_to_main_page     ] -  🍏 已找到会话列表标题 三条(464)，回到主页面会话列表[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:15,779] [INFO   ] [base_page.py          :277 ] [get_attribute       ] - ✅ base - 属性获取成功: text = 三条(464)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:15,779] [INFO   ] [main_page.py          :18  ] [go_to_main_page     ] -  🍏 已找到会话列表标题 三条(464)，回到主页面会话列表[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:16,780] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/cl_item"  and .//*[@resource-id="com.santiaotalk.im:id/tv_name" and @text="测试0222"]]//*[@resource-id="com.santiaotalk.im:id/tv_message"]') -> attr='text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:16,780] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/cl_item"  and .//*[@resource-id="com.santiaotalk.im:id/tv_name" and @text="测试0222"]]//*[@resource-id="com.santiaotalk.im:id/tv_message"]') -> attr='text'[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:16,780] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/cl_item"  and .//*[@resource-id="com.santiaotalk.im:id/tv_name" and @text="测试0222"]]//*[@resource-id="com.santiaotalk.im:id/tv_message"]') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:16,780] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/cl_item"  and .//*[@resource-id="com.santiaotalk.im:id/tv_name" and @text="测试0222"]]//*[@resource-id="com.santiaotalk.im:id/tv_message"]') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:17,737] [INFO   ] [base_page.py          :277 ] [get_attribute       ] - ✅ base - 属性获取成功: text = ******[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:17,737] [INFO   ] [home_page.py          :210 ] [get_message_by_name ] - [Action-Home] 主页 - 通过好友昵称[测试0222]获取他的消息内容: ******[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:17,737] [INFO   ] [home_page.py          :210 ] [get_message_by_name ] - [Action-Home] 主页 - 通过好友昵称[测试0222]获取他的消息内容: ******[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:17,738] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('-android uiautomator', 'new UiSelector().text("测试0222")') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:17,738] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('-android uiautomator', 'new UiSelector().text("测试0222")') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:18,059] [INFO   ] [home_page.py          :159 ] [get_conversation_by_name] - [Action-Home] 主页 - 获取特定名称会话: 测试0222[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:18,059] [INFO   ] [home_page.py          :159 ] [get_conversation_by_name] - [Action-Home] 主页 - 获取特定名称会话: 测试0222[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:18,231] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/view_input_code"]/android.widget.EditText[1]') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:18,231] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/view_input_code"]/android.widget.EditText[1]') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:19,404] [INFO   ] [base_page.py          :314 ] [send_keys           ] - [Action] 输入消息: 1[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:19,405] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/view_input_code"]/android.widget.EditText[2]') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:19,405] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/view_input_code"]/android.widget.EditText[2]') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:19,674] [INFO   ] [base_page.py          :314 ] [send_keys           ] - [Action] 输入消息: 1[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:19,674] [INFO   ] [base_page.py          :314 ] [send_keys           ] - [Action] 输入消息: 1[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:19,674] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/view_input_code"]/android.widget.EditText[3]') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:19,674] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/view_input_code"]/android.widget.EditText[3]') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:19,927] [INFO   ] [base_page.py          :314 ] [send_keys           ] - [Action] 输入消息: 1[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:19,927] [INFO   ] [base_page.py          :314 ] [send_keys           ] - [Action] 输入消息: 1[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:19,928] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/view_input_code"]/android.widget.EditText[4]') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:19,928] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/view_input_code"]/android.widget.EditText[4]') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:20,264] [INFO   ] [base_page.py          :314 ] [send_keys           ] - [Action] 输入消息: 1[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:20,264] [INFO   ] [base_page.py          :314 ] [send_keys           ] - [Action] 输入消息: 1[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:20,264] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/view_input_code"]/android.widget.EditText[5]') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:20,264] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/view_input_code"]/android.widget.EditText[5]') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:20,604] [INFO   ] [base_page.py          :314 ] [send_keys           ] - [Action] 输入消息: 1[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:20,605] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/view_input_code"]/android.widget.EditText[6]') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:20,605] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/view_input_code"]/android.widget.EditText[6]') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:21,022] [INFO   ] [base_page.py          :314 ] [send_keys           ] - [Action] 输入消息: 1[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:21,022] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'right_bnt') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:21,022] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'right_bnt') (模式: visibility)[0m
+[Pytest Process Out] [1;31m[2026-07-16 09:52:31,554] [ERROR  ] [except_utils.py       :97  ] [wrapper             ] - ❌ 查找元素失败: ('id', 'right_bnt') | 原因: TimeoutException[0m
+[consume_queue] 消费并准备广播: [1;31m[2026-07-16 09:52:31,554] [ERROR  ] [except_utils.py       :97  ] [wrapper             ] - ❌ 查找元素失败: ('id', 'right_bnt') | 原因: TimeoutException[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:33,046] [INFO   ] [except_utils.py       :32  ] [_take_screenshot_on_failure] - 📸 已保存异常截图至: d:\projects\santiao-anti\screenshots\Error_2026-07-16_095231___id____right_bnt__.png[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:33,046] [INFO   ] [except_utils.py       :32  ] [_take_screenshot_on_failure] - 📸 已保存异常截图至: d:\projects\santiao-anti\screenshots\Error_2026-07-16_095231___id____right_bnt__.png[0m
+[Pytest Process Out] [1;31m[2026-07-16 09:52:33,047] [ERROR  ] [base_page.py          :297 ] [click               ] - ❌ 点击失败，未找到元素: ('id', 'right_bnt')[0m
+[consume_queue] 消费并准备广播: [1;31m[2026-07-16 09:52:33,047] [ERROR  ] [base_page.py          :297 ] [click               ] - ❌ 点击失败，未找到元素: ('id', 'right_bnt')[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:33,050] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:33,050] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:33,051] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:33,051] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:34,187] [INFO   ] [except_utils.py       :87  ] [wrapper             ] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:34,187] [INFO   ] [except_utils.py       :87  ] [wrapper             ] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:34,348] [INFO   ] [base_page.py          :320 ] [back                ] - 🔙 [Action] 系统返回[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:34,348] [INFO   ] [base_page.py          :320 ] [back                ] - 🔙 [Action] 系统返回[0m
+[Pytest Process Out] [1;33m[2026-07-16 09:52:35,849] [WARNING] [main_page.py          :28  ] [go_to_main_page     ] -  🍎 未找到会话列表标题或标题不匹配，继续返回，剩余尝试次数：9[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:35,850] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+[consume_queue] 消费并准备广播: [1;33m[2026-07-16 09:52:35,849] [WARNING] [main_page.py          :28  ] [go_to_main_page     ] -  🍎 未找到会话列表标题或标题不匹配，继续返回，剩余尝试次数：9[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:35,850] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:35,850] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:35,850] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:37,064] [INFO   ] [except_utils.py       :87  ] [wrapper             ] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:37,064] [INFO   ] [except_utils.py       :87  ] [wrapper             ] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:37,170] [INFO   ] [base_page.py          :320 ] [back                ] - 🔙 [Action] 系统返回[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:37,170] [INFO   ] [base_page.py          :320 ] [back                ] - 🔙 [Action] 系统返回[0m
+[Pytest Process Out] [1;33m[2026-07-16 09:52:38,670] [WARNING] [main_page.py          :28  ] [go_to_main_page     ] -  🍎 未找到会话列表标题或标题不匹配，继续返回，剩余尝试次数：8[0m
+[consume_queue] 消费并准备广播: [1;33m[2026-07-16 09:52:38,670] [WARNING] [main_page.py          :28  ] [go_to_main_page     ] -  🍎 未找到会话列表标题或标题不匹配，继续返回，剩余尝试次数：8[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:38,671] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:38,671] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+'text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:38,671] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:38,926] [INFO   ] [base_page.py          :277 ] [get_attribute       ] - ✅ base - 属性获取成功: text = 三条(464)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:38,926] [INFO   ] [base_page.py          :277 ] [get_attribute       ] - ✅ base - 属性获取成功: text = 三条(464)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:38,926] [INFO   ] [main_page.py          :18  ] [go_to_main_page     ] -  🍏 已找到会话列表标题 三条(464)，回到主页面会话列表[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:38,926] [INFO   ] [main_page.py          :18  ] [go_to_main_page     ] -  🍏 已找到会话列表标题 三条(464)，回到主页面会话列表[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:39,927] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('-android uiautomator', 'new UiSelector().text("测试0222")') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:39,927] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('-android uiautomator', 'new UiSelector().text("测试0222")') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:40,302] [INFO   ] [home_page.py          :159 ] [get_conversation_by_name] - [Action-Home] 主页 - 获取特定名称会话: 测试0222[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:40,302] [INFO   ] [home_page.py          :159 ] [get_conversation_by_name] - [Action-Home] 主页 - 获取特定名称会话: 测试0222[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:40,468] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/view_input_code"]/android.widget.EditText[1]') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:40,468] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/view_input_code"]/android.widget.EditText[1]') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:41,468] [INFO   ] [base_page.py          :314 ] [send_keys           ] - [Action] 输入消息: 1[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:41,468] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/view_input_code"]/android.widget.EditText[2]') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:41,468] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/view_input_code"]/android.widget.EditText[2]') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:41,735] [INFO   ] [base_page.py          :314 ] [send_keys           ] - [Action] 输入消息: 1[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:41,735] [INFO   ] [base_page.py          :314 ] [send_keys           ] - [Action] 输入消息: 1[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:41,735] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/view_input_code"]/android.widget.EditText[3]') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:41,735] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/view_input_code"]/android.widget.EditText[3]') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:41,959] [INFO   ] [base_page.py          :314 ] [send_keys           ] - [Action] 输入消息: 1[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:41,960] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/view_input_code"]/android.widget.EditText[4]') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:41,959] [INFO   ] [base_page.py          :314 ] [send_keys           ] - [Action] 输入消息: 1[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:41,960] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/view_input_code"]/android.widget.EditText[4]') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:42,266] [INFO   ] [base_page.py          :314 ] [send_keys           ] - [Action] 输入消息: 1[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:42,267] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/view_input_code"]/android.widget.EditText[5]') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:42,267] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/view_input_code"]/android.widget.EditText[5]') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:43,360] [INFO   ] [base_page.py          :314 ] [send_keys           ] - [Action] 输入消息: 1[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:43,360] [INFO   ] [base_page.py          :314 ] [send_keys           ] - [Action] 输入消息: 1[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:43,361] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/view_input_code"]/android.widget.EditText[6]') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:43,361] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('xpath', '//*[@resource-id="com.santiaotalk.im:id/view_input_code"]/android.widget.EditText[6]') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:43,636] [INFO   ] [base_page.py          :314 ] [send_keys           ] - [Action] 输入消息: 1[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:43,636] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'right_bnt') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:43,636] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'right_bnt') (模式: visibility)[0m
+[Pytest Process Out] [1;31m[2026-07-16 09:52:54,186] [ERROR  ] [except_utils.py       :97  ] [wrapper             ] - ❌ 查找元素失败: ('id', 'right_bnt') | 原因: TimeoutException[0m
+[consume_queue] 消费并准备广播: [1;31m[2026-07-16 09:52:54,186] [ERROR  ] [except_utils.py       :97  ] [wrapper             ] - ❌ 查找元素失败: ('id', 'right_bnt') | 原因: TimeoutException[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:55,600] [INFO   ] [except_utils.py       :32  ] [_take_screenshot_on_failure] - 📸 已保存异常截图至: d:\projects\santiao-anti\screenshots\Error_2026-07-16_095254___id____right_bnt__.png[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:55,600] [INFO   ] [except_utils.py       :32  ] [_take_screenshot_on_failure] - 📸 已保存异常截图至: d:\projects\santiao-anti\screenshots\Error_2026-07-16_095254___id____right_bnt__.png[0m
+[Pytest Process Out] [1;31m[2026-07-16 09:52:55,601] [ERROR  ] [base_page.py          :297 ] [click               ] - ❌ 点击失败，未找到元素: ('id', 'right_bnt')[0m
+[consume_queue] 消费并准备广播: [1;31m[2026-07-16 09:52:55,601] [ERROR  ] [base_page.py          :297 ] [click               ] - ❌ 点击失败，未找到元素: ('id', 'right_bnt')[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:56,365] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:56,366] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+'text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:56,366] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:57,586] [INFO   ] [except_utils.py       :87  ] [wrapper             ] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:57,586] [INFO   ] [except_utils.py       :87  ] [wrapper             ] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:57,882] [INFO   ] [base_page.py          :320 ] [back                ] - 🔙 [Action] 系统返回[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:57,882] [INFO   ] [base_page.py          :320 ] [back                ] - 🔙 [Action] 系统返回[0m
+[Pytest Process Out] [1;33m[2026-07-16 09:52:59,383] [WARNING] [main_page.py          :28  ] [go_to_main_page     ] -  🍎 未找到会话列表标题或标题不匹配，继续返回，剩余尝试次数：9[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:59,384] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+�剩余尝试次数：9[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:52:59,384] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+'text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:52:59,384] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:00,970] [INFO   ] [except_utils.py       :87  ] [wrapper             ] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:00,970] [INFO   ] [except_utils.py       :87  ] [wrapper             ] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:01,048] [INFO   ] [base_page.py          :320 ] [back                ] - 🔙 [Action] 系统返回[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:01,048] [INFO   ] [base_page.py          :320 ] [back                ] - 🔙 [Action] 系统返回[0m
+[Pytest Process Out] [1;33m[2026-07-16 09:53:02,549] [WARNING] [main_page.py          :28  ] [go_to_main_page     ] -  🍎 未找到会话列表标题或标题不匹配，继续返回，剩余尝试次数：8[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:02,550] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+�剩余尝试次数：8[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:02,550] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:02,550] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:02,550] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:02,828] [INFO   ] [base_page.py          :277 ] [get_attribute       ] - ✅ base - 属性获取成功: text = 三条(464)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:02,828] [INFO   ] [base_page.py          :277 ] [get_attribute       ] - ✅ base - 属性获取成功: text = 三条(464)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:02,828] [INFO   ] [main_page.py          :18  ] [go_to_main_page     ] -  🍏 已找到会话列表标题 三条(464)，回到主页面会话列表[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:02,828] [INFO   ] [main_page.py          :18  ] [go_to_main_page     ] -  🍏 已找到会话列表标题 三条(464)，回到主页面会话列表[0m
+[Pytest Process Out] [31mFAILED[0m
+[Pytest Process Out] [TEST_RESULT] nodeid=tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_chat_password_switch status=failed
+[consume_queue] 消费并准备广播: [TEST_RESULT] nodeid=tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_chat_password_switch status=failed
+[Pytest Process Out] 
 [consume_queue] 消费并准备广播: 
-======= 重跑统计摘要 (Rerun Summary) ============================
-[consume_queue] 消费并准备广播: =========================== 重跑统计摘要 (Rerun Summary) ============================
-[consume_queue] 消费并准备广播: 📊 本次 Session 共触发 1 次重跑 (上限: 20)
-[Pytest Process Out] ======================================  =======================================
-[consume_queue] 消费并准备广播: ======================================  =======================================
-[Pytest Process Out] [32m============================= [32m[1m1 passed[0m[32m in 25.97s[0m[32m ==============================[0m
-[consume_queue] 消费并准备广播: [32m============================= [32m[1m1 passed[0m[32m in 25.97s[0m[32m ==============================[0m
+[Pytest Process Out] tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_screenshot_notification_switch [1;32m[2026-07-16 09:53:03,835] [INFO   ] [chat_list_page.py     :114 ] [common_enter_chat   ] - 👉 准备进入会话: 【测试0222】[0m
+[consume_queue] 消费并准备广播: tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_screenshot_notification_switch [1;32m[2026-07-16 09:53:03,835] [INFO   ] [chat_list_page.py     :114 ] [common_enter_chat   ] - 👉 准备进入会话: 【测试0222】[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:03,835] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:03,835] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:04,951] [INFO   ] [chat_page.py          :60  ] [wait_for_chat_page_load] - ⏳ [Wait] 等待聊天主页面加载完成，超时时间 10 秒[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:04,951] [INFO   ] [chat_page.py          :60  ] [wait_for_chat_page_load] - ⏳ [Wait] 等待聊天主页面加载完成，超时时间 10 秒[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:04,951] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/chat_input') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:04,951] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/chat_input') (模式: visibility)[0m
+[Pytest Process Out] [1;31m[2026-07-16 09:53:15,463] [ERROR  ] [except_utils.py       :132 ] [wrapper             ] - ❌ 查找元素列表失败: ('id', 'com.santiaotalk.im:id/chat_input')[0m
+[consume_queue] 消费并准备广播: [1;31m[2026-07-16 09:53:15,463] [ERROR  ] [except_utils.py       :132 ] [wrapper             ] - ❌ 查找元素列表失败: ('id', 'com.santiaotalk.im:id/chat_input')[0m
+[Pytest Process Out] [1;33m[2026-07-16 09:53:15,821] [WARNING] [except_utils.py       :34  ] [_take_screenshot_on_failure] - ❌ 自动截图失败: Message: Failed to capture a screenshot. Does the current view have 'secure' flag set?
+[Pytest Process Out] Stacktrace:
+[consume_queue] 消费并准备广播: [1;33m[2026-07-16 09:53:15,821] [WARNING] [except_utils.py       :34  ] [_take_screenshot_on_failure] - ❌ 自动截图失败: Message: Failed to capture a screenshot. Does the current view have 'secure' flag set?
+[consume_queue] 消费并准备广播: Stacktrace:
+[Pytest Process Out] io.appium.uiautomator2.common.exceptions.TakeScreenshotException: Failed to capture a screenshot. Does the current view have 'secure' flag set?
+[consume_queue] 消费并准备广播: io.appium.uiautomator2.common.exceptions.TakeScreenshotException: Failed to capture a screenshot. Does the current view have 'secure' flag set?
+[Pytest Process Out] at io.appium.uiautomator2.utils.ScreenshotHelper.validateScreenshot(ScreenshotHelper.java:201)
+[consume_queue] 消费并准备广播: at io.appium.uiautomator2.utils.ScreenshotHelper.validateScreenshot(ScreenshotHelper.java:201)
+[Pytest Process Out] at io.appium.uiautomator2.utils.ScreenshotHelper.takeDeviceScreenshot(ScreenshotHelper.java:139)
+[Pytest Process Out] at io.appium.uiautomator2.utils.ScreenshotHelper.takeScreenshot(ScreenshotHelper.java:60)
+eenshotHelper.java:139)
+[consume_queue] 消费并准备广播: at io.appium.uiautomator2.utils.ScreenshotHelper.takeScreenshot(ScreenshotHelper.java:60)
+[Pytest Process Out] at io.appium.uiautomator2.utils.ScreenshotHelper.takeScreenshot(ScreenshotHelper.java:77)
+[consume_queue] 消费并准备广播: at io.appium.uiautomator2.utils.ScreenshotHelper.takeScreenshot(ScreenshotHelper.java:77)
+[Pytest Process Out] at io.appium.uiautomator2.handler.CaptureScreenshot.safeHandle(CaptureScreenshot.java:32)
+[consume_queue] 消费并准备广播: at io.appium.uiautomator2.handler.CaptureScreenshot.safeHandle(CaptureScreenshot.java:32)
+[Pytest Process Out] at io.appium.uiautomator2.handler.request.SafeRequestHandler.handle(SafeRequestHandler.java:59)
+[consume_queue] 消费并准备广播: at io.appium.uiautomator2.handler.request.SafeRequestHandler.handle(SafeRequestHandler.java:59)
+[Pytest Process Out] at io.appium.uiautomator2.server.AppiumServlet.handleRequest(AppiumServlet.java:267)
+[Pytest Process Out] at io.appium.uiautomator2.server.AppiumServlet.handleHttpRequest(AppiumServlet.java:261)
+et.java:267)
+[consume_queue] 消费并准备广播: at io.appium.uiautomator2.server.AppiumServlet.handleHttpRequest(AppiumServlet.java:261)
+[Pytest Process Out] at io.appium.uiautomator2.http.ServerHandler.channelRead(ServerHandler.java:77)
+[Pytest Process Out] at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:356)
+[consume_queue] 消费并准备广播: at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:356)
+[Pytest Process Out] at io.netty.handler.codec.MessageToMessageDecoder.channelRead(MessageToMessageDecoder.java:107)
+[consume_queue] 消费并准备广播: at io.netty.handler.codec.MessageToMessageDecoder.channelRead(MessageToMessageDecoder.java:107)
+[Pytest Process Out] at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:356)
+[consume_queue] 消费并准备广播: at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:356)
+[Pytest Process Out] at io.netty.channel.CombinedChannelDuplexHandler$DelegatingChannelHandlerContext.fireChannelRead(CombinedChannelDuplexHandler.java:434)
+[Pytest Process Out] at io.netty.handler.codec.ByteToMessageDecoder.fireChannelRead(ByteToMessageDecoder.java:346)
+[consume_queue] 消费并准备广播: at io.netty.channel.CombinedChannelDuplexHandler$DelegatingChannelHandlerContext.fireChannelRead(CombinedChannelDuplexHandler.java:434)
+[Pytest Process Out] at io.netty.handler.codec.ByteToMessageDecoder.channelRead(ByteToMessageDecoder.java:318)
+[Pytest Process Out] at io.netty.channel.CombinedChannelDuplexHandler.channelRead(CombinedChannelDuplexHandler.java:249)
+.java:346)
+[consume_queue] 消费并准备广播: at io.netty.handler.codec.ByteToMessageDecoder.channelRead(ByteToMessageDecoder.java:318)
+[Pytest Process Out] at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:354)
+.java:249)
+[consume_queue] 消费并准备广播: at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:354)
+[Pytest Process Out] at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:354)
+[consume_queue] 消费并准备广播: at io.netty.handler.timeout.IdleStateHandler.channelRead(IdleStateHandler.java:293)
+[Pytest Process Out] at io.netty.channel.DefaultChannelPipeline$HeadContext.channelRead(DefaultChannelPipeline.java:1429)
+[consume_queue] 消费并准备广播: at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:354)
+[Pytest Process Out] at io.netty.channel.nio.AbstractNioByteChannel$NioByteUnsafe.read(AbstractNioByteChannel.java:168)
+[consume_queue] 消费并准备广播: at io.netty.channel.DefaultChannelPipeline$HeadContext.channelRead(DefaultChannelPipeline.java:1429)
+[Pytest Process Out] at io.netty.channel.nio.AbstractNioChannel$AbstractNioUnsafe.handle(AbstractNioChannel.java:445)
+[consume_queue] 消费并准备广播: at io.netty.channel.DefaultChannelPipeline.fireChannelRead(DefaultChannelPipeline.java:918)
+[consume_queue] 消费并准备广播: at io.netty.channel.nio.AbstractNioByteChannel$NioByteUnsafe.read(AbstractNioByteChannel.java:168)
+[Pytest Process Out] at io.netty.channel.nio.NioIoHandler$DefaultNioRegistration.handle(NioIoHandler.java:388)
+[consume_queue] 消费并准备广播: at io.netty.channel.nio.AbstractNioChannel$AbstractNioUnsafe.handle(AbstractNioChannel.java:445)
+[Pytest Process Out] at io.netty.channel.nio.NioIoHandler.processSelectedKeysOptimized(NioIoHandler.java:571)
+[consume_queue] 消费并准备广播: at io.netty.channel.nio.NioIoHandler$DefaultNioRegistration.handle(NioIoHandler.java:388)
+[consume_queue] 消费并准备广播: at io.netty.channel.nio.NioIoHandler.processSelectedKey(NioIoHandler.java:596)
+[consume_queue] 消费并准备广播: at io.netty.channel.nio.NioIoHandler.processSelectedKeysOptimized(NioIoHandler.java:571)
+[consume_queue] 消费并准备广播: at io.netty.channel.nio.NioIoHandler.processSelectedKeys(NioIoHandler.java:512)
+[Pytest Process Out] at io.netty.channel.SingleThreadIoEventLoop.runIo(SingleThreadIoEventLoop.java:225)
+[consume_queue] 消费并准备广播: at io.netty.channel.nio.NioIoHandler.run(NioIoHandler.java:484)
+[consume_queue] 消费并准备广播: at io.netty.channel.SingleThreadIoEventLoop.runIo(SingleThreadIoEventLoop.java:225)
+[Pytest Process Out] at io.netty.channel.SingleThreadIoEventLoop.run(SingleThreadIoEventLoop.java:196)
+[consume_queue] 消费并准备广播: at io.netty.channel.SingleThreadIoEventLoop.run(SingleThreadIoEventLoop.java:196)
+[Pytest Process Out] at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)
+SingleThreadEventExecutor.java:1193)
+[consume_queue] 消费并准备广播: at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)
+[Pytest Process Out] at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30)
+[consume_queue] 消费并准备广播: at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30)
+[Pytest Process Out] at java.lang.Thread.run(Thread.java:919)
+[consume_queue] 消费并准备广播: at java.lang.Thread.run(Thread.java:919)
+[consume_queue] 消费并准备广播: [0m
+:15,821] [INFO   ] [chat_page.py          :63  ] [wait_for_chat_page_load] - ✅ [Wait] 聊天主页面加载完成, 元素个数为 0[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:15,821] [INFO   ] [chat_page.py          :63  ] [wait_for_chat_page_load] - ✅ [Wait] 聊天主页面加载完成, 元素个数为 0[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:15,821] [INFO   ] [chat_list_page.py     :100 ] [enter_session       ] - ✅ 进入会话: 测试0222 (匹配模式: exact)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:15,821] [INFO   ] [chat_list_page.py     :100 ] [enter_session       ] - ✅ 进入会话: 测试0222 (匹配模式: exact)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:15,821] [INFO   ] [chat_list_page.py     :117 ] [common_enter_chat   ] - ✅ 在首页列表中找到并成功进入: 测试0222[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:15,821] [INFO   ] [chat_list_page.py     :117 ] [common_enter_chat   ] - ✅ 在首页列表中找到并成功进入: 测试0222[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:15,822] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'right_bnt') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:15,822] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'right_bnt') (模式: visibility)[0m
+[Pytest Process Out] [1;31m[2026-07-16 09:53:26,321] [ERROR  ] [except_utils.py       :97  ] [wrapper             ] - ❌ 查找元素失败: ('id', 'right_bnt') | 原因: TimeoutException[0m
+[consume_queue] 消费并准备广播: [1;31m[2026-07-16 09:53:26,321] [ERROR  ] [except_utils.py       :97  ] [wrapper             ] - ❌ 查找元素失败: ('id', 'right_bnt') | 原因: TimeoutException[0m
+[Pytest Process Out] [1;33m[2026-07-16 09:53:26,682] [WARNING] [except_utils.py       :34  ] [_take_screenshot_on_failure] - ❌ 自动截图失败: Message: Failed to capture a screenshot. Does the current view have 'secure' flag set?
+[Pytest Process Out] Stacktrace:
+播: [1;33m[2026-07-16 09:53:26,682] [WARNING] [except_utils.py       :34  ] [_take_screenshot_on_failure] - ❌ 自动截图失败: Message: Failed to capture a screenshot. Does the current view have 'secure' flag set?
+[consume_queue] 消费并准备广播: Stacktrace:
+[Pytest Process Out] io.appium.uiautomator2.common.exceptions.TakeScreenshotException: Failed to capture a screenshot. Does the current view have 'secure' flag set?
+[consume_queue] 消费并准备广播: io.appium.uiautomator2.common.exceptions.TakeScreenshotException: Failed to capture a screenshot. Does the current view have 'secure' flag set?
+[Pytest Process Out] at io.appium.uiautomator2.utils.ScreenshotHelper.validateScreenshot(ScreenshotHelper.java:201)
+[consume_queue] 消费并准备广播: at io.appium.uiautomator2.utils.ScreenshotHelper.validateScreenshot(ScreenshotHelper.java:201)
+[Pytest Process Out] at io.appium.uiautomator2.utils.ScreenshotHelper.takeDeviceScreenshot(ScreenshotHelper.java:139)
+[Pytest Process Out] at io.appium.uiautomator2.utils.ScreenshotHelper.takeScreenshot(ScreenshotHelper.java:60)
+eenshotHelper.java:139)
+[Pytest Process Out] at io.appium.uiautomator2.utils.ScreenshotHelper.takeScreenshot(ScreenshotHelper.java:77)
+tHelper.java:60)
+[consume_queue] 消费并准备广播: at io.appium.uiautomator2.utils.ScreenshotHelper.takeScreenshot(ScreenshotHelper.java:77)
+[Pytest Process Out] at io.appium.uiautomator2.handler.CaptureScreenshot.safeHandle(CaptureScreenshot.java:32)
+[Pytest Process Out] at io.appium.uiautomator2.handler.request.SafeRequestHandler.handle(SafeRequestHandler.java:59)
+t.java:32)
+[consume_queue] 消费并准备广播: at io.appium.uiautomator2.handler.request.SafeRequestHandler.handle(SafeRequestHandler.java:59)
+[Pytest Process Out] at io.appium.uiautomator2.server.AppiumServlet.handleRequest(AppiumServlet.java:267)
+[consume_queue] 消费并准备广播: at io.appium.uiautomator2.server.AppiumServlet.handleRequest(AppiumServlet.java:267)
+[Pytest Process Out] at io.appium.uiautomator2.http.ServerHandler.channelRead(ServerHandler.java:77)
+[consume_queue] 消费并准备广播: at io.appium.uiautomator2.server.AppiumServlet.handleHttpRequest(AppiumServlet.java:261)
+[Pytest Process Out] at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:356)
+[consume_queue] 消费并准备广播: at io.appium.uiautomator2.http.ServerHandler.channelRead(ServerHandler.java:77)
+[Pytest Process Out] at io.netty.handler.codec.MessageToMessageDecoder.channelRead(MessageToMessageDecoder.java:107)
+[consume_queue] 消费并准备广播: at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:356)
+[Pytest Process Out] at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:356)
+[Pytest Process Out] at io.netty.channel.CombinedChannelDuplexHandler$DelegatingChannelHandlerContext.fireChannelRead(CombinedChannelDuplexHandler.java:434)
+[Pytest Process Out] at io.netty.handler.codec.ByteToMessageDecoder.fireChannelRead(ByteToMessageDecoder.java:346)
+nnelHandlerContext.java:356)
+[consume_queue] 消费并准备广播: at io.netty.channel.CombinedChannelDuplexHandler$DelegatingChannelHandlerContext.fireChannelRead(CombinedChannelDuplexHandler.java:434)
+[Pytest Process Out] at io.netty.handler.codec.ByteToMessageDecoder.channelRead(ByteToMessageDecoder.java:318)
+[Pytest Process Out] at io.netty.channel.CombinedChannelDuplexHandler.channelRead(CombinedChannelDuplexHandler.java:249)
+.java:346)
+[Pytest Process Out] at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:354)
+
+[Pytest Process Out] at io.netty.handler.timeout.IdleStateHandler.channelRead(IdleStateHandler.java:293)
+edChannelDuplexHandler.java:249)
+[consume_queue] 消费并准备广播: at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:354)
+[Pytest Process Out] at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:354)
+[Pytest Process Out] at io.netty.channel.DefaultChannelPipeline$HeadContext.channelRead(DefaultChannelPipeline.java:1429)
+
+[Pytest Process Out] at io.netty.channel.DefaultChannelPipeline.fireChannelRead(DefaultChannelPipeline.java:918)
+hannelHandlerContext.java:354)
+[consume_queue] 消费并准备广播: at io.netty.channel.DefaultChannelPipeline$HeadContext.channelRead(DefaultChannelPipeline.java:1429)
+[Pytest Process Out] at io.netty.channel.nio.AbstractNioByteChannel$NioByteUnsafe.read(AbstractNioByteChannel.java:168)
+[Pytest Process Out] at io.netty.channel.nio.AbstractNioChannel$AbstractNioUnsafe.handle(AbstractNioChannel.java:445)
+e.java:918)
+[consume_queue] 消费并准备广播: at io.netty.channel.nio.AbstractNioByteChannel$NioByteUnsafe.read(AbstractNioByteChannel.java:168)
+[Pytest Process Out] at io.netty.channel.nio.NioIoHandler$DefaultNioRegistration.handle(NioIoHandler.java:388)
+[consume_queue] 消费并准备广播: at io.netty.channel.nio.AbstractNioChannel$AbstractNioUnsafe.handle(AbstractNioChannel.java:445)
+[Pytest Process Out] at io.netty.channel.nio.NioIoHandler.processSelectedKey(NioIoHandler.java:596)
+[consume_queue] 消费并准备广播: at io.netty.channel.nio.NioIoHandler$DefaultNioRegistration.handle(NioIoHandler.java:388)
+[Pytest Process Out] at io.netty.channel.nio.NioIoHandler.processSelectedKeysOptimized(NioIoHandler.java:571)
+[consume_queue] 消费并准备广播: at io.netty.channel.nio.NioIoHandler.processSelectedKey(NioIoHandler.java:596)
+[Pytest Process Out] at io.netty.channel.nio.NioIoHandler.processSelectedKeys(NioIoHandler.java:512)
+[consume_queue] 消费并准备广播: at io.netty.channel.nio.NioIoHandler.processSelectedKeysOptimized(NioIoHandler.java:571)
+[consume_queue] 消费并准备广播: at io.netty.channel.nio.NioIoHandler.processSelectedKeys(NioIoHandler.java:512)
+[Pytest Process Out] at io.netty.channel.nio.NioIoHandler.run(NioIoHandler.java:484)
+[consume_queue] 消费并准备广播: at io.netty.channel.nio.NioIoHandler.run(NioIoHandler.java:484)
+[Pytest Process Out] at io.netty.channel.SingleThreadIoEventLoop.runIo(SingleThreadIoEventLoop.java:225)
+[consume_queue] 消费并准备广播: at io.netty.channel.SingleThreadIoEventLoop.runIo(SingleThreadIoEventLoop.java:225)
+[Pytest Process Out] at io.netty.channel.SingleThreadIoEventLoop.run(SingleThreadIoEventLoop.java:196)
+[consume_queue] 消费并准备广播: at io.netty.channel.SingleThreadIoEventLoop.run(SingleThreadIoEventLoop.java:196)
+[Pytest Process Out] at io.netty.util.concurrent.SingleThreadEventExecutor$5.run(SingleThreadEventExecutor.java:1193)
+[Pytest Process Out] at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)
+SingleThreadEventExecutor.java:1193)
+[consume_queue] 消费并准备广播: at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)
+[Pytest Process Out] at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30)
+[consume_queue] 消费并准备广播: at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30)
+[Pytest Process Out] at java.lang.Thread.run(Thread.java:919)
+[Pytest Process Out] [0m
+�备广播: at java.lang.Thread.run(Thread.java:919)
+[consume_queue] 消费并准备广播: [0m
+[Pytest Process Out] [1;31m[2026-07-16 09:53:26,682] [ERROR  ] [base_page.py          :297 ] [click               ] - ❌ 点击失败，未找到元素: ('id', 'right_bnt')[0m
+[consume_queue] 消费并准备广播: [1;31m[2026-07-16 09:53:26,682] [ERROR  ] [base_page.py          :297 ] [click               ] - ❌ 点击失败，未找到元素: ('id', 'right_bnt')[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:27,483] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:27,483] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:27,483] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:27,483] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:28,721] [INFO   ] [except_utils.py       :87  ] [wrapper             ] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:28,721] [INFO   ] [except_utils.py       :87  ] [wrapper             ] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:28,831] [INFO   ] [base_page.py          :320 ] [back                ] - 🔙 [Action] 系统返回[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:28,831] [INFO   ] [base_page.py          :320 ] [back                ] - 🔙 [Action] 系统返回[0m
+[Pytest Process Out] [1;33m[2026-07-16 09:53:30,332] [WARNING] [main_page.py          :28  ] [go_to_main_page     ] -  🍎 未找到会话列表标题或标题不匹配，继续返回，剩余尝试次数：9[0m
+[consume_queue] 消费并准备广播: [1;33m[2026-07-16 09:53:30,332] [WARNING] [main_page.py          :28  ] [go_to_main_page     ] -  🍎 未找到会话列表标题或标题不匹配，继续返回，剩余尝试次数：9[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:30,332] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:30,332] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:30,332] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:30,587] [INFO   ] [base_page.py          :277 ] [get_attribute       ] - ✅ base - 属性获取成功: text = 三条(464)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:30,587] [INFO   ] [main_page.py          :18  ] [go_to_main_page     ] -  🍏 已找到会话列表标题 三条(464)，回到主页面会话列表[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:30,587] [INFO   ] [main_page.py          :18  ] [go_to_main_page     ] -  🍏 已找到会话列表标题 三条(464)，回到主页面会话列表[0m
+[Pytest Process Out] [31mFAILED[0m
+[consume_queue] 消费并准备广播: [31mFAILED[0m
+[Pytest Process Out] [TEST_RESULT] nodeid=tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_screenshot_notification_switch status=failed
+[consume_queue] 消费并准备广播: [TEST_RESULT] nodeid=tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_screenshot_notification_switch status=failed
+[consume_queue] 消费并准备广播: 
+[Pytest Process Out] tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_recall_notification_switch [1;32m[2026-07-16 09:53:31,593] [INFO   ] [chat_list_page.py     :114 ] [common_enter_chat   ] - 👉 准备进入会话: 【测试0222】[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:31,593] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_recall_notification_switch [1;32m[2026-07-16 09:53:31,593] [INFO   ] [chat_list_page.py     :114 ] [common_enter_chat   ] - 👉 准备进入会话: 【测试0222】[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:31,593] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:32,598] [INFO   ] [chat_page.py          :60  ] [wait_for_chat_page_load] - ⏳ [Wait] 等待聊天主页面加载完成，超时时间 10 秒[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:32,598] [INFO   ] [chat_page.py          :60  ] [wait_for_chat_page_load] - ⏳ [Wait] 等待聊天主页面加载完成，超时时间 10 秒[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:32,599] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/chat_input') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:32,599] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/chat_input') (模式: visibility)[0m
+[Pytest Process Out] [1;31m[2026-07-16 09:53:43,113] [ERROR  ] [except_utils.py       :132 ] [wrapper             ] - ❌ 查找元素列表失败: ('id', 'com.santiaotalk.im:id/chat_input')[0m
+[consume_queue] 消费并准备广播: [1;31m[2026-07-16 09:53:43,113] [ERROR  ] [except_utils.py       :132 ] [wrapper             ] - ❌ 查找元素列表失败: ('id', 'com.santiaotalk.im:id/chat_input')[0m
+[Pytest Process Out] [1;33m[2026-07-16 09:53:43,470] [WARNING] [except_utils.py       :34  ] [_take_screenshot_on_failure] - ❌ 自动截图失败: Message: Failed to capture a screenshot. Does the current view have 'secure' flag set?
+[Pytest Process Out] Stacktrace:
+播: [1;33m[2026-07-16 09:53:43,470] [WARNING] [except_utils.py       :34  ] [_take_screenshot_on_failure] - ❌ 自动截图失败: Message: Failed to capture a screenshot. Does the current view have 'secure' flag set?
+[consume_queue] 消费并准备广播: Stacktrace:
+[Pytest Process Out] io.appium.uiautomator2.common.exceptions.TakeScreenshotException: Failed to capture a screenshot. Does the current view have 'secure' flag set?
+[consume_queue] 消费并准备广播: io.appium.uiautomator2.common.exceptions.TakeScreenshotException: Failed to capture a screenshot. Does the current view have 'secure' flag set?
+[Pytest Process Out] at io.appium.uiautomator2.utils.ScreenshotHelper.validateScreenshot(ScreenshotHelper.java:201)
+[consume_queue] 消费并准备广播: at io.appium.uiautomator2.utils.ScreenshotHelper.validateScreenshot(ScreenshotHelper.java:201)
+[Pytest Process Out] at io.appium.uiautomator2.utils.ScreenshotHelper.takeDeviceScreenshot(ScreenshotHelper.java:139)
+[Pytest Process Out] at io.appium.uiautomator2.utils.ScreenshotHelper.takeScreenshot(ScreenshotHelper.java:60)
+eenshotHelper.java:139)
+[consume_queue] 消费并准备广播: at io.appium.uiautomator2.utils.ScreenshotHelper.takeScreenshot(ScreenshotHelper.java:60)
+[Pytest Process Out] at io.appium.uiautomator2.utils.ScreenshotHelper.takeScreenshot(ScreenshotHelper.java:77)
+[consume_queue] 消费并准备广播: at io.appium.uiautomator2.utils.ScreenshotHelper.takeScreenshot(ScreenshotHelper.java:77)
+[Pytest Process Out] at io.appium.uiautomator2.handler.CaptureScreenshot.safeHandle(CaptureScreenshot.java:32)
+[consume_queue] 消费并准备广播: at io.appium.uiautomator2.handler.CaptureScreenshot.safeHandle(CaptureScreenshot.java:32)
+[Pytest Process Out] at io.appium.uiautomator2.handler.request.SafeRequestHandler.handle(SafeRequestHandler.java:59)
+[consume_queue] 消费并准备广播: at io.appium.uiautomator2.handler.request.SafeRequestHandler.handle(SafeRequestHandler.java:59)
+[Pytest Process Out] at io.appium.uiautomator2.server.AppiumServlet.handleRequest(AppiumServlet.java:267)
+[consume_queue] 消费并准备广播: at io.appium.uiautomator2.server.AppiumServlet.handleRequest(AppiumServlet.java:267)
+[Pytest Process Out] at io.appium.uiautomator2.server.AppiumServlet.handleHttpRequest(AppiumServlet.java:261)
+[consume_queue] 消费并准备广播: at io.appium.uiautomator2.server.AppiumServlet.handleHttpRequest(AppiumServlet.java:261)
+[Pytest Process Out] at io.appium.uiautomator2.http.ServerHandler.channelRead(ServerHandler.java:77)
+[Pytest Process Out] at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:356)
+[consume_queue] 消费并准备广播: at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:356)
+[Pytest Process Out] at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:356)
+a:107)
+[consume_queue] 消费并准备广播: at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:356)
+[Pytest Process Out] at io.netty.channel.CombinedChannelDuplexHandler$DelegatingChannelHandlerContext.fireChannelRead(CombinedChannelDuplexHandler.java:434)
+[consume_queue] 消费并准备广播: at io.netty.channel.CombinedChannelDuplexHandler$DelegatingChannelHandlerContext.fireChannelRead(CombinedChannelDuplexHandler.java:434)
+[Pytest Process Out] at io.netty.handler.codec.ByteToMessageDecoder.fireChannelRead(ByteToMessageDecoder.java:346)
+[consume_queue] 消费并准备广播: at io.netty.handler.codec.ByteToMessageDecoder.fireChannelRead(ByteToMessageDecoder.java:346)
+[Pytest Process Out] at io.netty.handler.codec.ByteToMessageDecoder.channelRead(ByteToMessageDecoder.java:318)
+[Pytest Process Out] at io.netty.channel.CombinedChannelDuplexHandler.channelRead(CombinedChannelDuplexHandler.java:249)
+a:318)
+[Pytest Process Out] at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:354)
+.java:249)
+[Pytest Process Out] at io.netty.handler.timeout.IdleStateHandler.channelRead(IdleStateHandler.java:293)
+bstractChannelHandlerContext.java:354)
+[Pytest Process Out] at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:354)
+[consume_queue] 消费并准备广播: at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:354)
+[consume_queue] 消费并准备广播: at io.netty.channel.DefaultChannelPipeline$HeadContext.channelRead(DefaultChannelPipeline.java:1429)
+[Pytest Process Out] at io.netty.channel.DefaultChannelPipeline.fireChannelRead(DefaultChannelPipeline.java:918)
+[Pytest Process Out] at io.netty.channel.nio.AbstractNioByteChannel$NioByteUnsafe.read(AbstractNioByteChannel.java:168)
+java:918)
+[Pytest Process Out] at io.netty.channel.nio.AbstractNioChannel$AbstractNioUnsafe.handle(AbstractNioChannel.java:445)
+eChannel.java:168)
+[Pytest Process Out] at io.netty.channel.nio.NioIoHandler$DefaultNioRegistration.handle(NioIoHandler.java:388)
+actNioChannel.java:445)
+[consume_queue] 消费并准备广播: at io.netty.channel.nio.NioIoHandler$DefaultNioRegistration.handle(NioIoHandler.java:388)
+[Pytest Process Out] at io.netty.channel.nio.NioIoHandler.processSelectedKey(NioIoHandler.java:596)
+[Pytest Process Out] at io.netty.channel.nio.NioIoHandler.processSelectedKeysOptimized(NioIoHandler.java:571)
+a:596)
+[Pytest Process Out] at io.netty.channel.nio.NioIoHandler.processSelectedKeys(NioIoHandler.java:512)
+ed(NioIoHandler.java:571)
+[Pytest Process Out] at io.netty.channel.nio.NioIoHandler.run(NioIoHandler.java:484)
+[consume_queue] 消费并准备广播: at io.netty.channel.nio.NioIoHandler.processSelectedKeys(NioIoHandler.java:512)
+[Pytest Process Out] at io.netty.channel.SingleThreadIoEventLoop.runIo(SingleThreadIoEventLoop.java:225)
+[consume_queue] 消费并准备广播: at io.netty.channel.nio.NioIoHandler.run(NioIoHandler.java:484)
+[Pytest Process Out] at io.netty.channel.SingleThreadIoEventLoop.run(SingleThreadIoEventLoop.java:196)
+[consume_queue] 消费并准备广播: at io.netty.channel.SingleThreadIoEventLoop.runIo(SingleThreadIoEventLoop.java:225)
+[Pytest Process Out] at io.netty.util.concurrent.SingleThreadEventExecutor$5.run(SingleThreadEventExecutor.java:1193)
+[consume_queue] 消费并准备广播: at io.netty.channel.SingleThreadIoEventLoop.run(SingleThreadIoEventLoop.java:196)
+[Pytest Process Out] at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)
+SingleThreadEventExecutor.java:1193)
+[consume_queue] 消费并准备广播: at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)
+[consume_queue] 消费并准备广播: at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30)
+[Pytest Process Out] at java.lang.Thread.run(Thread.java:919)
+[Pytest Process Out] [0m
+[consume_queue] 消费并准备广播: at java.lang.Thread.run(Thread.java:919)
+[Pytest Process Out] [1;32m[2026-07-16 09:53:43,470] [INFO   ] [chat_page.py          :63  ] [wait_for_chat_page_load] - ✅ [Wait] 聊天主页面加载完成, 元素个数为 0[0m
+[consume_queue] 消费并准备广播: [0m
+:43,470] [INFO   ] [chat_list_page.py     :100 ] [enter_session       ] - ✅ 进入会话: 测试0222 (匹配模式: exact)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:43,470] [INFO   ] [chat_page.py          :63  ] [wait_for_chat_page_load] - ✅ [Wait] 聊天主页面加载完成, 元素个数为 0[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:43,470] [INFO   ] [chat_list_page.py     :100 ] [enter_session       ] - ✅ 进入会话: 测试0222 (匹配模式: exact)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:43,471] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'right_bnt') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:43,470] [INFO   ] [chat_list_page.py     :117 ] [common_enter_chat   ] - ✅ 在首页列表中找到并成功进入: 测试0222[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:43,471] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'right_bnt') (模式: visibility)[0m
+[Pytest Process Out] [1;31m[2026-07-16 09:53:53,807] [ERROR  ] [except_utils.py       :97  ] [wrapper             ] - ❌ 查找元素失败: ('id', 'right_bnt') | 原因: TimeoutException[0m
+[consume_queue] 消费并准备广播: [1;31m[2026-07-16 09:53:53,807] [ERROR  ] [except_utils.py       :97  ] [wrapper             ] - ❌ 查找元素失败: ('id', 'right_bnt') | 原因: TimeoutException[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:54,983] [INFO   ] [except_utils.py       :32  ] [_take_screenshot_on_failure] - 📸 已保存异常截图至: d:\projects\santiao-anti\screenshots\Error_2026-07-16_095353___id____right_bnt__.png[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:54,983] [INFO   ] [except_utils.py       :32  ] [_take_screenshot_on_failure] - 📸 已保存异常截图至: d:\projects\santiao-anti\screenshots\Error_2026-07-16_095353___id____right_bnt__.png[0m
+[Pytest Process Out] [1;31m[2026-07-16 09:53:54,983] [ERROR  ] [base_page.py          :297 ] [click               ] - ❌ 点击失败，未找到元素: ('id', 'right_bnt')[0m
+[consume_queue] 消费并准备广播: [1;31m[2026-07-16 09:53:54,983] [ERROR  ] [base_page.py          :297 ] [click               ] - ❌ 点击失败，未找到元素: ('id', 'right_bnt')[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:55,670] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:55,670] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:55,670] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:55,670] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:56,915] [INFO   ] [except_utils.py       :87  ] [wrapper             ] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:56,915] [INFO   ] [except_utils.py       :87  ] [wrapper             ] - ✅ 元素预期不存在，验证通过: ('id', 'com.santiaotalk.im:id/tv_state')[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:57,209] [INFO   ] [base_page.py          :320 ] [back                ] - 🔙 [Action] 系统返回[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:57,209] [INFO   ] [base_page.py          :320 ] [back                ] - 🔙 [Action] 系统返回[0m
+[Pytest Process Out] [1;33m[2026-07-16 09:53:58,710] [WARNING] [main_page.py          :28  ] [go_to_main_page     ] -  🍎 未找到会话列表标题或标题不匹配，继续返回，剩余尝试次数：9[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:58,711] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+�剩余尝试次数：9[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:58,711] [INFO   ] [base_page.py          :273 ] [get_attribute       ] - 🔎 获取元素属性: ('id', 'com.santiaotalk.im:id/tv_state') -> attr='text'[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:58,711] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:58,711] [INFO   ] [base_page.py          :46  ] [find_element        ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_state') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:58,925] [INFO   ] [base_page.py          :277 ] [get_attribute       ] - ✅ base - 属性获取成功: text = 三条(464)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:58,925] [INFO   ] [base_page.py          :277 ] [get_attribute       ] - ✅ base - 属性获取成功: text = 三条(464)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:58,925] [INFO   ] [main_page.py          :18  ] [go_to_main_page     ] -  🍏 已找到会话列表标题 三条(464)，回到主页面会话列表[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:58,925] [INFO   ] [main_page.py          :18  ] [go_to_main_page     ] -  🍏 已找到会话列表标题 三条(464)，回到主页面会话列表[0m
+[Pytest Process Out] [31mFAILED[0m
+[consume_queue] 消费并准备广播: [31mFAILED[0m
+[Pytest Process Out] [TEST_RESULT] nodeid=tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_recall_notification_switch status=failed
+[Pytest Process Out] 
+��准备广播: [TEST_RESULT] nodeid=tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_recall_notification_switch status=failed
+[consume_queue] 消费并准备广播: 
+[Pytest Process Out] tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_clear_chat_records [1;32m[2026-07-16 09:53:59,931] [INFO   ] [chat_list_page.py     :114 ] [common_enter_chat   ] - 👉 准备进入会话: 【测试0224】[0m
+[consume_queue] 消费并准备广播: tests/smoke_test/test_smoke_chat.py::TestSmokeChatCore::test_clear_chat_records [1;32m[2026-07-16 09:53:59,931] [INFO   ] [chat_list_page.py     :114 ] [common_enter_chat   ] - 👉 准备进入会话: 【测试0224】[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:53:59,932] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)[0m
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:53:59,932] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)[0m
+[Pytest Process Out] [1;32m[2026-07-16 09:54:01,715] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)[0m
 [read_to_queue] 线程读取结束，放置 None 哨兵
+[consume_queue] 消费并准备广播: [1;32m[2026-07-16 09:54:01,715] [INFO   ] [base_page.py          :75  ] [find_elements       ] - 🔎 正在查找元素: ('id', 'com.santiaotalk.im:id/tv_name') (模式: visibility)[0m
 [consume_queue] 收到 None 哨兵，退出消费循环
 [run_task_lifecycle] gather 结束，等待子进程退出状态...
-[run_task_lifecycle] 子进程已退出，退出码: 0
+[run_task_lifecycle] 子进程已退出，退出码: 1
 [run_task_lifecycle] 准备触发 Allure 生成
 [run_task_lifecycle] Allure 报告生成完毕

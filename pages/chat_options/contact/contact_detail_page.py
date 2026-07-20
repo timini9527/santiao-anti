@@ -8,15 +8,9 @@ import time
 class ContactDetailPage(CommonPage):
     """好友资料详情页面对象"""
 
-    # 等待加载资料详情页
+    # 资料页 - 等待加载资料详情页
     def wait_for_detail_page_load(self, timeout: int = 10) -> bool:
-        """
-        等待资料详情页加载完成
-        Args:
-            timeout: 超时时间
-        Returns:
-            bool: True 表示加载成功，False 表示超时
-        """
+        """ 资料页 - 等待资料详情页加载完成 """
         try:
             self.find_element(ContactDetailLocator.ST_ID, timeout=timeout)
             logger.info("✅ [Wait - ContactDetail] 资料详情页加载完成")
@@ -25,79 +19,86 @@ class ContactDetailPage(CommonPage):
             logger.error(f"❌ [Wait - ContactDetail] 资料详情页加载超时")
             return False
 
-    # 点击更多图标
+    # 资料页 - 点击更多图标
     def click_iv_right(self):
-        """点击更多图标"""
+        """ 资料页 - 点击更多图标 """
         self.click(ContactDetailLocator.IV_RIGHT)
         logger.info("⚙️ [Action - ContactDetail] 资料详情页 - 点击更多图标")
 
-    # 点击返回按钮
+    # 资料页 - 点击返回按钮
     def click_iv_back(self):
-        """点击返回按钮"""
+        """ 资料页 - 点击返回按钮 """
         self.click(ContactDetailLocator.IV_BACK)
         logger.info("⚙️ [Action - ContactDetail] 资料详情页 - 点击返回按钮")
 
-    # 获取资料页显示的昵称
-    def get_contact_nickname(self) -> str:
-        """获取资料页显示的昵称"""
-        nickname = self.get_attribute(ContactDetailLocator.INFO_NICKNAME, "text")
+    # 资料页 - 获取资料页原始昵称
+    def get_raw_nickname(self) -> str:
+        """ 资料页 - 获取资料页原始昵称 """
+        raw_nickname = self.get_attribute(ContactDetailLocator.TV_NAME_XPATH, "text")
+        logger.info(f"🧐 [Action - ContactDetail] 资料详情页 - 获取原始昵称: {raw_nickname}")
+        return raw_nickname
+
+    # 资料页 - 获取资料页显示的昵称
+    def get_contact_nickname(self, raise_exception: bool = True) -> str:
+        """ 资料页 - 获取资料页显示的昵称 """
+        nickname = self.get_attribute(ContactDetailLocator.INFO_NICKNAME, "text", raise_exception=raise_exception)
         logger.info(f"🧐 [Action - ContactDetail] 资料详情页 - 获取昵称: {nickname}")
         return nickname
     
-    # 获取资料页显示的 St ID
+    # 资料页 - 获取资料页显示的 St ID
     def get_st_id(self) -> str:
-        """获取资料页显示的 St ID"""
+        """ 资料页 - 获取资料页显示的 St ID """
         stId = self.get_attribute(ContactDetailLocator.ST_ID, "text")
         logger.info(f"🧐 [Action - ContactDetail] 资料详情页 - 获取 St ID: {stId}")
         return stId
 
-    # 获取资料页显示的所在地
+    # 资料页 - 获取资料页显示的所在地
     def get_location(self) -> str:
-        """获取资料页显示的所在地"""
+        """ 获取资料页显示的所在地 """
         location = self.get_attribute(ContactDetailLocator.LOCATION, "text")
         logger.info(f"🧐 [Action - ContactDetail] 资料详情页 - 获取所在地: {location}")
         return location
 
-    # 点击设置备注
+    # 资料页 - 点击设置备注
     def click_remark(self):
-        """点击 [设置备注] 选项"""
+        """ 资料页 - 点击 [设置备注] 选项 """
         self.click(ContactDetailLocator.SET_REMARK_ITEM)
         logger.info("⚙️ [Action - ContactDetail] 资料详情页 - 点击 [设置备注]")
 
-    # 点击推荐给朋友
+    # 资料页 - 点击推荐给朋友
     def click_recommend(self):
-        """点击 [推荐给朋友] 选项"""
+        """ 资料页 - 点击 [推荐给朋友] 选项 """
         self.click(ContactDetailLocator.RECOMMEND_ITEM)
         logger.info("⚙️ [Action - ContactDetail] 资料详情页 - 点击 [推荐给朋友]")
 
-    # 点击动态
+    # 资料页 - 点击动态
     def click_moments(self):
-        """点击 [动态] 选项"""
+        """ 资料页 - 点击 [动态] 选项 """
         self.click(ContactDetailLocator.MOMENTS_ITEM)
         logger.info("⚙️ [Action - ContactDetail] 资料详情页 - 点击 [动态]")
 
-    # 点击更多设置
+    # 资料页 - 点击更多设置
     def click_more_settings(self):
-        """点击 [更多] 选项"""
+        """ 资料页 - 点击 [更多] 选项 """
         self.click(ContactDetailLocator.MORE_ITEM)
         logger.info("⚙️ [Action - ContactDetail] 资料详情页 - 点击 [更多] 设置")
     
-    # 点击发送消息
+    # 资料页 - 点击发送消息
     def click_send_message(self):
-        """点击 [发送消息] 按钮，通常会跳转回聊天页"""
+        """ 资料页 - 点击 [发送消息] 按钮，通常会跳转回聊天页 """
         self.click(ContactDetailLocator.SEND_MSG_BTN)
         logger.info("🚀 [Action - ContactDetail] 资料详情页 - 点击 [发送消息]")
         # time.sleep(1)
 
-    # 点击音视频通话
+    # 资料页 - 点击音视频通话
     def click_voice_video_call(self):
-        """点击 [音视频通话] 按钮"""
+        """ 资料页 - 点击 [音视频通话] 按钮 """
         self.click(ContactDetailLocator.CALL_BTN)
         logger.info("📞 [Action - ContactDetail] 资料详情页 - 点击 [音视频通话]")
 
     # 非好友-点击申请加好友
     def click_add_friend(self):
-        """点击 [申请加好友] 按钮"""
+        """ 非好友-点击 [申请加好友] 按钮 """
         self.click(ContactDetailLocator.WHITE_UNFRIEND)
         logger.info("🚀 [Action - ContactDetail] 资料详情页 - 点击 [申请加好友]")
 
@@ -212,32 +213,53 @@ class ContactDetailPage(CommonPage):
     # ==============================================================
     # 好友详情页面
     # ==============================================================
+        
     # 好友详情页面 - 点击解除好友关系
     def click_unfriend_tv_unfriend(self):
         """好友详情页面 - 点击解除好友关系"""
         self.click(ContactDetailLocator.UNFRIEND_TV_UNFRIEND)
         logger.info("⚙️ [Action - ContactDetail] 好友详情页 - 点击解除好友关系")
 
-    # 确认删除
+    # 好友资料 - 确认删除
     def confirm_delete_comment(self):
-        """确认删除"""
+        """ 好友资料 - 确认删除 """
         self.click(ContactDetailLocator.CONFIRM_TWO_BTN)
-        logger.info("⚙️ [Action - ContactDetail] 确认删除")
+        logger.info("⚙️ [Action - ContactDetail] 好友资料 - 确认删除")
 
-    # 点击右上角更多并删除好友
+    # 好友资料 - 点击右上角更多并删除好友
     def delete_contact(self) -> bool:
-        """ 在好友详情页中，点击更多并删除该好友 """
+        """ 好友资料 - 在好友详情页中，点击更多并删除好友 """
         try:
             self.click_iv_right()
             self.click_unfriend_tv_unfriend()
             self.confirm_delete_comment()
-            logger.info("⚙️ [Action - ContactDetail] 点击右上角更多并删除好友成功")
+            logger.info("⚙️ [Action - ContactDetail] 好友资料 - 点击右上角更多并删除好友成功")
             return True
         except Exception as e:
-            logger.error(f"❌ [Action - ContactDetail] 删除好友失败: {e}")
+            logger.error(f"❌ [Action - ContactDetail] 好友资料 - 点击右上角更多并删除好友失败: {e}")
             return False
 
-    # 设置好友备注名
+    # 好友资料 - 获取好友昵称并格式化
+    def get_formatted_friend_name(self) -> str:
+        """ 好友资料 - 获取好友详情页的显示名称并格式化 """
+        raw_name = self.get_raw_nickname()
+        if not raw_name:
+            logger.error("❌ [Action - ContactDetail] 未获取到好友昵称")
+            return ""
+        formatted_name = self.clean_ui_text(raw_name)
+        if not formatted_name:
+            logger.error("❌ [Action - ContactDetail] 格式化后的好友昵称为空")
+            return ""
+        logger.info(f"🧐 [Action - ContactDetail] 获取到格式化后的好友昵称: {formatted_name}")
+        return formatted_name
+        
+    # 好友资料 - 点击好友资料标题行
+    def click_friend_detail_title_remark(self):
+        """ 好友资料 - 点击好友资料标题行 """
+        self.click(ContactDetailLocator.ADD_FRIEND_TITLE_REMARK)
+        logger.info("⚙️ [Action - ContactDetail] 好友资料 - 点击好友资料标题行")
+
+    # 好友资料 - 设置好友备注名
     def set_contact_remark(self, remark_name: str) -> bool:
         """
         在好友详情页中，设置好友备注名
@@ -270,4 +292,5 @@ class ContactDetailPage(CommonPage):
         except Exception as e:
             logger.error(f"❌ [Action - ContactDetail] 设置好友备注失败: {e}")
             return False
+
 

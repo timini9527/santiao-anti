@@ -20,7 +20,7 @@ from appium.webdriver.common.appiumby import AppiumBy
 
 # 预编译文本清理正则，避免在频繁调用的 clean_ui_text 中重复编译，提升性能
 _ASCII_CONTROL_RE = re.compile(r'[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f-\x9f]')
-_UNICODE_CONTROL_RE = re.compile(r'[\u200b-\u200f\u202a-\u202e\u2060-\u206f]')
+_UNICODE_CONTROL_RE = re.compile(r'[\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufffc\ufffd]')
 
 
 class BasePage:

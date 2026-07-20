@@ -23,7 +23,7 @@ app:
   "appium:autoGrantPermissions": true              # 自动授予应用所需权限 (true: 自动, false: 手动)
   "appium:dontStopAppOnReset": false               # 热启动模式 (true: 不停止 App, false: 强杀并重启)
   # --- 启动提速与运行优化 ---
-  "appium:skipServerInstallation": false            # 跳过服务安装 (true: 跳过, false: 安装)
+  "appium:skipServerInstallation": false           # 跳过服务安装 (true: 跳过, false: 安装)
   "appium:skipDeviceInitialization": true          # 跳过设备初始化 (true: 跳过, false: 初始化)
   "appium:disableWindowAnimation": true            # 禁用系统动画 (true: 禁用, false: 启用)
   "appium:appWaitForLaunch": false                 # 是否等待应用启动完成 (true: 等待, false: 不等待)
@@ -43,21 +43,23 @@ devices:
       # udid: "daccd58aaff4"
       # platformVersion: "12.0"
       # udid: "20a5fa17"
-      udid: "emulator-5554"  # 模拟器
-      # udid: "emulator-5556"  # 模拟器
+      # udid: "3B65BN02GU600000"
+      # platformVersion: "16.0"
+      # udid: "nzwcvo9ls87hws7t"
+      # platformVersion: "13.0"
+      udid: "emulator-5554"   # 模拟器
+      # udid: "emulator-5556"   # 模拟器
       deviceName: "SenderPhone"
-      systemPort: 8200         # 关键！Android UIA2 通信端口，必须唯一
+      systemPort: 8200          # 关键！Android UIA2 通信端口，必须唯一
       appiumServerUrl: "http://127.0.0.1:4723"
       # appiumServerUrl: "http://127.0.0.1:4723/wd/hub"
-      # wdaLocalPort: 8100     # 如果是 iOS，需要配置这个
+      # wdaLocalPort: 8100      # 如果是 iOS，需要配置这个
 
     receiver:
       platformName: "Android"
-  #    platformVersion: "11.0"
-  #    udid: "dfa6dc15"      # 通过 adb devices 获取
-      platformVersion: "12.0"
-      # udid: "emulator-5558"  # 模拟器
-      udid: "emulator-5560"  # 模拟器（注意：此处的 udid 优先被 Web 回执中的 "设备1" 动态覆盖）
+      # platformVersion: "12.0"
+      # udid: "emulator-5558"   # 模拟器
+      udid: "emulator-5560"     # 模拟器（注意：此处的 udid 优先被 Web 回执中的 "设备1" 动态覆盖）
       deviceName: "ReceiverPhone"
       systemPort: 8201         # 关键！必须与 Sender 不同
       appiumServerUrl: "http://127.0.0.1:4724" # 建议启动两个Appium服务避免拥堵

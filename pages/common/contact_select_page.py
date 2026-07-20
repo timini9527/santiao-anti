@@ -138,12 +138,12 @@ class ContactSelectPage(CommonPage):
     # =======================================================
     
     # 分享/转发页面通过名称查找好友
-    def select_contact_by_name(self, name: str, select_type: str = "share") -> WebElement | None:
+    def select_contact_by_name(self, name: str, select_type: str = "share", raise_exception: bool = True) -> WebElement | None:
         """通过名称查找好友"""
         if select_type == "share":
-            elem_name = self.find_element(ContactSelectLocator.get_contact_by_name(name), timeout=2)
+            elem_name = self.find_element(ContactSelectLocator.get_contact_by_name(name), timeout=2, raise_exception=raise_exception)
         elif select_type == "forward":
-            elem_name = self.find_element(ContactSelectLocator.get_forward_contact_by_name(name), timeout=2)
+            elem_name = self.find_element(ContactSelectLocator.get_forward_contact_by_name(name), timeout=2, raise_exception=raise_exception)
         else:
             logger.warning(f"⚠️ [Action] 未知的选择类型: {select_type}")
             return None
@@ -156,24 +156,30 @@ class ContactSelectPage(CommonPage):
 
 
     # 通过名称点击选中好友（包含搜索）
-    def click_contact_by_name(self, name: str, select_type: str = "share") -> bool:
+    def click_contact_by_name(self, name: str, select_type: str = "share", raise_exception: bool = True, search: bool = True) -> bool:
         """通过名称选择好友"""
-        elem_name = self.select_contact_by_name(name=name, select_type=select_type)
+        elem_name = self.select_contact_by_name(name=name, select_type=select_type, raise_exception=raise_exception)
         if not elem_name:
-            self.input_search_keyword(name)
-            search_elem_name = self.select_contact_by_name(name, select_type=select_type)
-            if not search_elem_name:
-                logger.warning(f"❌ [Action] 好友选择页 - 未找到好友: {name}")
+            if search:
+                self.input_search_keyword(name)
+                search_elem_name = self.select_contact_by_name(name, select_type=select_type, raise_exception=raise_exception)
+                if not search_elem_name:
+                    logger.warning(f"❌ [Action] 好友选择页 - 未找到好友: {name}")
+                    return False
+                elem_name = search_elem_name
+            else:
+                logger.warning(f"❌ [Action] 好友选择页 - 未找到好友且不进行搜索: {name}")
                 return False
-            search_elem_name.click()
-            time.sleep(1)
-            logger.info(f"✅ [Action] 好友选择页 - 搜索后找到好友并点击选中: {name}")
-            return True
         
-        elem_name.click()
-        time.sleep(1)
-        logger.info(f"✅ [Action] 好友选择页 - 找到好友并点击选中: {name}")
-        return True
+        try:
+            elem_name.click()
+            logger.info(f"✅ [Action] 好友选择页 - 找到好友并点击选中: {name}")
+            return True
+        except Exception as e:
+            logger.error(f"❌ [Action] 好友选择页 - 点击好友项失败: {name}, {e}")
+            if raise_exception:
+                raise e
+            return False
 
 
     # 检查搜索结果是否为空
@@ -186,14 +192,14 @@ class ContactSelectPage(CommonPage):
 
 
     # 转发-选择好友页面
-    def forward_select_contact_by_name(self, name: str, msg_type: int = 0) -> bool:
+    def forward_select_contact_by_name(self, name: str, msg_type: int = 0, raise_exception: bool = True) -> bool:
         """转发-选择好友
         :param msg_type: 消息类型 0: 文本/群聊/文件/视频/语音等 1: 图片
         """
         if msg_type == 1:
-            elem_name = self.select_contact_by_name(name=name, select_type="share")
+            elem_name = self.select_contact_by_name(name=name, select_type="share", raise_exception=raise_exception)
         else:
-            elem_name = self.select_contact_by_name(name=name, select_type="forward")
+            elem_name = self.select_contact_by_name(name=name, select_type="forward", raise_exception=raise_exception)
         
         if not elem_name:
             max_scroll_times = 10 
@@ -202,7 +208,7 @@ class ContactSelectPage(CommonPage):
             while scroll_count < max_scroll_times:
                 self.swipe_page(slid_type='up', duration=800, times=1)
                 scroll_count += 1
-                elem_name = self.select_contact_by_name(name=name, select_type="forward")
+                elem_name = self.select_contact_by_name(name=name, select_type="forward", raise_exception=False)
                 if elem_name:
                     logger.info(f"✅ [Action] 转发选择页 - 滚动后找到好友: {name}")
                     break
