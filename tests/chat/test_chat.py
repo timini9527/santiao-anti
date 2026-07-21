@@ -159,8 +159,11 @@ class TestChat:
                     payload = str(msg_data['data']['payload'])
                     
                     try:
+                        # 强防震：发送前强制清除输入框，防止文本积压堆叠导致输入法渲染假死崩溃
+                        self.chatPage.clear_input_text()
                         self.chatPage.send_message(payload)
-                        time.sleep(0.1)
+                        # 给系统底层输入队列提供喘息缓冲时间
+                        time.sleep(0.3)
                     except Exception as e:
                         self.__class__._in_chat = False
                         self.__class__._chat_target = None
