@@ -80,6 +80,11 @@ PRIVATE_USER7 = ChatSessionStrategy(
     name=web_receipt.get("私聊用户7") or "测试0228",
     phone="38100000228"
 )
+PRIVATE_USER8 = ChatSessionStrategy(
+    desc="私聊模式",
+    name=web_receipt.get("私聊用户8") or "测试0229",
+    phone="38100000229"
+)
 
 # 停用或注销用户
 PRIVATE_DISABLE1 = ChatSessionStrategy(
@@ -103,6 +108,24 @@ GROUP_STRATEGY2 = ChatSessionStrategy(
     name=web_receipt.get("群聊名称1") or "测试群bbbbb",
     is_admin=True
 )
+GROUP_STRATEGY3 = ChatSessionStrategy(
+    desc="群聊模式",
+    name=web_receipt.get("群聊名称3") or "测试群ccccc",
+    is_admin=True
+)
+GROUP_STRATEGY4 = ChatSessionStrategy(
+    desc="群聊模式",
+    name=web_receipt.get("群聊名称4") or "测试群ddddd",
+    is_admin=True
+)
+GROUP_STRATEGY5 = ChatSessionStrategy(
+    desc="群聊模式",
+    name=web_receipt.get("群聊名称5") or "测试群eeeee",
+    is_admin=True
+)
+
+
+
 # 3.侧滑置顶策略
 SLIDE_STRATEGY = ChatSessionStrategy(
     desc="侧滑模式",

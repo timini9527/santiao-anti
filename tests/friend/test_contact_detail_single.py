@@ -74,10 +74,10 @@ class TestContactDetailSingle:
     @allure.story("设置备注名")
     @allure.title("修改备注名、各处同步并在清空后恢复-参数化边界字数限制校验-状态：已完成")
     @pytest.mark.parametrize("input_remark, expected_remark", [
-        ("DYNAMIC_TIME", "DYNAMIC_TIME"),                # 常规输入与同步测试 (运行时动态生成唯一时间戳备注)
-        ("A" * 30, "A" * 30),                            # 临界测试：刚好 30 字符
-        ("B" * 31, "B" * 30)                             # 越界测试：31 字符被截断为 30 字符
-    ])
+        ("DYNAMIC_TIME", "DYNAMIC_TIME"),                
+        ("A" * 30, "A" * 30),                            
+        ("B" * 31, "B" * 30)                             
+    ], ids=["正常修改备注", "30个字符", "超过30个字符"])
     def test_modify_contact_remark_and_sync(self, input_remark, expected_remark):
         """修改备注名保存 -> 校验资料卡、通讯录同步显示 -> 清空备注名 -> 恢复原名称展示 (参数化合并)"""
         if input_remark == "DYNAMIC_TIME":
@@ -128,42 +128,107 @@ class TestContactDetailSingle:
 
 
     @allure.story("电话管理")
-    @allure.title("FD_PHONE_002 - 新增、删除及上限隐藏添加按钮逻辑")
-    def test_phone_number_management(self):
-        """测试新增电话、添加满3个后按钮隐藏、删除后按钮重新显示流程"""
-        with allure.step("1. 进入设置备注页，连续添加3个电话号码"):
+    @allure.title("新增电话号码参数化校验（上限3个/数字限制/15字字符截断）-状态：已完成")
+    @pytest.mark.parametrize("scenario, input_phones, expected_phones", [
+        ("LIMIT_COUNT", ["13800000001", "13800000002", "13800000003", "13800000004"], ["13800000001", "13800000002", "13800000003"]),
+        ("ONLY_DIGITS", ["1380000abc"], ["1380000"]),
+        ("MAX_LENGTH", ["1" * 16], ["1" * 15])
+    ], ids=["限制输入最多3个", "只允许输入数字", "最多输入15个字符"])
+    def test_phone_number_addition_and_limit(self, scenario, input_phones, expected_phones):
+        """新增电话号码参数化校验：测试只能添加3个、只允许数字、最多输入15个字"""
+        with allure.step(f"1. 进入设置备注与电话页，尝试输入测试号码 - 场景: {scenario}"):
             self._go_to_contact_detail_from_list(RECEIVER_NAME)
-            self.contactDetailPageS.click_remark()
-            self.remarkSettingPageS.wait_for_remark_page_load()
-
-            # 循环添加 3 个电话并输入
-            for i in range(3):
+            self.contactDetailPageS.click_friend_detail_title_remark()
+            self.remarkSettingPageS.wait_friend_detail_page()
+            self.remarkSettingPageS.click_phone_item()
+        
+        with allure.step("2. 获取手机号码列表是否已满, 未满可以添加号码"):
+            phone_list_len = len(self.remarkSettingPageS.get_phones())
+            
+            for i, phone_val in enumerate(input_phones):
+                if phone_list_len >= 3:
+                    is_btn_visible = self.remarkSettingPageS.is_add_phone_visible()
+                    check.is_false(is_btn_visible, "❌ 已添加3个电话，但尝试添加第4个时‘添加电话’按钮依然可见，未作数量上限控制")
+                    break
+                self.remarkSettingPageS.input_phone(phone_val, index=i)
                 self.remarkSettingPageS.click_add_phone()
-                self.remarkSettingPageS.input_phone(f"1380000000{i}", index=i)
 
-        with allure.step("2. 校验当电话达到3个上限时，'添加电话'按钮自动隐藏"):
-            is_visible = self.remarkSettingPageS.is_add_phone_visible()
-            check.is_false(is_visible, "❌ 已添加3个电话，但‘添加电话’入口依然可见，未作上限控制")
+                if i >= 3:
+                    is_btn_visible = self.remarkSettingPageS.is_add_phone_visible()
+                    check.is_false(is_btn_visible, "❌ 已添加3个电话，但尝试添加第4个时‘添加电话’按钮依然可见，未作数量上限控制")
+                    break
 
-        with allure.step("3. 保存电话并重新进入，校验3个号码均完整留存"):
+        with allure.step("2. 前端即时校验：校验输入框中的文本变化是否符合规则"):
+            current_phones = self.remarkSettingPageS.get_phones()
+            if scenario == "ONLY_DIGITS":
+                check.equal(current_phones, expected_phones, f"❌ 前端未实时限制纯数字输入，当前输入框: {current_phones}")
+            elif scenario == "MAX_LENGTH":
+                check.equal(current_phones, expected_phones, f"❌ 前端未实时限制15字上限截断，当前输入框: {current_phones}")
+
+        with allure.step("3. 保存电话并重新进入，校验号码持久化回显是否符合预期"):
             self.remarkSettingPageS.click_save()
             self.contactDetailPageS.wait_for_detail_page_load()
-            self.contactDetailPageS.click_remark()
-            self.remarkSettingPageS.wait_for_remark_page_load()
+            self.contactDetailPageS.click_friend_detail_title_remark()
+            self.remarkSettingPageS.wait_friend_detail_page()
+            self.remarkSettingPageS.click_phone_item()
             
-            phones = self.remarkSettingPageS.get_phones()
-            check.equal(len(phones), 3, "❌ 保存后重新进入，已保存的电话号码条数不等于3")
+            actual_phones = self.remarkSettingPageS.get_phones()
+            check.equal(actual_phones, expected_phones, f"❌ 保存后回显号码与预期不符，实际: {actual_phones}, 预期: {expected_phones}")
 
-        with allure.step("4. 删除其中一个电话，校验添加按钮重新显示"):
-            self.remarkSettingPageS.clear_phone(index=2)
+        with allure.step("4. 环境还原：清空本次输入的所有电话并保存"):
+            # 根据实际已回显的个数倒序清除，避免删除导致的元素索引坍塌
+            actual_count = len(actual_phones)
+            for idx in range(actual_count - 1, -1, -1):
+                self.remarkSettingPageS.clear_phone(index=idx)
+            self.remarkSettingPageS.click_save()
+
+
+    @allure.story("电话管理")
+    @allure.title("删除电话号码及添加按钮重新显露逻辑-状态：已完成")
+    def test_phone_number_deletion_flow(self):
+        """测试删除其中一个电话，校验添加按钮重新显示流程"""
+        with allure.step("1. 前置准备：进入备注页，添加2个电话并保存"):
+            self._go_to_contact_detail_from_list(RECEIVER_NAME)
+            self.contactDetailPageS.click_friend_detail_title_remark()
+            self.remarkSettingPageS.wait_friend_detail_page()
+            self.remarkSettingPageS.click_phone_item()
+            
+            # 先添加2个电话作为删除的基础数据
+            self.remarkSettingPageS.click_add_phone()
+            self.remarkSettingPageS.input_phone("13900000001", index=0)
+            self.remarkSettingPageS.click_add_phone()
+            self.remarkSettingPageS.input_phone("13900000002", index=1)
+            self.remarkSettingPageS.click_save()
+            self.contactDetailPageS.wait_for_detail_page_load()
+
+        with allure.step("2. 重新进入编辑页并删除第二个电话"):
+            self.contactDetailPageS.click_friend_detail_title_remark()
+            self.remarkSettingPageS.wait_friend_detail_page()
+            self.remarkSettingPageS.click_phone_item()
+            
+            # 删除第 2 个（index 1）
+            self.remarkSettingPageS.clear_phone(index=1)
             time.sleep(1)
+
+        with allure.step("3. 校验‘添加电话’按钮重新显露"):
             is_visible_after_del = self.remarkSettingPageS.is_add_phone_visible()
             check.is_true(is_visible_after_del, "❌ 删除1个电话后，‘添加电话’按钮未重新显露")
+
+        with allure.step("4. 保存并重新进入，校验只剩下了1个电话"):
+            self.remarkSettingPageS.click_save()
+            self.contactDetailPageS.wait_for_detail_page_load()
+            self.contactDetailPageS.click_friend_detail_title_remark()
+            self.remarkSettingPageS.wait_friend_detail_page()
+            self.remarkSettingPageS.click_phone_item()
             
-            # 清理：全部清除后保存
-            self.remarkSettingPageS.clear_phone(index=1)
+            phones = self.remarkSettingPageS.get_phones()
+            check.equal(len(phones), 1, f"❌ 保存后重新进入，已保存的电话号码条数不等于1，实际为: {len(phones)}")
+
+        with allure.step("5. Environment Teardown：全部清除后保存退出"):
             self.remarkSettingPageS.clear_phone(index=0)
             self.remarkSettingPageS.click_save()
+
+
 
     @allure.story("标签")
     @allure.title("FD_TAG_006 - 备注页面新建标签并保存")

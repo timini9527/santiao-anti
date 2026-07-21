@@ -48,6 +48,12 @@ class RemarkSettingPage(BasePage):
         txt = self.get_attribute(ContactDetailLocator.ET_REMARK, "text")
         logger.info(f"🧐 [Action - RemarkSetting] 获取备注名: {txt}")
         return txt
+    
+    # 备注 - 点击电话
+    def click_phone_item(self):
+        """ 备注 - 点击电话 """
+        self.click(ContactDetailLocator.ITEM_PHONE)
+        logger.info("⚙️ [Action - RemarkSetting] 备注 - 点击电话")
 
     # 备注 - 点击添加电话
     def click_add_phone(self) -> bool:
@@ -66,6 +72,8 @@ class RemarkSettingPage(BasePage):
         try:
             elems = self.find_elements(ContactDetailLocator.TV_PHONE_VALUE)
             if index < len(elems):
+                elems[index].click()
+                elems[index].clear()
                 elems[index].send_keys(phone)
                 logger.info(f"⚙️ [Action - RemarkSetting] 备注 - 输入电话[{index}]: {phone}")
                 return True

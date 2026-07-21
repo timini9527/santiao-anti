@@ -81,6 +81,7 @@ class ContactDetailLocator:
     IV_REMARK_CLEAR = (AppiumBy.ID, f"{PACKAGE_ID}/iv_remark_clear")        # 备注名清除按钮
     TV_NICKNAME_HINT = (AppiumBy.ID, f"{PACKAGE_ID}/tv_nickname_hint")      # 昵称提示
 
+    ITEM_PHONE = (AppiumBy.ID, f"{PACKAGE_ID}/item_phone")                  # 电话
     ROW_ADD_PHONE = (AppiumBy.ID, f"{PACKAGE_ID}/row_add_phone")            # 添加电话
     IV_ADD_PHONE = (AppiumBy.ID, f"{PACKAGE_ID}/iv_add_phone")              # 添加电话图标按钮
     RV_PHONE_LIST = (AppiumBy.ID, f"{PACKAGE_ID}/rv_phone_list")            # 电话列表
