@@ -181,6 +181,12 @@ class ChatPage(BasePage):
     # 聊天输入-在文本输入框中输入数据
     def input_text(self, text: str):
         """聊天输入-在文本输入框中输入数据"""
+        self.send_keys(ChatLocator.TEXT_INPUT, text)
+        logger.info(f"🚀[Action-chat] - chat 输入框输入数据: {text}")
+
+    # 聊天输入-快速输入数据（不使用基础封装）
+    def fast_input_text(self, text: str):
+        """聊天输入-快速输入数据（不使用基础封装，降低驱动层抽象开销）"""
         self.fast_send_keys(ChatLocator.TEXT_INPUT, text)
         logger.info(f"🚀[Action-chat] - chat 输入框注入数据: {text}")
 
@@ -357,6 +363,13 @@ class ChatPage(BasePage):
         self.click_send_button()
         logger.info(f"🚀[Action-chat] - chat 发送消息: {message}")
         time.sleep(0.5)
+
+    # 消息发送-极速发送一条文本消息并等待
+    def fast_send_message(self, message: str):
+        """消息发送-极速发送一条文本消息并等待"""
+        self.fast_input_text(message)
+        self.click_send_button()
+        logger.info(f"🚀[Action-chat] - chat 极速发送消息: {message}")
 
     # 消息接收-获取指定索引与方向的消息文本内容
     def find_message_content(self, index: int = -1, side: Literal['sent', 'received'] = 'sent') -> str:

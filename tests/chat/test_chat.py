@@ -159,8 +159,7 @@ class TestChat:
                     payload = str(msg_data['data']['payload'])
                     
                     try:
-                        self.chatPage.send_message(payload)
-                        # 底层已通过 fast_send_keys (replaceElementValue) 内存注入，直接覆盖输入框，无需任何物理延时
+                        self.chatPage.fast_send_message(payload)
                         time.sleep(0.01)
                     except Exception as e:
                         self.__class__._in_chat = False
