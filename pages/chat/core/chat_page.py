@@ -181,8 +181,8 @@ class ChatPage(BasePage):
     # 聊天输入-在文本输入框中输入数据
     def input_text(self, text: str):
         """聊天输入-在文本输入框中输入数据"""
-        self.send_keys(ChatLocator.TEXT_INPUT, text)
-        logger.info(f"🚀[Action-chat] - chat 输入框输入数据: {text}")
+        self.fast_send_keys(ChatLocator.TEXT_INPUT, text)
+        logger.info(f"🚀[Action-chat] - chat 输入框注入数据: {text}")
 
     # 聊天输入-点击底部表情按钮
     def click_emoji_button(self):

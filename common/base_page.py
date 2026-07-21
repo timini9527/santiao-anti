@@ -313,6 +313,19 @@ class BasePage:
         ele.send_keys(text)
         logger.info(f"[Action] 输入消息: {text}")
 
+    @allure.step("input -> 极速内存注入文本: {text}")
+    def fast_send_keys(self, locator, text):
+        """
+        利用 Appium 底层 replaceElementValue 接口直接内存注入文本。
+        绕过输入法模拟按键，速度极快（瞬发），且 100% 避免高频输入下的输入法假死/崩溃。
+        """
+        ele = self.find_element(locator)
+        if not ele:
+            logger.warning(f"未找到元素: {locator}")
+            raise NoSuchElementException(f"未找到元素: {locator}")
+        self.driver.execute_script("mobile: replaceElementValue", {"elementId": ele.id, "text": text})
+        logger.info(f"[Action] 极速注入文本成功: {text}")
+
 
     @allure.step("系统返回")
     def back(self):
