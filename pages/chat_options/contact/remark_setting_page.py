@@ -11,21 +11,15 @@ class RemarkSettingPage(BasePage):
     # 备注页操作
     # =========================================================================
     
-    # 备注 - 等待设置备注页加载完成
-    def wait_for_remark_page_load(self, timeout: int = 10) -> bool:
-        """ 备注 - 等待设置备注和标签页面加载完成 """
-        try:
-            self.find_element(ContactDetailLocator.FB_DONE, timeout=timeout)
-            logger.info("✅ [Wait - RemarkSetting] 设置备注和标签页面加载完成")
-            return True
-        except Exception:
-            logger.error("❌ [Wait - RemarkSetting] 设置备注和标签页面加载超时")
-            return False
-
-    # 备注 - 兼容旧版等待方法
+    # 备注 - 等待设置备注页/好友资料页加载完成
     def wait_friend_detail_page(self) -> bool:
-        """ 兼容历史代码的等待备注页加载别名 """
-        return self.wait_for_remark_page_load()
+        """ 好友详情页面 - 等待好友资料页加载完成 """
+        if self.get_attribute(ContactDetailLocator.TV_TITLE, "text") == "好友资料":
+            logger.info(" 🧐 [Action - ContactDetail] 好友详情页面 - 加载完成")
+            return True
+        else:
+            logger.error(" ❌ [Action - ContactDetail] 好友详情页面 - 未加载完成")
+            return False
 
     # 备注- 点击备注名
     def click_remark_name(self):

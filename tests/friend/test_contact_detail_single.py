@@ -85,8 +85,8 @@ class TestContactDetailSingle:
 
         with allure.step("1. 进入资料页并修改备注名"):
             self._go_to_contact_detail_from_list(RECEIVER_NAME)
-            self.contactDetailPageS.click_remark()
-            self.remarkSettingPageS.wait_for_remark_page_load()
+            self.contactDetailPageS.click_friend_detail_title_remark()
+            self.remarkSettingPageS.wait_friend_detail_page()
             self.remarkSettingPageS.click_remark_name()
             self.remarkSettingPageS.input_remark_name(input_remark)
             self.remarkSettingPageS.click_save()
@@ -107,8 +107,8 @@ class TestContactDetailSingle:
 
         with allure.step("4. 清空备注名并保存，校验是否成功恢复为原名称显示"):
             self._click_contact_by_name(name=expected_remark, search=False)
-            self.contactDetailPageS.click_remark()
-            self.remarkSettingPageS.wait_for_remark_page_load()
+            self.contactDetailPageS.click_friend_detail_title_remark()
+            self.remarkSettingPageS.wait_friend_detail_page()
             self.remarkSettingPageS.click_remark_name()
             self.remarkSettingPageS.clear_remark_name()
             self.remarkSettingPageS.click_save()
@@ -138,8 +138,8 @@ class TestContactDetailSingle:
         """新增电话号码参数化校验：测试只能添加3个、只允许数字、最多输入15个字"""
         with allure.step(f"1. 进入设置备注与电话页，尝试输入测试号码 - 场景: {scenario}"):
             self._go_to_contact_detail_from_list(RECEIVER_NAME)
-            self.contactDetailPageS.click_remark()
-            self.remarkSettingPageS.wait_for_remark_page_load()
+            self.contactDetailPageS.click_friend_detail_title_remark()
+            self.remarkSettingPageS.wait_friend_detail_page()
             self.remarkSettingPageS.click_phone_item()
         
         with allure.step("2. 获取手机号码列表是否已满, 未满可以添加号码"):
@@ -168,8 +168,8 @@ class TestContactDetailSingle:
         with allure.step("3. 保存电话并重新进入，校验号码持久化回显是否符合预期"):
             self.remarkSettingPageS.click_save()
             self.contactDetailPageS.wait_for_detail_page_load()
-            self.contactDetailPageS.click_remark()
-            self.remarkSettingPageS.wait_for_remark_page_load()
+            self.contactDetailPageS.click_friend_detail_title_remark()
+            self.remarkSettingPageS.wait_friend_detail_page()
             self.remarkSettingPageS.click_phone_item()
             
             actual_phones = self.remarkSettingPageS.get_phones()
@@ -189,12 +189,11 @@ class TestContactDetailSingle:
         """测试删除其中一个电话，校验添加按钮重新显示流程"""
         with allure.step("1. 前置准备：进入备注页，添加2个电话并保存"):
             self._go_to_contact_detail_from_list(RECEIVER_NAME)
-            self.contactDetailPageS.click_remark()
-            self.remarkSettingPageS.wait_for_remark_page_load()
+            self.contactDetailPageS.click_friend_detail_title_remark()
+            self.remarkSettingPageS.wait_friend_detail_page()
             self.remarkSettingPageS.click_phone_item()
             
-            # 先添加2个电话作为删除的基础数据
-            self.remarkSettingPageS.click_add_phone()
+            # 采用与 test_phone_number_addition_and_limit 相同的“输入后点击添加”的标准时序添加2个电话
             self.remarkSettingPageS.input_phone("13900000001", index=0)
             self.remarkSettingPageS.click_add_phone()
             self.remarkSettingPageS.input_phone("13900000002", index=1)
@@ -202,8 +201,8 @@ class TestContactDetailSingle:
             self.contactDetailPageS.wait_for_detail_page_load()
 
         with allure.step("2. 重新进入编辑页并删除第二个电话"):
-            self.contactDetailPageS.click_remark()
-            self.remarkSettingPageS.wait_for_remark_page_load()
+            self.contactDetailPageS.click_friend_detail_title_remark()
+            self.remarkSettingPageS.wait_friend_detail_page()
             self.remarkSettingPageS.click_phone_item()
             
             # 删除第 2 个（index 1）
@@ -217,19 +216,20 @@ class TestContactDetailSingle:
         with allure.step("4. 保存并重新进入，校验只剩下了1个电话"):
             self.remarkSettingPageS.click_save()
             self.contactDetailPageS.wait_for_detail_page_load()
-            self.contactDetailPageS.click_remark()
-            self.remarkSettingPageS.wait_for_remark_page_load()
+            self.contactDetailPageS.click_friend_detail_title_remark()
+            self.remarkSettingPageS.wait_friend_detail_page()
             self.remarkSettingPageS.click_phone_item()
             
             phones = self.remarkSettingPageS.get_phones()
             check.equal(len(phones), 1, f"❌ 保存后重新进入，已保存的电话号码条数不等于1，实际为: {len(phones)}")
 
         with allure.step("5. Environment Teardown：全部清除后保存退出"):
+            # 采用与 test_phone_number_addition_and_limit 相同的倒序安全清除逻辑，保障环境清洁度
             actual_phones = self.remarkSettingPageS.get_phones()
-            for idx in range(len(actual_phones) - 1, -1, -1):
+            actual_count = len(actual_phones)
+            for idx in range(actual_count - 1, -1, -1):
                 self.remarkSettingPageS.clear_phone(index=idx)
             self.remarkSettingPageS.click_save()
-            self.contactDetailPageS.wait_for_detail_page_load()
 
 
 
