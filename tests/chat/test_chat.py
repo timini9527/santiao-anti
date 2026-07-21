@@ -151,7 +151,6 @@ class TestChat:
             logger.error(f"❌ [Error] 进入聊天窗口失败: {e}")
             raise e
 
-
         try:
             for loop in range(loop_count):
                 logger.info(f"🔄 [Loop] [会话名称: {strategy.name}] 开始第 {loop + 1} / {loop_count} 轮循环发送消息组...")
