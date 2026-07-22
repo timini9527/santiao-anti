@@ -2,6 +2,7 @@ from typing import Literal
 from pages.common.common_page import CommonPage
 from pages.chat_options.contact.chat_contact_card_page import ChatContactCardPage
 from locators.chat_options.contact.contact_detail_locator import ContactDetailLocator
+from utils.cv_recognition.ocr_utils import OcrUtils
 from core.logger_utils import logger
 import time
 
@@ -12,9 +13,13 @@ class ContactDetailPage(CommonPage):
     def wait_for_detail_page_load(self, timeout: int = 10) -> bool:
         """ 资料页 - 等待资料详情页加载完成 """
         try:
-            self.find_element(ContactDetailLocator.ST_ID, timeout=timeout)
-            logger.info("✅ [Wait - ContactDetail] 资料详情页加载完成")
-            return True
+            is_exist = self.is_element_exist(ContactDetailLocator.ST_ID, timeout=timeout)
+            if is_exist:
+                logger.info("✅ [Wait - ContactDetail] 资料详情页加载完成")
+                return True
+            else:
+                logger.error(f"❌ [Wait - ContactDetail] 资料详情页加载超时")
+                return False
         except Exception:
             logger.error(f"❌ [Wait - ContactDetail] 资料详情页加载超时")
             return False
@@ -292,5 +297,129 @@ class ContactDetailPage(CommonPage):
         except Exception as e:
             logger.error(f"❌ [Action - ContactDetail] 设置好友备注失败: {e}")
             return False
+
+    # ==============================================================
+    # 资料卡电话与呼叫弹窗功能
+    # ==============================================================
+    # 好友详情 - 点击 全部 获取号码
+    def click_all_phone_numbers(self):
+        """ 好友详情 - 点击 全部 获取号码 """
+        result = OcrUtils(self.driver).click_text_by_ocr("全部", exact_match=False)
+        if result:
+            logger.info("⚙️ [Action - ContactDetail] 好友详情页 - 点击 全部 获取号码成功")
+        else:
+            logger.error("❌ [Action - ContactDetail] 好友详情页 - 点击 全部 获取号码失败")
+        return result
+    
+    # 好友详情 - 等待电话资料卡加载出来
+    def wait_for_phone_sheet_load(self, timeout=10):
+        """ 好友详情 - 等待电话资料卡加载出来 """
+        result = self.is_element_exist(ContactDetailLocator.DESIGN_BOTTOM_SHEET, timeout=timeout)
+        if result:
+            logger.info("⚙️ [Action - ContactDetail] 好友详情页 - 等待电话资料卡加载成功")
+        else:
+            logger.error("❌ [Action - ContactDetail] 好友详情页 - 等待电话资料卡加载失败")
+        return result
+
+    # 好友详情 - 点击资料卡电话行
+    def click_row_profile_phone(self):
+        """ 好友详情 - 点击资料卡电话行 """
+        self.click(ContactDetailLocator.ROW_PROFILE_PHONE)
+        logger.info("⚙️ [Action - ContactDetail] 好友详情页 - 点击资料卡电话行")
+    
+    # 好友详情 - 资料卡电话行是否存在
+    def is_row_profile_phone(self) -> bool:
+        """ 好友详情 - 资料卡电话行是否存在 """
+        is_exist = self.is_element_exist(ContactDetailLocator.ROW_PROFILE_PHONE, timeout=1)
+        if is_exist:
+            logger.info("⚙️ [Action - ContactDetail] 好友详情页 - 资料卡电话行存在")
+        else:
+            logger.info("⚙️ [Action - ContactDetail] 好友详情页 - 资料卡电话行不存在")
+        return is_exist
+
+    # 好友详情 - 获取资料卡电话标签
+    def get_profile_phone_label(self) -> str:
+        """ 好友详情 - 获取资料卡电话标签 """
+        label = self.get_attribute(ContactDetailLocator.TV_PROFILE_PHONE_LABEL, "text")
+        logger.info(f"🧐 [Action - ContactDetail] 好友详情页 - 获取资料卡电话标签: {label}")
+        return label
+
+    # 好友详情 - 获取资料卡电话号码文本
+    def get_profile_phone_value(self) -> list:
+        """ 好友详情 - 获取资料卡电话号码文本 """
+        val = self.get_attribute(ContactDetailLocator.TV_PROFILE_PHONE_VALUE, "text")
+        val_list = val.split("、")
+        logger.info(f"🧐 [Action - ContactDetail] 好友详情页 - 获取资料卡电话号码: {val_list}")
+        return val_list
+
+    # 电话资料卡 - 点击关闭按钮
+    def click_phone_sheet_close(self):
+        """ 电话资料卡 - 点击关闭按钮 """
+        self.click(ContactDetailLocator.IV_CLOSE)
+        logger.info("⚙️ [Action - ContactDetail] 电话资料卡弹窗 - 点击关闭按钮")
+
+    # 电话资料卡 - 获取电话列表中的全部号码
+    def get_sheet_phone_list(self) -> list:
+        """ 电话资料卡 - 获取电话列表中的全部号码 """
+        phones = []
+        elems = self.find_elements(ContactDetailLocator.TV_PHONE)
+        for el in elems:
+            if el.text:
+                phones.append(el.text)
+        logger.info(f"🧐 [Action - ContactDetail] 电话资料卡弹窗 - 当前电话列表: {phones}")
+        return phones
+
+    # 电话资料卡 - 点击指定索引的复制按钮
+    def click_sheet_copy(self, index: int = 0):
+        """ 电话资料卡 - 点击指定索引的复制按钮 """
+        icons = self.find_elements(ContactDetailLocator.IV_COPY)
+        if index < len(icons):
+            icons[index].click()
+            logger.info(f"⚙️ [Action - ContactDetail] 电话资料卡弹窗 - 点击第 {index} 个复制按钮")
+
+    # 电话资料卡 - 点击指定索引的拨号按钮
+    def click_sheet_call(self, index: int = 0):
+        """ 电话资料卡 - 点击指定索引的拨号按钮 """
+        icons = self.find_elements(ContactDetailLocator.IV_CALL)
+        if index < len(icons):
+            icons[index].click()
+            logger.info(f"⚙️ [Action - ContactDetail] 电话资料卡弹窗 - 点击第 {index} 个拨号按钮")
+
+    # 呼叫弹窗1 - 获取显示的电话号码
+    def get_call_popup1_number(self) -> str:
+        """ 呼叫弹窗1 - 获取显示的电话号码 """
+        num = self.get_attribute(ContactDetailLocator.TV_NUMBER, "text")
+        logger.info(f"🧐 [Action - ContactDetail] 呼叫弹窗1 - 获取号码: {num}")
+        return num
+
+    # 呼叫弹窗1 - 点击拨号
+    def click_call_popup1_call(self):
+        """ 呼叫弹窗1 - 点击拨号 """
+        self.click(ContactDetailLocator.TV_CALL)
+        logger.info("⚙️ [Action - ContactDetail] 呼叫弹窗1 - 点击拨号")
+
+    # 呼叫弹窗1 - 点击复制
+    def click_call_popup1_copy(self):
+        """ 呼叫弹窗1 - 点击复制 """
+        self.click(ContactDetailLocator.TV_COPY)
+        logger.info("⚙️ [Action - ContactDetail] 呼叫弹窗1 - 点击复制")
+
+    # 呼叫弹窗1 - 点击取消
+    def click_call_popup1_cancel(self):
+        """ 呼叫弹窗1 - 点击取消 """
+        self.click(ContactDetailLocator.TV_CANCEL)
+        logger.info("⚙️ [Action - ContactDetail] 呼叫弹窗1 - 点击取消")
+
+    # 呼叫弹窗2 - 点击呼叫
+    def click_call_popup2_call(self):
+        """ 呼叫弹窗2 - 点击呼叫 """
+        self.click(ContactDetailLocator.CALL_TEXT)
+        logger.info("⚙️ [Action - ContactDetail] 呼叫弹窗2 - 点击呼叫")
+
+    # 呼叫弹窗2 - 点击取消
+    def click_call_popup2_cancel(self):
+        """ 呼叫弹窗2 - 点击取消 """
+        self.click(ContactDetailLocator.CANCEL_TEXT)
+        logger.info("⚙️ [Action - ContactDetail] 呼叫弹窗2 - 点击取消")
 
 

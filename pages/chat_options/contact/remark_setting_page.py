@@ -11,94 +11,119 @@ class RemarkSettingPage(BasePage):
     # 备注页操作
     # =========================================================================
     
-    # 备注 - 等待设置备注页/好友资料页加载完成
-    def wait_friend_detail_page(self) -> bool:
+    # 好友资料页 - 等待设置备注页/好友资料页加载完成
+    def wait_friend_detail_page(self, timeout: int = 10) -> bool:
         """ 好友详情页面 - 等待好友资料页加载完成 """
-        if self.get_attribute(ContactDetailLocator.TV_TITLE, "text") == "好友资料":
+        if self.get_attribute(ContactDetailLocator.TV_TITLE, "text", timeout=timeout) == "好友资料":
             logger.info(" 🧐 [Action - ContactDetail] 好友详情页面 - 加载完成")
             return True
         else:
             logger.error(" ❌ [Action - ContactDetail] 好友详情页面 - 未加载完成")
             return False
 
-    # 备注- 点击备注名
+    # 好友资料页- 点击备注名
     def click_remark_name(self):
-        """ 备注 - 点击备注名 """
+        """ 好友资料页 - 点击备注名 """
         self.click(ContactDetailLocator.REMARK_NAME_ITEM)
-        logger.info("⚙️ [Action - RemarkSetting] 备注 - 点击备注名")
+        logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 点击备注名")
 
-    # 备注 - 输入备注名
+    # 好友资料页- 输入备注名
     def input_remark_name(self, remark_name: str):
-        """ 备注 - 输入备注名 """
+        """ 好友资料页 - 输入备注名 """
         self.send_keys(ContactDetailLocator.ET_REMARK, remark_name)
-        logger.info(f"⚙️ [Action - RemarkSetting] 输入备注名: {remark_name}")
+        logger.info(f"⚙️ [Action - RemarkSetting] 好友资料页 - 输入备注名: {remark_name}")
 
-    # 备注 - 清空备注名
+    # 好友资料页 - 清空备注名
     def clear_remark_name(self):
-        """ 备注 - 清空备注名 """
+        """ 好友资料页 - 清空备注名 """
         try:
             self.click(ContactDetailLocator.IV_REMARK_CLEAR)
         except Exception:
             self.clear(ContactDetailLocator.ET_REMARK)
-        logger.info("⚙️ [Action - RemarkSetting] 清空备注名")
+        logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 清空备注名")
 
-    # 备注 - 获取备注名
+    # 好友资料页- 获取备注名
     def get_remark_name(self) -> str:
-        """ 备注 - 获取备注名 """
+        """ 好友资料页 - 获取备注名 """
         txt = self.get_attribute(ContactDetailLocator.ET_REMARK, "text")
-        logger.info(f"🧐 [Action - RemarkSetting] 获取备注名: {txt}")
+        logger.info(f"🧐 [Action - RemarkSetting] 好友资料页 - 获取备注名: {txt}")
         return txt
     
-    # 备注 - 点击电话
+    # 好友资料页 - 点击电话
     def click_phone_item(self):
-        """ 备注 - 点击电话 """
+        """ 好友资料页 - 点击电话 """
         self.click(ContactDetailLocator.ITEM_PHONE)
-        logger.info("⚙️ [Action - RemarkSetting] 备注 - 点击电话")
+        logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 点击电话")
 
-    # 备注 - 点击添加电话
+    # 好友资料页 - 获取已添加的手机号码列表
+    def get_phone_numbers(self) -> list:
+        """ 好友资料页 - 获取已添加的手机号码列表 """
+        str_phone_numbers = self.get_attribute(ContactDetailLocator.TV_PHONE_VALUE, "text")
+        if str_phone_numbers:
+            phone_numbers = str_phone_numbers.split("，")
+            logger.info(f"🧐 [Action - RemarkSetting] 好友资料页 - 获取已添加的手机号码列表: {phone_numbers}")
+            return phone_numbers
+        return []
+
+    # 好友资料页 - 点击添加电话
     def click_add_phone(self) -> bool:
-        """ 备注 - 点击添加电话 """
+        """ 好友资料页 - 点击添加电话 """
         try:
             self.click(ContactDetailLocator.IV_ADD_PHONE)
-            logger.info("⚙️ [Action - RemarkSetting] 备注 - 点击添加电话")
+            logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 点击添加电话")
             return True
         except Exception as e:
-            logger.error(f"❌ [Action - RemarkSetting] 备注 - 点击添加电话失败: {e}")
+            logger.error(f"❌ [Action - RemarkSetting] 好友资料页 - 点击添加电话失败: {e}")
             return False
 
-    # 备注 - 输入电话号码
-    def input_phone(self, phone: str, index: int = 0):
-        """ 备注 - 在指定索引的电话框中输入号码 (多电话号码场景) """
+    # 好友资料页 - 输入电话号码
+    def input_phone(self, phone: str, index: int = 0, by_action: bool = False):
+        """ 
+        好友资料页 - 在指定索引的电话框中输入号码 
+        :param phone: 电话号码文本
+        :param index: 输入框索引
+        :param by_action: 是否使用底层 W3C ActionChains 模拟真实键盘按键流输入
+        """
         try:
-            elems = self.find_elements(ContactDetailLocator.TV_PHONE_VALUE)
+            elems = self.find_elements(ContactDetailLocator.ET_PHONE_VALUE)
             if index < len(elems):
-                elems[index].click()
-                elems[index].clear()
-                elems[index].send_keys(phone)
-                logger.info(f"⚙️ [Action - RemarkSetting] 备注 - 输入电话[{index}]: {phone}")
+                elem = elems[index]
+                elem.click()
+                elem.clear()
+                if by_action:
+                    self.send_keys_by_actions(elem, phone)
+                else:
+                    elem.send_keys(phone)
+                logger.info(f"⚙️ [Action - RemarkSetting] 好友资料页 - 输入电话[{index}]: {phone}")
                 return True
-            logger.error(f"❌ [Action - RemarkSetting] 备注 - 电话输入框索引溢出: {index} >= {len(elems)}")
+            logger.error(f"❌ [Action - RemarkSetting] 好友资料页 - 电话输入框索引溢出: {index} >= {len(elems)}")
             return False
         except Exception as e:
-            logger.error(f"❌ [Action - RemarkSetting] 备注 - 输入电话失败: {e}")
+            logger.error(f"❌ [Action - RemarkSetting] 好友资料页 - 输入电话失败: {e}")
             return False
 
-    # 备注 - 获取电话号码列表
-    def get_phones(self) -> list:
-        """ 备注 - 获取已输入的所有电话号码 """
+    # 好友资料页 - 获取电话号码列表
+    def get_phones(self, raise_exception: bool = False) -> list:
+        """ 好友资料页 - 获取已输入的所有纯数字电话号码（兼容 ET_PHONE_VALUE 与 TV_PHONE_VALUE） """
         phones = []
         try:
-            elems = self.find_elements(ContactDetailLocator.TV_PHONE_VALUE)
+            elems = self.find_elements(ContactDetailLocator.ET_PHONE_VALUE, timeout=2, raise_exception=raise_exception)
+            if not elems:
+                elems = self.find_elements(ContactDetailLocator.TV_PHONE_VALUE, timeout=2, raise_exception=raise_exception)
+            
             for el in elems:
-                phones.append(el.text)
+                val = el.text
+                # 过滤空字符串和非纯数字字符串
+                if val and val.isdigit():
+                    phones.append(val)
         except Exception as e:
             logger.warning(f"⚠️ [Action - RemarkSetting] 获取电话列表失败: {e}")
         logger.info(f"🧐 [Action - RemarkSetting] 当前电话列表: {phones}")
         return phones
 
-    # 备注 - 清除电话号码
+    # 好友资料页 - 清除电话号码
     def clear_phone(self, index: int = 0):
-        """ 备注 - 清除指定索引的电话号码 """
+        """ 好友资料页 - 清除指定索引的电话号码 """
         try:
             icons = self.find_elements(ContactDetailLocator.IV_PHONE_LEFT)
             if index < len(icons):
@@ -106,7 +131,7 @@ class RemarkSettingPage(BasePage):
                 logger.info(f"⚙️ [Action - RemarkSetting] 点击第 {index} 个电话左侧删除按钮")
                 time.sleep(0.5)
                 return True
-            elems = self.find_elements(ContactDetailLocator.TV_PHONE_VALUE)
+            elems = self.find_elements(ContactDetailLocator.ET_PHONE_VALUE)
             if index < len(elems):
                 elems[index].clear()
                 logger.info(f"⚙️ [Action - RemarkSetting] 清空第 {index} 个电话输入框")
@@ -116,35 +141,53 @@ class RemarkSettingPage(BasePage):
         except Exception as e:
             logger.error(f"❌ [Action - RemarkSetting] 清除电话失败: {e}")
             return False
-
-    # 备注 - 检查添加电话按钮是否可见
-    def is_add_phone_visible(self) -> bool:
-        """ 备注 - 检查添加电话按钮是否可见 """
+    
+    # 好友资料页 - 删除已添加的所有电话号码
+    def delete_all_phones(self) -> bool:
+        """ 好友资料页 - 删除已添加的所有电话号码 """
         try:
-            elem = self.find_element(ContactDetailLocator.IV_ADD_PHONE, timeout=3)
+            icons = self.find_elements(ContactDetailLocator.IV_PHONE_LEFT, raise_exception=False)
+            count = len(icons)
+            for i in range(count):
+                self.click(ContactDetailLocator.IV_PHONE_LEFT, force_wait=True)
+                self.click(ContactDetailLocator.BTN_DELETE_PHONE, force_wait=True)
+                time.sleep(0.5)
+                logger.info(f"⚙️ [Action - RemarkSetting] 已删除第 {i+1} 个电话")
+            logger.info("⚙️ [Action - RemarkSetting] 已删除所有电话号码")
+            return True
+        except Exception as e:
+            logger.error(f"❌ [Action - RemarkSetting] 删除所有电话号码失败: {e}")
+            return False
+    
+
+    # 好友资料页 - 检查添加电话按钮是否可见
+    def is_add_phone_visible(self, raise_exception: bool = True) -> bool:
+        """ 好友资料页 - 检查添加电话按钮是否可见 """
+        try:
+            elem = self.find_element(ContactDetailLocator.IV_ADD_PHONE, timeout=2, raise_exception=raise_exception)
             return elem.is_displayed()
         except Exception:
             return False
 
-    # 备注 - 点击标签入口
+    # 好友资料页 - 点击标签入口
     def click_tags(self):
-        """ 备注 - 点击标签入口 """
+        """ 好友资料页 - 点击标签入口 """
         self.click(ContactDetailLocator.ROW_ADD_TAG)
-        logger.info("⚙️ [Action - RemarkSetting] 备注 - 点击标签入口")
+        logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 点击标签入口")
 
-    # 备注 - 输入备注描述
+    # 好友资料页 - 输入备注描述
     def input_note(self, note: str):
-        """ 备注 - 输入备注描述 """
+        """ 好友资料页 - 输入备注描述 """
         try:
             self.send_keys(ContactDetailLocator.CARD_MEMO, note)
         except Exception:
             locator = (AppiumBy.XPATH, f'//*[@resource-id="{ContactDetailLocator.CARD_MEMO[1]}"]//android.widget.EditText')
             self.send_keys(locator, note)
-        logger.info(f"⚙️ [Action - RemarkSetting] 备注 - 输入备注描述: {note}")
+        logger.info(f"⚙️ [Action - RemarkSetting] 好友资料页 - 输入备注描述: {note}")
 
-    # 备注 - 清空备注描述
+    # 好友资料页 - 清空备注描述
     def clear_note(self):
-        """ 备注 - 清空备注描述 """
+        """ 好友资料页 - 清空备注描述 """
         try:
             self.click(ContactDetailLocator.IV_MEMO_CLEAR)
         except Exception:
@@ -153,24 +196,25 @@ class RemarkSettingPage(BasePage):
             except Exception:
                 locator = (AppiumBy.XPATH, f'//*[@resource-id="{ContactDetailLocator.CARD_MEMO[1]}"]//android.widget.EditText')
                 self.clear(locator)
-        logger.info("⚙️ [Action - RemarkSetting] 备注 - 清空备注描述")
+        logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 清空备注描述")
 
-    # 备注 - 获取备注描述内容
+    # 好友资料页 - 获取备注描述内容
     def get_note(self) -> str:
-        """ 备注 - 获取备注描述内容 """
+        """ 好友资料页 - 获取备注描述内容 """
         try:
             txt = self.get_attribute(ContactDetailLocator.CARD_MEMO, "text")
         except Exception:
             locator = (AppiumBy.XPATH, f'//*[@resource-id="{ContactDetailLocator.CARD_MEMO[1]}"]//android.widget.EditText')
             txt = self.get_attribute(locator, "text")
-        logger.info(f"🧐 [Action - RemarkSetting] 备注 - 获取备注描述: {txt}")
+        logger.info(f"🧐 [Action - RemarkSetting] 好友资料页 - 获取备注描述: {txt}")
         return txt
 
-    # 备注 - 点击保存
+    # 好友资料页 - 点击保存
     def click_save(self):
-        """ 备注 - 点击保存 """
+        """ 好友资料页 - 点击保存 """
         self.click(ContactDetailLocator.FB_DONE)
-        logger.info("⚙️ [Action - RemarkSetting] 备注 - 点击保存")
+        logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 点击保存")
+        time.sleep(1)
 
 
     # =========================================================================

@@ -297,11 +297,11 @@ class BasePage:
             logger.error(f"❌ 点击失败，未找到元素: {locator}")
             raise NoSuchElementException(f"无法点击，元素未找到: {locator}")
 
-    # 点击固定坐标
     @allure.step("通过坐标进行点击: {x}, {y}")
     def click_by_coordinate(self, x, y):
-        logger.info(f"[Action] 通过坐标进行点击，点击坐标: {x}, {y}")
+        """ 点击固定坐标 """
         self.driver.tap([(x, y)])
+        logger.info(f"[Action] 通过坐标进行点击，点击坐标: {x}, {y}")
 
     @allure.step("input -> 输入文本: {text}")
     def send_keys(self, locator, text):
@@ -312,6 +312,31 @@ class BasePage:
         ele.clear()
         ele.send_keys(text)
         logger.info(f"[Action] 输入消息: {text}")
+
+    @catch_exception
+    @allure.step("input -> W3C ActionChains 物理键盘事件流输入: {text}")
+    def send_keys_by_actions(self, target: Union[tuple, WebElement], text: str, clear: bool = True, timeout: int = 10) -> bool:
+        """
+        使用 W3C ActionChains 事件链模拟真实物理键盘按键输入流。
+        能 100% 触发 App 前端的 KeyListener、InputFilter 和 TextWatcher 拦截器。
+        :param target: 元素定位元组 (AppiumBy.ID, "xx") 或已定位的 WebElement 对象
+        :param text: 待输入的文本内容
+        :param clear: 是否在输入前先清空已有内容
+        :param timeout: 元素查找超时时间
+        :return: 输入成功返回 True
+        """
+        ele = target if isinstance(target, WebElement) else self.find_element(target, timeout=timeout)
+        if not ele:
+            logger.error(f"❌ 物理按键输入失败，未找到元素: {target}")
+            raise NoSuchElementException(f"无法输入，元素未找到: {target}")
+        if clear:
+            try:
+                ele.clear()
+            except Exception:
+                pass
+        ActionChains(self.driver).click(ele).send_keys(text).perform()
+        logger.info(f"⌨️ [Action] ActionChains 物理键盘按键输入成功: {text}")
+        return True
 
     @allure.step("input -> 极速内存注入文本: {text}")
     def fast_send_keys(self, locator, text):

@@ -59,14 +59,36 @@ class ContactDetailLocator:
     ADD_FRIEND_TV_ADD_FRIEND = (AppiumBy.ID, f'{PACKAGE_ID}/add_friend')
     ADD_FRIEND_TV_ADD_FRIEND_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{PACKAGE_ID}/add_friend"]//android.widget.TextView')
 
-
-
     # 好友详情页顶部
     IV_RIGHT = (AppiumBy.ID, f"{PACKAGE_ID}/iv_right")                      # 右上角更多图标
     IV_BACK = CommonLocator.TOP_IV_BACK_BTN                                 # 返回按钮
     CONFIRM_TWO_BTN = CommonLocator.DIALOG_CONFIRM_BTN                      # 二次确认按钮
     CANCEL_TWO_BTN = CommonLocator.DIALOG_CANCEL_BTN                        # 二次取消按钮
     TV_TITLE = CommonLocator.TOP_TV_TITLE                                   # 页面标题
+
+
+    # 好友详情页面 - 资料卡电话号码
+    ROW_PROFILE_PHONE = (AppiumBy.ID, f'{PACKAGE_ID}/row_profile_phone')            # 电话行
+    TV_PROFILE_PHONE_LABEL = (AppiumBy.ID, f'{PACKAGE_ID}/tv_profile_phone_label')  # 电话标签
+    TV_PROFILE_PHONE_VALUE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_profile_phone_value')  # 电话号码
+    
+    # 电话资料卡详情页面
+    DESIGN_BOTTOM_SHEET = (AppiumBy.ID, f'{PACKAGE_ID}/design_bottom_sheet')        # 电话资料卡详情页
+    IV_CLOSE = (AppiumBy.ID, f'{PACKAGE_ID}/iv_close')                              # 关闭按钮
+    RV_LIST = (AppiumBy.ID, f'{PACKAGE_ID}/rv_list')                                # 电话列表
+    TV_PHONE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_phone')                              # 电话号码
+    IV_COPY = (AppiumBy.ID, f'{PACKAGE_ID}/iv_copy')                                # 复制按钮
+    IV_CALL = (AppiumBy.ID, f'{PACKAGE_ID}/iv_call')                                # 拨号按钮
+    # 呼叫页面1
+    TV_NUMBER = (AppiumBy.ID, f'{PACKAGE_ID}/tv_number')                            # 电话号码
+    TV_CALL = (AppiumBy.ID, f'{PACKAGE_ID}/tv_call')                                # 拨号
+    TV_COPY = (AppiumBy.ID, f'{PACKAGE_ID}/tv_copy')                                # 复制
+    TV_CANCEL = CommonLocator.TEXT_CANCEL_BTN                                       # 取消
+    # 呼叫页面2
+    CONTENT_LAYOUT = (AppiumBy.ID, f'{PACKAGE_ID}/content_layout')                  # 布局容器
+    CALL_TEXT = (AppiumBy.ANDROID_UIAUTOMATOR, f'new UiSelector().text("呼叫")')     # 呼叫
+    CANCEL_TEXT = (AppiumBy.ANDROID_UIAUTOMATOR, f'new UiSelector().text("取消")')   # 取消
+
 
 
     # 好友详情页解除好友关系
@@ -88,6 +110,8 @@ class ContactDetailLocator:
     SWIPE_PHONE = (AppiumBy.ID, f"{PACKAGE_ID}/swipe_phone")                # 电话行
     IV_PHONE_LEFT = (AppiumBy.ID, f"{PACKAGE_ID}/iv_phone_left")            # 电话左侧图标
     TV_PHONE_VALUE = (AppiumBy.ID, f"{PACKAGE_ID}/tv_phone_value")          # 电话值
+    ET_PHONE_VALUE = (AppiumBy.ID, f"{PACKAGE_ID}/et_phone_value")          # 电话输入框
+    BTN_DELETE_PHONE = (AppiumBy.ID, f"{PACKAGE_ID}/btn_delete_phone")      # 删除电话按钮
     
     ROW_ADD_TAG = (AppiumBy.ID, f"{PACKAGE_ID}/row_add_tag")                # 添加标签行容器
     TV_ADD_TAG = (AppiumBy.ID, f"{PACKAGE_ID}/tv_add_tag")                  # 添加标签文字

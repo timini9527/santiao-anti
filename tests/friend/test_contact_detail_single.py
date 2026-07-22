@@ -19,9 +19,19 @@ RECEIVER_NAME = PRIVATE_USER1.name
 class TestContactDetailSingle:
     """单端好友资料详情管理与备注设置测试集 (仅操作发送端，提速运行)"""
 
+    @pytest.fixture(scope="class", autouse=True)
+    def setup_class_nav(self, driver_sender):
+        """类级别前置：全类仅执行1次，从主页展开底栏并进入好友/通讯录列表页"""
+        main_page = MainPage(driver_sender)
+        home_page = HomePage(driver_sender)
+        main_page.go_to_main_page()
+        home_page.click_bottom_expand_button()
+        home_page.click_friend()
+        home_page.wait_for_friend_page_load()
+
     @pytest.fixture(autouse=True)
     def setup_base(self, driver_sender):
-        """单端前置：仅初始化操作端页面对象并校验环境就绪"""
+        """用例级别前置与后置：初始化页面对象，后置确保停留在好友页面"""
         # S 端 (发送方 Sender / 操作方)
         self.mainPageS = MainPage(driver_sender)
         self.homePageS = HomePage(driver_sender)
@@ -31,17 +41,12 @@ class TestContactDetailSingle:
 
         yield
         try:
-            self.mainPageS.go_to_main_page()
+            self.homePageS.click_friend()
         except Exception as e:
-            logger.error(f"⚠️ [Teardown] 返回首页失败: {e}")
+            logger.error(f"⚠️ [Teardown] 返回好友页面失败: {e}")
 
     def _go_to_contact_detail_from_list(self, name: str, raise_exception: bool = True) -> bool:
         """导航辅助方法：在通讯录列表中查找并进入指定好友的资料详情页"""
-        self.mainPageS.go_to_main_page()
-        self.homePageS.click_bottom_expand_button()
-        self.homePageS.click_friend()
-        self.homePageS.wait_for_friend_page_load()
-        
         return self._click_contact_by_name(name, raise_exception=raise_exception)
 
     def _click_contact_by_name(self, name: str, raise_exception: bool = True, search: bool = False) -> bool:
@@ -69,6 +74,7 @@ class TestContactDetailSingle:
             check.equal(main_name, RECEIVER_NAME, f"❌ 资料页主名称与预期不符，实际: {main_name}")
             check.is_true(len(st_id) > 0, "❌ 资料页显示的ID为空")
             check.is_true(len(location) > 0, "❌ 资料页显示的地区所在地为空")
+            self.contactDetailPageS.click_iv_back()
 
 
     @allure.story("设置备注名")
@@ -142,24 +148,26 @@ class TestContactDetailSingle:
             self.remarkSettingPageS.wait_friend_detail_page()
             self.remarkSettingPageS.click_phone_item()
         
-        with allure.step("2. 获取手机号码列表是否已满, 未满可以添加号码"):
-            phone_list_len = len(self.remarkSettingPageS.get_phones())
-            
-            for i, phone_val in enumerate(input_phones):
-                if phone_list_len >= 3:
-                    is_btn_visible = self.remarkSettingPageS.is_add_phone_visible()
-                    check.is_false(is_btn_visible, "❌ 已添加3个电话，但尝试添加第4个时‘添加电话’按钮依然可见，未作数量上限控制")
-                    break
-                self.remarkSettingPageS.input_phone(phone_val, index=i)
-                self.remarkSettingPageS.click_add_phone()
+        with allure.step("2. 尝试添加电话号码并校验数量限制"):
+            box_count = len(self.remarkSettingPageS.get_phones(False))
 
-                if i >= 3:
-                    is_btn_visible = self.remarkSettingPageS.is_add_phone_visible()
-                    check.is_false(is_btn_visible, "❌ 已添加3个电话，但尝试添加第4个时‘添加电话’按钮依然可见，未作数量上限控制")
-                    break
+            if box_count >= 3:
+                is_visible = self.remarkSettingPageS.is_add_phone_visible(False)
+                check.is_false(is_visible, "❌ 已添加3个电话，但‘添加电话’按钮依然可见，未作数量上限控制")
+            else:
+                add_count = 3 - box_count
+                for i, phone_val in enumerate(input_phones):
+                    is_visible = self.remarkSettingPageS.is_add_phone_visible(False)
+                    if i >= add_count and not is_visible:
+                        check.is_false(is_visible, "❌ 到达上限后，添加电话按钮隐藏异常 ")
+                        break
+                    
+                    self.remarkSettingPageS.input_phone(phone_val, index=i, by_action=True)
+                    if is_visible:
+                        self.remarkSettingPageS.click_add_phone()
 
         with allure.step("2. 前端即时校验：校验输入框中的文本变化是否符合规则"):
-            current_phones = self.remarkSettingPageS.get_phones()
+            current_phones = self.remarkSettingPageS.get_phones(False)
             if scenario == "ONLY_DIGITS":
                 check.equal(current_phones, expected_phones, f"❌ 前端未实时限制纯数字输入，当前输入框: {current_phones}")
             elif scenario == "MAX_LENGTH":
@@ -167,20 +175,42 @@ class TestContactDetailSingle:
 
         with allure.step("3. 保存电话并重新进入，校验号码持久化回显是否符合预期"):
             self.remarkSettingPageS.click_save()
-            self.contactDetailPageS.wait_for_detail_page_load()
+            self.remarkSettingPageS.wait_friend_detail_page()
+        
+        with allure.step("4. 校验已添加的电话号码回显"):
+            ph_list = self.remarkSettingPageS.get_phone_numbers()
+            check.is_true(all(p in expected_phones for p in ph_list), 
+                f"❌ 已添加的电话号码回显不符合预期，实际: {ph_list}, 预期: {expected_phones}")
+            self.contactDetailPageS.click_iv_back()
+        
+        with allure.step("5. 好友资料页面，校验号码回显"):
+            if len(expected_phones) >= 3:
+                self.contactDetailPageS.click_all_phone_numbers()
+                self.contactDetailPageS.wait_for_phone_sheet_load()
+                sheet_list = self.contactDetailPageS.get_sheet_phone_list()
+                check.is_true(all(p in expected_phones for p in sheet_list), 
+                    f"❌ 已添加的电话号码回显不符合预期，实际: {sheet_list}, 预期: {expected_phones}")
+                self.contactDetailPageS.click_phone_sheet_close()
+            else:
+                ph_list = self.contactDetailPageS.get_profile_phone_value()
+                check.is_true(all(p in expected_phones for p in ph_list), 
+                    f"❌ 已添加的电话号码回显不符合预期，实际: {ph_list}, 预期: {expected_phones}")
+            
+        with allure.step("6. 重新进入设置备注与电话页，校验号码持久化回显"):
             self.contactDetailPageS.click_friend_detail_title_remark()
             self.remarkSettingPageS.wait_friend_detail_page()
             self.remarkSettingPageS.click_phone_item()
-            
-            actual_phones = self.remarkSettingPageS.get_phones()
+            actual_phones = self.remarkSettingPageS.get_phones(False)
             check.equal(actual_phones, expected_phones, f"❌ 保存后回显号码与预期不符，实际: {actual_phones}, 预期: {expected_phones}")
 
-        with allure.step("4. 环境还原：清空本次输入的所有电话并保存"):
-            # 根据实际已回显的个数倒序清除，避免删除导致的元素索引坍塌
-            actual_count = len(actual_phones)
-            for idx in range(actual_count - 1, -1, -1):
-                self.remarkSettingPageS.clear_phone(index=idx)
+        with allure.step("7. 环境还原：清空本次输入的所有电话并保存"):
+            self.remarkSettingPageS.delete_all_phones()
             self.remarkSettingPageS.click_save()
+            aftph_list = self.remarkSettingPageS.get_phone_numbers()
+            check.is_true(len(aftph_list) == 0, f"❌ 清空后回显号码与预期不符，实际: {aftph_list}, 预期: []")
+            self.contactDetailPageS.click_iv_back()
+            is_exist = self.contactDetailPageS.is_row_profile_phone()
+            check.is_false(is_exist, f"❌ 清空后资料卡电话行不符合预期，实际: {is_exist}, 预期: False")
 
 
     @allure.story("电话管理")
@@ -198,7 +228,7 @@ class TestContactDetailSingle:
             self.remarkSettingPageS.click_add_phone()
             self.remarkSettingPageS.input_phone("13900000002", index=1)
             self.remarkSettingPageS.click_save()
-            self.contactDetailPageS.wait_for_detail_page_load()
+            self.remarkSettingPageS.wait_friend_detail_page()
 
         with allure.step("2. 重新进入编辑页并删除第二个电话"):
             self.contactDetailPageS.click_friend_detail_title_remark()
