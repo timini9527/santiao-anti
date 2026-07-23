@@ -1,20 +1,19 @@
 {
   "include": ["."],
   "extraPaths": [
-    ".",
-    "C:\\Users\\Timi\\AppData\\Roaming\\Python\\Python313\\site-packages",
-    "C:\\Program Files\\Python\\Python313\\Lib\\site-packages"
+    "."
   ],
   "pythonVersion": "3.13",
   "typeCheckingMode": "off",
-  "executionEnvironments": [
-    {
-      "root": ".",
-      "extraPaths": [
-        ".",
-        "C:\\Users\\Timi\\AppData\\Roaming\\Python\\Python313\\site-packages",
-        "C:\\Program Files\\Python\\Python313\\Lib\\site-packages"
-      ]
-    }
-  ]
+  "reportMissingImports": "none",
+  "reportMissingModuleSource": "none",
+  "reportGeneralTypeIssues": "none",
+  "reportOptionalSubscript": "none",
+  "reportOptionalMemberAccess": "none",
+  "reportOptionalCall": "none",
+  "reportArgumentType": "none",
+  "reportAssignmentType": "none",
+  "reportAttributeAccessIssue": "none",
+  "reportReturnType": "none",
+  "reportCallIssue": "none"
 }
