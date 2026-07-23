@@ -1,6 +1,7 @@
 import os
 import re
 import time
+import allure
 from typing import Union, List
 from contextlib import contextmanager
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
@@ -11,7 +12,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.common.actions.action_builder import ActionBuilder
-import allure
 from core.logger_utils import logger
 from utils.except_utils import catch_exception, check_element_status, catch_elements_exception
 from appium.webdriver.common.appiumby import AppiumBy
