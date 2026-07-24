@@ -138,13 +138,19 @@ class VerifyColor:
 
             logger.info(f"🎨 [ColorVerify] 无色系最暗像素样本均值亮度: {avg_darkest:.1f} (样本数: {len(darkest_pixels)})")
 
+            # 💡 优化浅灰底深色字按钮的检测：
+            # 如果虽然检测到深色字（最暗像素 < 120），但无色系像素中绝大多数（> 80%）都是亮度很高的灰白底（>= 200），
+            # 且整个元素彩色像素占比极低（< 3.0%），说明该元素为未选中的浅灰/白底深字标签按钮，应判定为灰色。
+            light_pixels = sum(1 for b in brightness_list if b >= 200)
+            light_ratio = light_pixels / len(brightness_list) if brightness_list else 0
+            logger.info(f"🎨 [ColorVerify] 浅色背景像素占比: {light_ratio:.1%} (阈值: 80.0%)")
+
             # 如果最暗的像素均值 >= 120，说明页面上只有白底和浅灰字，无深色/黑色字，即呈现为灰色（未激活）
-            # 反之如果最暗的像素均值 < 120，说明存在黑色/深灰色的数字，即呈现为黑色/非灰色（已激活）
-            if avg_darkest >= 120:
-                logger.info("🎨 [ColorVerify] 判定结果：灰色 🩶 (未激活)")
+            if avg_darkest >= 120 or (light_ratio > 0.8 and colored_ratio < 0.03):
+                logger.info("🎨 [ColorVerify] 判定结果：灰色 🩶 (未激活/未选中)")
                 return True
             else:
-                logger.info("🎨 [ColorVerify] 判定结果：非灰色/黑色 🩵 (已激活)")
+                logger.info("🎨 [ColorVerify] 判定结果：非灰色/黑色 🩵 (已激活/已选中)")
                 return False
         except Exception as e:
             logger.error(f"❌ [ColorVerify] 分析灰色状态失败: {e}")

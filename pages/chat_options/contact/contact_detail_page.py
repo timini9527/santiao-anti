@@ -225,11 +225,20 @@ class ContactDetailPage(CommonPage):
         self.click(ContactDetailLocator.UNFRIEND_TV_UNFRIEND)
         logger.info("⚙️ [Action - ContactDetail] 好友详情页 - 点击解除好友关系")
 
-    # 好友资料 - 确认删除
-    def confirm_delete_comment(self):
-        """ 好友资料 - 确认删除 """
+    # 好友资料 - 确认操作
+    def confirm_two_btn_comment(self):
+        """ 好友资料 - 确认操作 """
         self.click(ContactDetailLocator.CONFIRM_TWO_BTN)
-        logger.info("⚙️ [Action - ContactDetail] 好友资料 - 确认删除")
+        logger.info("⚙️ [Action - ContactDetail] 好友资料 - 确认操作")
+    
+    # 取消操作
+    def cancel_two_btn_comment(self):
+        """ 好友资料 - 取消操作 """
+        if self.is_element_exist(ContactDetailLocator.CANCEL_TWO_BTN, timeout=1, expect_missing=True):
+            self.click(ContactDetailLocator.CANCEL_TWO_BTN)
+            logger.info("⚙️ [Action - ContactDetail] 好友资料 - 取消操作")
+        else:
+            logger.info("⚙️ [Action - ContactDetail] 好友资料 - 无需取消操作")
 
     # 好友资料 - 点击右上角更多并删除好友
     def delete_contact(self) -> bool:
@@ -237,7 +246,7 @@ class ContactDetailPage(CommonPage):
         try:
             self.click_iv_right()
             self.click_unfriend_tv_unfriend()
-            self.confirm_delete_comment()
+            self.confirm_two_btn_comment()
             logger.info("⚙️ [Action - ContactDetail] 好友资料 - 点击右上角更多并删除好友成功")
             return True
         except Exception as e:

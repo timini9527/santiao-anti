@@ -60,7 +60,7 @@ class TestOther:
             self.otherPage.click_clear()
             self.otherPage.change_nickname(input_val)
             self.otherPage.click_done()
-            toast = self.otherPage.toast_message()
+            toast = self.otherPage.get_toast()
             if is_valid:
                 with allure.step("3. 正向流断言：验证昵称是否成功更新"):
                     aft_nickname = self.otherPage.get_nickname()
@@ -227,7 +227,7 @@ class TestOther:
             self.otherPage.click_email()
             self.otherPage.change_email(input_email)
             self.otherPage.click_done()
-            toast = self.otherPage.toast_message() or ""
+            toast = self.otherPage.get_toast()
 
         with allure.step("3. 结果断言与状态验证"):
             is_on_edit_page = self.otherPage.is_email_page()

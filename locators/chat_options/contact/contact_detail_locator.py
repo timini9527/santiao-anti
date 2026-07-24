@@ -1,3 +1,5 @@
+from typing import Tuple
+
 from appium.webdriver.common.appiumby import AppiumBy
 from locators.common.common_locator import CommonLocator
 
@@ -113,6 +115,11 @@ class ContactDetailLocator:
     ET_PHONE_VALUE = (AppiumBy.ID, f"{PACKAGE_ID}/et_phone_value")          # 电话输入框
     BTN_DELETE_PHONE = (AppiumBy.ID, f"{PACKAGE_ID}/btn_delete_phone")      # 删除电话按钮
     
+    ROOT = (AppiumBy.ID, f"{PACKAGE_ID}/root")                              # 标签根容器
+    ITEM_TAG = (AppiumBy.ID, f"{PACKAGE_ID}/item_tag")                      # 标签容器
+    TV_TAG_TITLE = (AppiumBy.ID, f"{PACKAGE_ID}/tv_tag_title")              # 标签标题
+    TV_PROFILE_TAG_VALUE = (AppiumBy.ID, f"{PACKAGE_ID}/tv_profile_tag_value")  # 标签值
+    TV_TAG_VALUE = (AppiumBy.ID, f"{PACKAGE_ID}/tv_tag_value")              # 标签值
     ROW_ADD_TAG = (AppiumBy.ID, f"{PACKAGE_ID}/row_add_tag")                # 添加标签行容器
     TV_ADD_TAG = (AppiumBy.ID, f"{PACKAGE_ID}/tv_add_tag")                  # 添加标签文字
     FB_DONE = (AppiumBy.ID, f"{PACKAGE_ID}/fb_done")                        # 完成按钮
@@ -121,10 +128,16 @@ class ContactDetailLocator:
     TV_CREATE_TAG = (AppiumBy.ID, f"{PACKAGE_ID}/tv_create_tag")            # 创建新标签按钮
     ET_TAG_NAME = (AppiumBy.ID, f"{PACKAGE_ID}/et_tag_name")                # 标签名称输入框
     FB_CREATE_DONE = (AppiumBy.ID, f"{PACKAGE_ID}/fb_create_done")          # 创建新标签完成按钮
-    CHIP_GROUP = (AppiumBy.ID, f"{PACKAGE_ID}/chip_group")                  # 标签组容器
-    
-    CARD_MEMO = (AppiumBy.ID, f"{PACKAGE_ID}/card_memo")                    # 备注卡片
-    IV_MEMO_CLEAR = (AppiumBy.ID, f"{PACKAGE_ID}/iv_memo_clear")            # 备注清除按钮
+    CHIP_GROUP_ID = f"{PACKAGE_ID}/chip_group"                              # 标签组容器 ID
+    CHIP_GROUP = (AppiumBy.ID, CHIP_GROUP_ID)                               # 标签组容器
+    # 标签组中的所有TextView(标签item)
+    CHIP_GROUP_TAG_TEXTVIEWS = (AppiumBy.XPATH, f'//*[@resource-id="{CHIP_GROUP_ID}"]//android.widget.TextView')
+
+    ITEM_MEMO = (AppiumBy.ID, f"{PACKAGE_ID}/item_memo")                    # 备忘卡片容器
+    TV_MEMO_TITLE = (AppiumBy.ID, f"{PACKAGE_ID}/tv_memo_title")            # 备忘标题
+    TV_MEMO_VALUE = (AppiumBy.ID, f"{PACKAGE_ID}/tv_memo_value")            # 备忘值
+    CARD_MEMO = (AppiumBy.ID, f"{PACKAGE_ID}/card_memo")                    # 备忘卡片
+    IV_MEMO_CLEAR = (AppiumBy.ID, f"{PACKAGE_ID}/iv_memo_clear")            # 备忘清除按钮
     
     
     # 更多信息与共同群聊
@@ -137,6 +150,10 @@ class ContactDetailLocator:
     TV_NAME = (AppiumBy.ID, f"{PACKAGE_ID}/tv_name")                                # 群聊列表项
 
 
-
-
+    # 标签 - 通过 tag_name 获取对应的标签
+    @classmethod
+    def get_tag_element(cls, tag_name: str) -> Tuple[str, str]:
+        """通过标签名称获取对应的标签定位器"""
+        selector = f'new UiSelector().resourceId("{cls.CHIP_GROUP_ID}").childSelector(new UiSelector().text("{tag_name}"))'
+        return (AppiumBy.ANDROID_UIAUTOMATOR, selector)
 

@@ -67,7 +67,7 @@ class TestCollectionDouble:
             
             # 执行收藏并记录点击的设备时间
             click_time = self.collS.get_first_collection_item(elem)
-            toast = self.collS.toast_message()
+            toast = self.collS.get_toast(expected_toast="成功")
             check.equal(toast, "成功", f"❌ [Verify] 发送端长按收藏失败，Toast 提示: {toast}")
 
         with allure.step("3. 发送端(Sender)退回到【我的收藏】页面中进行校验"):

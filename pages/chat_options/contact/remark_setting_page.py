@@ -1,7 +1,10 @@
+from typing import Union, List, Optional
 from common.base_page import BasePage
 from locators.chat_options.contact.contact_detail_locator import ContactDetailLocator
 from core.logger_utils import logger
 from appium.webdriver.common.appiumby import AppiumBy
+from appium.webdriver.webelement import WebElement
+from business_helpers.verify_color import VerifyColor
 import time
 
 class RemarkSettingPage(BasePage):
@@ -20,6 +23,13 @@ class RemarkSettingPage(BasePage):
         else:
             logger.error(" ❌ [Action - ContactDetail] 好友详情页面 - 未加载完成")
             return False
+
+    
+    # 资料页 - 点击取消按钮
+    def click_tv_cancel(self):
+        """ 资料页 - 点击取消按钮 """
+        self.click(ContactDetailLocator.TV_CANCEL)
+        logger.info("⚙️ [Action - ContactDetail] 资料详情页 - 点击取消按钮")
 
     # 好友资料页- 点击备注名
     def click_remark_name(self):
@@ -122,19 +132,16 @@ class RemarkSettingPage(BasePage):
         return phones
 
     # 好友资料页 - 清除电话号码
-    def clear_phone(self, index: int = 0):
+    def clear_phone(self, index: int = 0) -> bool:
         """ 好友资料页 - 清除指定索引的电话号码 """
         try:
-            icons = self.find_elements(ContactDetailLocator.IV_PHONE_LEFT)
+            icons = self.find_elements(ContactDetailLocator.IV_PHONE_LEFT, raise_exception=False)
             if index < len(icons):
                 icons[index].click()
-                logger.info(f"⚙️ [Action - RemarkSetting] 点击第 {index} 个电话左侧删除按钮")
-                time.sleep(0.5)
-                return True
-            elems = self.find_elements(ContactDetailLocator.ET_PHONE_VALUE)
-            if index < len(elems):
-                elems[index].clear()
-                logger.info(f"⚙️ [Action - RemarkSetting] 清空第 {index} 个电话输入框")
+                logger.info(f"⚙️ [Action - RemarkSetting] 点击第 {index} 个电话左侧删除图标")
+                time.sleep(0.3)
+                self.click(ContactDetailLocator.BTN_DELETE_PHONE, force_wait=True)
+                logger.info(f"⚙️ [Action - RemarkSetting] 点击电话删除确认按钮")
                 return True
             logger.error(f"❌ [Action - RemarkSetting] 电话清除索引溢出: {index}")
             return False
@@ -159,7 +166,6 @@ class RemarkSettingPage(BasePage):
             logger.error(f"❌ [Action - RemarkSetting] 删除所有电话号码失败: {e}")
             return False
     
-
     # 好友资料页 - 检查添加电话按钮是否可见
     def is_add_phone_visible(self, raise_exception: bool = True) -> bool:
         """ 好友资料页 - 检查添加电话按钮是否可见 """
@@ -169,10 +175,28 @@ class RemarkSettingPage(BasePage):
         except Exception:
             return False
 
+    # 好友资料页 - 点击标签容器
+    def click_tag_container(self):
+        """ 好友资料页 - 点击标签容器 """
+        self.click(ContactDetailLocator.ITEM_TAG, timeout=2)
+        logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 点击标签容器")
+
+    # 好友资料页 - 获取标签的值
+    def get_tag_values(self) -> list[str]:
+        """ 好友资料页 - 获取标签的值 """
+        tag_values = self.get_attribute(ContactDetailLocator.TV_TAG_VALUE, "text")
+        if tag_values:
+            tag_list = tag_values.split('，')
+            logger.info(f"⚙️ [Action - RemarkSetting] 好友资料页 - 获取标签的值: {tag_list}")
+            return tag_list
+        else:
+            logger.info(f"⚙️ [Action - RemarkSetting] 好友资料页 - 未设置标签")
+            return []
+
     # 好友资料页 - 点击标签入口
     def click_tags(self):
         """ 好友资料页 - 点击标签入口 """
-        self.click(ContactDetailLocator.ROW_ADD_TAG)
+        self.click(ContactDetailLocator.ITEM_TAG)
         logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 点击标签入口")
 
     # 好友资料页 - 输入备注描述
@@ -224,13 +248,150 @@ class RemarkSettingPage(BasePage):
     # 标签 - 等待标签页加载完成
     def wait_for_tag_page_load(self, timeout: int = 10) -> bool:
         """ 标签 - 等待标签选择页加载完成 """
-        try:
-            self.find_element(ContactDetailLocator.ET_SEARCH, timeout=timeout)
+        is_exist = self.is_element_exist(ContactDetailLocator.ROOT, timeout=timeout)
+        if is_exist:
             logger.info("✅ [Wait - RemarkSetting] 标签选择页加载完成")
-            return True
-        except Exception:
+        else:
             logger.error("❌ [Wait - RemarkSetting] 标签选择页加载超时")
+        return is_exist
+
+    # 标签 - 获取标签页面的标签值
+    def get_tag_page_values(self, tag_type: int = 0) -> str:
+        """ 标签 - 获取标签页面的标签值 """
+        if tag_type == 0:
+            locator = ContactDetailLocator.TV_TAG_VALUE
+        else:
+            locator = ContactDetailLocator.TV_PROFILE_TAG_VALUE
+        tags = self.get_attribute(locator, "text")
+        if tags:
+            tag_list = tags.split('、')
+            logger.info(f"⚙️ [Action - RemarkSetting] 标签 - 获取标签页面的标签值: {tag_list}")
+            return tag_list
+        logger.warning("⚙️ [Action - RemarkSetting] 标签 - 未设置标签")
+        return []
+
+    # 标签 - 获取指定标签名称的 WebElement (或列表)
+    def get_tag_elem(self, tag_type: int = 0, tag_name: str = None, timeout: int = 2, raise_exception: bool = False) -> Union[WebElement, list, None]:
+        """
+        标签选择页 - 获取指定标签文本的 WebElement
+        tag_type = 0: 返回所有的 TextView 标签元素列表
+        tag_type = 1: 返回指定 tag_name 的单个 WebElement 元素
+        """
+        if tag_type == 0:
+            elems = self.find_elements(
+                ContactDetailLocator.CHIP_GROUP_TAG_TEXTVIEWS,
+                timeout=timeout,
+                raise_exception=raise_exception,
+            )
+            if elems:
+                logger.info(f"✅ [Action - RemarkSetting] 标签 - 获取到标签列表，共 {len(elems)} 个")
+            else:
+                logger.warning(f"⚠️ [Action - RemarkSetting] 标签 - 未找到标签列表")
+            return elems
+
+        locator = ContactDetailLocator.get_tag_element(tag_name)
+        elems = self.find_element(locator, timeout=timeout, raise_exception=raise_exception)
+        if elems:
+            logger.info(f"✅ [Action - RemarkSetting] 标签 - 获取到 [{tag_name}] 标签的 WebElement")
+        else:
+            logger.warning(f"⚠️ [Action - RemarkSetting] 标签 - 未找到 [{tag_name}] 标签的 WebElement")
+        return elems
+    
+    # 标签 - 获取标签名称 (或列表)
+    def get_tag_names(self) -> list[str]:
+        """ 标签 - 获取指定标签名称的 WebElement """
+        elems = self.get_tag_elem()
+        if elems:
+            tag_list = [elem.text for elem in elems]
+            logger.info(f"✅ [Action - RemarkSetting] 标签 - 获取到标签列表: {tag_list}")
+            return tag_list
+        logger.warning("⚠️ [Action - RemarkSetting] 标签 - 未找到标签列表")
+        return []
+    
+    # 标签 - 验证选中标签是否被选中
+    def is_tag_selected(self, tag_name: str) -> bool:
+        """ 标签选择页 - 验证选中标签是否被选中 """
+        elem = self.get_tag_elem(tag_type=1, tag_name=tag_name)
+        if not elem:
+            logger.warning(f"⚠️ [Action - RemarkSetting] 标签 - 未找到 [{tag_name}] 标签的 WebElement")
             return False
+        is_gray = VerifyColor.verify_btn_is_gray(elem)
+        if is_gray:
+            logger.info(f"✅ [Action - RemarkSetting] 标签 - [{tag_name}] 标签被选中")
+        else:
+            logger.warning(f"⚠️ [Action - RemarkSetting] 标签 - [{tag_name}] 标签未被选中")
+        return is_gray
+
+    # 标签 - 点击标签 (0-连续点击X个 / 1-按名称点击 / 2-按索引点击)
+    def click_tag(self, tag_type: int = 0, target: Union[int, str] = 0) -> bool:
+        """
+        标签选择页 - 点击标签
+        :param tag_type: 0-通过传入数字连续点击X个标签(默认), 1-通过标签名称点击, 2-通过索引点击单个标签
+        :param target: tag_type=0(数量X), tag_type=1(名称str), tag_type=2(索引int)
+        :return: 是否执行成功
+        """
+        # 1-按标签名称点击单个元素
+        if tag_type == 1:
+            elem = self.get_tag_elem(tag_type=1, tag_name=str(target))
+            if not elem:
+                return False
+            elem.click()
+            logger.info(f"⚙️ [Action - RemarkSetting] 标签 - 按名称点击标签: {target}")
+            return True
+
+        # 0 或 2 - 获取列表元素并切片提取待点击的目标列表
+        elems = self.get_tag_elem(tag_type=0)
+        if not elems:
+            logger.error(f"❌ [Action - RemarkSetting] 标签 - 点击失败，目标超出范围或无有效标签: {target}")
+            return False
+
+        idx = int(target) if str(target).isdigit() else 0
+        targets = elems[:idx] if tag_type == 0 else ([elems[idx]] if idx < len(elems) else [])
+        if not targets:
+            logger.error(f"❌ [Action - RemarkSetting] 标签 - 点击失败，目标超出范围或无有效标签: {target}")
+            return False
+
+        for tag_elem in targets:
+            tag_text = tag_elem.text
+            tag_elem.click()
+            logger.info(f"⚙️ [Action - RemarkSetting] 标签 - 点击标签: {tag_text}")
+        return True
+
+    # 标签 - 清空所有已选择的标签或某一个标签
+    def clear_tag(self, list_tags: Optional[List[str]] = None, tag_type: int = 0, tag_name: str = None) -> bool:
+        """
+        标签选择页 - 清空标签
+        :param list_tags: tag_type=0 时要取消选中的标签名称；不传则清空当前全部已选标签
+        :param tag_type: 0-清空所有已选择的标签, 1-清空某一个标签
+        :return: 是否执行成功
+        """
+        if list_tags is None:
+            logger.info("✅ [Action - RemarkSetting] 标签 - 列表为空，无需清空")
+            return True
+        else:
+            if tag_type not in (0, 1):
+                logger.error(f"❌ [Action - RemarkSetting] 标签 - 不支持的清空类型: {tag_type}")
+                return False
+
+            target_tags = [tag_name] if tag_type == 1 else list_tags
+            if not target_tags:
+                logger.warning("⚠️ [Action - RemarkSetting] 标签 - 未提供任何待清空的标签名称")
+                return False
+
+            logger.info(f"⚙️ [Action - RemarkSetting] 标签 - 准备清空以下标签: {target_tags}")
+            for name in target_tags:
+                elem = self.get_tag_elem(tag_type=1, tag_name=name)
+                if elem:
+                    elem.click()
+                    logger.info(f"✅ [Action - RemarkSetting] 标签 - 清空标签: {name}")
+                else:
+                    logger.warning(f"⚠️ [Action - RemarkSetting] 标签 - 未找到指定标签: {name}")
+            self.click_save()
+            return True
+                    
+                
+
+
 
     # 标签 - 在标签搜索框中输入
     def search_tag(self, keyword: str):
@@ -247,34 +408,13 @@ class RemarkSettingPage(BasePage):
             self.click(ContactDetailLocator.TV_CREATE_TAG)
         logger.info("⚙️ [Action - RemarkSetting] 标签 - 点击新建标签")
 
-    # 标签 - 创建并选中标签流
-    def create_tag_flow(self, tag_name: str):
-        """ 标签 - 创建并选中标签流 (利用新定位器组件) """
-        self.search_tag(tag_name)
-        time.sleep(1)
-        self.click_add_new_tag()
-        time.sleep(1)
-        self.send_keys(ContactDetailLocator.ET_TAG_NAME, tag_name)
-        self.click(ContactDetailLocator.FB_CREATE_DONE)
-        logger.info(f"⚙️ [Action - RemarkSetting] 创建并绑定标签完成: {tag_name}")
-        time.sleep(1)
 
-    # 标签 - 根据名称点击选择或取消选择已有标签
-    def select_tag_by_name(self, tag_name: str) -> bool:
-        """ 标签 - 根据名称点击选择或取消选择已有标签 """
-        try:
-            locator = (AppiumBy.XPATH, f'//*[@text="{tag_name}"]')
-            self.click(locator)
-            logger.info(f"⚙️ [Action - RemarkSetting] 标签 - 点击选择/反选标签: {tag_name}")
-            return True
-        except Exception as e:
-            logger.error(f"❌ [Action - RemarkSetting] 标签 - 查找标签项失败: {tag_name}, {e}")
-            return False
 
 
     # =========================================================================
     # 共同群聊页操作
     # =========================================================================
+
     # 共同群聊 - 获取共同群聊展示的数量
     def get_common_groups_count(self) -> int:
         """ 共同群聊 - 获取共同群聊展示的数量 """
@@ -337,4 +477,3 @@ class RemarkSettingPage(BasePage):
             return len(elems)
         except Exception:
             return 0
-

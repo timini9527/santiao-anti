@@ -54,7 +54,7 @@ class AvatarPage(PersonalPage, CommonPage):
 
     # 点击保存图片获取弹窗
     def click_save_image_toast(self):
-        return  self.toast_message()
+        return self.get_toast()
 
     # 点击取消
     def click_cancel_image(self):
@@ -121,7 +121,7 @@ class AvatarPage(PersonalPage, CommonPage):
 
     # 获取保存图片弹窗消息
     def get_save_image_toase(self) -> str:
-        return self.toast_message()
+        return self.get_toast()
 
     @staticmethod
     def get_avatar():

@@ -37,7 +37,7 @@ class OtherPage(PersonalPage, CommonPage):
 
     def verify_toase(self, msg: str) -> bool:
         # 空白昵称弹窗提示 和 其他弹窗提示
-        toase = self.toast_message()
+        toase = self.get_toast(expected_toast=msg)
         return msg in toase
 
     @staticmethod

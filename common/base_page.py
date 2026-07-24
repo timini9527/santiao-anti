@@ -358,20 +358,13 @@ class BasePage:
         logger.info("🔙 [Action] 系统返回")
 
     @allure.step("匹配所有 Toast 弹窗")
-    def toast_message(self) -> str:
+    def toast_message(self, expected_toast: str = "", timeout: float = 3.0) -> str:
         """
-        获取当前屏幕上显示的任意 Toast 文本的内容
+        获取当前屏幕上显示的任意 Toast 文本的内容 (直接调用高稳定性 get_toast)
         """
-        locator = (AppiumBy.XPATH, "//android.widget.Toast")
-        toast = self.find_element(locator, "presence", timeout=2)
-        if toast is None:
-            return ""
-        toast_text = toast.text
-        # print(f" 💬 Toast 弹窗内容: {toast_text}")
-        logger.info(f" 💬 Toast 弹窗内容: {toast_text}")
-        return toast_text
+        return self.get_toast(expected_toast=expected_toast, timeout=timeout)
     
-    @allure.step("获取当前屏幕 Toast 弹窗内容")
+    @allure.step("获取当前屏幕匹配所有 Toast 弹窗内容")
     def get_toast(self, expected_toast: str = "", timeout: float = 3.0) -> str:
         """
         获取当前屏幕上显示的任意 Toast 文本的内容 (支持 XML + OCR 降级双通道检测)

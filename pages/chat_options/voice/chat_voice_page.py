@@ -191,7 +191,7 @@ class ChatVoicePage(ChatPage):
             self.pointer_down_and_hold(actions, start_x, start_y, hold_time)
             self.pointer_up_at_location(touch_input, start_x, start_y)
             if hold_time == 0:
-                result["toast"] = self.toast_message()
+                result["toast"] = self.get_toast()
             return result
 
         # ========================================================
@@ -296,7 +296,7 @@ class ChatVoicePage(ChatPage):
             self.pointer_down_and_hold(actions, start_x, start_y, hold_time)
             self.pointer_up_at_location(touch_input, start_x, start_y)
             if hold_time == 0:
-                result["toast"] = self.toast_message()
+                result["toast"] = self.get_toast()
             logger.warning("❌ 未捕获到『松开 取消发送』的提示文案！")
 
         logger.info("👉 松开手指，取消发送...")
