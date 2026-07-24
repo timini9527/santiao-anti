@@ -278,6 +278,8 @@ class TestContactDetailSingle:
             self.remarkSettingPageS.click_tags()
             self.remarkSettingPageS.wait_for_tag_page_load()
             self.remarkSettingPageS.clear_tag(list_tags=tag_values)
+            toast = self.remarkSettingPageS.get_toast()
+            check.equal("保存成功", toast, f"❌ 未收到保存成功的 Toast，实际: {toast}")
 
         with allure.step(f"2. 获取当前标签名称并断言"):
             tag_names = self.remarkSettingPageS.get_tag_names()
@@ -334,6 +336,9 @@ class TestContactDetailSingle:
             with allure.step("2. 清理当前已有选中状态"):
                 if tag_values:
                     self.remarkSettingPageS.clear_tag(list_tags=tag_values)
+                    toast = self.remarkSettingPageS.get_toast()
+                    check.equal("保存成功", toast, f"❌ 未收到保存成功的 Toast，实际: {toast}")
+                    self.remarkSettingPageS.click_card_tag()
 
             tag_names = self.remarkSettingPageS.get_tag_names()
             required_tags = max(select_count, 15)
@@ -375,6 +380,8 @@ class TestContactDetailSingle:
                     self.remarkSettingPageS.click_tags()
                     self.remarkSettingPageS.wait_for_tag_page_load()
                     self.remarkSettingPageS.clear_tag(list_tags=tag_values)
+                    toast = self.remarkSettingPageS.get_toast()
+                    check.equal("保存成功", toast, f"❌ 未收到保存成功的 Toast，实际: {toast}")
                     self.remarkSettingPageS.click_save()
                 self.contactDetailPageS.click_iv_back()
                 self.contactDetailPageS.click_iv_back()

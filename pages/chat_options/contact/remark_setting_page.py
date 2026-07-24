@@ -238,7 +238,7 @@ class RemarkSettingPage(BasePage):
         """ 好友资料页 - 点击保存 """
         self.click(ContactDetailLocator.FB_DONE)
         logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 点击保存")
-        time.sleep(1)
+        time.sleep(0.5)
 
 
     # =========================================================================
@@ -345,17 +345,28 @@ class RemarkSettingPage(BasePage):
             logger.error(f"❌ [Action - RemarkSetting] 标签 - 点击失败，目标超出范围或无有效标签: {target}")
             return False
 
-        idx = int(target) if str(target).isdigit() else 0
-        targets = elems[:idx] if tag_type == 0 else ([elems[idx]] if idx < len(elems) else [])
-        if not targets:
-            logger.error(f"❌ [Action - RemarkSetting] 标签 - 点击失败，目标超出范围或无有效标签: {target}")
-            return False
+        if tag_type == 0:
+            count = min(int(target), len(elems)) if str(target).isdigit() else len(elems)
+            tag_names = [e.text for e in elems[:count] if e.text]
 
-        for tag_elem in targets:
-            tag_text = tag_elem.text
-            tag_elem.click()
-            logger.info(f"⚙️ [Action - RemarkSetting] 标签 - 点击标签: {tag_text}")
-        return True
+            for name in tag_names:
+                elem = self.get_tag_elem(tag_type=1, tag_name=name)
+                if elem:
+                    elem.click()
+                    logger.info(f"⚙️ [Action - RemarkSetting] 标签 - 连续点击标签: {name}")
+            return True
+
+        elif tag_type == 2:
+            idx = int(target) if str(target).isdigit() else 0
+            if idx < len(elems):
+                elem = elems[idx]
+                tag_text = elem.text
+                elem.click()
+                logger.info(f"⚙️ [Action - RemarkSetting] 标签 - 按索引 [{idx}] 点击标签: {tag_text}")
+                return True
+            else:
+                logger.error(f"❌ [Action - RemarkSetting] 标签 - 索引 [{idx}] 超出范围(共 {len(elems)} 个)")
+                return False
 
     # 标签 - 清空所有已选择的标签或某一个标签
     def clear_tag(self, list_tags: Optional[List[str]] = None, tag_type: int = 0, tag_name: str = None) -> bool:
@@ -386,9 +397,15 @@ class RemarkSettingPage(BasePage):
                     logger.info(f"✅ [Action - RemarkSetting] 标签 - 清空标签: {name}")
                 else:
                     logger.warning(f"⚠️ [Action - RemarkSetting] 标签 - 未找到指定标签: {name}")
+            time.sleep(0.5)
             self.click_save()
             return True
                     
+    # 标签 - 点击标签资料卡
+    def click_card_tag(self):
+        """ 标签 - 点击标签资料卡 """
+        self.click(ContactDetailLocator.CARD_TAG)
+        logger.info("⚙️ [Action - RemarkSetting] 标签 - 点击标签资料卡")
                 
 
 

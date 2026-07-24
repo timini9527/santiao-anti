@@ -107,6 +107,7 @@ class ContactDetailLocator:
 
     ITEM_PHONE = (AppiumBy.ID, f"{PACKAGE_ID}/item_phone")                  # 电话
     ROW_ADD_PHONE = (AppiumBy.ID, f"{PACKAGE_ID}/row_add_phone")            # 添加电话
+    CARD_PHONE = (AppiumBy.ID, f"{PACKAGE_ID}/card_phone")                  # 电话资料卡
     IV_ADD_PHONE = (AppiumBy.ID, f"{PACKAGE_ID}/iv_add_phone")              # 添加电话图标按钮
     RV_PHONE_LIST = (AppiumBy.ID, f"{PACKAGE_ID}/rv_phone_list")            # 电话列表
     SWIPE_PHONE = (AppiumBy.ID, f"{PACKAGE_ID}/swipe_phone")                # 电话行
@@ -119,6 +120,7 @@ class ContactDetailLocator:
     ITEM_TAG = (AppiumBy.ID, f"{PACKAGE_ID}/item_tag")                      # 标签容器
     TV_TAG_TITLE = (AppiumBy.ID, f"{PACKAGE_ID}/tv_tag_title")              # 标签标题
     TV_PROFILE_TAG_VALUE = (AppiumBy.ID, f"{PACKAGE_ID}/tv_profile_tag_value")  # 标签值
+    CARD_TAG = (AppiumBy.ID, f"{PACKAGE_ID}/card_tag")                      # 标签资料卡
     TV_TAG_VALUE = (AppiumBy.ID, f"{PACKAGE_ID}/tv_tag_value")              # 标签值
     ROW_ADD_TAG = (AppiumBy.ID, f"{PACKAGE_ID}/row_add_tag")                # 添加标签行容器
     TV_ADD_TAG = (AppiumBy.ID, f"{PACKAGE_ID}/tv_add_tag")                  # 添加标签文字
