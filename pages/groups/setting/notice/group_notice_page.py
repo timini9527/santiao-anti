@@ -9,7 +9,7 @@ class GroupNoticePage(GroupSettingPage):
 
     def wait_for_notice_page_load(self, timeout=10) -> bool:
         """群公告 - 等待群公告页面加载"""
-        res = self.get_attribute(GroupNoticeLocator.TITLE, "text") == "群公告"
+        res = self.wait_for_element_text(GroupNoticeLocator.TITLE, expected_text="群公告", timeout=timeout)
         logger.info(f"⏳ [Action] GroupNoticePage - 页面加载{'成功' if res else '超时'}")
         return res
 

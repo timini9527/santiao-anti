@@ -8,8 +8,8 @@ class GroupSettingLocator(ChatSettingLocator):
 
     PACKAGE_ID = CommonLocator.PACKAGE_ID
 
-    TV_TITLE = CommonLocator.TOPBAR_TITLE
-    BACK = CommonLocator.TOPBAR_LEFT_BACK_BTN
+    TV_TITLE = CommonLocator.TOP_BAR_TITLE_TV
+    BACK = CommonLocator.TOP_BAR_BACK_BTN
 
     # 成员区域
     FRIEND_HEADER_ID = f"{PACKAGE_ID}/friend_header"                                                    # 群成员头像 ID
@@ -47,8 +47,8 @@ class GroupSettingLocator(ChatSettingLocator):
     SETTING_GROUP_DELETE_AND_OUT = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_groupDeleteAndOut")        # 删除并退出
 
     # 通用弹窗-二次确认
-    TV_CONFIRM = CommonLocator.TEXT_CONFIRM_BTN                                                          # 确认按钮
-    TV_CANCEL = CommonLocator.TEXT_CANCEL_BTN                                                            # 取消按钮 
+    TV_CONFIRM = CommonLocator.TV_CONFIRM_BTN                                                          # 确认按钮
+    TV_CANCEL = CommonLocator.TV_CANCEL_BTN                                                            # 取消按钮 
 
     # 群备注弹窗
     # 群备注名称

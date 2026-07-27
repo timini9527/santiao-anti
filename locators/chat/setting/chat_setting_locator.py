@@ -51,8 +51,8 @@ class ChatSettingLocator(CommonLocator):
     SETTING_CHAT_CLEAR_TEXT = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("清空聊天记录")')
 
     # 二次确认清空聊天记录
-    TWO_CONFIRM = CommonLocator.TEXT_CONFIRM_BTN
-    TWO_CANCEL = CommonLocator.TEXT_CANCEL_BTN
+    TWO_CONFIRM = CommonLocator.TV_CONFIRM_BTN
+    TWO_CANCEL = CommonLocator.TV_CANCEL_BTN
 
 
     # 投诉页面

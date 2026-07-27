@@ -13,7 +13,7 @@ class AddFriendPage(BasePage):
     # 添加朋友 - 等待添加朋友页面出现
     def wait_for_add_friend_page(self, timeout=10) -> bool:
         """ 添加朋友 - 等待添加朋友页面出现 """
-        isExit = self.get_attribute(AddFriendLocator.TV_TITLE, "text", timeout=timeout) == "添加朋友"
+        isExit = self.wait_for_element_text(AddFriendLocator.TV_TITLE, expected_text="添加朋友", timeout=timeout)
         if isExit:
             logger.info("⏳ [Wait - AddFriend] 等待添加朋友页面")
         else:

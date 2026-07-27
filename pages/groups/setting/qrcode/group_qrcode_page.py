@@ -7,7 +7,7 @@ class GroupQrCodePage(BasePage):
 
     def wait_for_qrcode_page_load(self, timeout=10) -> bool:
         """等待群二维码页面加载"""
-        res = self.get_attribute(GroupQrCodeLocator.TITLE, "text") == "群二维码"
+        res = self.wait_for_element_text(GroupQrCodeLocator.TITLE, expected_text="群二维码", timeout=timeout)
         logger.info(f"⏳ [Action] GroupQrCodePage - 页面加载{'成功' if res else '超时'}")
         return res
 

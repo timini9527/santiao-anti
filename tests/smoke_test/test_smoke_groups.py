@@ -363,7 +363,7 @@ class TestSmokeGroupManage(BaseSmokeGroupSingle):
         with allure.step("3. 确认弹窗解散群聊并验证退回首页"):
             self.groupSettingPage.click_confirm_button()
             toast = self.groupSettingPage.get_toast(expected_toast="群不存在")
-            check.is_in("群不存在", toast, "❌ 解散群聊后未弹出提示")
+            check.is_true(toast, "❌ 解散群聊后未弹出提示")
         
         with allure.step("4. 删除并退出群聊"):
             self.chatPage.wait_banner_message_disappear()

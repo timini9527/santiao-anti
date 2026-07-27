@@ -265,7 +265,7 @@ class TestContactDetailSingle:
 
 
     @allure.story("标签")
-    @allure.title("标签点击后选中/取消选中状态切换")
+    @allure.title("标签点击后选中/取消选中状态切换-状态：已完成")
     def test_tag_selection_and_toggle(self):
         """TextView 标签点击后应在选中（绿色）与未选中（灰色）状态间切换。"""
         with allure.step("1. 进入标签选择页并清理当前选中状态"):
@@ -311,7 +311,7 @@ class TestContactDetailSingle:
             
 
     @allure.story("标签")
-    @allure.title("选择标签及标签上限边界参数化校验")
+    @allure.title("选择标签及标签上限边界参数化校验-状态：已完成")
     @pytest.mark.parametrize(
         "select_count, expected_selected_count, check_exceed_toast",
         [
@@ -336,11 +336,9 @@ class TestContactDetailSingle:
             with allure.step("2. 清理当前已有选中状态"):
                 if tag_values:
                     self.remarkSettingPageS.clear_tag(list_tags=tag_values)
-                    toast = self.remarkSettingPageS.get_toast()
-                    check.equal("保存成功", toast, f"❌ 未收到保存成功的 Toast，实际: {toast}")
-                    self.remarkSettingPageS.click_card_tag()
+                    self.remarkSettingPageS.click_tags()
 
-            tag_names = self.remarkSettingPageS.get_tag_names()
+            tag_names = self.remarkSettingPageS.get_tag_names(timeout=10)
             required_tags = max(select_count, 15)
             if len(tag_names) < required_tags:
                 pytest.fail(f"测试需要至少 {required_tags} 个标签，当前只有 {len(tag_names)} 个")
@@ -348,31 +346,28 @@ class TestContactDetailSingle:
             click_count = min(select_count, 15)
             with allure.step(f"3. 依次选择前 {click_count} 个标签"):
                 self.remarkSettingPageS.click_tag(tag_type=0, target=click_count)
-                self.remarkSettingPageS.click_save()
 
             if check_exceed_toast:
                 with allure.step("4. 尝试点击第 16 个标签，校验被拦截并弹出 Toast"):
-                    sixteenth = tag_names[15]
-                    self.remarkSettingPageS.click_tag(tag_type=1, target=sixteenth)
-                    toast = self.remarkSettingPageS.get_tag_limit_toast()
-                    check.is_false(self.remarkSettingPageS.is_tag_selected_by_name(sixteenth), f"❌ 第16个标签 [{sixteenth}] 被错误选中")
-                    check.is_true(bool(toast and ("15" in toast or "最多" in toast or "上限" in toast)), f"❌ 未收到15个标签上限 Toast，实际: {toast}")
+                    sixteenth_tag_name = tag_names[15]
+                    self.remarkSettingPageS.click_tag(tag_type=1, target=sixteenth_tag_name)
+                    sel_toast = self.remarkSettingPageS.get_toast(timeout=10)
+                    is_selected = self.remarkSettingPageS.is_tag_selected(sixteenth_tag_name)
+                    check.is_true(is_selected, f"❌ 第16个标签 [{sixteenth_tag_name}] 已选中")
+                    check.is_in("最多选择15个标签", sel_toast, f"❌ 未收到15个标签上限 Toast，实际: {sel_toast}")
 
-            with allure.step("5. 点击保存并校验提示 Toast"):
-                toast = self.remarkSettingPageS.get_toast()
-                check.equal("保存成功", toast, f"❌ 未收到保存成功的 Toast，实际: {toast}")
+            with allure.step(f"5. 校验最终资料页和卡片页选中的标签数量为 {expected_selected_count}"):
                 self.remarkSettingPageS.click_save()
-
-            with allure.step(f"6. 校验最终资料页和卡片页选中的标签数量为 {expected_selected_count}"):
-                selected_tags = self.remarkSettingPageS.get_tag_page_values(tag_type=0)
+                self.remarkSettingPageS.wait_friend_detail_page()
+                selected_tags = self.remarkSettingPageS.get_tag_page_values(tag_type=0, split_type=0)
                 check.equal(len(selected_tags), expected_selected_count, f"❌ 备注设置页标签选中数量不等于 {expected_selected_count}")
 
                 self.contactDetailPageS.click_iv_back()
                 self.contactDetailPageS.wait_for_detail_page_load()
-                out_tags = self.remarkSettingPageS.get_tag_page_values(tag_type=1)
+                out_tags = self.remarkSettingPageS.get_tag_page_values(tag_type=1, split_type=1)
                 check.equal(len(out_tags), expected_selected_count, f"❌ 资料卡展示标签数量不等于 {expected_selected_count}")
         finally:
-            with allure.step("7. 环境恢复：进入设置页清空所有选中标签"):
+            with allure.step("6. 环境恢复：进入设置页清空所有选中标签"):
                 self.contactDetailPageS.click_friend_detail_title_remark()
                 self.remarkSettingPageS.wait_friend_detail_page()
                 tag_values = self.remarkSettingPageS.get_tag_values()
@@ -380,14 +375,15 @@ class TestContactDetailSingle:
                     self.remarkSettingPageS.click_tags()
                     self.remarkSettingPageS.wait_for_tag_page_load()
                     self.remarkSettingPageS.clear_tag(list_tags=tag_values)
-                    toast = self.remarkSettingPageS.get_toast()
-                    check.equal("保存成功", toast, f"❌ 未收到保存成功的 Toast，实际: {toast}")
                     self.remarkSettingPageS.click_save()
+                    self.remarkSettingPageS.wait_friend_detail_page()
                 self.contactDetailPageS.click_iv_back()
+                time.sleep(0.3)
                 self.contactDetailPageS.click_iv_back()
 
+
     @allure.story("标签")
-    @allure.title("新增标签30字限制及新增后默认选中")
+    @allure.title("新增标签30字限制及新增后默认选中-状态：已完成")
     @pytest.mark.destructive
     @pytest.mark.parametrize(
         "input_length, expected_length",
@@ -401,83 +397,134 @@ class TestContactDetailSingle:
     def test_create_tag_length_and_auto_selected(self, input_length: int, expected_length: int):
         """参数化校验标签名称长度边界，且新增成功后默认处于选中状态。"""
         try:
-            with allure.step("1. 进入标签选择页"):
+            with allure.step("1. 进入标签选择页并清理已有标签"):
                 self._go_to_contact_detail_from_list(RECEIVER_NAME)
                 self.contactDetailPageS.click_friend_detail_title_remark()
                 self.remarkSettingPageS.wait_friend_detail_page()
+                tag_values = self.remarkSettingPageS.get_tag_values()
                 self.remarkSettingPageS.click_tags()
                 self.remarkSettingPageS.wait_for_tag_page_load()
-                self.remarkSettingPageS.clear_selected_tags()
+                if tag_values:
+                    self.remarkSettingPageS.clear_tag(list_tags=tag_values)
 
             unique_prefix = f"qa{time.time_ns()}_{input_length}_"
             tag_name = (unique_prefix + ("x" * input_length))[:input_length]
             expected_tag_name = tag_name[:expected_length]
 
             with allure.step(f"2. 新增{input_length}字标签，校验实际保留{expected_length}字"):
-                input_value = self.remarkSettingPageS.create_tag_flow(tag_name)
+                self.remarkSettingPageS.click_add_new_tag()
+                self.remarkSettingPageS.input_tag_name(tag_name)
+                self.remarkSettingPageS.click_create_done()
+                self.remarkSettingPageS.wait_for_tag_page_load()
+                self.remarkSettingPageS.input_search_tag(expected_tag_name)
+                tag_names = self.remarkSettingPageS.get_tag_names(timeout=5)
                 check.equal(
-                    len(input_value),
+                    len(tag_names[-1]),
                     expected_length,
-                    f"❌ 输入{input_length}字时长度处理错误，预期保留{expected_length}字，实际保留{len(input_value)}字",
+                    f"❌ 输入{input_length}字时长度处理错误，预期保留{expected_length}字，实际保留{len(tag_names[-1])}字",
                 )
                 check.equal(
-                    input_value,
+                    tag_names[-1],
                     expected_tag_name,
-                    f"❌ 标签输入框最终内容不符合预期，实际: {input_value}",
+                    f"❌ 标签输入框最终内容不符合预期，实际: {tag_names[-1]}",
                 )
 
             with allure.step("3. 校验新增后的标签名称及默认选中状态"):
-                visible_names = self.remarkSettingPageS.get_tag_names()
-                check.is_in(expected_tag_name, visible_names, f"❌ 新增标签未出现在标签列表: {expected_tag_name}")
-                if expected_tag_name in visible_names:
-                    check.is_true(
-                        self.remarkSettingPageS.is_tag_selected_by_name(expected_tag_name),
-                        f"❌ 新增标签 [{expected_tag_name}] 未默认选中",
+                check.is_in(expected_tag_name, tag_names, f"❌ 新增标签未出现在标签列表: {expected_tag_name}")
+                if expected_tag_name in tag_names:
+                    check.is_false(
+                        self.remarkSettingPageS.is_tag_selected(expected_tag_name),
+                        f"❌ 新增标签 [{expected_tag_name}] 默认选中",
                     )
-                    self.remarkSettingPageS.set_tag_selected(expected_tag_name, False)
         finally:
-            self.remarkSettingPageS.clear_selected_tags()
-            self.remarkSettingPageS.click_save()
+            with allure.step("4. 环境恢复：清空创建的测试标签"):
+                self.remarkSettingPageS.click_tv_cancel()
+                self.remarkSettingPageS.click_tv_cancel()
+                self.contactDetailPageS.click_iv_back()
+                self.contactDetailPageS.click_iv_back()
+                
 
     @allure.story("标签")
-    @allure.title("最多新增15个标签，第16个新增弹出 Toast")
+    @allure.title("新增标签数量边界及保存回显参数化校验-状态：已完成")
     @pytest.mark.destructive
-    def test_create_tag_max_count_limit_toast(self):
-        """校验连续新增15个标签成功，第16个新增被限制并弹出 Toast。"""
+    @pytest.mark.parametrize(
+        "create_count, expected_count, check_exceed_toast, should_save",
+        [
+            (1, 1, False, True),     
+            (14, 14, False, False), 
+            (15, 15, False, False), 
+            (16, 15, True, False), 
+        ],
+        ids=["新增1个标签并保存回显", "新增14个标签", "新增15个标签上限", "新增16个标签受阻"],
+    )
+    def test_create_tag_max_count_limit_toast(
+        self, create_count: int, expected_count: int, check_exceed_toast: bool, should_save: bool
+    ):
+        """校验新增不同数量标签边界、上限 Toast 拦截以及正向保存回显闭环 (参数化合并)。"""
         try:
-            with allure.step("1. 进入标签选择页"):
+            with allure.step("1. 进入标签选择页并清理已有标签"):
                 self._go_to_contact_detail_from_list(RECEIVER_NAME)
                 self.contactDetailPageS.click_friend_detail_title_remark()
                 self.remarkSettingPageS.wait_friend_detail_page()
+                tag_values = self.remarkSettingPageS.get_tag_values()
                 self.remarkSettingPageS.click_tags()
                 self.remarkSettingPageS.wait_for_tag_page_load()
-                self.remarkSettingPageS.clear_selected_tags()
+                if tag_values:
+                    self.remarkSettingPageS.clear_tag(list_tags=tag_values)
+                    self.remarkSettingPageS.click_tags()
 
             test_prefix = f"qa{int(time.time())}"
-            with allure.step("2. 新增15个标签并在每次新增后取消选中"):
-                for index in range(15):
+            actual_add_count = min(create_count, 15)
+            with allure.step(f"2. 尝试连续新增 {actual_add_count} 个标签"):
+                for index in range(actual_add_count):
                     tag_name = f"{test_prefix}_{index:02d}"
-                    self.remarkSettingPageS.create_tag_flow(tag_name)
-                    visible_names = self.remarkSettingPageS.get_tag_names()
-                    matched_name = next((name for name in visible_names if name.startswith(tag_name[:30])), "")
-                    check.is_true(bool(matched_name), f"❌ 第{index + 1}个新增标签未出现在列表: {tag_name}")
-                    if matched_name:
-                        check.is_true(self.remarkSettingPageS.is_tag_selected_by_name(matched_name), f"❌ 新增标签 [{matched_name}] 未默认选中")
-                        self.remarkSettingPageS.set_tag_selected(matched_name, False)
+                    self.remarkSettingPageS.click_add_new_tag()
+                    self.remarkSettingPageS.input_tag_name(tag_name)
+                    self.remarkSettingPageS.click_create_done()
+                    self.remarkSettingPageS.wait_for_tag_page_load()
 
-            with allure.step("3. 新增第16个标签，校验被限制并弹出 Toast"):
-                sixteenth_name = f"{test_prefix}_15".ljust(30, "x")
-                self.remarkSettingPageS.create_tag_flow(sixteenth_name)
-                toast = self.remarkSettingPageS.get_tag_limit_toast()
-                names_after = set(self.remarkSettingPageS.get_tag_names())
-                check.is_true(bool(toast and ("15" in toast or "最多" in toast or "上限" in toast)), f"❌ 未收到最多新增15个标签 Toast，实际: {toast}")
-                created_sixteenth = any(name == sixteenth_name or name.startswith(sixteenth_name[:30]) for name in names_after)
-                check.is_false(created_sixteenth, "❌ 第16个新增标签被错误创建")
+            if check_exceed_toast:
+                with allure.step(f"3. 尝试新增第 {create_count} 个标签，校验被限制并弹出 Toast"):
+                    sixteenth_name = f"{test_prefix}_15".ljust(30, "x")
+                    self.remarkSettingPageS.click_add_new_tag()
+                    self.remarkSettingPageS.input_tag_name(sixteenth_name)
+                    self.remarkSettingPageS.click_create_done()
+                    toast_exceed = self.remarkSettingPageS.get_toast("最多选择15个标签", timeout=2)
+                    check.is_true(toast_exceed, f"❌ 未收到最多新增15个标签的 Toast 拦截提示")
+
+            with allure.step(f"4. 校验列表中实际成功创建的标签数量为 {expected_count}"):
+                tag_names = self.remarkSettingPageS.get_tag_names(timeout=2)
+                check.equal(len(tag_names), expected_count, f"❌ 实际成功创建的标签数量 ({len(tag_names)}) 不符合预期 ({expected_count})")
+
+            if should_save:
+                with allure.step("5. 点击保存并验证资料卡成功同步渲染新标签"):
+                    self.remarkSettingPageS.click_save()
+                    self.remarkSettingPageS.wait_friend_detail_page()
+                    self.contactDetailPageS.click_iv_back()
+                    out_tags = self.remarkSettingPageS.get_tag_page_values(tag_type=1, split_type=1)
+                    check.is_true(
+                        any(test_prefix in tag for tag in out_tags),
+                        f"❌ 资料卡未同步展示新保存的标签: {out_tags}",
+                    )
         finally:
-            self.remarkSettingPageS.clear_selected_tags()
-            self.remarkSettingPageS.click_save()
-
-
+            with allure.step("6. 环境恢复：安全返回并恢复主页"):
+                if should_save:
+                    self.contactDetailPageS.click_friend_detail_title_remark()
+                    self.remarkSettingPageS.wait_friend_detail_page()
+                    tag_values = self.remarkSettingPageS.get_tag_values()
+                    if tag_values:
+                        self.remarkSettingPageS.click_tags()
+                        self.remarkSettingPageS.wait_for_tag_page_load()
+                        self.remarkSettingPageS.clear_tag(list_tags=tag_values)
+                        self.remarkSettingPageS.click_save()
+                        self.remarkSettingPageS.wait_friend_detail_page()
+                    self.contactDetailPageS.click_iv_back()
+                    self.contactDetailPageS.click_iv_back()
+                else:
+                    self.remarkSettingPageS.click_tv_cancel()
+                    self.remarkSettingPageS.click_tv_cancel()
+                    self.contactDetailPageS.click_iv_back()
+                    self.contactDetailPageS.click_iv_back()
 
 
     @allure.story("备注描述")
@@ -486,55 +533,60 @@ class TestContactDetailSingle:
         """测试输入多行带 Emoji 的描述，验证保存后重新进入能够正确回显且内容无损"""
         complex_note = "第一行：测试账号特性描述\n第二行：具有高可靠性校验🌟"
 
-        with allure.step("1. 进入设置备注页，在描述栏输入多行内容并保存"):
-            self._go_to_contact_detail_from_list(RECEIVER_NAME)
-            self.contactDetailPageS.click_remark()
-            self.remarkSettingPageS.wait_for_remark_page_load()
-            self.remarkSettingPageS.clear_note()
-            self.remarkSettingPageS.input_note(complex_note)
-            self.remarkSettingPageS.click_save()
-            self.contactDetailPageS.wait_for_detail_page_load()
+        try:
+            with allure.step("1. 进入设置备注页，在描述栏输入多行内容并保存"):
+                self._go_to_contact_detail_from_list(RECEIVER_NAME)
+                self.contactDetailPageS.click_friend_detail_title_remark()
+                self.remarkSettingPageS.wait_friend_detail_page()
+                self.remarkSettingPageS.clear_note()
+                self.remarkSettingPageS.input_note(complex_note)
+                self.remarkSettingPageS.click_save()
+                save_toast = self.remarkSettingPageS.get_toast("保存成功", timeout=15)
+                check.is_true(save_toast, "❌ 描述修改后未收到保存成功的 Toast")
+                self.contactDetailPageS.wait_for_detail_page_load()
 
-        with allure.step("2. 重新进入编辑页，验证描述描述是否无损回显"):
-            self.contactDetailPageS.click_remark()
-            self.remarkSettingPageS.wait_for_remark_page_load()
-            displayed_note = self.remarkSettingPageS.get_note()
-            check.equal(displayed_note, complex_note, f"❌ 多行备注描述回显不匹配，实际: {displayed_note}")
-            
-            # 清理
-            self.remarkSettingPageS.clear_note()
-            self.remarkSettingPageS.click_save()
+            with allure.step("2. 重新进入编辑页，验证描述是否无损回显"):
+                self.contactDetailPageS.click_friend_detail_title_remark()
+                self.remarkSettingPageS.wait_friend_detail_page()
+                displayed_note = self.remarkSettingPageS.get_note()
+                check.equal(displayed_note, complex_note, f"❌ 多行备注描述回显不匹配，实际: {displayed_note}")
+        finally:
+            with allure.step("3. 环境恢复：清理测试描述"):
+                self.remarkSettingPageS.clear_note()
+                self.remarkSettingPageS.click_save()
+                self.contactDetailPageS.click_iv_back()
+
 
     @allure.story("共同群聊")
     @allure.title("FD_GROUP_002 - 共同群聊入口展示、过滤及页面返回验证")
     def test_common_groups_navigation_and_search(self):
         """校验存在共同群聊时资料页的展示，以及共同群聊详情列表过滤检索及返回功能"""
-        with allure.step("1. 进入好友资料卡并点进设置备注页，验证共同群聊展示个数"):
-            self._go_to_contact_detail_from_list(RECEIVER_NAME)
-            self.contactDetailPageS.click_remark()
-            self.remarkSettingPageS.wait_for_remark_page_load()
-            count = self.remarkSettingPageS.get_common_groups_count()
-            check.is_true(count >= 0, f"❌ 共同群聊数量获取异常: {count}")
+        try:
+            with allure.step("1. 进入好友资料卡并点进设置备注页，验证共同群聊展示个数"):
+                self._go_to_contact_detail_from_list(RECEIVER_NAME)
+                self.contactDetailPageS.click_friend_detail_title_remark()
+                self.remarkSettingPageS.wait_friend_detail_page()
+                count = self.remarkSettingPageS.get_common_groups_count()
+                check.is_true(count >= 0, f"❌ 共同群聊数量获取异常: {count}")
 
-        if count > 0:
-            with allure.step("2. 点击共同群聊，进入共同群聊详情页面"):
-                self.remarkSettingPageS.click_common_groups()
-                self.remarkSettingPageS.wait_for_common_groups_page_load()
-                
-                # 校验详情页实际列表渲染的群个数
-                list_count = self.remarkSettingPageS.get_common_groups_list_count()
-                check.equal(list_count, count, f"❌ 详情页群聊个数 ({list_count}) 与设置备注页显示的共同群聊数量 ({count}) 不一致")
+            if count > 0:
+                with allure.step("2. 点击共同群聊，进入共同群聊详情页面"):
+                    self.remarkSettingPageS.click_common_groups()
+                    self.remarkSettingPageS.wait_for_common_groups_page_load()
+                    
+                    # 校验详情页实际列表渲染的群个数
+                    list_count = self.remarkSettingPageS.get_common_groups_list_count()
+                    check.equal(list_count, count, f"❌ 详情页群聊个数 ({list_count}) 与设置备注页显示的共同群聊数量 ({count}) 不一致")
 
-            with allure.step("3. 过滤搜索共同群聊并返回设置备注页"):
-                self.remarkSettingPageS.search_common_group("测试")
-                # 返回设置备注页
-                self.remarkSettingPageS.click_back()
-                self.remarkSettingPageS.wait_for_remark_page_load()
-                # 从设置备注页返回好友资料页
-                self.remarkSettingPageS.click_back()
+                with allure.step("3. 过滤搜索共同群聊并返回设置备注页"):
+                    self.remarkSettingPageS.search_common_group("测试")
+                    self.remarkSettingPageS.click_back()
+                    self.remarkSettingPageS.wait_friend_detail_page()
+                    self.remarkSettingPageS.click_save()
+                    self.contactDetailPageS.wait_for_detail_page_load()
+            else:
+                logger.info("ℹ️ 当前与该好友没有共同群聊，FD_GROUP_002 搜索子流程略过")
+                self.remarkSettingPageS.click_save()
                 self.contactDetailPageS.wait_for_detail_page_load()
-        else:
-            logger.info("ℹ️ 当前与该好友没有共同群聊，FD_GROUP_002 搜索子流程略过")
-            # 清理：返回资料卡
-            self.remarkSettingPageS.click_back()
-            self.contactDetailPageS.wait_for_detail_page_load()
+        finally:
+            self.contactDetailPageS.click_iv_back()

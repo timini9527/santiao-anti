@@ -29,8 +29,8 @@ class GroupBotLocator:
     TV_TITLE = CommonLocator.TOP_TV_TITLE                       # 页面标题
     IV_BACK = CommonLocator.TOP_IV_BACK_BTN                     # 返回按钮
     SAVE_BTN = CommonLocator.TOP_FB_ACTION_BTN                  # 右上角保存按钮
-    CONFIRM_BTN = CommonLocator.TEXT_CONFIRM_BTN                # 确认按钮
-    CANCEL_BTN = CommonLocator.TEXT_CANCEL_BTN                  # 取消按钮
+    CONFIRM_BTN = CommonLocator.TV_CONFIRM_BTN                  # 确认按钮
+    CANCEL_BTN = CommonLocator.TV_CANCEL_BTN                    # 取消按钮
     SWITCH_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/switch_enable')   # 功能的开启和关闭状态的开关
 
     

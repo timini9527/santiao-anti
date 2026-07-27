@@ -11,9 +11,11 @@ class GroupManagerPage(BasePage):
     # 等待页面加载
     def wait_for_page_load(self, timeout: int = 10) -> bool:
         """等待群管理页面加载完成"""
-        res = self.get_attribute(GroupManagerLocator.TV_TITLE, "text") == "群管理"
-        logger.info(f"⏳ [Action-groupManagerPage] 群管理页面 - 加载{'成功' if res else '超时'}")
-        time.sleep(0.5)
+        res = self.wait_for_element_text(GroupManagerLocator.TV_TITLE, expected_text="群管理", timeout=timeout)
+        if res:
+            logger.info(f"⏳ [Action-groupManagerPage] 群管理页面 - 加载完成")
+        else:
+            logger.error(f"❌ [Action-groupManagerPage] 群管理页面 - 未加载完成")
         return res
 
     # 顶部-点击返回按钮
@@ -83,9 +85,11 @@ class GroupManagerPage(BasePage):
     # 管理员-等待管理员列表页面加载完成
     def wait_for_admin_page_load(self, timeout: int = 10) -> bool:
         """管理员-等待管理员列表页面加载完成"""
-        res = self.get_attribute(GroupManagerLocator.TV_TITLE, "text") == "群管理员"
-        logger.info(f"⏳ [Action-groupManagerPage] 管理员列表页面 - 加载{'成功' if res else '超时'}")
-        time.sleep(0.5)
+        res = self.wait_for_element_text(GroupManagerLocator.TV_TITLE, expected_text="群管理员", timeout=timeout)
+        if res:
+            logger.info(f"⏳ [Action-groupManagerPage] 管理员列表页面 - 加载完成")
+        else:
+            logger.error(f"❌ [Action-groupManagerPage] 管理员列表页面 - 未加载完成")
         return res
 
     # 管理员-点击新增管理员按钮
@@ -291,9 +295,11 @@ class GroupManagerPage(BasePage):
     # 等待进群申请页面加载
     def wait_for_join_apply_page_load(self, timeout: int = 10) -> bool:
         """等待进群申请页面加载完成"""
-        res = self.get_attribute(GroupManagerLocator.TV_TITLE, "text") == "进群申请"
-        logger.info(f"⏳ [Action-groupManagerPage] 进群申请页面 - 加载{'成功' if res else '超时'}")
-        time.sleep(0.5)
+        res = self.wait_for_element_text(GroupManagerLocator.TV_TITLE, expected_text="进群申请", timeout=timeout)
+        if res:
+            logger.info(f"⏳ [Action-groupManagerPage] 进群申请页面 - 加载完成")
+        else:
+            logger.error(f"❌ [Action-groupManagerPage] 进群申请页面 - 未加载完成")
         return res
     
     # 进群申请-进群申请横幅

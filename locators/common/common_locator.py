@@ -29,7 +29,6 @@ class CommonLocator:
     TOP_TV_TITLE = (AppiumBy.ID, TOP_TV_TITLE_ID)
 
     # Toast 提示 (兼容应用内 ID 定位和系统级级 Toast 定位)
-    # TOAST_MSG = (AppiumBy.ID, f'{PACKAGE_ID}/toast_message')
     TOAST_MSG = (AppiumBy.XPATH, f"//*[@resource-id='{PACKAGE_ID}/toast_message' or @class='android.widget.Toast']")
 
     # 弹窗/对话框 确认与取消按钮 (来自重构移植)
@@ -37,19 +36,19 @@ class CommonLocator:
     DIALOG_CANCEL_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/btn_negative')
 
     # 文本确认与取消按钮 (来自重构移植)
-    TEXT_CONFIRM_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/tv_confirm')
-    TEXT_CANCEL_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/tv_cancel')
+    TV_CONFIRM_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/tv_confirm')
+    TV_CANCEL_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/tv_cancel')
 
     # 顶部返回按钮
-    TOP_BACK_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/back_bnt')
+    TOP_BACK_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/back_bnt')
 
     # TOPBar 3个控件通用定位
     # 左上角返回按钮 通用
-    TOPBAR_LEFT_BACK_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/back')
+    TOP_BAR_BACK_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/back')
     # 右上角完成按钮 通用
-    TOPBAR_RIGHT_FINISH_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/edit_to')
+    TOP_BAR_EDIT_TO_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/edit_to')
     # 中间标题 通用
-    TOPBAR_TITLE = (AppiumBy.ID, f'{PACKAGE_ID}/title_tv')
+    TOP_BAR_TITLE_TV = (AppiumBy.ID, f'{PACKAGE_ID}/title_tv')
 
 
 # class HomeLocatorIOS(HomeLocatorBase):

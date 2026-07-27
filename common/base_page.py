@@ -365,9 +365,11 @@ class BasePage:
         return self.get_toast(expected_toast=expected_toast, timeout=timeout)
     
     @allure.step("获取当前屏幕匹配所有 Toast 弹窗内容")
-    def get_toast(self, expected_toast: str = "", timeout: float = 3.0) -> str:
+    def get_toast(self, expected_toast: str = "", timeout: float = 3.0) -> Union[str, bool]:
         """
         获取当前屏幕上显示的任意 Toast 文本的内容 (支持 XML + OCR 降级双通道检测)
+        :param expected_toast: 期望的 Toast 内容。为空时返回捕获到的文本字符串；不为空时返回布尔值(True/False)。
+        :param timeout: 超时时间（秒）
         """
         from locators.common.common_locator import CommonLocator
         from utils.cv_recognition.ocr_utils import OcrUtils
@@ -394,7 +396,7 @@ class BasePage:
                     if expected_toast:
                         if expected_toast in toast_text:
                             logger.info(f"✅ basePage-get_toast XML 成功捕获预期提示框: {toast_text}")
-                            return toast_text
+                            return True
                         else:
                             logger.debug(f"XML 捕获到无关提示框: {toast_text}，继续监听期望值: '{expected_toast}'")
                     else:
@@ -413,12 +415,46 @@ class BasePage:
                 # 优化点：避免全局文本无间隔拼接引发误判，改为遍历每一行进行匹配
                 if any(expected_toast in text for text in ocr_list):
                     logger.info(f"🎯 basePage-get_toast OCR 成功匹配到屏幕提示文字: '{expected_toast}'")
-                    return expected_toast
+                    return True
             except Exception as e:
                 logger.debug(f"OCR 提示框扫描异常: {e}")
                 
         logger.warning(f"⏱️ basePage-get_toast 未能捕获到预期【{expected_toast}】的提示框 (XML和OCR通道均未命中)")
-        return ""
+        return False if expected_toast else ""
+
+    @allure.step("轮询等待指定元素的文本符合预期条件")
+    def wait_for_element_text(self, locator: tuple, expected_text: Union[str, list, tuple],
+                                 timeout: float = 10.0, raise_exception: bool = True,
+                                 poll_frequency: float = 0.2) -> bool:
+        """
+        通用底层函数：在指定时间内轮询探测元素的 text 文本，直至匹配预期条件
+        :param locator: 定位器元组 (By, value)
+        :param expected_text: 期望的文本（支持单字符串、或包含多个可选值的列表/元组）
+        :param timeout: 超时时间（秒）
+        :param raise_exception: 是否在超时未匹配时抛出异常
+        :param poll_frequency: 轮询探测频率（秒）
+        :return: 匹配成功返回 True，超时未匹配返回 False
+        """
+        end_time = time.time() + timeout
+        expected_list = [expected_text] if isinstance(expected_text, str) else expected_text
+
+        while time.time() < end_time:
+            try:
+                text = self.get_attribute(locator, "text", timeout=poll_frequency, raise_exception=raise_exception)
+                if text:
+                    for exp in expected_list:
+                        if exp in text:
+                            logger.info(f"✅ [BasePage-wait_element_text] 成功匹配文本: '{text}' (预期包含: '{exp}')")
+                            return True
+            except Exception:
+                pass
+            time.sleep(poll_frequency)
+
+        if raise_exception:
+            logger.error(f"❌ [BasePage-wait_element_text] 超时 {timeout}s 未等到 {locator} 匹配文本: {expected_text}")
+        else:
+            logger.warning(f"⚠️ [BasePage-wait_element_text] 未在 {timeout}s 内匹配到文本: {expected_text} (探测判定不存在)")
+        return False
 
     @allure.step("获取网格/列表布局指标")
     def get_grid_layout_metrics(self, container_locator: tuple, item_locator: tuple) -> dict:

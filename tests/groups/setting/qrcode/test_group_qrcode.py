@@ -208,7 +208,7 @@ class TestGroupQrCode:
             self.contactSelectPage.click_contact_by_name(name=GROUP_STRATEGY.name, select_type='share')
             self.contactSelectPage.click_action_button()
             toast = self.groupQrCodePage.get_toast(expected_toast="发送成功")
-            check.is_in("发送成功", toast, "❌ 分享二维码的提示信息有误")
+            check.is_true(toast, "❌ 分享二维码的提示信息有误")
         
         with allure.step("6. 回到消息列表进入群聊"):
             self.mainPage.go_to_main_page()

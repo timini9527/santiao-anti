@@ -15,14 +15,15 @@ class RemarkSettingPage(BasePage):
     # =========================================================================
     
     # 好友资料页 - 等待设置备注页/好友资料页加载完成
-    def wait_friend_detail_page(self, timeout: int = 10) -> bool:
-        """ 好友详情页面 - 等待好友资料页加载完成 """
-        if self.get_attribute(ContactDetailLocator.TV_TITLE, "text", timeout=timeout) == "好友资料":
-            logger.info(" 🧐 [Action - ContactDetail] 好友详情页面 - 加载完成")
-            return True
+    def wait_friend_detail_page(self, timeout: int = 10, expected_title: str = "") -> bool:
+        """ 好友详情页面 - 在一定时间内轮询获取标题，直到获取成功 """
+        titles = [expected_title] if expected_title else ["好友资料"]
+        wait_finish = self.wait_for_element_text(ContactDetailLocator.TV_TITLE, expected_text=titles, timeout=timeout)
+        if wait_finish:
+            logger.info(f" 🧐 [Action - ContactDetail] 好友详情页面 - 加载完成")
         else:
-            logger.error(" ❌ [Action - ContactDetail] 好友详情页面 - 未加载完成")
-            return False
+            logger.error(f" ❌ [Action - ContactDetail] 好友详情页面 - 未加载完成")
+        return wait_finish
 
     
     # 资料页 - 点击取消按钮
@@ -248,7 +249,7 @@ class RemarkSettingPage(BasePage):
     # 标签 - 等待标签页加载完成
     def wait_for_tag_page_load(self, timeout: int = 10) -> bool:
         """ 标签 - 等待标签选择页加载完成 """
-        is_exist = self.is_element_exist(ContactDetailLocator.ROOT, timeout=timeout)
+        is_exist = self.is_element_exist(ContactDetailLocator.CHIP_GROUP, timeout=timeout)
         if is_exist:
             logger.info("✅ [Wait - RemarkSetting] 标签选择页加载完成")
         else:
@@ -256,15 +257,20 @@ class RemarkSettingPage(BasePage):
         return is_exist
 
     # 标签 - 获取标签页面的标签值
-    def get_tag_page_values(self, tag_type: int = 0) -> str:
+    def get_tag_page_values(self, tag_type: int = 0, split_type: int = 0) -> str:
         """ 标签 - 获取标签页面的标签值 """
         if tag_type == 0:
             locator = ContactDetailLocator.TV_TAG_VALUE
-        else:
+        elif tag_type == 1:
             locator = ContactDetailLocator.TV_PROFILE_TAG_VALUE
+        elif tag_type == 2:
+            locator = ContactDetailLocator.TV_ADD_TAG
+        else:
+            raise ValueError(f"❌ [Action - RemarkSetting] 标签类型不合法: {tag_type}")
         tags = self.get_attribute(locator, "text")
         if tags:
-            tag_list = tags.split('、')
+            split_str = '，' if split_type == 0 else '、'
+            tag_list = tags.split(split_str)
             logger.info(f"⚙️ [Action - RemarkSetting] 标签 - 获取标签页面的标签值: {tag_list}")
             return tag_list
         logger.warning("⚙️ [Action - RemarkSetting] 标签 - 未设置标签")
@@ -298,9 +304,9 @@ class RemarkSettingPage(BasePage):
         return elems
     
     # 标签 - 获取标签名称 (或列表)
-    def get_tag_names(self) -> list[str]:
+    def get_tag_names(self, timeout: int = 2) -> list[str]:
         """ 标签 - 获取指定标签名称的 WebElement """
-        elems = self.get_tag_elem()
+        elems = self.get_tag_elem(timeout=timeout)
         if elems:
             tag_list = [elem.text for elem in elems]
             logger.info(f"✅ [Action - RemarkSetting] 标签 - 获取到标签列表: {tag_list}")
@@ -407,24 +413,31 @@ class RemarkSettingPage(BasePage):
         self.click(ContactDetailLocator.CARD_TAG)
         logger.info("⚙️ [Action - RemarkSetting] 标签 - 点击标签资料卡")
                 
-
-
-
-    # 标签 - 在标签搜索框中输入
-    def search_tag(self, keyword: str):
-        """ 标签 - 在标签搜索框中输入 """
+    # 标签 - 搜索框输入标签
+    def input_search_tag(self, keyword: str):
+        """ 标签 - 搜索框输入标签 """
         self.send_keys(ContactDetailLocator.ET_SEARCH, keyword)
-        logger.info(f"⚙️ [Action - RemarkSetting] 标签 - 搜索标签: {keyword}")
+        logger.info(f"⚙️ [Action - RemarkSetting] 标签 - 搜索框输入标签: {keyword}")
 
     # 标签 - 点击新建标签
     def click_add_new_tag(self):
         """ 标签 - 点击新建标签 """
-        try:
-            self.click(ContactDetailLocator.LL_CREATE_TAG)
-        except Exception:
-            self.click(ContactDetailLocator.TV_CREATE_TAG)
+        self.click(ContactDetailLocator.LL_CREATE_TAG)
         logger.info("⚙️ [Action - RemarkSetting] 标签 - 点击新建标签")
 
+    # 标签 - 输入标签名称
+    def input_tag_name(self, keyword: str):
+        """ 标签 - 输入标签名称 """
+        self.send_keys(ContactDetailLocator.ET_TAG_NAME, keyword)
+        logger.info(f"⚙️ [Action - RemarkSetting] 标签 - 输入标签名称: {keyword}")
+
+    # 标签 - 确认创建标签
+    def click_create_done(self):
+        """ 标签 - 确认创建标签 """
+        self.click(ContactDetailLocator.FB_CREATE_DONE)
+        logger.info("⚙️ [Action - RemarkSetting] 标签 - 确认创建标签")
+
+    # 标签
 
 
 

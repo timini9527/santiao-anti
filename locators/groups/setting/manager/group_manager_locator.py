@@ -10,9 +10,9 @@ class GroupManagerLocator(CommonLocator):
     # 顶部导航
     IV_BACK = CommonLocator.TOP_IV_BACK_BTN                                             # 返回按钮
     TV_TITLE = CommonLocator.TOP_TV_TITLE                                               # 顶部标题
-    TITLE_TV = CommonLocator.TOPBAR_TITLE                                               # 标题
+    TITLE_TV = CommonLocator.TOP_BAR_TITLE_TV                                           # 标题
     FB_BTN = CommonLocator.TOP_FB_ACTION_BTN                                            # 完成/确定
-    EDIT_TO_BTN = CommonLocator.TOPBAR_RIGHT_FINISH_BTN                                 # 编辑完成按钮
+    EDIT_TO_BTN = CommonLocator.TOP_BAR_EDIT_TO_BTN                                     # 编辑完成按钮
 
 
     # 列表项
@@ -138,8 +138,8 @@ class GroupManagerLocator(CommonLocator):
     BLACK_REMOVE_MEMBER_ID = f"{PACKAGE_ID}/black_remove_member"
     BLACK_REMOVE_MEMBER = (AppiumBy.ID, BLACK_REMOVE_MEMBER_ID)                             # 移除黑名单按钮
 
-    TEXT_CONFIRM_BTN = CommonLocator.TEXT_CONFIRM_BTN                                       # 移除黑名单二次确认
-    TEXT_CANCEL_BTN = CommonLocator.TEXT_CANCEL_BTN                                         # 移除黑名单二次确认
+    TEXT_CONFIRM_BTN = CommonLocator.TV_CONFIRM_BTN                                         # 移除黑名单二次确认
+    TEXT_CANCEL_BTN = CommonLocator.TV_CANCEL_BTN                                           # 移除黑名单二次确认
 
     # 根据昵称定位黑名单移除按钮
     @classmethod

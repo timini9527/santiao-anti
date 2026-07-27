@@ -54,7 +54,7 @@ class ChatEmojiLocator(ChatLocator):
     COLLECT_RECYCLER = (AppiumBy.ID, f'{PACKAGE_ID}/collect_recycler')                  # 收藏表情包列表框
     # 管理表情包内部
     COLLECT_LIST_CONTAINER = (AppiumBy.ID, f'{PACKAGE_ID}/collect_list')                # 收藏表情包列表容器
-    COLLECT_BACK_BTN = CommonLocator.TOP_BACK_BUTTON                                    # 左上角返回按钮
+    COLLECT_BACK_BTN = CommonLocator.TOP_BACK_BTN                                       # 左上角返回按钮
     COLLECT_RIGHT_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/right_text')                       # 右上角整理和取消
     COLLECT_MOVE_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/tv_move')                           # 移动按钮
     COLLECT_DEL_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/tv_delete')                          # 删除按钮

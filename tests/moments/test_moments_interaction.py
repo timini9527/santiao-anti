@@ -44,7 +44,7 @@ class TestMomentsInteraction:
     def _verify_moment_published(self, expected_content: str, timeout: int=10):
         """校验朋友圈发布结果：验证弹出‘发布成功’，且最新发布的动态首条匹配"""
         toast = self.momentsPage.get_toast("发布成功", timeout=timeout)
-        check.equal(toast, "发布成功", "❌ 朋友圈发布动态未能弹出‘发布成功’提示")
+        check.is_true(toast, "❌ 朋友圈发布动态未能弹出‘发布成功’提示")
         self.momentsPage.wait_for_moments_page_load(timeout=timeout)
         
         self.momentsPage.refresh_moments()
@@ -199,13 +199,13 @@ class TestMomentsInteraction:
             with allure.step("3. 校验并发送评论"):
                 if expected_behavior == "truncated":
                     limit_toast = self.momentsPage.get_toast(expected_toast)
-                    check.equal(expected_toast, limit_toast, f"❌ {case_id} 超长评论未弹出字数限制提示")
+                    check.is_true(limit_toast, f"❌ {case_id} 超长评论未弹出字数限制提示")
 
                 self.momentsPage.send_comment()
 
                 if expected_behavior == "blocked":
                     blocked_toast = self.momentsPage.get_toast(expected_toast)
-                    check.equal(expected_toast, blocked_toast, f"❌ {case_id} 敏感词评论未被正确拦截")
+                    check.is_true(blocked_toast, f"❌ {case_id} 敏感词评论未被正确拦截")
 
             if expected_behavior == "success":
                 with allure.step("4. 校验评论是否成功展示在列表中"):

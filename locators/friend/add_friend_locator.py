@@ -16,7 +16,7 @@ class AddFriendLocator:
     SEARCH_ENTRY_XPATH = (AppiumBy.XPATH, f"//*[@resource-id='{SEARCH_ENTRY_ID}']//android.widget.TextView")
 
     ET_SEARCH = (AppiumBy.ID, f"{PACKAGE_ID}/et_search")                        # 搜索框输入
-    TV_CANCEL = CommonLocator.TEXT_CANCEL_BTN                                   # 取消按钮
+    TV_CANCEL = CommonLocator.TV_CANCEL_BTN                                     # 取消按钮
     RV_SEARCH_RESULTS = (AppiumBy.ID, f"{PACKAGE_ID}/rv_search_results")        # 搜索结果列表
     TV_SEARCH_KEY_MARK = (AppiumBy.ID, f"{PACKAGE_ID}/tv_search_key_mark")      # 确认搜索容器
     CL_ITEM = (AppiumBy.ID, f"{PACKAGE_ID}/cl_item")                            # 搜索结果item

@@ -135,7 +135,7 @@ class TestGroupNotice:
             self.groupNoticePage.input_notice_content(content)
             if truncate:
                 toast_msg = self.groupNoticePage.get_toast(expected_toast, timeout=1)
-                check.is_true(toast_msg != "", f"❌ 预期弹出包含 '{expected_toast}' 的 Toast 提示，但实际未捕获到 {toast_msg}")
+                check.is_true(toast_msg, f"❌ 预期弹出包含 '{expected_toast}' 的 Toast 提示，但实际未捕获到")
 
         with allure.step("4. 点击发布并验证结果"):
             self.groupNoticePage.click_publish_btn()
@@ -144,8 +144,8 @@ class TestGroupNotice:
                 current_notice = self.groupNoticePage.get_notice_content()
                 check.equal(current_notice, expected_content, f"❌ 群公告内容发布后校验不一致 {current_notice}")
             else:
-                toast_msg = self.groupNoticePage.get_toast(expected_toast, timeout=1)
-                check.is_true(toast_msg != "", f"❌ 预期弹出包含 '{expected_toast}' 的 Toast 提示，但实际未捕获到 {toast_msg}")
+                toast_msg = self.groupNoticePage.get_notice_toast(expected_toast, timeout=1) if hasattr(self.groupNoticePage, "get_notice_toast") else self.groupNoticePage.get_toast(expected_toast, timeout=1)
+                check.is_true(toast_msg, f"❌ 预期弹出包含 '{expected_toast}' 的 Toast 提示，但实际未捕获到")
 
         with allure.step("5. [后置清理] 返回到聊天主页, 并验证横幅消息内容"):
             self.chatPage.back_to_chat_page()

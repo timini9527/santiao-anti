@@ -56,11 +56,11 @@ class HomeLocator:
     NEW_FRIEND_FB_BADGE_COUNT_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{NEW_FRIEND_FB_BADGE_COUNT_ID}"]/android.widget.TextView')     # 新的朋友未读消息数文本
     
     # 分组管理下的分类标签
-    CATEGORY_MANAGER_ROOT = f'//*[@resource-id="{PACKAGE_ID}/ll_category"]'
-    CATEGORY_MANAGER = (AppiumBy.ID, f'{PACKAGE_ID}/ll_category')                   # 分组管理容器
-    CATEGORY_MANAGER_IV = (AppiumBy.ID, f'{PACKAGE_ID}/category_manager_iv')        # 分组管理图标
+    CATEGORY_MANAGER_ROOT_ID = f"{PACKAGE_ID}/ll_category"
+    CATEGORY_MANAGER = (AppiumBy.ID, CATEGORY_MANAGER_ROOT_ID)                  # 分组管理容器
+    CATEGORY_MANAGER_IV = (AppiumBy.ID, f'{PACKAGE_ID}/category_manager_iv')    # 分组管理图标
     # 分组管理名称
-    CATEGORY_MANAGER_TV = (AppiumBy.ID, f'//*[@resource-id="{CATEGORY_MANAGER_ROOT}"]//android.widget.TextView')        # 分组管理文本
+    CATEGORY_MANAGER_TV = (AppiumBy.XPATH, f'//*[@resource-id="{CATEGORY_MANAGER_ROOT_ID}"]//android.widget.TextView')        # 分组管理文本
     
 
 

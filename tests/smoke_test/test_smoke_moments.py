@@ -56,7 +56,7 @@ class BaseSmokeMoments:
     def _verify_moment_published(self, expected_content: str, timeout: int = 15):
         """通用发布成功校验：等待 Toast，刷新列表，匹配首条内容"""
         toast = self.momentsPage.get_toast("发布成功", timeout=timeout)
-        check.equal(toast, "发布成功", "❌ 朋友圈未正常弹出‘发布成功’提示")
+        check.is_true(toast, "❌ 朋友圈未正常弹出‘发布成功’提示")
         self.momentsPage.wait_for_moments_page_load(timeout=timeout)
         
         # 刷新并校验最新发布的动态
@@ -124,7 +124,7 @@ class TestSmokeMoments(BaseSmokeMoments):
         with allure.step("2. 点击发表，校验空内容拦截提示"):
             self.momentsPage.click_publish()
             toast = self.momentsPage.get_toast("请输入发布内容")
-            check.equal(toast, "请输入发布内容", "❌ 空内容发布未弹出预期拦截提示")
+            check.is_true(toast, "❌ 空内容发布未弹出预期拦截提示")
 
         with allure.step("3. 校验仍停留在发布编辑页，并主动返回朋友圈主页"):
             check.is_true(self.momentsPage.is_publish_editor_displayed(), "❌ 空内容发布后不应退出编辑页")

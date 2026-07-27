@@ -221,7 +221,7 @@ class ChatLocator:
     # ==================================================================================================================
     # 聊天页面顶部元素定位
     # ==================================================================================================================
-    TOP_BACK_BUTTON = CommonLocator.TOP_BACK_BUTTON                     # 返回按钮
+    TOP_BACK_BUTTON = CommonLocator.TOP_BACK_BTN                     # 返回按钮
     TOP_USER_NAME_ID = f'{PACKAGE_ID}/to_user_name'                     # 聊天对象昵称ID
     TOP_USER_NAME = (AppiumBy.ID, TOP_USER_NAME_ID)                     # 聊天对象昵称
     TOP_USER_NAME_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{TOP_USER_NAME_ID}"]/android.widget.TextView') # 聊天对象昵称
@@ -270,7 +270,7 @@ class ChatLocator:
     IV_DELETE = (AppiumBy.ID, f'{PACKAGE_ID}/iv_delete')                                                        # 删除按钮
     TV_FORWARD_ONE_BY_ONE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_forward_one_by_one')                                # 逐条转发
     TV_FORWARD_COMBINE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_forward_combine')                                      # 合并转发
-    TV_CANCEL = CommonLocator.TEXT_CANCEL_BTN                                                                   # 取消按钮
+    TV_CANCEL = CommonLocator.TV_CANCEL_BTN                                                                   # 取消按钮
     MULIT_TOAST_MESSAGE = (AppiumBy.XPATH, f'//*[@resource-id="{PACKAGE_ID}/toast_message" and @text="发送中"]') # 发送中
     LEFT_TEXT = (AppiumBy.XPATH, f'//*[@resource-id="{PACKAGE_ID}/left_text"]')                                 # 聊天记录（合并转发）消息内容
 
@@ -295,8 +295,8 @@ class ChatLocator:
     WITHDRAW_MESSAGE_ITEM = (AppiumBy.XPATH, f'//*[@resource-id="{MESSAGE_LAYOUT_ID}"]//*[@resource-id="{MESSAGE_CONTENT_ID}"]/android.widget.TextView')
     
     # 删除操作二次确认和取消
-    DEL_CONFIRM = CommonLocator.TEXT_CONFIRM_BTN
-    DEL_CANCEL = CommonLocator.TEXT_CANCEL_BTN
+    DEL_CONFIRM = CommonLocator.TV_CONFIRM_BTN
+    DEL_CANCEL = CommonLocator.TV_CANCEL_BTN
 
 
     TOAST_MSG = CommonLocator.TOAST_MSG

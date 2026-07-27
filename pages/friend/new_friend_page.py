@@ -11,7 +11,7 @@ class NewFriendPage(BasePage):
     # 等待页面加载完成
     def wait_for_new_friend_page_load(self, timeout: int = 10) -> bool:
         """ 等待新的朋友页面加载完成 """
-        is_exit = self.get_attribute(NewFriendLocator.TV_TITLE, "text", timeout=timeout) == "新的朋友"
+        is_exit = self.wait_for_element_text(NewFriendLocator.TV_TITLE, expected_text="新的朋友", timeout=timeout)
         if is_exit:
             logger.info("⏳ [Wait - NewFriend] 新的朋友页面加载完成")
         else:

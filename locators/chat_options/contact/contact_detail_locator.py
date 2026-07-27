@@ -85,7 +85,7 @@ class ContactDetailLocator:
     TV_NUMBER = (AppiumBy.ID, f'{PACKAGE_ID}/tv_number')                            # 电话号码
     TV_CALL = (AppiumBy.ID, f'{PACKAGE_ID}/tv_call')                                # 拨号
     TV_COPY = (AppiumBy.ID, f'{PACKAGE_ID}/tv_copy')                                # 复制
-    TV_CANCEL = CommonLocator.TEXT_CANCEL_BTN                                       # 取消
+    TV_CANCEL = CommonLocator.TV_CANCEL_BTN                                         # 取消
     # 呼叫页面2
     CONTENT_LAYOUT = (AppiumBy.ID, f'{PACKAGE_ID}/content_layout')                  # 布局容器
     CALL_TEXT = (AppiumBy.ANDROID_UIAUTOMATOR, f'new UiSelector().text("呼叫")')     # 呼叫

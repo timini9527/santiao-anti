@@ -36,7 +36,7 @@ class PersonalLocator:
     # 三条ID
     ME_ST_ID_TEXT = (AppiumBy.ANDROID_UIAUTOMATOR, f'new UiSelector().text("三条ID")')
     ME_ST_ID = (AppiumBy.ID, f'{PACKAGE_ID}/my_id')
-    ME_ST_ID_CONFIRM = CommonLocator.TEXT_CONFIRM_BTN
+    ME_ST_ID_CONFIRM = CommonLocator.TV_CONFIRM_BTN
 
 
     # 我的二维码

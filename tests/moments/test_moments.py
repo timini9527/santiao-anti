@@ -59,7 +59,7 @@ class TestMoments:
     def _verify_moment_published(self, expected_content: str, timeout: int=10):
         """校验朋友圈发布结果：验证弹出‘发布成功’，且最新发布的动态首条匹配"""
         toast = self.momentsPage.get_toast("发布成功", timeout=timeout)
-        check.equal(toast, "发布成功", "❌ 朋友圈发布动态未能弹出‘发布成功’提示")
+        check.is_true(toast, "❌ 朋友圈发布动态未能弹出‘发布成功’提示")
         self.momentsPage.wait_for_moments_page_load(timeout=timeout)
         
         # TODO: Android端有BUG，每次点击发布后必须下拉刷新才能看到最新发布
@@ -187,13 +187,13 @@ class TestMoments:
             
             if expected_behavior == "empty":
                 empty_toast = self.momentsPage.get_toast(expected_toast)
-                check.equal(expected_toast, empty_toast, f"❌ {case_id} 空内容，朋友圈发布失败")
+                check.is_true(empty_toast, f"❌ {case_id} 空内容，朋友圈发布失败")
             elif expected_behavior == "blocked":
                 blocked_toast = self.momentsPage.get_toast(expected_toast)
-                check.equal(expected_toast, blocked_toast, f"❌ {case_id} 敏感词，朋友圈发布失败")
+                check.is_true(blocked_toast, f"❌ {case_id} 敏感词，朋友圈发布失败")
             else:
                 toast = self.momentsPage.get_toast("发布成功")
-                check.equal(toast, "发布成功", f"❌ {case_id} 正常发布朋友圈失败")
+                check.is_true(toast, f"❌ {case_id} 正常发布朋友圈失败")
                 self.momentsPage.wait_for_moments_page_load()
                 # TODO: Android端有BUG，每次点击发布后必须下拉刷新才能看到最新发布
                 self.momentsPage.refresh_moments()
