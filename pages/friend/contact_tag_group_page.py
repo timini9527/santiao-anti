@@ -62,9 +62,9 @@ class ContactTagGroupPage(BasePage):
         return names
 
     # 管理分组页面 - 获取分组标签名称
-    def get_group_tag_names(self, timeout: int = 5) -> List[str]:
+    def get_group_tag_names(self, timeout: int = 2, raise_exception: bool = True) -> List[str]:
         """ 管理分组页面 - 获取分组标签名称 """
-        elems = self.find_elements(ContactTagGroupLocator.GROUP_ITEM_TV, timeout=timeout)
+        elems = self.find_elements(ContactTagGroupLocator.GROUP_ITEM_TV, timeout=timeout, raise_exception=raise_exception)
         if not elems:
             logger.warning("⚠️ [Action - TagGroup] 管理分组页面 - 未找到任何分组或标签")
             return []
@@ -174,12 +174,11 @@ class ContactTagGroupPage(BasePage):
         return False
 
     # 管理分组页面 - 指定删除分组或删除全部
-    def delete_group_or_all_groups_flow(self, group_name: Optional[str] = None, is_all: bool = False, max_loop: int = 50) -> bool:
+    def delete_group_or_all_groups_flow(self, group_name: Optional[str] = None, is_all: bool = False) -> bool:
         """ 
         管理分组页面 - 删除指定分组或批量清空全部分组
         :param group_name: 指定要删除的分组名称（当 is_all=False 时必填）
-        :param is_all: 是否循环删除列表中展示的所有分组
-        :param max_loop: 批量删除的最大安全循环次数卡口，防止 UI 刷不出导致死循环
+        :param is_all: 是否循环删除列表中展示的所有分组（有多少个删除多少个，直到清空为止）
         """
         if not is_all:
             if not group_name:
@@ -193,14 +192,15 @@ class ContactTagGroupPage(BasePage):
         else:
             logger.info("⚙️ [Action - TagGroup] 准备循环删除列表中所有的分组")
             deleted_count = 0
-            while deleted_count < max_loop:
+            while True:
                 if not self.click_group_edit_by_index(group_index=0, raise_exception=False):
-                    logger.warning("⚠️ [Action - TagGroup] 未找到分组编辑按钮，可能已经删除完成")
+                    logger.warning("⚠️ [Action - TagGroup] 未找到分组编辑按钮，全部分组已清空完毕")
                     break
                 if self.delete_group_flow():    
                     deleted_count += 1
                     self.wait_for_group_list_page_load(page_title="0", raise_exception=False)
                     time.sleep(0.5)
+                    logger.info(f"⚙️ [Action - TagGroup] 批量删除中 - 已删除 {deleted_count} 个分组")
                 else:
                     logger.error("❌ [Action - TagGroup] 批量删除中途删除失败，中断循环")
                     return False

@@ -139,7 +139,9 @@ class ContactDetailLocator:
     TV_MEMO_TITLE = (AppiumBy.ID, f"{PACKAGE_ID}/tv_memo_title")            # 备忘标题
     TV_MEMO_VALUE = (AppiumBy.ID, f"{PACKAGE_ID}/tv_memo_value")            # 备忘值
     CARD_MEMO = (AppiumBy.ID, f"{PACKAGE_ID}/card_memo")                    # 备忘卡片
+    ET_MEMO = (AppiumBy.ID, f"{PACKAGE_ID}/et_memo")                        # 备忘输入框
     IV_MEMO_CLEAR = (AppiumBy.ID, f"{PACKAGE_ID}/iv_memo_clear")            # 备忘清除按钮
+    TV_PROFILE_MEMO_VALUE = (AppiumBy.ID, f"{PACKAGE_ID}/tv_profile_memo_value") # 资料页备忘值
     
     
     # 更多信息与共同群聊
@@ -150,6 +152,12 @@ class ContactDetailLocator:
     # 共同群聊详情页面
     TV_SEARCH_HINT = (AppiumBy.ID, f"{PACKAGE_ID}/tv_search_hint")                  # 搜索共同群聊
     TV_NAME = (AppiumBy.ID, f"{PACKAGE_ID}/tv_name")                                # 群聊列表项
+
+    # 共同群聊 - 通过群名称获取对应的列表项
+    @classmethod
+    def get_common_group_by_name(cls, group_name: str) -> Tuple[str, str]:
+        """通过共同群聊名称获取对应的群聊项定位器"""
+        return (AppiumBy.XPATH, f'//*[@resource-id="{cls.PACKAGE_ID}/tv_name" and @text="{group_name}"]')
 
 
     # 标签 - 通过 tag_name 获取对应的标签

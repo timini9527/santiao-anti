@@ -23,10 +23,10 @@ app:
   "appium:autoGrantPermissions": true              # 自动授予应用所需权限 (true: 自动, false: 手动)
   "appium:dontStopAppOnReset": false               # 热启动模式 (true: 不停止 App, false: 强杀并重启)
   # --- 启动提速与运行优化 ---
-  "appium:skipServerInstallation": false           # 跳过服务安装 (true: 跳过, false: 安装)
+  "appium:skipServerInstallation": true           # 跳过服务安装 (true: 跳过, false: 安装)
   "appium:skipDeviceInitialization": true          # 跳过设备初始化 (true: 跳过, false: 初始化)
   "appium:disableWindowAnimation": true            # 禁用系统动画 (true: 禁用, false: 启用)
-  "appium:appWaitForLaunch": false                 # 是否等待应用启动完成 (true: 等待, false: 不等待)
+  "appium:appWaitForLaunch": true                  # 是否等待应用启动完成 (true: 等待, false: 不等待)
   # --- Intent 显式启动配置（针对部分国产定制系统的限制） ---
   "appium:intentAction": "android.intent.action.MAIN"
   "appium:intentCategory": "android.intent.category.LAUNCHER"
@@ -44,10 +44,11 @@ devices:
       # platformVersion: "12.0"
       # udid: "20a5fa17"
       # udid: "3B65BN02GU600000"
+      udid: "192.168.1.111:43119"
       # platformVersion: "16.0"
       # udid: "nzwcvo9ls87hws7t"
       # platformVersion: "13.0"
-      udid: "emulator-5554"   # 模拟器
+      # udid: "emulator-5554"   # 模拟器
       # udid: "emulator-5556"   # 模拟器
       deviceName: "SenderPhone"
       systemPort: 8200          # 关键！Android UIA2 通信端口，必须唯一

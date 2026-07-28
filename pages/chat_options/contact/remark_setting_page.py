@@ -59,7 +59,17 @@ class RemarkSettingPage(BasePage):
         txt = self.get_attribute(ContactDetailLocator.ET_REMARK, "text")
         logger.info(f"🧐 [Action - RemarkSetting] 好友资料页 - 获取备注名: {txt}")
         return txt
+        
+    # 好友资料页 - 点击保存
+    def click_save(self):
+        """ 好友资料页 - 点击保存 """
+        self.click(ContactDetailLocator.FB_DONE)
+        logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 点击保存")
+        time.sleep(0.5)
     
+    # =========================================================================
+    # 电话相关操作
+    # =========================================================================
     # 好友资料页 - 点击电话
     def click_phone_item(self):
         """ 好友资料页 - 点击电话 """
@@ -176,6 +186,10 @@ class RemarkSettingPage(BasePage):
         except Exception:
             return False
 
+    # =========================================================================
+    # 标签相关操作
+    # =========================================================================
+
     # 好友资料页 - 点击标签容器
     def click_tag_container(self):
         """ 好友资料页 - 点击标签容器 """
@@ -199,52 +213,6 @@ class RemarkSettingPage(BasePage):
         """ 好友资料页 - 点击标签入口 """
         self.click(ContactDetailLocator.ITEM_TAG)
         logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 点击标签入口")
-
-    # 好友资料页 - 输入备注描述
-    def input_note(self, note: str):
-        """ 好友资料页 - 输入备注描述 """
-        try:
-            self.send_keys(ContactDetailLocator.CARD_MEMO, note)
-        except Exception:
-            locator = (AppiumBy.XPATH, f'//*[@resource-id="{ContactDetailLocator.CARD_MEMO[1]}"]//android.widget.EditText')
-            self.send_keys(locator, note)
-        logger.info(f"⚙️ [Action - RemarkSetting] 好友资料页 - 输入备注描述: {note}")
-
-    # 好友资料页 - 清空备注描述
-    def clear_note(self):
-        """ 好友资料页 - 清空备注描述 """
-        try:
-            self.click(ContactDetailLocator.IV_MEMO_CLEAR)
-        except Exception:
-            try:
-                self.clear(ContactDetailLocator.CARD_MEMO)
-            except Exception:
-                locator = (AppiumBy.XPATH, f'//*[@resource-id="{ContactDetailLocator.CARD_MEMO[1]}"]//android.widget.EditText')
-                self.clear(locator)
-        logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 清空备注描述")
-
-    # 好友资料页 - 获取备注描述内容
-    def get_note(self) -> str:
-        """ 好友资料页 - 获取备注描述内容 """
-        try:
-            txt = self.get_attribute(ContactDetailLocator.CARD_MEMO, "text")
-        except Exception:
-            locator = (AppiumBy.XPATH, f'//*[@resource-id="{ContactDetailLocator.CARD_MEMO[1]}"]//android.widget.EditText')
-            txt = self.get_attribute(locator, "text")
-        logger.info(f"🧐 [Action - RemarkSetting] 好友资料页 - 获取备注描述: {txt}")
-        return txt
-
-    # 好友资料页 - 点击保存
-    def click_save(self):
-        """ 好友资料页 - 点击保存 """
-        self.click(ContactDetailLocator.FB_DONE)
-        logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 点击保存")
-        time.sleep(0.5)
-
-
-    # =========================================================================
-    # 标签页操作
-    # =========================================================================
     
     # 标签 - 等待标签页加载完成
     def wait_for_tag_page_load(self, timeout: int = 10) -> bool:
@@ -437,7 +405,50 @@ class RemarkSettingPage(BasePage):
         self.click(ContactDetailLocator.FB_CREATE_DONE)
         logger.info("⚙️ [Action - RemarkSetting] 标签 - 确认创建标签")
 
-    # 标签
+    
+    # =========================================================================
+    # 备忘相关操作
+    # =========================================================================
+    # 好友资料页 - 点击备忘入口
+    def click_memo(self):
+        """ 好友资料页 - 点击备忘入口 """
+        self.click(ContactDetailLocator.ITEM_MEMO)
+        logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 点击备忘入口")
+    
+    # 好友资料页 - 输入备忘描述
+    def input_note(self, note: str):
+        """ 好友资料页 - 输入备忘描述 """
+        self.send_keys(ContactDetailLocator.ET_MEMO, note)
+        logger.info(f"⚙️ [Action - RemarkSetting] 好友资料页 - 输入备忘描述: {note}")
+
+    # 好友资料页 - 清空备忘描述
+    def clear_note(self):
+        """ 好友资料页 - 清空备忘描述 """
+        self.click(ContactDetailLocator.IV_MEMO_CLEAR)
+        logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 清空备忘描述")
+
+    # 好友资料页/设置备注页 - 获取备忘描述内容
+    def get_note(self,raise_exception: bool = False) -> str:
+        """ 设置备注页 - 获取备忘描述内容 """
+        txt = self.get_attribute(ContactDetailLocator.TV_MEMO_VALUE, "text", raise_exception=raise_exception)
+        if not txt:
+            txt = self.get_attribute(ContactDetailLocator.ET_MEMO, "text", raise_exception=raise_exception)
+        if not txt:
+            logger.warning("⚠️ [Action - RemarkSetting] 设置备注页 - 未设置备忘描述")
+            return ""
+        logger.info(f"🧐 [Action - RemarkSetting] 设置备注页 - 获取备忘描述: {txt}")
+        return txt
+
+    # 好友资料卡 - 获取资料卡页面展示的备忘描述文本
+    def get_profile_memo_value(self,raise_exception: bool = False) -> str:
+        """ 好友资料卡 - 获取资料卡页面展示的备忘描述文本 """
+        txt = self.get_attribute(ContactDetailLocator.TV_PROFILE_MEMO_VALUE, "text", raise_exception=raise_exception)
+        if not txt:
+            logger.warning("⚠️ [Action - RemarkSetting] 资料卡 - 未展示备忘描述")
+            return ""
+        logger.info(f"🧐 [Action - RemarkSetting] 资料卡 - 获取展示的备忘描述: {txt}")
+        return txt
+
 
 
 
@@ -467,43 +478,53 @@ class RemarkSettingPage(BasePage):
     # 共同群聊 - 等待共同群聊详情页加载完成
     def wait_for_common_groups_page_load(self, timeout: int = 10) -> bool:
         """ 共同群聊 - 等待共同群聊详情页加载完成 """
-        try:
-            self.find_element(ContactDetailLocator.TV_SEARCH_HINT, timeout=timeout)
+        res = self.wait_for_element_text(ContactDetailLocator.TV_TITLE, "我们的共同群聊", timeout=timeout)
+        if res:
             logger.info("✅ [Wait - RemarkSetting] 共同群聊页加载完成")
-            return True
-        except Exception:
+        else:
             logger.error("❌ [Wait - RemarkSetting] 共同群聊页加载超时")
-            return False
+        return res
 
     # 共同群聊 - 输入关键字过滤共同群聊
     def search_common_group(self, keyword: str):
         """ 共同群聊 - 输入关键字过滤共同群聊 """
-        try:
-            self.click(ContactDetailLocator.TV_SEARCH_HINT)
-            time.sleep(0.5)
-        except Exception:
-            pass
         self.send_keys(ContactDetailLocator.ET_SEARCH, keyword)
-        logger.info(f"⚙️ [Action - RemarkSetting] 搜索共同群聊: {keyword}")
+        logger.info(f"⚙️ [Action - RemarkSetting] 搜索共同群聊: '{keyword}'")
 
     # 共同群聊 - 点击指定名称的共同群聊
     def click_common_group_by_name(self, group_name: str) -> bool:
         """ 共同群聊 - 点击指定名称的共同群聊 """
-        try:
-            locator = (AppiumBy.XPATH, f'//*[@resource-id="{ContactDetailLocator.TV_NAME[1]}" and @text="{group_name}"]')
+        locator = ContactDetailLocator.get_common_group_by_name(group_name)
+        if self.is_element_exist(locator, timeout=2):
             self.click(locator)
-            logger.info(f"⚙️ [Action - RemarkSetting] 共同群聊 - 点击共同群聊: {group_name}")
+            logger.info(f"⚙️ [Action - RemarkSetting] 共同群聊 - 点击共同群聊: '{group_name}'")
             return True
-        except Exception as e:
-            logger.error(f"❌ [Action - RemarkSetting] 未找到共同群聊: {group_name}, {e}")
-            return False
+        logger.error(f"❌ [Action - RemarkSetting] 未找到共同群聊: '{group_name}'")
+        return False
 
+    # 共同群聊 - 获取共同群聊群聊列表Item
+    def get_common_group_items(self) -> list[WebElement]:
+        """ 共同群聊 - 获取共同群聊群聊列表Item """
+        elems = self.find_elements(ContactDetailLocator.TV_NAME, timeout=3, raise_exception=False)
+        if not elems:
+            logger.warning("⚠️ [Action - RemarkSetting] 共同群聊列表为空")
+            return []
+        logger.info(f"🧐 [Action - RemarkSetting] 列表展示的群聊个数: {len(elems)}")
+        return elems
+    
     # 共同群聊 - 获取当前共同群聊列表展示的个数
     def get_common_groups_list_count(self) -> int:
         """ 共同群聊 - 获取当前共同群聊列表展示的个数 """
-        try:
-            elems = self.find_elements(ContactDetailLocator.TV_NAME)
-            logger.info(f"🧐 [Action - RemarkSetting] 列表展示的群聊个数: {len(elems)}")
-            return len(elems)
-        except Exception:
-            return 0
+        count = len(self.get_common_group_items())
+        logger.info(f"🧐 [Action - RemarkSetting] 列表展示的群聊个数: {count}")
+        return count
+
+    # 共同群聊 - 获取当前共同群聊列表所有的群聊名称
+    def get_common_group_names(self) -> List[str]:
+        """ 共同群聊 - 获取当前共同群聊列表所有的群聊名称 """
+        names = [e.text for e in self.get_common_group_items() if e.text]
+        if not names:
+            logger.warning("⚠️ [Action - RemarkSetting] 共同群聊列表为空")
+            return []
+        logger.info(f"🧐 [Action - RemarkSetting] 获取到共同群聊列表名称: {names}")
+        return names
