@@ -271,6 +271,7 @@ class TestContactDetailSingle:
         """测试删除其中一个电话，校验添加按钮重新显示流程"""
         with allure.step("1. 前置准备：进入备注页，添加2个电话并保存"):
             self._go_to_phone_setting_page()
+            self.remarkSettingPageS.click_add_phone()
             self.remarkSettingPageS.input_phone("13900000001", index=0)
             self.remarkSettingPageS.click_add_phone()
             self.remarkSettingPageS.input_phone("13900000002", index=1)
