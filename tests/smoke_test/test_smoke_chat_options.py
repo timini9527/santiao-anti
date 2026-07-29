@@ -15,9 +15,9 @@ from pages.chat_options.file.chat_file_page import ChatFilePage
 from pages.chat_options.emojis.chat_emoji_page import ChatEmojiPage
 from pages.chat_options.emojis.chat_emoji_store_page import ChatEmojiStorePage
 from pages.chat_options.emojis.chat_emoji_package_page import ChatEmojiPackagePage
-from pages.chat_options.contact.chat_contact_card_page import ChatContactCardPage
+from pages.friend.profile.chat_contact_card_page import ChatContactCardPage
 from pages.common.contact_select_page import ContactSelectPage
-from pages.chat_options.contact.contact_detail_page import ContactDetailPage
+from pages.friend.profile.contact_detail_page import ContactDetailPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2
 
 

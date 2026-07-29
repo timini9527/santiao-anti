@@ -1,6 +1,6 @@
 import time
 from common.base_page import BasePage
-from locators.friend.add_friend_locator import AddFriendLocator
+from locators.friend.add_friend.add_friend_locator import AddFriendLocator
 from core.logger_utils import logger
 from selenium.webdriver.remote.webelement import WebElement
 

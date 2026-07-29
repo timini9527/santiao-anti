@@ -6,8 +6,8 @@ from pages.main.main_page import MainPage
 from pages.chat.list.chat_list_page import ChatListPage 
 from pages.chat.core.chat_page import ChatPage
 from pages.common.contact_select_page import ContactSelectPage
-from pages.chat_options.contact.chat_contact_card_page import ChatContactCardPage
-from pages.chat_options.contact.contact_detail_page import ContactDetailPage
+from pages.friend.profile.chat_contact_card_page import ChatContactCardPage
+from pages.friend.profile.contact_detail_page import ContactDetailPage
 from pages.common.session_select_page import SessionSelectPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
 

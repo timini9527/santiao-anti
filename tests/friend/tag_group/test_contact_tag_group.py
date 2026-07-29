@@ -4,9 +4,9 @@ import pytest
 from pytest_check import check
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
-from pages.friend.contact_tag_group_page import ContactTagGroupPage
+from pages.friend.tag_group.contact_tag_group_page import ContactTagGroupPage
 from pages.common.contact_select_page import ContactSelectPage
-from pages.chat_options.contact.contact_detail_page import ContactDetailPage
+from pages.friend.profile.contact_detail_page import ContactDetailPage
 from core.logger_utils import logger
 
 RECEIVER_NAME = "极速自动化"

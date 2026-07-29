@@ -1,6 +1,6 @@
 from typing import Union, List, Optional
 from common.base_page import BasePage
-from locators.chat_options.contact.contact_detail_locator import ContactDetailLocator
+from locators.friend.profile.contact_detail_locator import ContactDetailLocator
 from core.logger_utils import logger
 from appium.webdriver.common.appiumby import AppiumBy
 from appium.webdriver.webelement import WebElement

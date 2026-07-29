@@ -5,9 +5,9 @@ import pytest_check as check
 from core.logger_utils import logger
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
-from pages.friend.add_friend_page import AddFriendPage
-from pages.friend.new_friend_page import NewFriendPage
-from pages.chat_options.contact.contact_detail_page import ContactDetailPage
+from pages.friend.add_friend.add_friend_page import AddFriendPage
+from pages.friend.add_friend.new_friend_page import NewFriendPage
+from pages.friend.profile.contact_detail_page import ContactDetailPage
 from pages.common.contact_select_page import ContactSelectPage
 from pages.chat.core.chat_page import ChatPage
 from appium.webdriver.common.appiumby import AppiumBy
@@ -167,6 +167,7 @@ class TestAddFriendDouble:
         with allure.step(f"5. 验证 R端通讯录列表中成功以备注名 {remark_name} 显示该好友"):
             click_success = self._go_to_contact_detail_from_list(remark_name, side='R')
             check.is_true(click_success, f"❌ R端好友列表中找不到刚设置备注的好友: {remark_name}")
+
 
     @allure.story("申请处理")
     @allure.title("双端协作 - 删除好友后重新添加并交叉验证聊天消息能力恢复")

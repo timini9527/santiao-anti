@@ -13,7 +13,7 @@ from pages.chat.core.chat_page import ChatPage
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.common.contact_select_page import ContactSelectPage
 from pages.common.session_select_page import SessionSelectPage
-from pages.chat_options.contact.contact_detail_page import ContactDetailPage
+from pages.friend.profile.contact_detail_page import ContactDetailPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, PRIVATE_USER3, GROUP_STRATEGY
 
 

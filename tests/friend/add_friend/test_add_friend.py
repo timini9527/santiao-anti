@@ -4,8 +4,8 @@ import pytest_check as check
 from core.logger_utils import logger
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
-from pages.friend.add_friend_page import AddFriendPage
-from pages.chat_options.contact.contact_detail_page import ContactDetailPage
+from pages.friend.add_friend.add_friend_page import AddFriendPage
+from pages.friend.profile.contact_detail_page import ContactDetailPage
 from pages.common.contact_select_page import ContactSelectPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER4
 
@@ -72,6 +72,7 @@ class TestAddFriend:
             is_result = self.addFriendPage.get_search_result_item(raise_exception=False)
             check.is_false(is_result, "❌ 搜索为空或空格时，异常出现了搜索结果项")
 
+
     @allure.story("搜索")
     @allure.title("搜索不存在账号 - 验证未找到好友提示-状态：已完成")
     def test_add_friend_search_non_existent_account(self):
@@ -88,6 +89,7 @@ class TestAddFriend:
         with allure.step("3. 校验弹出 ‘未找到好友/群组’ 提示"):
             msg = self.addFriendPage.get_search_result_item_message()
             check.equal("未找到好友/群组", msg, "❌ 搜索不存在账号时，未弹出预期 [未找到好友/群组] 提示")
+
 
     @allure.story("搜索")
     @allure.title("通过手机号搜索正常账号并校验资料详情-状态：已完成")

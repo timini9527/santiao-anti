@@ -5,11 +5,11 @@ import pytest_check as check
 from core.logger_utils import logger
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
-from pages.friend.add_friend_page import AddFriendPage
-from pages.friend.new_friend_page import NewFriendPage
-from pages.chat_options.contact.contact_detail_page import ContactDetailPage
+from pages.friend.add_friend.add_friend_page import AddFriendPage
+from pages.friend.add_friend.new_friend_page import NewFriendPage
+from pages.friend.profile.contact_detail_page import ContactDetailPage
 from pages.common.contact_select_page import ContactSelectPage
-from pages.chat_options.contact.remark_setting_page import RemarkSettingPage
+from pages.friend.profile.remark_setting_page import RemarkSettingPage
 from pages.chat.core.chat_page import ChatPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, PRIVATE_USER3
 

@@ -3,8 +3,8 @@ import allure
 import pytest_check as check
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
-from pages.personal.add_friend_page import AddFriendPage
-from pages.chat_options.contact.contact_detail_page import ContactDetailPage
+from pages.friend.add_friend.add_friend_page import AddFriendPage
+from pages.friend.profile.contact_detail_page import ContactDetailPage
 from pages.common.contact_select_page import ContactSelectPage
 from strategy.chat.chat_strategy import PRIVATE_USER1
 from locators.common.contact_select_locator import ContactSelectLocator

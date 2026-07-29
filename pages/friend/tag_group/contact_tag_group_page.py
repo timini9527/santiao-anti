@@ -2,7 +2,7 @@ import time
 from typing import List, Optional
 from appium.webdriver.webelement import WebElement
 from common.base_page import BasePage
-from locators.friend.contact_tag_group_locator import ContactTagGroupLocator
+from locators.friend.tag_group.contact_tag_group_locator import ContactTagGroupLocator
 from core.logger_utils import logger
 
 

@@ -1,6 +1,6 @@
 import time
 from common.base_page import BasePage
-from locators.friend.new_friend_locator import NewFriendLocator
+from locators.friend.add_friend.new_friend_locator import NewFriendLocator
 from core.logger_utils import logger
 from appium.webdriver.webelement import WebElement
 
