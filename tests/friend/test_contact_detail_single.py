@@ -532,18 +532,17 @@ class TestContactDetailSingle:
     def test_create_tag_max_count_limit_toast( self, create_count: int, expected_count: int, check_exceed_toast: bool, should_save: bool, is_first: bool):
         """校验新增不同数量标签边界、上限 Toast 拦截以及正向保存回显闭环 (参数化合并)。"""
         with allure.step("0. 状态自愈：确保停留在好友列表页面（HomePage）"):
-            if not self.homePageS.wait_for_friend_page_load(timeout=1):
-                if self.contactDetailPageS.wait_for_detail_page_load(timeout=1, raise_exception=False):
-                    self.contactDetailPageS.click_iv_back()
-                    self.homePageS.wait_for_friend_page_load(timeout=2)
-                else:
-                    logger.info("当前页面既非详情页也非好友列表页，尝试执行深度自愈退回...")
-                    self.mainPageS.go_to_main_page()
-                    self.homePageS.click_bottom_expand_button()
-                    self.homePageS.click_friend()
-                    self.homePageS.wait_for_friend_page_load()
-            
             if is_first:
+                if not self.homePageS.wait_for_friend_page_load(timeout=1):
+                    if self.contactDetailPageS.wait_for_detail_page_load(timeout=1, raise_exception=False):
+                        self.contactDetailPageS.click_iv_back()
+                        self.homePageS.wait_for_friend_page_load(timeout=2)
+                    else:
+                        logger.info("当前页面既非详情页也非好友列表页，尝试执行深度自愈退回...")
+                        self.mainPageS.go_to_main_page()
+                        self.homePageS.click_bottom_expand_button()
+                        self.homePageS.click_friend()
+                        self.homePageS.wait_for_friend_page_load()
                 self._clear_all_tags()
             self._prepare_tag_page_and_clean()
 
