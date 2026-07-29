@@ -159,6 +159,7 @@ class TestSmokeContactDetail(BaseSmokeContactDetail):
             check.is_true(bool(has_remark), f"❌ 备注修改后，通讯录中找不到新备注名: {input_remark}")
 
         with allure.step("4. 清空备注名并保存，校验是否成功恢复为原名称显示"):
+            self.mainPage.go_to_main_page()
             self._go_to_remark_setting_page(name=input_remark)
             self.remarkSettingPage.click_remark_name()
             self.remarkSettingPage.clear_remark_name()
@@ -172,7 +173,6 @@ class TestSmokeContactDetail(BaseSmokeContactDetail):
 
             self.contactDetailPage.click_iv_back()
             self.homePage.wait_for_friend_page_load()
-            time.sleep(0.5)
             has_remark = self.contactSelectPage.select_contact_by_name(RECEIVER_NAME)
             check.is_true(bool(has_remark), f"❌ 清空备注后通讯录未恢复展示好友原昵称")
 
@@ -221,17 +221,21 @@ class TestSmokeContactDetail(BaseSmokeContactDetail):
 
         with allure.step("2. 获取现有标签（若无则新建一个）并进行选择"):
             tag_names = self.remarkSettingPage.get_tag_names()
+            need_click = True
+            
             if not tag_names:
                 new_tag = f"qa_smoke_{int(time.time())}"
                 self.remarkSettingPage.click_add_new_tag()
                 self.remarkSettingPage.input_tag_name(new_tag)
                 self.remarkSettingPage.click_create_done()
                 self.remarkSettingPage.wait_for_tag_page_load()
-                tag_names = self.remarkSettingPage.get_tag_names()
+                target_tag = new_tag
+                need_click = False
+            else:
+                target_tag = tag_names[0]
 
-            check.is_true(bool(tag_names), "❌ 标签选择页没有可用的标签")
-            target_tag = tag_names[0]
-            self.remarkSettingPage.click_tag(tag_type=1, target=target_tag)
+            if need_click:
+                self.remarkSettingPage.click_tag(tag_type=1, target=target_tag)
 
         with allure.step("3. 保存并验证设置页和资料卡页面成功回显选中标签"):
             self.remarkSettingPage.click_save()
