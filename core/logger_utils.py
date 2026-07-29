@@ -19,9 +19,45 @@ ENABLE_CONSOLE_LOG = True
 # ENABLE_CONSOLE_LOG = False
 
 
+class AdvancedFormatter(logging.Formatter):
+    """高级文件日志格式化器（添加统一的对齐图标，无 ANSI 颜色 escape 码）"""
+    LEVEL_ICONS = {
+        'DEBUG': '🔍 ',
+        'INFO': '🟢 ',
+        'WARNING': '🟡 ',
+        'ERROR': '🔴 ',
+        'CRITICAL': '🚨 ',
+    }
+
+    def format(self, record):
+        orig_levelname = record.levelname
+        record.levelname = self.LEVEL_ICONS.get(orig_levelname, orig_levelname)
+        result = super().format(record)
+        record.levelname = orig_levelname
+        return result
+
+
+class AdvancedColoredFormatter(colorlog.ColoredFormatter):
+    """高级控制台日志格式化器（带对齐图标，且支持单独对元数据着色，保持正文清晰）"""
+    LEVEL_ICONS = {
+        'DEBUG': '🔍 ',
+        'INFO': '🟢 ',
+        'WARNING': '🟡 ',
+        'ERROR': '🔴 ',
+        'CRITICAL': '🚨 ',
+    }
+
+    def format(self, record):
+        orig_levelname = record.levelname
+        record.levelname = self.LEVEL_ICONS.get(orig_levelname, orig_levelname)
+        result = super().format(record)
+        record.levelname = orig_levelname
+        return result
+
+
 class LoggerUtils:
     """
-    日志工具类：封装 logging 模块
+    日志工具类：封装并定制高级的 logging 输出
     """
     def __init__(self, logger_name="AutoTest"):
         self.logger = logging.getLogger(logger_name)
@@ -34,7 +70,7 @@ class LoggerUtils:
             self.initialize_handlers()
 
     def initialize_handlers(self):
-        # 1. 定义日志输出格式
+        # 1. 定义文件日志输出格式（包含毫秒精确度，用特殊的管道符号分隔，结构极度清晰）
         # 格式：[时间] [级别] [文件名:行号] - 信息
         # 确保格式字符串完全正确，不要漏掉 's' 或 'd'
         # %(asctime)s     -> 时间字符串
@@ -43,13 +79,14 @@ class LoggerUtils:
         # %(lineno)d      -> 行号整数 (注意是 d)
         # %(funcName)s     -> 函数名字符串
         # %(message)s     -> 消息内容
-        log_fmt_str = '[%(asctime)s] - [%(levelname)-7s] - [%(filename)-22s:%(lineno)-4d] - [%(funcName)-20s] - %(message)s'
-        formatter = logging.Formatter(log_fmt_str)
+        log_fmt_str = '[%(asctime)s.%(msecs)03d] | %(levelname)s | %(filename)-22s:%(lineno)-4d (%(funcName)-20s) ❯ %(message)s'
+        date_fmt_str = '%Y-%m-%d %H:%M:%S'
+        formatter = AdvancedFormatter(log_fmt_str, datefmt=date_fmt_str)
 
         # 获取当前日期，用于文件名
         date_time = time.strftime('%Y-%m-%d')
 
-        # === 封装一个内部方法来创建 Handler，避免代码重复 ===
+        # 创建 File Handler
         def create_file_handler(filename_suffix, level):
             """
             :param filename_suffix: 文件名后缀，如 'error.log'
@@ -94,24 +131,32 @@ class LoggerUtils:
             # 2. 控制台输出级别调低到 DEBUG
             console_handler.setLevel(logging.DEBUG)
 
-            # 定义颜色格式
-            color_fmt = '%(log_color)s[%(asctime)s] [%(levelname)-7s] [%(filename)-22s:%(lineno)-4d] [%(funcName)-20s] - %(message)s'
-            color_formatter = colorlog.ColoredFormatter(
+            # 2. 控制台输出格式：整行渲染相同的日志等级颜色（INFO 全绿，DEBUG 全青蓝），通过行首空格规避 [ 被吞的 Bug，并启用 reset=True 保证末尾自动换行复位
+            color_fmt = ' %(log_color)s[%(asctime)s.%(msecs)03d] | %(levelname)s| %(filename)-22s:%(lineno)-4d (%(funcName)-20s) ❯ %(message)s'
+            color_formatter = AdvancedColoredFormatter(
                 color_fmt,
+                datefmt=date_fmt_str,
+                reset=True,
                 log_colors={
-                    'DEBUG': 'bold_cyan',
-                    'INFO': 'bold_green',
-                    'WARNING': 'bold_yellow',
-                    'ERROR': 'bold_red',
-                    'CRITICAL': 'bold_white',
+                    '🔍 ': 'cyan',       # 匹配 DEBUG
+                    '🟢 ': 'green',      # 匹配 INFO
+                    '🟡 ': 'yellow',     # 匹配 WARNING
+                    '🔴 ': 'red',        # 匹配 ERROR
+                    '🚨 ': 'bold_red',   # 匹配 CRITICAL
                 }
             )
             console_handler.setFormatter(color_formatter)
             self.logger.addHandler(console_handler)
 
-
     def get_logger(self):
         return self.logger
 
 logger = LoggerUtils().get_logger()
+
+# logger.debug("debug")
+# logger.info("info")
+# logger.warning("warning")
+# logger.error("error")
+# logger.critical("critical")
+
 

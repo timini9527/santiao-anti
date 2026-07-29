@@ -366,12 +366,20 @@ class RemarkSettingPage(BasePage):
             logger.info(f"⚙️ [Action - RemarkSetting] 标签 - 准备清空以下标签: {target_tags}")
             for name in target_tags:
                 elem = self.get_tag_elem(tag_type=1, tag_name=name)
-                if elem:
+                if not elem:
+                    logger.info(f"🔍 [Action - RemarkSetting] 标签 - 界面未直接找到标签 [{name}]，尝试搜索查找")
+                    self.input_search_tag(name)
+                    elem = self.get_tag_elem(tag_type=1, tag_name=name, timeout=2)
+                    if elem:
+                        elem.click()
+                        logger.info(f"✅ [Action - RemarkSetting] 标签 - 通过搜索清空标签: {name}")
+                    else:
+                        logger.warning(f"⚠️ [Action - RemarkSetting] 标签 - 搜索后依然未找到指定标签: {name}")
+                    self.click_tv_cancel()
+                else:
                     elem.click()
                     logger.info(f"✅ [Action - RemarkSetting] 标签 - 清空标签: {name}")
-                else:
-                    logger.warning(f"⚠️ [Action - RemarkSetting] 标签 - 未找到指定标签: {name}")
-            time.sleep(0.5)
+            time.sleep(0.3)
             self.click_save()
             return True
                     

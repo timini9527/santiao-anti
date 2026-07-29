@@ -157,15 +157,17 @@ class ContactTagGroupPage(BasePage):
     # 管理分组页面 - 删除分组
     def click_delete_subgroup(self):
         """ 管理分组页面 - 新建分组 - 点击【删除分组】按钮 """
-        self.click(ContactTagGroupLocator.FB_DELETE)
-        logger.info("⚙️ [Action - TagGroup] 管理分组页面 - 新建分组 - 点击【删除分组】按钮")
+        if self.is_element_exist(ContactTagGroupLocator.FB_DELETE, timeout=3):
+            self.click(ContactTagGroupLocator.FB_DELETE)
+            logger.info("⚙️ [Action - TagGroup] 管理分组页面 - 新建分组 - 点击【删除分组】按钮")
+        else:
+            logger.warning("⚠️ [Action - TagGroup] 管理分组页面 - 未找到【删除分组】按钮，请检查分组是否已删除")
 
     # 管理分组页面 - 删除分组完整交互流程（点击删除按钮 -> 弹窗二次确认并平滑切回列表页）
     def delete_group_flow(self) -> bool:
         """ 管理分组页面 - 新建分组 - 删除分组完整交互流程（点击删除按钮 -> 弹窗二次确认并等待切回列表页） """
         logger.info("⚙️ [Action - TagGroup] 管理分组页面 - 新建分组 - 执行删除分组完整流程")
         self.click_delete_subgroup()
-        time.sleep(0.3)
         if self.is_element_exist(ContactTagGroupLocator.DIALOG_CONFIRM_BTN, timeout=3):
             self.click(ContactTagGroupLocator.DIALOG_CONFIRM_BTN)
             logger.info("✅ [Action - TagGroup] 确认删除分组")

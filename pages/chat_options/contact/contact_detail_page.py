@@ -10,15 +10,15 @@ class ContactDetailPage(CommonPage):
     """好友资料详情页面对象"""
 
     # 资料页 - 等待加载资料详情页
-    def wait_for_detail_page_load(self, timeout: int = 10) -> bool:
+    def wait_for_detail_page_load(self, timeout: int = 10, raise_exception: bool = True) -> bool:
         """ 资料页 - 等待资料详情页加载完成 """
         try:
-            is_exist = self.is_element_exist(ContactDetailLocator.ST_ID, timeout=timeout)
+            is_exist = self.is_element_exist(ContactDetailLocator.ST_ID, timeout=timeout, raise_exception=raise_exception)
             if is_exist:
                 logger.info("✅ [Wait - ContactDetail] 资料详情页加载完成")
                 return True
             else:
-                logger.error(f"❌ [Wait - ContactDetail] 资料详情页加载超时")
+                logger.warning(f"⚠️ [Wait - ContactDetail] 资料详情页未成功加载")
                 return False
         except Exception:
             logger.error(f"❌ [Wait - ContactDetail] 资料详情页加载超时")

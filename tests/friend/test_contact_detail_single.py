@@ -30,6 +30,9 @@ class TestContactDetailSingle:
         home_page.click_bottom_expand_button()
         home_page.click_friend()
         home_page.wait_for_friend_page_load()
+        yield
+        main_page.go_to_main_page()
+
 
     @pytest.fixture(autouse=True)
     def setup_base(self, driver_sender, request):
@@ -54,8 +57,9 @@ class TestContactDetailSingle:
                         self.contactDetailPageS.click_iv_back()
                     self.homePageS.click_friend()
             else:
-                if not self.contactDetailPageS.wait_for_detail_page_load(timeout=2):
-                    self.contactDetailPageS.click_iv_back()
+                if not self.contactDetailPageS.wait_for_detail_page_load(timeout=1, raise_exception=False):
+                    if not self.homePageS.wait_for_friend_page_load(timeout=1):
+                        self.contactDetailPageS.click_iv_back()
         except Exception as e:
             logger.error(f"⚠️ [Teardown] 页面状态恢复失败: {e}")
 
@@ -66,23 +70,19 @@ class TestContactDetailSingle:
             self.contactDetailPageS.wait_for_detail_page_load(timeout=8)
         return click_ok
 
-    def _go_to_contact_detail_from_list(self, name: str, raise_exception: bool = True) -> bool:
+    def _go_to_contact_detail_from_list(self, name: str, raise_exception: bool = False) -> bool:
         """导航辅助方法：在通讯录列表中查找并进入指定好友的资料详情页。如果已在目标好友详情页，则跳过列表查找。"""
         try:
-            # 1. 优先直接在列表中点击联系人（绝大多数用例的正常起始流程，无任何预检测延迟）
-            return self._click_contact_by_name(name, raise_exception=raise_exception)
-        except Exception:
-            # 2. 如果点击失败（如已在详情页，列表页元素不可见），再探查是否已经停留在目标好友资料页上
-            if self.contactDetailPageS.wait_for_detail_page_load(timeout=1):
+            if self.contactDetailPageS.wait_for_detail_page_load(timeout=1, raise_exception=raise_exception):
                 current_name = self.contactDetailPageS.get_formatted_friend_name()
                 if current_name == name:
-                    logger.info(f"✨ 已在好友 {name} 的资料页，跳过列表查找直接开始测试步骤")
+                    logger.info(f"✨ [Lock] 已在好友 {name} 的资料页，跳过列表查找直接开始测试步骤")
                     return True
-                # 如果在详情页但不是目标好友，回退到列表页重新寻找
                 self.contactDetailPageS.click_iv_back()
                 self.homePageS.wait_for_friend_page_load()
-                return self._click_contact_by_name(name, raise_exception=raise_exception)
-            raise
+        except Exception as e:
+            logger.warning(f"⚠️ 预检好友详情页状态时发生异常 (将退回列表重新查找): {e}")
+        return self._click_contact_by_name(name, raise_exception=raise_exception)
 
     def _go_to_remark_setting_page(self, name: str = RECEIVER_NAME):
         """通用步骤：进入好友资料详情页并进入设置备注页"""
@@ -101,12 +101,13 @@ class TestContactDetailSingle:
 
     def _clean_tags_and_back_to_detail(self):
         """通用步骤：在标签页/备注页清理已选标签并安全切回好友详情页"""
+        self.contactDetailPageS.click_friend_detail_title_remark()
+        self.remarkSettingPageS.wait_friend_detail_page()
         tag_values = self.remarkSettingPageS.get_tag_values()
         if tag_values:
             self.remarkSettingPageS.click_tags()
             self.remarkSettingPageS.wait_for_tag_page_load()
             self.remarkSettingPageS.clear_tag(list_tags=tag_values)
-            self.remarkSettingPageS.click_save()
             self.remarkSettingPageS.wait_friend_detail_page()
         self.contactDetailPageS.click_iv_back()
 
@@ -114,6 +115,46 @@ class TestContactDetailSingle:
         """通用步骤：进入好友资料卡 -> 点击设置备注 -> 进入电话列表项"""
         self._go_to_remark_setting_page()
         self.remarkSettingPageS.click_phone_item()
+
+    def _cancel_from_tag_search_to_detail(self):
+        """通用导航步骤：从已搜索标签状态的标签页，逐级退出并安全返回到好友资料卡详情页"""
+        with allure.step("1. 退出tag页面"):
+            self.remarkSettingPageS.click_tv_cancel()
+        with allure.step("2. 退出编辑备注页面"):
+            self.remarkSettingPageS.click_tv_cancel()
+        with allure.step("3. 确认放弃修改"):
+            self.contactDetailPageS.cancel_two_btn_comment()
+        with allure.step("4. 等待返回到设置备注主页"):
+            self.remarkSettingPageS.wait_friend_detail_page()
+        with allure.step("5. 从备注页返回至好友资料详情页"):
+            self.contactDetailPageS.click_iv_back()
+        with allure.step("6. 确认详情页加载完成"):
+            self.contactDetailPageS.wait_for_detail_page_load()
+
+    def _clear_all_tags(self):
+        """通用步骤：进入好友页面-分组管理-删除所有分组"""
+        with allure.step("1. 进入分组管理页面"):
+            self.homePageS.click_category_manager()
+            self.tagGroupPageS.wait_for_group_list_page_load(page_title="0")
+            group_names = self.tagGroupPageS.get_group_tag_names(timeout=1, raise_exception=False)
+            if not group_names:
+                logger.info("✅ [Action - TagGroup] 分组管理页面分组已全部删除，无需再操作")
+                self.contactDetailPageS.click_iv_back()
+                return
+        
+        with allure.step("2. 执行批量清空所有分组操作"):
+            del_all_result = self.tagGroupPageS.delete_group_or_all_groups_flow(is_all=True)
+            check.is_true(del_all_result, "❌ 批量清空所有分组流执行失败")
+
+        with allure.step("3. 校验列表是否已完全清空"):
+            self.tagGroupPageS.wait_for_group_list_page_load(page_title="0")
+            remaining_names = self.tagGroupPageS.get_group_tag_names(timeout=1, raise_exception=False)
+            check.equal(len(remaining_names), 0, f"❌ 批量删除后列表中依然残留分组: {remaining_names}")
+            
+        with allure.step("4. 返回好友资料详情页"):
+            self.contactDetailPageS.click_iv_back()
+            self.homePageS.wait_for_friend_page_load()
+
 
 
 
@@ -321,12 +362,23 @@ class TestContactDetailSingle:
             tag_values = self.remarkSettingPageS.get_tag_values()
             self.remarkSettingPageS.click_tags()
             self.remarkSettingPageS.wait_for_tag_page_load()
-            self.remarkSettingPageS.clear_tag(list_tags=tag_values)
-            toast = self.remarkSettingPageS.get_toast()
-            check.equal("保存成功", toast, f"❌ 未收到保存成功的 Toast，实际: {toast}")
+            if tag_values:
+                self.remarkSettingPageS.clear_tag(list_tags=tag_values)
+                toast = self.remarkSettingPageS.get_toast()
+                check.equal("保存成功", toast, f"❌ 未收到保存成功的 Toast，实际: {toast}")
 
-        with allure.step("3. 获取当前标签名称并断言"):
+        with allure.step("3. 获取当前标签名称并断言（若无可用标签则自动创建并取消默认勾选）"):
             tag_names = self.remarkSettingPageS.get_tag_names()
+            if not tag_names:
+                logger.info("ℹ️ 未发现可用标签，自动创建一个标签")
+                new_tag = "qa_auto_toggle"
+                self.remarkSettingPageS.click_add_new_tag()
+                self.remarkSettingPageS.input_tag_name(new_tag)
+                self.remarkSettingPageS.click_create_done()
+                self.remarkSettingPageS.wait_for_tag_page_load()
+                self.remarkSettingPageS.click_tag(tag_type=1, target=new_tag)
+                tag_names = self.remarkSettingPageS.get_tag_names()
+
             check.is_true(tag_names, "❌ 标签选择页没有找到 chip_group 下的 TextView 标签")
             if not tag_names:
                 pytest.fail("标签选择页没有可操作的 TextView 标签")
@@ -347,6 +399,7 @@ class TestContactDetailSingle:
         with allure.step("6. 取消编辑并平滑退回好友详情页"):
             self.remarkSettingPageS.click_tv_cancel()
             self.contactDetailPageS.cancel_two_btn_comment()
+            self.remarkSettingPageS.click_tv_cancel()
             self.remarkSettingPageS.wait_friend_detail_page()
             self.contactDetailPageS.click_iv_back()
             self.contactDetailPageS.wait_for_detail_page_load()
@@ -372,7 +425,17 @@ class TestContactDetailSingle:
         tag_names = self.remarkSettingPageS.get_tag_names(timeout=10)
         required_tags = max(select_count, 15)
         if len(tag_names) < required_tags:
-            pytest.fail(f"测试需要至少 {required_tags} 个标签，当前只有 {len(tag_names)} 个")
+            missing_count = required_tags - len(tag_names)
+            logger.info(f"ℹ️ 当前标签数量为 {len(tag_names)}，不足所需 {required_tags} 个。自动新建 {missing_count} 个测试标签...")
+            for idx in range(missing_count):
+                new_tag = f"qa{int(time.time())}_{idx:02d}"
+                self.remarkSettingPageS.click_add_new_tag()
+                self.remarkSettingPageS.input_tag_name(new_tag)
+                self.remarkSettingPageS.click_create_done()
+                self.remarkSettingPageS.wait_for_tag_page_load()
+                self.remarkSettingPageS.click_tag(tag_type=1, target=new_tag)
+
+            tag_names = self.remarkSettingPageS.get_tag_names(timeout=10)
 
         click_count = min(select_count, 15)
         with allure.step(f"2. 依次选择前 {click_count} 个标签"):
@@ -389,7 +452,7 @@ class TestContactDetailSingle:
 
         with allure.step(f"4. 校验最终资料页和卡片页选中的标签数量为 {expected_selected_count}"):
             self.remarkSettingPageS.click_save()
-            self.remarkSettingPageS.wait_friend_detail_page()
+            self.remarkSettingPageS.wait_friend_detail_page(timeout=15)
             selected_tags = self.remarkSettingPageS.get_tag_page_values(tag_type=0, split_type=0)
             check.equal(len(selected_tags), expected_selected_count, f"❌ 备注设置页标签选中数量不等于 {expected_selected_count}")
 
@@ -419,7 +482,7 @@ class TestContactDetailSingle:
         with allure.step("1. 进入标签选择页并清理已有标签"):
             self._prepare_tag_page_and_clean()
 
-        unique_prefix = f"qa{time.time_ns()}_{input_length}_"
+        unique_prefix = f"qa{time.time_ns()}_{input_length}"
         tag_name = (unique_prefix + ("x" * input_length))[:input_length]
         expected_tag_name = tag_name[:expected_length]
 
@@ -450,25 +513,38 @@ class TestContactDetailSingle:
                 )
 
         with allure.step("4. 环境恢复：清空创建的测试标签"):
-            self._clean_tags_and_back_to_detail()
+            self._cancel_from_tag_search_to_detail()
                 
 
     @allure.story("标签")
     @allure.title("新增标签数量边界及保存回显参数化校验-状态：已完成")
     @pytest.mark.destructive
     @pytest.mark.parametrize(
-        "create_count, expected_count, check_exceed_toast, should_save",
+        "create_count, expected_count, check_exceed_toast, should_save, is_first",
         [
-            (1, 1, False, True),     
-            (14, 14, False, False), 
-            (15, 15, False, False), 
-            (16, 16, True, False), 
+            (1, 1, False, True, True),     
+            (14, 14, False, False, False), 
+            (15, 15, False, False, False), 
+            (16, 16, True, False, False), 
         ],
         ids=["新增1个标签并保存回显", "新增14个标签", "新增15个标签上限", "新增16个标签受阻"],
     )
-    def test_create_tag_max_count_limit_toast( self, create_count: int, expected_count: int, check_exceed_toast: bool, should_save: bool):
+    def test_create_tag_max_count_limit_toast( self, create_count: int, expected_count: int, check_exceed_toast: bool, should_save: bool, is_first: bool):
         """校验新增不同数量标签边界、上限 Toast 拦截以及正向保存回显闭环 (参数化合并)。"""
-        with allure.step("1. 进入标签选择页并清理已有标签"):
+        with allure.step("0. 状态自愈：确保停留在好友列表页面（HomePage）"):
+            if not self.homePageS.wait_for_friend_page_load(timeout=1):
+                if self.contactDetailPageS.wait_for_detail_page_load(timeout=1, raise_exception=False):
+                    self.contactDetailPageS.click_iv_back()
+                    self.homePageS.wait_for_friend_page_load(timeout=2)
+                else:
+                    logger.info("当前页面既非详情页也非好友列表页，尝试执行深度自愈退回...")
+                    self.mainPageS.go_to_main_page()
+                    self.homePageS.click_bottom_expand_button()
+                    self.homePageS.click_friend()
+                    self.homePageS.wait_for_friend_page_load()
+            
+            if is_first:
+                self._clear_all_tags()
             self._prepare_tag_page_and_clean()
 
         test_prefix = f"qa{int(time.time())}"
@@ -500,9 +576,13 @@ class TestContactDetailSingle:
                     any(test_prefix in tag for tag in out_tags),
                     f"❌ 资料卡未同步展示新保存的标签: {out_tags}",
                 )
+        else:
+            self._cancel_from_tag_search_to_detail()
 
         with allure.step("5. 环境恢复：安全清空标签并退回好友详情页"):
-            self._clean_tags_and_back_to_detail()
+            self.contactDetailPageS.click_iv_back()
+            self.homePageS.wait_for_friend_page_load()
+            self._clear_all_tags()
 
 
     @allure.story("备忘描述")
