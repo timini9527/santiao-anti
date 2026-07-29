@@ -117,7 +117,7 @@ class TestSmokeContactDetail(BaseSmokeContactDetail):
 
 
     @allure.story("入口与展示")
-    @allure.title("从通讯录成功进入好友资料页并校验信息")
+    @allure.title("从通讯录成功进入好友资料页并校验信息-状态：已完成")
     def test_smoke_entry_and_profile_display(self):
         """从通讯录列表进入好友资料详情页，验证昵称、ID及所在地信息完整展示"""
         with allure.step("1. 从通讯录中点击进入好友的资料详情页"):
@@ -135,7 +135,7 @@ class TestSmokeContactDetail(BaseSmokeContactDetail):
 
 
     @allure.story("设置备注名")
-    @allure.title("正常修改备注名并同步，校验后恢复")
+    @allure.title("正常修改备注名并同步，校验后恢复-状态：已完成")
     def test_smoke_modify_contact_remark_and_sync(self):
         """修改备注名 -> 校验资料卡、通讯录同步 -> 清空备注名并恢复"""
         input_remark = f"测试备注_{int(time.time())}"
@@ -178,7 +178,7 @@ class TestSmokeContactDetail(BaseSmokeContactDetail):
 
 
     @allure.story("电话管理")
-    @allure.title("新增电话号码回显校验并清空还原")
+    @allure.title("新增电话号码回显校验并清空还原-状态：已完成")
     def test_smoke_phone_number_addition_and_deletion(self):
         """新增电话号码 -> 资料卡回显校验 -> 删除电话号码还原环境"""
         phone_val = "13800001234"
@@ -213,7 +213,7 @@ class TestSmokeContactDetail(BaseSmokeContactDetail):
 
 
     @allure.story("标签")
-    @allure.title("选择标签并保存同步，校验后环境恢复")
+    @allure.title("选择标签并保存同步，校验后环境恢复-状态：已完成")
     def test_smoke_tag_selection_and_sync(self):
         """选择标签并保存 -> 校验卡片回显 -> 后置清理还原"""
         with allure.step("1. 进入标签选择页并清理已选标签"):
@@ -259,7 +259,7 @@ class TestSmokeContactDetail(BaseSmokeContactDetail):
 
 
     @allure.story("备忘描述")
-    @allure.title("新增备忘描述回显校验与清除还原")
+    @allure.title("新增备忘描述回显校验与清除还原-状态：已完成")
     def test_smoke_memo_description(self):
         """输入备忘描述保存 -> 双重回显校验 -> 清除还原环境"""
         note_val = "冒烟测试：备忘特性描述内容🌟"
@@ -293,7 +293,7 @@ class TestSmokeContactDetail(BaseSmokeContactDetail):
 
 
     @allure.story("共同群聊")
-    @allure.title("进入共同群聊列表并点击切入聊天界面")
+    @allure.title("进入共同群聊列表并点击切入聊天界面-状态：已完成")
     def test_smoke_common_groups_navigation(self):
         """共同群聊入口展示校验 -> 点击列表进入共同群聊 -> 切入聊天界面 -> 逐级回退"""
         with allure.step("1. 进入备注页，校验并获取共同群聊数量"):
