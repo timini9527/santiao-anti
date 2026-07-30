@@ -9,7 +9,7 @@ from pages.chat_options.emojis.chat_emoji_page import ChatEmojiPage
 from pages.main.main_page import MainPage
 from pages.chat_options.location.chat_position_page import ChatPositionPage
 from core.logger_utils import logger
-from utils.file_reader.data_loader import load_yaml_data
+from utils.file_reader.data_loader import load_yaml_data, load_csv_data
 from strategy.chat.chat_strategy import (
     PRIVATE_USER1, 
     PRIVATE_USER2, 
@@ -19,6 +19,7 @@ from strategy.chat.chat_strategy import (
     GROUP_STRATEGY3,
     GROUP_STRATEGY4,
     GROUP_STRATEGY5,
+    TEST_GROUPS
 )
 
 
@@ -122,9 +123,55 @@ class TestChat:
             raise e
 
 
+
+
+    @pytest.fixture(autouse=False)
+    def setup_test(self, driver_device3, driver_device4, request):
+        self.chatPageT3 = ChatPage(driver_device3)
+        self.chatListPageT3 = ChatListPage(driver_device3)
+        self.mainPageT3 = MainPage(driver_device3)
+        self.emojiPageT3 = ChatEmojiPage(driver_device3)
+        self.chatImagePageT3 = ChatImagePage(driver_device3)
+        self.chatPositionPageT3 = ChatPositionPage(driver_device3)
+
+        
+        self.chatPageT4 = ChatPage(driver_device4)
+        self.chatListPageT4 = ChatListPage(driver_device4)
+        self.mainPageT4 = MainPage(driver_device4)
+        self.emojiPageT4 = ChatEmojiPage(driver_device4)
+        self.chatImagePageT4 = ChatImagePage(driver_device4)
+        self.chatPositionPageT4 = ChatPositionPage(driver_device4)
+        
+        # 缓存当前驱动，供 class 级别 Teardown 清理时使用
+        self.__class__._class_driver = driver_device3
+        self.__class__._class_driver = driver_device4
+
+        # 获取当前运行的方法名称。如果是其他非单聊发送方法，强制释放会话锁
+        current_test = request.node.originalname or request.node.name
+        if "test_send_text_message" not in current_test:
+            self.__class__._in_chat = False
+            self.__class__._chat_target = None
+
+        yield
+
+        # 校验会话锁：如果当前仍处在聊天会话中，则跳过耗时且多余的退回主页动作
+        if self.__class__._in_chat:
+            logger.info(f"🔒 [Teardown] 保持在当前与 {self.__class__._chat_target} 的聊天会话中，跳过返回主页")
+            return
+
+        try:
+            self.mainPage.go_to_main_page()
+        except Exception as e:
+            logger.error(f"Teardown 失败，未能返回首页: {e}")
+
+
     @allure.story("发送 Text 消息")
     @allure.title("发送 Text 消息（共循环发送200组），状态：已完成")
-    @pytest.mark.parametrize("strategy", [PRIVATE_USER8, GROUP_STRATEGY, GROUP_STRATEGY2, GROUP_STRATEGY3, GROUP_STRATEGY4, GROUP_STRATEGY5], ids=["私聊模式", "群聊模式", "群聊模式2", "群聊模式3", "群聊模式4", "群聊模式5"])
+    @pytest.mark.parametrize(
+        "strategy",
+        [PRIVATE_USER8, GROUP_STRATEGY, GROUP_STRATEGY2, GROUP_STRATEGY3, GROUP_STRATEGY4, GROUP_STRATEGY5],
+        ids=["私聊模式", "群聊模式", "群聊模式2", "群聊模式3", "群聊模式4", "群聊模式5"],
+    )
     def test_send_text_message_loop(self, strategy):
         """
         用例名称：发送文本消息测试
@@ -134,10 +181,7 @@ class TestChat:
         """
         loop_count = 100
 
-        text_messages = CHAT_DATA.get("text_message")
-        if not text_messages:
-            logger.error("❌ [Data] 未加载到有效的 text_message 测试数据")
-            return
+        text_messages = load_csv_data("chat/chat_messages.csv")
 
         try:
             if not self.__class__._in_chat:
@@ -155,7 +199,7 @@ class TestChat:
             for loop in range(loop_count):
                 logger.info(f"🔄 [Loop] [会话名称: {strategy.name}] 开始第 {loop + 1} / {loop_count} 轮循环发送消息组...")
                 for idx, msg_data in enumerate(text_messages):
-                    payload = str(msg_data['data']['payload'])
+                    payload = str(msg_data['context'])
                     
                     try:
                         self.chatPage.fast_send_message(payload)
@@ -169,6 +213,72 @@ class TestChat:
             self.__class__._in_chat = False
             self.__class__._chat_target = None
 
+
+
+    @allure.story("发送 Text 消息")
+    @allure.title("多设备异步并行发送 Text 消息-状态：已完成")
+    def test_send_text_message_async_multi_device(self, setup_test):
+        """
+        用例名称：多设备异步并行发送消息测试
+        步骤：
+        1. 轮流将 7 个测试群聊策略分配给设备3和设备4
+        2. 设备 3 处理奇数编号群组（测试001, 测试003, 测试005, 测试007）
+        3. 设备 4 处理偶数编号群组（测试002, 测试004, 测试006）
+        4. 各个设备线程异步进入目标聊天窗口、发送文本消息组，发送完后退回主列表并进入下一个会话
+        5. 等待所有线程执行结束并做异常校验断言
+        """
+        import threading
+
+        loop_count = 3
+
+        text_messages = load_csv_data("chat/chat_messages.csv")
+
+        exceptions = []
+
+        def worker_send(chatListPage, chatPage, dev_name, group_list):
+            try:
+                for grp in group_list:
+                    chatListPage.enter_chat(grp.name)
+                    logger.info(f"🚀 设备 [{dev_name}] 成功进入与 {grp.name} 的聊天，开始并发发送...")
+                    
+                    for loop in range(loop_count):
+                        for idx, msg_data in enumerate(text_messages):
+                            payload = f"[{dev_name}] L{loop+1}_M{idx+1}: " + str(msg_data['context'])
+                            chatPage.fast_send_message(payload)
+                            time.sleep(0.01)
+                    
+                    logger.info(f"✅ 设备 [{dev_name}] 已发完与 {grp.name} 的聊天，准备退回主页并进入下一会话...")
+                    chatPage.click_back_button()
+                    time.sleep(0.5)
+            except Exception as e:
+                logger.error(f"❌ 设备 [{dev_name}] 异步发送时发生异常: {e}")
+                exceptions.append((dev_name, e))
+
+        # 设备3分配奇数项（索引为0, 2, 4, 6，对应测试001, 003, 005, 007）
+        dev3_groups = TEST_GROUPS[::2]
+        # 设备4分配偶数项（索引为1, 3, 5，对应测试002, 004, 006）
+        dev4_groups = TEST_GROUPS[1::2]
+
+        threads = []
+        t3 = threading.Thread(target=worker_send, args=(self.chatListPageT3, self.chatPageT3, "Device_3", dev3_groups))
+        t4 = threading.Thread(target=worker_send, args=(self.chatListPageT4, self.chatPageT4, "Device_4", dev4_groups))
+
+        threads.extend([t3, t4])
+
+
+        try:
+            for t in threads:
+                t.start()
+
+            for t in threads:
+                t.join()
+        finally:
+            self.__class__._in_chat = False
+            self.__class__._chat_target = None
+
+        if exceptions:
+            err_msg = "\n".join([f"设备 [{dev}]: {err}" for dev, err in exceptions])
+            pytest.fail(f"❌ 异步多端发送过程中有设备发生异常:\n{err_msg}")
 
 
     @allure.story("发送和接收 Text 消息")

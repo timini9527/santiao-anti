@@ -40,6 +40,7 @@ class ContactDetailPage(CommonPage):
     def get_raw_nickname(self) -> str:
         """ 资料页 - 获取资料页原始昵称 """
         raw_nickname = self.get_attribute(ContactDetailLocator.TV_NAME_XPATH, "text")
+        raw_nickname = self.clean_ui_text(raw_nickname)
         logger.info(f"🧐 [Action - ContactDetail] 资料详情页 - 获取原始昵称: {raw_nickname}")
         return raw_nickname
 
@@ -430,5 +431,85 @@ class ContactDetailPage(CommonPage):
         """ 呼叫弹窗2 - 点击取消 """
         self.click(ContactDetailLocator.CANCEL_TEXT)
         logger.info("⚙️ [Action - ContactDetail] 呼叫弹窗2 - 点击取消")
+
+
+    # ==============================================================
+    # 更多页面
+    # ==============================================================
+    
+    # 更多页面 - 点击推荐给朋友
+    def click_recommend_to_friend(self):
+        """ 更多页面 - 点击推荐给朋友 """
+        self.click(ContactDetailLocator.ROW_RECOMMEND)
+        logger.info("⚙️ [Action - ContactDetail] 更多页面 - 点击推荐给朋友")
+
+    # 更多页面 - 点击黑名单
+    def click_blacklist(self):
+        """ 更多页面 - 点击黑名单 """
+        self.click(ContactDetailLocator.ROW_BLACKLIST)
+        logger.info("⚙️ [Action - ContactDetail] 更多页面 - 点击黑名单")
+    
+    # 更多页面 - 获取黑名单开关状态
+    def is_block_switch_checked(self) -> bool:
+        """好友资料 - 获取黑名单开关状态"""
+        checked_str = self.get_attribute(ContactDetailLocator.SWITCH_BLACKLIST, 'checked')
+        return str(checked_str).lower() == 'true'
+
+    # 好友资料 - 设置当前好友的黑名单状态
+    def set_contact_blocked(self, enable: bool = True) -> bool:
+        """ 好友资料 - 设置当前好友的黑名单状态 (enable=True 为加入黑名单，enable=False 为移出黑名单) """
+        action_name = "加入" if enable else "移出"
+        try:
+            self.click_iv_right()
+            is_checked = self.is_block_switch_checked()
+            if is_checked != enable:
+                self.click(ContactDetailLocator.SWITCH_BLACKLIST)
+                if self.is_element_exist(ContactDetailLocator.CONFIRM_TWO_BTN, timeout=1, expect_missing=True):
+                    self.confirm_two_btn_comment()
+            self.click_iv_back()
+            logger.info(f"⚙️ [Action - ContactDetail] 好友资料 - 成功将好友{action_name}黑名单")
+            return True
+        except Exception as e:
+            logger.error(f"❌ [Action - ContactDetail] 好友资料 - 将好友{action_name}黑名单失败: {e}")
+            return False
+    
+    # 好友资料 - 从好友资料页面移出黑名单
+    def remove_contact_from_blacklist(self) -> bool:
+        """ 好友资料 - 从好友资料页面移出黑名单 """
+        flag, text = self.is_black_cancel_layout_text()
+        if not flag:
+            logger.warning(f"⚠️ [Action - ContactDetail] 好友资料 - 移出黑名单失败: {text}")
+            return False
+        self.click(ContactDetailLocator.BLACK_CANCEL_LAYOUT)
+        if self.is_element_exist(ContactDetailLocator.CONFIRM_TWO_BTN, timeout=1, expect_missing=True):
+            self.confirm_two_btn_comment()
+            logger.info(f"⚙️ [Action - ContactDetail] 好友资料 - 成功将好友移出黑名单")
+            return True
+        else:
+            logger.error(f"❌ [Action - ContactDetail] 好友资料 - 将好友移出黑名单失败: 缺少确认弹窗")
+            return False
+
+    # 好友资料 - 获取拉黑的标识
+    def is_black_cancel_layout_text(self) -> bool | str:
+        """ 好友资料 - 获取拉黑的标识 """
+        text = self.get_attribute(ContactDetailLocator.BLACK_CANCEL_LAYOUT_XPATH, "text")
+        if not text:
+            logger.warning(f"⚠️ [Action - ContactDetail] 好友资料 - 拉黑的标识为空，好友可能没有被拉黑")
+            return False, text
+        logger.info(f"🧐 [Action - ContactDetail] 好友资料 - 获取拉黑的标识: {text}")
+        return True, text
+
+    # 更多页面 - 点击举报
+    def click_report(self):
+        """ 更多页面 - 点击举报 """
+        self.click(ContactDetailLocator.CARD_REPORT)
+        logger.info("⚙️ [Action - ContactDetail] 更多页面 - 点击举报")
+
+
+
+
+
+
+
 
 

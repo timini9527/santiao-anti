@@ -69,6 +69,7 @@ class ContactDetailLocator:
     TV_TITLE = CommonLocator.TOP_TV_TITLE                                   # 页面标题
 
 
+
     # 好友详情页面 - 资料卡电话号码
     ROW_PROFILE_PHONE = (AppiumBy.ID, f'{PACKAGE_ID}/row_profile_phone')            # 电话行
     TV_PROFILE_PHONE_LABEL = (AppiumBy.ID, f'{PACKAGE_ID}/tv_profile_phone_label')  # 电话标签
@@ -93,9 +94,22 @@ class ContactDetailLocator:
 
 
 
+    # 更多页面
+    ROW_RECOMMEND = (AppiumBy.ID, f'{PACKAGE_ID}/row_recommend')            # 推荐给朋友ROW
+    TV_RECOMMEND = (AppiumBy.ID, f'{PACKAGE_ID}/tv_recommend')              # 推荐标题
+    ROW_BLACKLIST = (AppiumBy.ID, f'{PACKAGE_ID}/row_blacklist')            # 黑名单ROW
+    TV_BLACKLIST = (AppiumBy.ID, f'{PACKAGE_ID}/tv_blacklist')              # 黑名单标题
+    SWITCH_BLACKLIST = (AppiumBy.ID, f'{PACKAGE_ID}/switch_blacklist')      # 黑名单开关
+    BLACK_CANCEL_LAYOUT_ID = f'{PACKAGE_ID}/black_cancel_layout'
+    BLACK_CANCEL_LAYOUT = (AppiumBy.ID, BLACK_CANCEL_LAYOUT_ID)             # 黑名单取消布局
+    BLACK_CANCEL_LAYOUT_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{BLACK_CANCEL_LAYOUT_ID}"]//android.widget.TextView')    
+
+    CARD_REPORT = (AppiumBy.ID, f'{PACKAGE_ID}/card_report')                # 举报card
     # 好友详情页解除好友关系
     UNFRIEND_ITEM = (AppiumBy.ID, f"{PACKAGE_ID}/card_unfriend")            # 解除好友关系
     UNFRIEND_TV_UNFRIEND = (AppiumBy.ID, f"{PACKAGE_ID}/tv_unfriend")       # 解除好友
+
+   
 
 
     # === 设置备注与标签页面 (RemarkSetting) ===

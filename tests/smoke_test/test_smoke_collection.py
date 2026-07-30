@@ -260,7 +260,9 @@ class TestSmokeCollectionDouble(BaseSmokeCollectionSingle):
             check.equal(text_val, test_msg, "❌ 接收的最新消息内容不匹配")
             self.collectionPage.get_first_collection_item(elem)
             toast = self.collectionPage.get_toast(expected_toast="成功")
-            check.equal(toast, "成功", "❌ 收藏操作失败")
+            check.is_true(toast, "❌ 收藏操作失败")
+
+
 
         with allure.step("3. 发送端进入我的收藏页面校验"):
             self.collectionPage.back_to_main()

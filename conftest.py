@@ -202,7 +202,34 @@ def driver_receiver():
         else:
             driver.quit()
 
+@pytest.fixture(scope="session")
+def driver_device3():
+    """ 启动第3个设备 """
+    driver = DriverFactory.get_driver('device3')
+    try:
+        yield driver
+    finally:
+        print("\n[Teardown] 关闭第3个设备驱动")
+        if os.environ.get("DEBUG_MODE") == "1":
+            print("🐞 [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
+        else:
+            driver.quit()
+
+@pytest.fixture(scope="session")
+def driver_device4():
+    """ 启动第4个设备 """
+    driver = DriverFactory.get_driver('device4')
+    try:
+        yield driver
+    finally:
+        print("\n[Teardown] 关闭第4个设备驱动")
+        if os.environ.get("DEBUG_MODE") == "1":
+            print("🐞 [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
+        else:
+            driver.quit()
+
 # --- Page Object Fixtures (依赖注入) ---
+
 
 # @pytest.fixture(scope="function")
 # def sender_app(driver_sender):

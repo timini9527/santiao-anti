@@ -124,6 +124,14 @@ GROUP_STRATEGY5 = ChatSessionStrategy(
     is_admin=True
 )
 
+TEST_GROUPS = [
+    ChatSessionStrategy(
+        desc="群聊模式",
+        name=f"测试{i:03d}",
+        is_admin=True
+    )
+    for i in range(1, 8)
+]
 
 
 # 3.侧滑置顶策略

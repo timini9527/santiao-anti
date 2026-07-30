@@ -81,10 +81,10 @@ class NewFriendPage(BasePage):
         return None
     
     # 申请列表 - 获取Item，通过nickname
-    def get_apply_item_by_name(self, nickname: str) -> WebElement | None:
+    def get_apply_item_by_name(self, nickname: str, timeout: int = 8, raise_exception: bool = True) -> WebElement | None:
         """ 申请列表 - 获取指定昵称的Item """
         locator = NewFriendLocator.get_apply_item_by_name(nickname)
-        item = self.find_element(locator)
+        item = self.find_element(locator, timeout=timeout, raise_exception=raise_exception)
         if item:
             logger.info(f"✅ [Action - NewFriend] 获取到 {nickname} 的申请列表的Item")
         else:
@@ -92,11 +92,11 @@ class NewFriendPage(BasePage):
         return item
     
     # 申请列表 - 点击同意按钮，通过nickname
-    def click_accept_btn_by_name(self, nickname: str) -> bool:
+    def click_accept_btn_by_name(self, nickname: str, timeout: int = 8) -> bool:
         """ 申请列表 - 点击指定昵称好友的“接受/同意”按钮 """
         locator = NewFriendLocator.get_accept_btn_by_name(nickname)
         try:
-            self.click(locator)
+            self.click(locator, timeout=timeout)
             logger.info(f"✅ [Action - NewFriend] 点击了 {nickname} 右侧的接受按钮")
             return True
         except Exception as e:
@@ -145,9 +145,21 @@ class NewFriendPage(BasePage):
         else:
             logger.warning(f"⚠️ [Action - NewFriend] 未找到 {nickname} 的申请列表的Item")
             return False
-        
-    
 
+        
+    # 申请详情页 - 点击接受/同意按钮
+    def click_accept_in_detail(self, timeout: int = 2) -> bool:
+        """ 申请详情页 - 点击【接受/同意】按钮 """
+        try:
+            if not self.is_element_exist(NewFriendLocator.APPLY_ADD_FRIEND_BTN, timeout=timeout):
+                logger.warning("⚠️ [Action - NewFriend] 申请详情页 - 未找到【接受/同意】按钮")
+                return False
+            self.click(NewFriendLocator.APPLY_ADD_FRIEND_BTN, force_wait=True, timeout=timeout)
+            logger.info("✅ [Action - NewFriend] 申请详情页 - 点击【接受/同意】按钮")
+            return True
+        except Exception as e:
+            logger.error(f"❌ [Action - NewFriend] 申请详情页 - 点击【接受/同意】按钮失败: {e}")
+            return False
 
 
 
@@ -177,3 +189,4 @@ class NewFriendPage(BasePage):
         else:
             logger.error(f"❌ [Action - NewFriend] 校验失败，{sender_name} 的申请状态未流转为: {expected_status}")
         return res
+

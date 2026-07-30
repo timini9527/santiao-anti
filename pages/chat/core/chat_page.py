@@ -78,7 +78,7 @@ class ChatPage(BasePage):
 
             logger.info(f"🔄 [Action-chat] - 未检测到聊天主界面，执行第 {i+1} 次返回...")
             self.back()
-            time.sleep(0.3)
+            time.sleep(0.2)
         logger.error(f"❌ [Action-chat] - 尝试返回 {max_retries} 次后仍未能回到聊天页面")
         return False
 

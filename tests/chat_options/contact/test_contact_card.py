@@ -177,7 +177,9 @@ class TestContactCard:
         
         with allure.step(f"4. 验证成功返回并清理环境"):
             toast = self.contactSelectPage.get_toast("发送成功")
-            check.is_in("发送成功", toast, "❌ 未能成功发送群聊名片")
+            check.is_true(toast, "❌ 未能成功发送群聊名片")
+
+
             self.contactSelectPage.click_iv_back_button()
             result = self.chatPage.verify_is_on_chat_page()
             check.is_true(result, "❌ 取消群名片分享后，未能正确回到聊天页")

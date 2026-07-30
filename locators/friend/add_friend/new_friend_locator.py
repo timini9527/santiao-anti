@@ -1,8 +1,10 @@
 from appium.webdriver.common.appiumby import AppiumBy
 from locators.common.common_locator import CommonLocator
+from locators.friend.profile.contact_detail_locator import ContactDetailLocator
 
-class NewFriendLocator:
+class NewFriendLocator(ContactDetailLocator):
     """新的朋友申请列表页面定位器 (基于 0.4 添加好友模块 - 申请列表 UI)"""
+    
     PACKAGE_ID = CommonLocator.PACKAGE_ID
 
     # 1. 顶部标题栏元素
@@ -35,7 +37,8 @@ class NewFriendLocator:
     LL_SWIPE_DELETE = (AppiumBy.ID, f"{PACKAGE_ID}/ll_swipe_delete")    # 左滑删除布局
 
 
-
+    # 5. 申请详情页元素
+    APPLY_ADD_FRIEND_BTN = (AppiumBy.ID, f"{PACKAGE_ID}/apply_addFriend")
     
 
     # 4. 动态匹配特定发送人的申请行容器
@@ -69,3 +72,4 @@ class NewFriendLocator:
             f'/ancestor::*[@resource-id="{cls.CL_ITEM_ID}"]'
             f'//*[contains(@text, "{status_text}")]'
         )
+
