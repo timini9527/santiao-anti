@@ -36,6 +36,7 @@ app:
   # --- DOM 树与 UI 检索优化（IM 核心提速） ---
   "appium:ignoreUnimportantViews": false           # 忽略无关视图以优化 DOM 树 (true: 忽略, false: 不忽略)
   "appium:waitForIdleTimeout": 0                  # 核心：不要等UI空闲，直接找元素！无视 IM 后台心跳包
+  
 
 devices:
   dev:
@@ -63,8 +64,9 @@ devices:
       platformName: "Android"
       # platformVersion: "12.0"
       # udid: "emulator-5558"   # 模拟器
-      # udid: "192.168.1.29:36457"    
-      udid: "192.168.1.111:41557"  
+      # udid: "192.168.1.29:36457"  
+      # udid: "3B65BN02GU600000"  
+      udid: "192.168.1.111:36845"  
       # udid: "emulator-5560"     # 模拟器（注意：此处的 udid 优先被 Web 回执中的 "设备1" 动态覆盖）
       deviceName: "ReceiverPhone"
       systemPort: 8201         # 关键！必须与 Sender 不同

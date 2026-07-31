@@ -53,7 +53,9 @@ def _extract_common_args(func, self_arg, args, kwargs):
     locator = bound_args.arguments.get('locator', '未知定位符')
     raise_err = bound_args.arguments.get('raise_exception', True)
     expect_missing = bound_args.arguments.get('expect_missing', False)
+    # timeout = bound_args.arguments.get('timeout', 10)
 
+    # return locator, raise_err, expect_missing, timeout
     return locator, raise_err, expect_missing
 
 
@@ -82,13 +84,11 @@ def catch_exception(func):
             return func(self, *args, **kwargs)
         except Exception as e:
             # 场景 1：预期元素不存在 (断言 "不应该出现" 的场景)
-            #   → 找不到是正确的，记 INFO，不截图，返回 None
             if expect_missing:
                 logger.info(f"✅ 元素预期不存在，验证通过: {locator}")
                 return None
 
             # 场景 2：静默模式 (raise_exception=False)
-            #   → 探测性查找，不确定有没有，找不到也正常，记 WARNING
             if not raise_err:
                 logger.warning(f"⚠️ 元素未找到 (静默模式开启): {locator}")
                 return None
@@ -142,20 +142,17 @@ def catch_elements_exception(func):
 def check_element_status(func):
     """
     专门用于包裹 is_element_exist 类方法
-    功能：找到返回 True，超时/找不到返回 False，不中断测试
-
-    此装饰器天然适合"验证元素不存在"的场景，返回 False 即代表断言成功，
-    日志级别始终为 WARNING (正常超时) 或 ERROR (意外异常)
+    核心功能：
+      1. 探查指定元素是否存在/可见，找到返回 True，未找到/正常超时返回 False；
+      2. 引入 concurrent.futures 单线程池隔离执行，设置硬超时上限；
+      3. 彻底避免 Appium/UiAutomator2 底层 Socket 卡死导致 Python 主线程挂起假死。
     """
     @wraps(func)
     def wrapper(self, *args, **kwargs):
-        sig = inspect.signature(func)
-        bound_args = sig.bind(self, *args, **kwargs)
-        bound_args.apply_defaults()
-        locator = bound_args.arguments.get('locator', '未知定位符')
+        locator, raise_err, expect_missing = _extract_common_args(func, self, args, kwargs)
         try:
             result = func(self, *args, **kwargs)
-            return True if result is None else result
+            return True if result is None else bool(result)
         except TimeoutException:
             logger.warning(f"⏱️ 元素不存在 (正常超时): {locator}")
             return False

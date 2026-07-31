@@ -24,16 +24,16 @@ class HomePage(BasePage):
         return True
 
     # 主页 - 打开侧边栏
-    def open_left_menu(self):
+    def open_left_menu(self, timeout: int = 2):
         """ 主页 - 点击打开侧边栏 """
-        self.click(HomeLocator.LEFT_MENU)
+        self.click(HomeLocator.LEFT_MENU, timeout=timeout)
         logger.info("[Action-Home] 主页 - 点击打开侧边栏")
         time.sleep(1.5)
 
     # 主页 - 点击主页标题
-    def click_home_title(self):
+    def click_home_title(self, timeout: int = 2):
         """ 主页 - 点击主页标题 """
-        self.click(HomeLocator.MIDDLE_TITLE, force_wait=True)
+        self.click(HomeLocator.MIDDLE_TITLE, force_wait=True, timeout=timeout)
         logger.info("[Action-Home] 主页 - 点击主页标题")
 
     # 主页 - 获取顶部中间标题 三条标题
@@ -44,70 +44,70 @@ class HomePage(BasePage):
         return title
 
     # 主页 - 点击 + 号按钮
-    def click_add_button(self):
+    def click_add_button(self, timeout: int = 2):
         """ 主页 - 点击 + 号按钮 """
-        self.click(HomeLocator.RIGHT_MENU, force_wait=True)
+        self.click(HomeLocator.RIGHT_MENU, force_wait=True, timeout=timeout)
         logger.info("[Action-Home] 主页 - 点击 + 号（右上角菜单）按钮")
 
     # 主页 - 点击 发起群聊
-    def click_start_group_chat(self):
+    def click_start_group_chat(self, timeout: int = 2):
         """ 主页 - 点击 发起群聊 """
-        self.click(HomeLocator.EXPAND_START_GROUP_CHAT, force_wait=True)
+        self.click(HomeLocator.EXPAND_START_GROUP_CHAT, force_wait=True, timeout=timeout)
         logger.info("[Action-Home] 主页 - 点击 发起群聊")
 
     # 主页 - 点击 添加朋友
-    def click_add_friend(self):
+    def click_add_friend(self, timeout: int = 2):
         """ 主页 - 点击 添加朋友 """
-        self.click(HomeLocator.EXPAND_ADD_FRIEND, force_wait=True)
+        self.click(HomeLocator.EXPAND_ADD_FRIEND, force_wait=True, timeout=timeout)
         logger.info("[Action-Home] 主页 - 点击 添加朋友")
 
     # 主页 - 点击 扫一扫
-    def click_scan(self):
+    def click_scan(self, timeout: int = 2):
         """ 主页 - 点击 扫一扫 """
-        self.click(HomeLocator.EXPAND_SCAN, force_wait=True)
+        self.click(HomeLocator.EXPAND_SCAN, force_wait=True, timeout=timeout)
         logger.info("[Action-Home] 主页 - 点击 扫一扫")
 
     # 主页 - 点击搜索
-    def click_search(self):
+    def click_search(self, timeout: int = 2):
         """ 主页 - 点击搜索 """
-        self.click(HomeLocator.SEARCH, force_wait=True)
+        self.click(HomeLocator.SEARCH, force_wait=True, timeout=timeout)
         logger.info("[Action-Home] 主页 - 点击搜索")
 
     # 主页 - 点击搜索清除
-    def click_search_clear(self):
+    def click_search_clear(self, timeout: int = 2):
         """ 主页 - 点击搜索清除 """
-        self.click(HomeLocator.SEARCH_CLEAR, force_wait=True)
+        self.click(HomeLocator.SEARCH_CLEAR, force_wait=True, timeout=timeout)
         logger.info("[Action-Home] 主页 - 点击清理搜索")
 
     # 主页 - 点击底部展开按钮
-    def click_bottom_expand_button(self):
+    def click_bottom_expand_button(self, timeout: int = 2):
         """ 主页 - 点击底部展开按钮 """
-        self.click(HomeLocator.EXPAND_MENU, force_wait=True)
+        self.click(HomeLocator.EXPAND_MENU, force_wait=True, timeout=timeout)
         logger.info("[Action-Home] 主页 - 点击底部展开按钮")
 
     # 主页 - 关闭底部扩展菜单
-    def click_bottom_close_expand_button(self):
+    def click_bottom_close_expand_button(self, timeout: int = 2):
         """ 主页 - 关闭底部扩展菜单 """
         if "三条" not in self.get_top_middle_title():
-            self.click_bottom_expand_button()
+            self.click_bottom_expand_button(timeout=timeout)
         logger.info("[Action-Home] 主页 - 点击底部关闭扩展菜单按钮")
 
     # 主页 - 点击好友
-    def click_friend(self):
+    def click_friend(self, timeout: int = 2):
         """ 主页 - 点击好友 """
-        self.click(HomeLocator.FRIEND, force_wait=True)
+        self.click(HomeLocator.FRIEND, force_wait=True, timeout=timeout)
         logger.info("[Action-Home] 主页 - 点击好友")
 
     # 主页 - 点击群聊
-    def click_group(self):
+    def click_group(self, timeout: int = 2):
         """ 主页 - 点击群聊 """
-        self.click(HomeLocator.GROUP, force_wait=True)
+        self.click(HomeLocator.GROUP, force_wait=True, timeout=timeout)
         logger.info("[Action-Home] 主页 - 点击群聊")
 
     # 主页 - 点击动态
-    def click_dynamic(self):
+    def click_dynamic(self, timeout: int = 2):
         """ 主页 - 点击动态 """
-        self.click(HomeLocator.DYNAMIC, force_wait=True)
+        self.click(HomeLocator.DYNAMIC, force_wait=True, timeout=timeout)
         logger.info("[Action-Home] 主页 - 点击动态")
     
     # 主页 - 获取动态未读消息红点数量
@@ -118,9 +118,9 @@ class HomePage(BasePage):
         return text
 
     # 主页 - 点击第一个会话
-    def click_conversation(self, index=0):
+    def click_conversation(self, index=0, timeout: int = 2):
         """ 主页 - 点击第一个会话 """
-        self.click(HomeLocator.CONVERSATION_ITEM, force_wait=True)
+        self.click(HomeLocator.CONVERSATION_ITEM, force_wait=True, timeout=timeout)
         logger.info("[Action-Home] 主页 - 点击第一个会话")
 
     # 主页 - 获取页面所有会话列表

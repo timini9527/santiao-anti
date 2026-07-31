@@ -490,12 +490,10 @@ class ChatPage(BasePage):
         status = has_play and has_duration and not has_fail
         logger.info(f"最后一条视频消息状态校验: {'通过' if status else '不通过(缺失组件或存在红点)'}")
         return status
-
    
     # 消息接收-通过输入内容在聊天气泡中查找并验证内容
     def verify_message_content_by_input(self, message: str) -> str:
         """消息接收-通过输入内容在聊天气泡中查找并验证内容"""
-        # locator = ChatLocator.get_specific_message_locator("sender", message) # UI 变化前
         locator = ChatLocator.get_sent_text_message_locator()
         bubble_elems = self.find_elements(locator, condition='visibility', timeout=3)
         if not bubble_elems or len(bubble_elems) == 0:
@@ -504,26 +502,10 @@ class ChatPage(BasePage):
         logger.info(f"[Assert] 获取已发送消息内容: {bubble_elems[-1].text}")
         return bubble_elems[-1].text
 
-    # 快捷功能-点击快捷功能面板中的指定子功能按钮
-    def open_child_elem(self, attrName: str):
-        """快捷功能-点击快捷功能面板中的指定子功能按钮"""
-        elems_button = self.find_elements(ChatLocator.ELEM_BUTTON)
-        if not elems_button:
-            logger.error(f"✖️ 未找到快捷功能面板中的任何功能按钮")
-            raise NoSuchElementException("功能面板按钮加载失败")
-            
-        for i, elem in enumerate(elems_button):
-            child_elem = self.find_element_gird(element=elem, locator=ChatLocator.ELEM_GIRD_TEXT)
-            if child_elem and child_elem.text == attrName:
-                logger.info(f"🚀 [Action-chat] 找到 {attrName} 按钮，点击进入")
-                child_elem.click()
-                return
-        logger.error(f"✖️ 功能面板中未匹配到指定按钮: {attrName}")
-
     # CMD通知-获取聊天界面所有系统CMD通知消息: 包含撤回、截屏、进群消息、群聊等
-    def get_all_cmd_notifications(self) -> list:
+    def get_all_cmd_notifications(self, timeout: int = 2) -> list:
         """CMD通知-获取聊天界面所有系统CMD通知消息: 包含撤回、截屏、进群消息、群聊等"""
-        cmd_elems = self.find_elements(ChatLocator.WITHDRAW_MESSAGE_ITEM)
+        cmd_elems = self.find_elements(ChatLocator.WITHDRAW_MESSAGE_ITEM, timeout=timeout)
         if not cmd_elems or len(cmd_elems) == 0:
             logger.error(f"没有找到聊天界面中的CMD通知消息")
             return []
@@ -531,9 +513,9 @@ class ChatPage(BasePage):
         return cmd_elems
 
     # CMD通知-获取聊天界面所有CMD通知消息-texts内容
-    def get_cmd_notification_texts(self, index: int | None = None) -> list[str] | str:
+    def get_cmd_notification_texts(self, index: int | None = None, timeout: int = 2) -> list[str] | str:
         """CMD通知-获取聊天界面所有CMD通知消息-texts内容"""
-        cmd_elems = self.get_all_cmd_notifications()
+        cmd_elems = self.get_all_cmd_notifications(timeout=timeout)
         if not cmd_elems:
             return [] if index is None else ""
         cmd_texts = [cmd.text for cmd in cmd_elems]
@@ -549,9 +531,9 @@ class ChatPage(BasePage):
             return ""
 
     # CMD通知-校验指定索引的通知消息是否匹配特定正则表达式模式
-    def is_cmd_notification_matching(self, pattern: str, index: int = -1) -> bool:
+    def is_cmd_notification_matching(self, pattern: str, index: int = -1, timeout: int = 2) -> bool:
         """CMD通知-校验指定索引的通知消息是否匹配特定正则表达式模式"""
-        text = self.get_cmd_notification_texts(index=index)
+        text = self.get_cmd_notification_texts(index=index, timeout=timeout)
         if not text:
             logger.warning(f"⚠️ [Assert] 未获取到索引为 {index} 的 CMD 通知文本")
             return False

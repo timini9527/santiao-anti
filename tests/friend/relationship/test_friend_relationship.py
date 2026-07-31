@@ -309,11 +309,13 @@ class TestFriendRelationship:
             check.is_in("对方已将您加入黑名单", notification, "❌ A将B拉黑且删除后，B发消息给A应获得[加入黑名单]提示，实际提示不匹配")
 
         with allure.step("6. S端（A）通过精确搜索找到非好友 B 的资料页，并将其移出黑名单"):
-            self._sender_search_profile(RECEIVER_PHONE)
+            # self._sender_search_profile(RECEIVER_PHONE)
             
             # 使用针对黑名单非好友资料页的移出方法
             unblock_ok = self.contactDetailPageS.remove_contact_from_blacklist()
+            is_unblock = self.contactDetailPageS.get_toast("已拉出黑名单")
             check.is_true(unblock_ok, "❌ S端非好友名片页上移出黑名单操作失败")
+            check.is_true(is_unblock, "❌ S端非好友名片页上移出黑名单后未弹出[已拉出黑名单]提示")
 
         with allure.step("7. 交叉校验验证申请优先级：由于已移出黑名单但仍是单向删除，B 给 A 发消息的提示应当变更为请求验证"):
             notification = self._send_msg_and_get_notification(SENDER_NAME, "移出黑名单后测试请求验证_B发给A", side='R')

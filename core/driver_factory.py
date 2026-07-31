@@ -1,8 +1,8 @@
 import copy
-from appium import webdriver
-from appium.options.android import UiAutomator2Options
 import os
 import subprocess
+from appium import webdriver
+from appium.options.android import UiAutomator2Options
 from core.logger_utils import logger
 from utils.file_reader.data_loader import load_yaml_data
 

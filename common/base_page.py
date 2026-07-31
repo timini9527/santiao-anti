@@ -43,6 +43,11 @@ class BasePage:
         :param expect_missing: 预期元素不存在 (用于断言元素不应出现的场景)
         :return:
         """
+        # 1. 临时将手机端的 Selector 查找超时压缩至 500 毫秒（防止手机端死等卡死）
+        try:
+            self.driver.update_settings({"waitForSelectorTimeout": 500})
+        except Exception:
+            pass
         logger.info(f"🔎 正在查找元素: {locator} (模式: {condition})")
         wait = WebDriverWait(self.driver, timeout)
         # 如果这里超时报错， @catch_exception 会自动捕获、截图、写 error 日志
@@ -58,6 +63,10 @@ class BasePage:
             element = wait.until(
                 EC.presence_of_element_located(locator)
             )
+        try:
+            self.driver.update_settings({"waitForSelectorTimeout": 10000})
+        except Exception:
+            pass
         return element
 
     @catch_elements_exception
@@ -95,17 +104,27 @@ class BasePage:
             )
         return elements
 
-    @catch_exception
-    def find_element_gird(self, element: WebElement, locator: tuple) -> WebElement:
+    def is_element_exist(self, locator: tuple, timeout: int = 10, condition: str = "visibility",
+                         raise_exception: bool = True, expect_missing: bool = False) -> bool:
         """
-        在父元素内查找子元素
-        :param element: 父级 WebElement 对象
-        :param locator: 子元素定位器
-        :return: 子级 WebElement
+        判断元素是否存在/可见，直接返回布尔值，不中断代码流
+        :param locator: 元素定位
+        :param timeout: 超时时间
+        :param condition: 验证条件 (visibility-可见, presence-存在DOM中)
+        :param raise_exception: 保持签名兼容
+        :param expect_missing: 保持签名兼容
+        :return: True(存在) / False(不存在)
         """
-        logger.info(f"🔎 在父元素内查找子元素: {locator}")
-        child = element.find_element(*locator)
-        return child
+        logger.info(f"🔎 探查元素状态: {locator} (模式: {condition}, 超时: {timeout}s)")
+
+        elements = self.find_elements(locator=locator, timeout=timeout, condition=condition,
+                                    raise_exception=raise_exception, expect_missing=expect_missing)
+        is_exist = len(elements) > 0
+        if is_exist:
+            logger.info(f"✅ 元素存在: {locator}")
+        else:
+            logger.warning(f"⚠️ 元素不存在: {locator}")
+        return is_exist
 
     def wait_until_element_disappear(self, locator: tuple, timeout: int = 10) -> bool:
         """
@@ -126,8 +145,7 @@ class BasePage:
 
     def wait_for_element(self, locator: tuple, timeout: int = 15, interval: float = 1.0,
                          text: str = None) -> bool:
-        """轮询等待元素出现（用于撤回/警告/禁言等异步上屏的场景）。
-
+        """轮询等待元素出现（用于撤回/警告/禁言等异步上屏的场景）
         与 find_element 的区别：本方法用"短超时多次轮询"而非"一次等满"，
         且恒返回 bool 不抛异常、不触发失败截图，适合赌异步时机的等待点，
         从根上替代"裸 find_element 等满 10s 静默失败 → 下一步对 None 操作崩溃"的反模式。
@@ -159,108 +177,6 @@ class BasePage:
                        f"{'（文本含 ' + repr(text) + '）' if text else ''}")
         return False
 
-    @allure.step("通过 android uiautomator 定位, ID 和 Instance 获取元素")
-    def find_element_by_id_instance(self, res_id: str, index: int = 0) -> WebElement:
-        """
-            通过 android uiautomator 定位, ID 和 Instance 动态查找元素
-        :param res_id: 完整的 resource-id，例如 'com.qq.im:id/content'
-        :param index:  索引，0 代表第 1 个
-        :return:
-        """
-        uiautomator_str = f'new UiSelector().resourceId("{res_id}").instance({index})'
-        locator = (AppiumBy.ANDROID_UIAUTOMATOR, uiautomator_str)
-        ele = self.find_element(locator)
-        return ele
-
-    @allure.step("通过查询子元素进行点击元素")
-    def click_by_id_instance(self, res_id: str, index: int = 0):
-        el = self.find_element_by_id_instance(res_id, index)
-        if not el:
-            logger.warning(f"通过查询子元素未找到: {res_id}")
-            raise NoSuchElementException(f"通过查询子元素未找到: {res_id}")
-        logger.info(f"通过查询子元素进行点击元素: {res_id}")
-        el.click()
-
-    @allure.step("通过查询子元素进行获取属性值")
-    def query_attr_by_id(self, res_id: str, index: int = 0, name: str = "text") -> tuple:
-        """
-        通过查询子元素进行获取属性值
-        :param res_id: 完整的 resource-id
-        :param index: 索引，0 代表第 1 个
-        :param name: 属性名
-        :return: (WebElement对象, 属性值(str)) 未找到时返回 (None, "")
-        """
-        el = self.find_element_by_id_instance(res_id, index)
-        if el is not None:
-            attr = el.get_attribute(name)
-            logger.info(f" 获取多个子元素 {name} 的属性值: {attr}")
-            return el, attr
-        return None, ""
-
-    @allure.step("通过 xpath 定位, ID  动态查找元素")
-    def find_element_by_id_xpath(self, res_id: str, index: int = 1) -> WebElement:
-        """
-            通过 xpath 定位, ID  动态查找元素
-        :param res_id: 完整的 resource-id，例如 'com.qq.im:id/content'
-        :param index:  索引，0 代表第 1 个
-        """
-        # 使用 * 代表任意 class (TextView, Button, EditText 等)
-        xpath_str = f'(//*[@resource-id="{res_id}"])[{index}]'
-        locator_xpath = (AppiumBy.XPATH, xpath_str)
-        ele = self.find_element(locator_xpath)
-        return ele
-
-    @allure.step("通过 xpath 获取元素属性值")
-    def query_attr_by_id_xpath(self, res_id: str, index: int = 1, name: str = "text") -> str:
-        ele = self.find_element_by_id_xpath(res_id, index)
-        if ele is not None:
-            attr = ele.get_attribute(name)
-            logger.info(f" 获取多个子元素 {name} 的属性值: {attr}")
-            return attr
-        return ""
-
-    @allure.step("通过 new UiSelector().text('X') 定位 查找元素")
-    def find_element_by_UiSelector_text(self, text_str: str, timeout: int = 3) -> WebElement:
-        """
-            通过 new UiSelector().text('X') 定位 查找元素
-        :param text_str: 完整的 文本字符，例如 'new UiSelector().text("啦啦啦啦啦啦啦啦")'
-        :param timeout: 查找元素超时时间
-        :return 返回找到的 WebElement 对象
-        """
-        # 使用 * 代表任意 class (TextView, Button, EditText 等)
-        UiSelector_str = f'new UiSelector().text("{text_str}")'
-        locator_xpath = (AppiumBy.ANDROID_UIAUTOMATOR, UiSelector_str)
-        ele = self.find_element(locator_xpath, timeout=timeout)
-        return ele
-
-    @allure.step("通过 new UiSelector().text('X') 进行 click")
-    def click_by_UiSelector_text(self, text_str: str):
-        ele = self.find_element_by_UiSelector_text(text_str)
-        if not ele:
-            logger.warning(f"未找到元素: {text_str}")
-            raise NoSuchElementException(f"未找到元素: {text_str}")
-        ele.click()
-
-    @check_element_status
-    def is_element_exist(self, locator: tuple, timeout: int = 10, condition: str = "visibility",
-                         raise_exception: bool = True, expect_missing: bool = False) -> bool:
-        """
-        判断元素是否存在/可见，直接返回布尔值，不中断代码流
-        :param locator: 元素定位
-        :param timeout: 超时时间
-        :param condition: 验证条件 (visibility-可见, presence-存在DOM中)
-        :param raise_exception: 探测方法恒不抛异常，此参数仅为与 find_element/find_elements
-                                保持调用签名一致而保留，传入与否均不改变行为
-        :param expect_missing: 同上，探测方法不做断言，保留仅为签名兼容
-        :return: True(存在) / False(不存在)
-        """
-        logger.info(f"🔎 探查元素状态: {locator} (模式: {condition}, 超时: {timeout}s)")
-        wait = WebDriverWait(self.driver, timeout)
-        if condition == "visibility":
-            wait.until(EC.visibility_of_element_located(locator))
-        else:
-            wait.until(EC.presence_of_element_located(locator))
-        return True
 
     @allure.step("获取元素属性值")
     def get_attribute(self, locator: tuple, attr: str, timeout: int = 2, raise_exception: bool = True, expect_missing: bool = False) -> str:
@@ -278,8 +194,6 @@ class BasePage:
             return value
         return ""
 
-
-
     @allure.step("点击元素: {locator}")
     def click(self, locator: tuple, force_wait: bool = False, timeout: int = 10) -> None:
         """
@@ -296,12 +210,6 @@ class BasePage:
         else:
             logger.error(f"❌ 点击失败，未找到元素: {locator}")
             raise NoSuchElementException(f"无法点击，元素未找到: {locator}")
-
-    @allure.step("通过坐标进行点击: {x}, {y}")
-    def click_by_coordinate(self, x, y):
-        """ 点击固定坐标 """
-        self.driver.tap([(x, y)])
-        logger.info(f"[Action] 通过坐标进行点击，点击坐标: {x}, {y}")
 
     @allure.step("input -> 输入文本: {text}")
     def send_keys(self, locator, text):
@@ -456,6 +364,7 @@ class BasePage:
             logger.warning(f"⚠️ [BasePage-wait_element_text] 未在 {timeout}s 内匹配到文本: {expected_text} (探测判定不存在)")
         return False
 
+
     @allure.step("获取网格/列表布局指标")
     def get_grid_layout_metrics(self, container_locator: tuple, item_locator: tuple) -> dict:
         """
@@ -508,6 +417,12 @@ class BasePage:
         rect = element.rect
         return int(rect['x'] + rect['width'] / 2), int(rect['y'] + rect['height'] / 2)
     
+    @allure.step("通过坐标进行点击: {x}, {y}")
+    def click_by_coordinate(self, x, y):
+        """ 点击固定坐标 """
+        self.driver.tap([(x, y)])
+        logger.info(f"[Action] 通过坐标进行点击，点击坐标: {x}, {y}")
+
 
     @allure.step("长按元素，获取弹窗")
     @allure.step("有多条数据存在时, 长按某一条, 获取弹窗")
