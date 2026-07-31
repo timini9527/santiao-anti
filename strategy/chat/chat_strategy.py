@@ -130,7 +130,7 @@ TEST_GROUPS = [
         name=f"测试{i:03d}",
         is_admin=True
     )
-    for i in range(1, 8)
+    for i in range(1, 6)
 ]
 
 

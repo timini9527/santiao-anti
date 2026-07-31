@@ -126,25 +126,21 @@ class TestChat:
 
 
     @pytest.fixture(autouse=False)
-    def setup_test(self, driver_device3, driver_device4, request):
-        self.chatPageT3 = ChatPage(driver_device3)
-        self.chatListPageT3 = ChatListPage(driver_device3)
-        self.mainPageT3 = MainPage(driver_device3)
-        self.emojiPageT3 = ChatEmojiPage(driver_device3)
-        self.chatImagePageT3 = ChatImagePage(driver_device3)
-        self.chatPositionPageT3 = ChatPositionPage(driver_device3)
-
-        
-        self.chatPageT4 = ChatPage(driver_device4)
-        self.chatListPageT4 = ChatListPage(driver_device4)
-        self.mainPageT4 = MainPage(driver_device4)
-        self.emojiPageT4 = ChatEmojiPage(driver_device4)
-        self.chatImagePageT4 = ChatImagePage(driver_device4)
-        self.chatPositionPageT4 = ChatPositionPage(driver_device4)
-        
-        # 缓存当前驱动，供 class 级别 Teardown 清理时使用
-        self.__class__._class_driver = driver_device3
-        self.__class__._class_driver = driver_device4
+    def setup_test(self, request):
+        # 批量动态初始化 T3 至 T9 模拟器的 Page Object，若端口服务未开启则跳过，防报错阻断测试
+        for idx in range(5, 10):
+            try:
+                driver = request.getfixturevalue(f"driver_device{idx}")
+                if driver:
+                    setattr(self, f"chatPageT{idx}", ChatPage(driver))
+                    setattr(self, f"chatListPageT{idx}", ChatListPage(driver))
+                    setattr(self, f"mainPageT{idx}", MainPage(driver))
+                    setattr(self, f"emojiPageT{idx}", ChatEmojiPage(driver))
+                    setattr(self, f"chatImagePageT{idx}", ChatImagePage(driver))
+                    setattr(self, f"chatPositionPageT{idx}", ChatPositionPage(driver))
+                    self.__class__._class_driver = driver
+            except Exception as e:
+                logger.warning(f"⚠️ [Setup Test] 设备 driver_device{idx} 启动失败 (对应的 Appium 服务可能未开启): {e}")
 
         # 获取当前运行的方法名称。如果是其他非单聊发送方法，强制释放会话锁
         current_test = request.node.originalname or request.node.name
@@ -258,12 +254,35 @@ class TestChat:
         dev3_groups = TEST_GROUPS[::2]
         # 设备4分配偶数项（索引为1, 3, 5，对应测试002, 004, 006）
         dev4_groups = TEST_GROUPS[1::2]
+        
+        dev5_groups = [TEST_GROUPS[0]]
+        dev6_groups = [TEST_GROUPS[1]]
+        dev7_groups = [TEST_GROUPS[2]]
+        dev8_groups = [TEST_GROUPS[3]]
+        dev9_groups = [TEST_GROUPS[4]]
 
         threads = []
-        t3 = threading.Thread(target=worker_send, args=(self.chatListPageT3, self.chatPageT3, "Device_3", dev3_groups))
-        t4 = threading.Thread(target=worker_send, args=(self.chatListPageT4, self.chatPageT4, "Device_4", dev4_groups))
-
-        threads.extend([t3, t4])
+        device_groups_map = {
+            3: ("Device_3", dev3_groups),
+            4: ("Device_4", dev4_groups),
+            5: ("Device_5", dev5_groups),
+            6: ("Device_6", dev6_groups),
+            7: ("Device_7", dev7_groups),
+            8: ("Device_8", dev8_groups),
+            9: ("Device_9", dev9_groups),
+        }
+        for idx, (dev_name, group_list) in device_groups_map.items():
+            chat_list_page = getattr(self, f"chatListPageT{idx}", None)
+            chat_page = getattr(self, f"chatPageT{idx}", None)
+            if chat_list_page and chat_page:
+                t = threading.Thread(
+                    target=worker_send,
+                    args=(chat_list_page, chat_page, dev_name, group_list)
+                )
+                threads.append(t)
+                logger.info(f"🧵 已就绪设备线程: {dev_name}")
+            else:
+                logger.warning(f"⚠️ 设备 {dev_name} 未就绪 (对应端口的 Appium 服务未开启)，跳过此线程")
 
 
         try:

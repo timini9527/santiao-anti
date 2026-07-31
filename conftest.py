@@ -228,6 +228,72 @@ def driver_device4():
         else:
             driver.quit()
 
+@pytest.fixture(scope="session")
+def driver_device5():
+    """ 启动第5个设备 """
+    driver = DriverFactory.get_driver('device5')
+    try:
+        yield driver
+    finally:
+        print("\n[Teardown] 关闭第5个设备驱动")
+        if os.environ.get("DEBUG_MODE") == "1":
+            print("🐞 [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
+        else:
+            driver.quit()
+
+@pytest.fixture(scope="session")
+def driver_device6():
+    """ 启动第6个设备 """
+    driver = DriverFactory.get_driver('device6')
+    try:
+        yield driver
+    finally:
+        print("\n[Teardown] 关闭第6个设备驱动")
+        if os.environ.get("DEBUG_MODE") == "1":
+            print("🐞 [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
+        else:
+            driver.quit()
+
+@pytest.fixture(scope="session")
+def driver_device7():
+    """ 启动第7个设备 """
+    driver = DriverFactory.get_driver('device7')
+    try:
+        yield driver
+    finally:
+        print("\n[Teardown] 关闭第7个设备驱动")
+        if os.environ.get("DEBUG_MODE") == "1":
+            print("🐞 [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
+        else:
+            driver.quit()
+
+@pytest.fixture(scope="session")
+def driver_device8():
+    """ 启动第8个设备 """
+    driver = DriverFactory.get_driver('device8')
+    try:
+        yield driver
+    finally:
+        print("\n[Teardown] 关闭第8个设备驱动")
+        if os.environ.get("DEBUG_MODE") == "1":
+            print("🐞 [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
+        else:
+            driver.quit()
+
+@pytest.fixture(scope="session")
+def driver_device9():
+    """ 启动第9个设备 """
+    driver = DriverFactory.get_driver('device9')
+    try:
+        yield driver
+    finally:
+        print("\n[Teardown] 关闭第9个设备驱动")
+        if os.environ.get("DEBUG_MODE") == "1":
+            print("🐞 [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
+        else:
+            driver.quit()
+
+
 # --- Page Object Fixtures (依赖注入) ---
 
 

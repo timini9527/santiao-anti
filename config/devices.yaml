@@ -19,9 +19,12 @@ app:
   # --- 状态与权限管理 ---
   "appium:noSign": true                            # 跳过 APK 重签名 (true: 跳过, false: 不跳过)
   "appium:noReset": true                           # 保持应用状态 (true: 保持, false: appium:)
+  "noReset": true                                  # 保持应用状态 (针对 Appium 1.x 兼容)
+  "appium:fullReset": false                        # 强制完全重置 (针对 Appium 2.x)
+  "fullReset": false                               # 强制完全重置 (针对 Appium 1.x 兼容)
   "appium:forceAppLaunch": true
   "appium:autoGrantPermissions": true              # 自动授予应用所需权限 (true: 自动, false: 手动)
-  "appium:dontStopAppOnReset": false               # 热启动模式 (true: 不停止 App, false: 强杀并重启)
+  "appium:dontStopAppOnReset": true               # 热启动模式 (true: 不停止 App, false: 强杀并重启)
   # --- 启动提速与运行优化 ---
   "appium:skipServerInstallation": true           # 跳过服务安装 (true: 跳过, false: 安装)
   "appium:skipDeviceInitialization": true          # 跳过设备初始化 (true: 跳过, false: 初始化)
@@ -61,7 +64,7 @@ devices:
       # platformVersion: "12.0"
       # udid: "emulator-5558"   # 模拟器
       # udid: "192.168.1.29:36457"    
-      udid: "192.168.1.111:33839"  
+      udid: "192.168.1.111:41557"  
       # udid: "emulator-5560"     # 模拟器（注意：此处的 udid 优先被 Web 回执中的 "设备1" 动态覆盖）
       deviceName: "ReceiverPhone"
       systemPort: 8201         # 关键！必须与 Sender 不同
@@ -81,6 +84,42 @@ devices:
       deviceName: "Device4Phone"
       systemPort: 8203
       appiumServerUrl: "http://127.0.0.1:4726"
+
+    device5:
+      platformName: "Android"
+      udid: "emulator-5562"     # 模拟器5
+      deviceName: "Device5Phone"
+      systemPort: 8204
+      appiumServerUrl: "http://127.0.0.1:4727"
+
+    device6:
+      platformName: "Android"
+      udid: "emulator-5564"     # 模拟器6
+      deviceName: "Device6Phone"
+      systemPort: 8205
+      appiumServerUrl: "http://127.0.0.1:4728"
+
+    device7:
+      platformName: "Android"
+      udid: "emulator-5566"     # 模拟器7
+      deviceName: "Device7Phone"
+      systemPort: 8206
+      appiumServerUrl: "http://127.0.0.1:4729"
+
+    device8:
+      platformName: "Android"
+      udid: "emulator-5568"     # 模拟器8
+      deviceName: "Device8Phone"
+      systemPort: 8207
+      appiumServerUrl: "http://127.0.0.1:4730"
+
+    device9:
+      platformName: "Android"
+      udid: "emulator-5570"     # 模拟器9
+      deviceName: "Device9Phone"
+      systemPort: 8208
+      appiumServerUrl: "http://127.0.0.1:4731"
+
 
   test:
     sender:

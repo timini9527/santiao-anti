@@ -58,26 +58,7 @@ class TestFriendRelationship:
             except Exception as e:
                 logger.error(f"⚠️ [Teardown] 返回首页失败: {e}")
 
-
-    def _sender_send_friend_request(self, search_key: str, verify_message: str):
-        """辅助方法：S端进入添加朋友，搜索R端并发送好友申请"""
-        self.homePageS.click_add_button()
-        self.homePageS.click_add_friend()
-        self.addFriendPageS.wait_for_add_friend_page()
-        self.addFriendPageS.search_friend_by_content(search_key)
-        self.addFriendPageS.click_confirm_search()
-        self.addFriendPageS.click_search_result_item()
-        self.contactDetailPageS.wait_for_detail_page_load()
-        is_unfriend_page = self.contactDetailPageS.is_add_friend_unfriend_visible()
-        check.is_true(is_unfriend_page, "❌ 精确搜索后拉起资料卡失败，或界面未展示‘添加好友’申请入口")
-        
-        self.contactDetailPageS.click_add_friend_button()
-        self.addFriendPageS.wait_for_send_friend_verify_page()
-        self.addFriendPageS.input_remark(verify_message)
-        self.addFriendPageS.click_finish()
-        toast = self.addFriendPageS.get_toast("发送成功")
-        check.is_true(toast, "❌ S端点击发送好友申请后，未弹出 [发送成功] Toast 提示")
-
+    
     def _go_to_new_friend_page(self, side='R'):
         """辅助方法：进入‘新的朋友’申请列表页"""
         homePage = self.homePageR if side == 'R' else self.homePageS
@@ -102,6 +83,70 @@ class TestFriendRelationship:
         if click_ok:
             contactDetail.wait_for_detail_page_load(timeout=timeout)
         return click_ok
+
+    def _ensure_friendship_established(self, verify_message: str):
+        """确保双端已建立好友关系的前置辅助方法"""
+        is_friend = self._go_to_contact_detail_from_list(RECEIVER_NAME, timeout=2, raise_exception=False, side='S')
+        if not is_friend:
+            logger.info("ℹ️ S端与R端当前不是好友，开始建立好友关系")
+            self.mainPageS.go_to_main_page()
+            self._sender_send_friend_request(RECEIVER_PHONE, verify_message)
+            self._accept_friend_request_in_detail(SENDER_NAME)
+            self._go_to_contact_detail_from_list(RECEIVER_NAME, side='S')
+
+    def _accept_friend_request_in_detail(self, applicant_name: str):
+        """辅助方法：R端进入新朋友申请详情页并接受好友申请"""
+        self._go_to_new_friend_page(side='R')
+        self.newFriendPageR.wait_for_new_friend_page_load()
+        click_ok = self.newFriendPageR.click_apply_item_by_name(applicant_name)
+        check.is_true(click_ok, f"❌ R端在新朋友列表中未找到并点击 {applicant_name} 的申请条目")
+        self.newFriendPageR.click_accept_in_detail()
+        self.contactDetailPageR.click_iv_back()
+
+    def _sender_delete_friend(self):
+        """辅助方法：S端从主页进入通讯录并删除 R端 好友"""
+        self.mainPageS.go_to_main_page()
+        self._go_to_contact_detail_from_list(RECEIVER_NAME, side='S')
+        self.contactDetailPageS.delete_contact()
+
+    def _sender_search_profile(self, search_key: str):
+        """辅助方法：S端进入添加朋友，搜索并进入指定账号的资料详情页"""
+        self.mainPageS.go_to_main_page()
+        self.homePageS.click_add_button()
+        self.homePageS.click_add_friend()
+        self.addFriendPageS.wait_for_add_friend_page(timeout=2)
+        self.addFriendPageS.search_friend_by_content(search_key)
+        self.addFriendPageS.click_confirm_search()
+        self.addFriendPageS.click_search_result_item()
+        self.contactDetailPageS.wait_for_detail_page_load(timeout=2)
+
+    def _sender_send_friend_request(self, search_key: str, verify_message: str):
+        """辅助方法：S端进入添加朋友，搜索R端并发送好友申请"""
+        self._sender_search_profile(search_key)
+        is_unfriend_page = self.contactDetailPageS.is_add_friend_unfriend_visible()
+        check.is_true(is_unfriend_page, "❌ 精确搜索后拉起资料卡失败，或界面未展示‘添加好友’申请入口")
+        
+        self.contactDetailPageS.click_add_friend_button()
+        self.addFriendPageS.wait_for_send_friend_verify_page(timeout=2)
+        self.addFriendPageS.input_remark(verify_message)
+        self.addFriendPageS.click_finish()
+        toast = self.addFriendPageS.get_toast("发送成功")
+        check.is_true(toast, "❌ S端点击发送好友申请后，未弹出 [发送成功] Toast 提示")
+
+    def _send_msg_and_get_notification(self, target_name: str, message: str, side: str = 'R', back: bool = True) -> str:
+        """辅助方法：在通讯录中找到目标卡片，进入聊天窗口发送消息并获取返回的系统通知提示文本，随后根据需要退回"""
+        contact_detail = self.contactDetailPageR if side == 'R' else self.contactDetailPageS
+        chat_page = self.chatPageR if side == 'R' else self.chatPageS
+        
+        self._go_to_contact_detail_from_list(target_name, side=side)
+        contact_detail.click_send_message()
+        chat_page.wait_for_chat_page_load()
+        chat_page.send_message(message)
+        notification = chat_page.get_cmd_notification_texts(index=-1)
+        if back:
+            chat_page.click_back_button()
+        return notification
+
 
 
 
@@ -132,7 +177,7 @@ class TestFriendRelationship:
             check.is_true(click_success, f"❌ S端好友列表中找不到刚接受好友申请的联系人: {RECEIVER_NAME}")
 
         with allure.step("6. S端删除好友以进行后置清理"):
-            self.contactDetailPageS.delete_contact()
+            self._sender_delete_friend()
 
 
     @allure.story("好友申请与验证")
@@ -157,22 +202,12 @@ class TestFriendRelationship:
             check.is_none(aft_item, f"❌ R端在新朋友列表中仍然能找到 {SENDER_NAME} 的申请条目")
             self.newFriendPageR.click_iv_back()
 
-
     @allure.story("删除好友")
     @allure.title("删除好友关系与单向删除验证及重加恢复-状态：已完成")
     def test_relationship_flow_delete(self):
         """测试 S 端删除好友 R -> 交叉校验确认单向删除特征 -> S 重新申请 -> R 同意 -> 双方聊天功能恢复"""
         with allure.step("1. 确认前置：确保双方已经是好友关系，如果不是则先添加好友"):
-            is_friend = self._go_to_contact_detail_from_list(RECEIVER_NAME, timeout=1, raise_exception=False, side='S')
-            if not is_friend:
-                self.mainPageS.go_to_main_page()
-                self._sender_send_friend_request(RECEIVER_PHONE, "加个好友删除重试")
-                self._go_to_new_friend_page(side='R')
-                self.newFriendPageR.wait_for_new_friend_page_load()
-                self.newFriendPageR.click_apply_item_by_name(SENDER_NAME)
-                self.newFriendPageR.click_accept_in_detail()
-                self.contactDetailPageR.click_iv_back()
-                self._go_to_contact_detail_from_list(RECEIVER_NAME, side='S')
+            self._ensure_friendship_established("加个好友删除重试")
 
         with allure.step("2. S端在其个人详情页中删除好友 B"):
             delete_ok = self.contactDetailPageS.delete_contact()
@@ -182,15 +217,11 @@ class TestFriendRelationship:
             has_receiver = self._go_to_contact_detail_from_list(RECEIVER_NAME, side='S', raise_exception=False, timeout=2)
             check.is_false(has_receiver, f"❌ S端已删除 B，但 S端通讯录里仍然存在好友: {RECEIVER_NAME}")
 
-            
             has_sender = self._go_to_contact_detail_from_list(SENDER_NAME, side='R', raise_exception=False, timeout=2)
             check.is_true(has_sender, f"❌ S端单向删除B后，B端通讯录中应当依旧保留A端好友: {SENDER_NAME}")
-            self.contactDetailPageR.click_send_message()
-            self.chatPageR.wait_for_chat_page_load()
-            self.chatPageR.send_message("测试是否是好友并获取CMD通知")
-            notification = self.chatPageR.get_cmd_notification_texts(index=-1)
+
+            notification = self._send_msg_and_get_notification(SENDER_NAME, "测试是否是好友并获取CMD通知", side='R')
             check.is_in("发送好友验证", notification, f"❌ S端单向删除B后，B端通讯录中应当依旧保留A端好友: {SENDER_NAME}")
-            self.chatPageR.click_back_button()
 
         with allure.step("4. S端重新发起对 B 的添加好友申请"):
             self.mainPageS.go_to_main_page()
@@ -198,12 +229,7 @@ class TestFriendRelationship:
 
         with allure.step(f"5. B端在新朋友列表中点击 {SENDER_NAME} 的申请项，进入验证详情页并接受"):
             self.mainPageR.go_to_main_page()
-            self._go_to_new_friend_page(side='R')
-            self.newFriendPageR.wait_for_new_friend_page_load()
-            click_ok = self.newFriendPageR.click_apply_item_by_name(SENDER_NAME)
-            check.is_true(click_ok, f"❌ R端在新朋友列表中未找到并点击 {SENDER_NAME} 的申请条目")
-            self.newFriendPageR.click_accept_in_detail()
-            self.contactDetailPageR.click_iv_back()
+            self._accept_friend_request_in_detail(SENDER_NAME)
 
         with allure.step("6. 交叉验证聊天能力同步恢复"):
             self._go_to_contact_detail_from_list(RECEIVER_NAME, side='S')
@@ -219,44 +245,24 @@ class TestFriendRelationship:
             check.equal(received_msg, chat_msg, f"❌ 双端重新加回好友后，B端未成功收到A端发送的聊天消息，实际接收: {received_msg}")
 
         with allure.step("7. S端删除好友进行环境清理"):
-            self.mainPageS.go_to_main_page()
-            self._go_to_contact_detail_from_list(RECEIVER_NAME, side='S')
-            self.contactDetailPageS.delete_contact()
-
+            self._sender_delete_friend()
 
     @allure.story("黑名单隐私")
     @allure.title("拉黑好友消息拒收与移出黑名单聊天恢复-状态：已完成")
     def test_relationship_flow_block_and_unblock(self):
         """测试 A 将 B 加入黑名单 -> B 发送消息提示拒收 -> A 移出黑名单 -> 双端聊天恢复"""
         with allure.step("1. 确认前置：确保双方已经是好友关系"):
-            is_friend = self._go_to_contact_detail_from_list(RECEIVER_NAME, side='S')
-            if not is_friend:
-                logger.info("ℹ️ S端与R端当前不是好友，准备先建立好友关系")
-                self.mainPageS.go_to_main_page()
-                self._sender_send_friend_request(RECEIVER_PHONE, "加个好友拉黑重试")
-                self._go_to_new_friend_page(side='R')
-                self.newFriendPageR.wait_for_new_friend_page_load()
-                self.newFriendPageR.click_apply_item_by_name(SENDER_NAME)
-                self.newFriendPageR.click_accept_in_detail()
-                self.contactDetailPageR.click_iv_back()
-                self._go_to_contact_detail_from_list(RECEIVER_NAME, side='S')
+            self._ensure_friendship_established("加个好友拉黑重试")
 
         with allure.step("2. S端（A）在好友详情页中将 R端（B）加入黑名单"):
             block_ok = self.contactDetailPageS.set_contact_blocked(True)
             check.is_true(block_ok, "❌ S端将好友 B 加入黑名单操作失败")
 
         with allure.step("3. 交叉校验消息拒收：R端 给 S端 发消息被拒收，而 S端 发送正常"):
-            self._go_to_contact_detail_from_list(SENDER_NAME, side='R')
-            self.contactDetailPageR.click_send_message()
-            self.chatPageR.wait_for_chat_page_load()
-            self.chatPageR.send_message("你已经被我拉黑了吗？B发给A的")
-            be_notificationR = self.chatPageR.get_cmd_notification_texts(index=-1)
+            be_notificationR = self._send_msg_and_get_notification(SENDER_NAME, "你已经被我拉黑了吗？B发给A的", side='R', back=False)
             check.is_in("对方已将您加入黑名单", be_notificationR, "❌ 对方被拉黑后发消息，拉黑方未收到拒收提示")
 
-            self.contactDetailPageS.click_send_message()
-            self.chatPageS.wait_for_chat_page_load()
-            self.chatPageS.send_message("拉黑你之后我发的消息")
-            be_notificationS = self.chatPageS.get_cmd_notification_texts(index=-1)
+            be_notificationS = self._send_msg_and_get_notification(RECEIVER_NAME, "拉黑你之后我发的消息", side='S', back=False)
             check.is_in("你已将对方拉入黑名单", be_notificationS, "❌ S端拉黑后发消息，S端未弹出拒收提示")
 
         with allure.step("4. S端（A）在其好友详情页中将 R端（B）移出黑名单"):
@@ -276,9 +282,47 @@ class TestFriendRelationship:
             check.is_false(af_notificationS, "❌ 解黑后A端发出的聊天消息B端未成功接收")
 
         with allure.step("6. S端删除好友进行环境清理"):
+            self._sender_delete_friend()
+
+
+    @allure.story("拉黑与删除组合")
+    @allure.title("先拉黑后删除的好友状态流转校验与黑名单优先级验证-状态：已完成")
+    def test_relationship_flow_block_and_delete(self):
+        """测试 A 将 B 加入黑名单 -> A 将 B 删除 -> B 给 A 发消息被黑名单拒收 -> A 将 B 移出黑名单 -> B 给 A 发消息提示需要验证"""
+        # with allure.step("1. 确认前置：确保双方已经是好友关系"):
+        #     self._ensure_friendship_established("加个好友拉黑删除重试")
+
+        # with allure.step("2. S端（A）在好友详情页中将 R端（B）加入黑名单"):
+        #     block_ok = self.contactDetailPageS.set_contact_blocked(True)
+        #     check.is_true(block_ok, "❌ S端将好友 B 加入黑名单操作失败")
+
+        # with allure.step("3. S端（A）在其个人详情页中删除好友 B"):
+        #     delete_ok = self.contactDetailPageS.delete_contact()
+        #     check.is_true(delete_ok, "❌ S端删除好友 B 失败")
+
+        # with allure.step("4. 校验好友列表中已无 B"):
+        #     has_receiver = self._go_to_contact_detail_from_list(RECEIVER_NAME, side='S', raise_exception=False, timeout=2)
+        #     check.is_false(has_receiver, f"❌ S端已删除 B，但 S端通讯录里仍然存在好友: {RECEIVER_NAME}")
+
+        with allure.step("5. 交叉校验黑名单优先级：B 给 A 发消息。因为 B 在 A 黑名单中，提示应当为拉黑拒收，而非请求验证"):
+            notification = self._send_msg_and_get_notification(SENDER_NAME, "拉黑且删除后测试消息拒收_B发给A", side='R')
+            check.is_in("对方已将您加入黑名单", notification, "❌ A将B拉黑且删除后，B发消息给A应获得[加入黑名单]提示，实际提示不匹配")
+
+        with allure.step("6. S端（A）通过精确搜索找到非好友 B 的资料页，并将其移出黑名单"):
+            self._sender_search_profile(RECEIVER_PHONE)
+            
+            # 使用针对黑名单非好友资料页的移出方法
+            unblock_ok = self.contactDetailPageS.remove_contact_from_blacklist()
+            check.is_true(unblock_ok, "❌ S端非好友名片页上移出黑名单操作失败")
+
+        with allure.step("7. 交叉校验验证申请优先级：由于已移出黑名单但仍是单向删除，B 给 A 发消息的提示应当变更为请求验证"):
+            notification = self._send_msg_and_get_notification(SENDER_NAME, "移出黑名单后测试请求验证_B发给A", side='R')
+            check.is_in("发送好友验证", notification, "❌ A将B移出黑名单后（仍单向删除），B发消息给A应获得[发送好友验证]提示")
+
+        with allure.step("8. 重新申请加回好友，进行数据与状态清理"):
             self.mainPageS.go_to_main_page()
-            self._go_to_contact_detail_from_list(RECEIVER_NAME, side='S')
-            self.contactDetailPageS.delete_contact()
+            self._sender_send_friend_request(RECEIVER_PHONE, "拉黑删除恢复清理")
+            self._accept_friend_request_in_detail(SENDER_NAME)
 
-
-
+        with allure.step("9. S端删除好友以完成环境清理"):
+            self._sender_delete_friend()
