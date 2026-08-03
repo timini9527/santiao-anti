@@ -56,15 +56,13 @@ class ChatPage(BasePage):
 
     # 页面导航-等待聊天页面加载完成
     def wait_for_chat_page_load(self, timeout: int = 10, raise_exception: bool = True) -> bool:
-        """页面导航-等待聊天页面加载完成"""
         logger.info(f"⏳ [Wait] 等待聊天主页面加载完成，超时时间 {timeout} 秒")
-        try:
-            chat_page_is_visible = len(self.find_elements(ChatLocator.CHAT_INPUT, timeout=timeout, raise_exception=raise_exception))
-            logger.info(f"✅ [Wait] 聊天主页面加载完成, 元素个数为 {chat_page_is_visible}")
-            return bool(chat_page_is_visible)
-        except Exception:
-            logger.warning(f"⚠️ [Wait] 聊天主页面加载超时")
-            return False
+        elements = self.find_elements(ChatLocator.CHAT_INPUT, timeout=timeout, raise_exception=raise_exception)
+        if elements:
+            logger.info(f"✅ [Wait] 聊天主页面加载完成，元素个数为 {len(elements)}")
+            return True
+        logger.warning("⚠️ [Wait] 聊天主页面加载超时")
+        return False
 
     # 页面导航-返回到聊天主页面
     def back_to_chat_page(self, max_retries: int = 10) -> bool:

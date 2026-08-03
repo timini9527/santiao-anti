@@ -43,13 +43,8 @@ class BasePage:
         :param expect_missing: 预期元素不存在 (用于断言元素不应出现的场景)
         :return:
         """
-        # 1. 临时将手机端的 Selector 查找超时压缩至 500 毫秒（防止手机端死等卡死）
-        try:
-            self.driver.update_settings({"waitForSelectorTimeout": 500})
-        except Exception:
-            pass
         logger.info(f"🔎 正在查找元素: {locator} (模式: {condition})")
-        wait = WebDriverWait(self.driver, timeout)
+        wait = WebDriverWait(self.driver, timeout, poll_frequency=0.2)
         # 如果这里超时报错， @catch_exception 会自动捕获、截图、写 error 日志
         if condition == "visibility":  # 等待可见
             element = wait.until(
@@ -63,10 +58,6 @@ class BasePage:
             element = wait.until(
                 EC.presence_of_element_located(locator)
             )
-        try:
-            self.driver.update_settings({"waitForSelectorTimeout": 10000})
-        except Exception:
-            pass
         return element
 
     @catch_elements_exception

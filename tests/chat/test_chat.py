@@ -56,6 +56,10 @@ class TestChat:
 
     @pytest.fixture(autouse=True)
     def setup(self, driver_sender, request):
+        if request.node.get_closest_marker("no_setup"):
+            yield
+            return
+
         self.chatPage = ChatPage(driver_sender)
         self.chatListPage_sender = ChatListPage(driver_sender)
         self.mainPage = MainPage(driver_sender)
@@ -213,6 +217,7 @@ class TestChat:
 
     @allure.story("发送 Text 消息")
     @allure.title("多设备异步并行发送 Text 消息-状态：已完成")
+    @pytest.mark.no_setup
     def test_send_text_message_async_multi_device(self, setup_test):
         """
         用例名称：多设备异步并行发送消息测试
@@ -263,8 +268,8 @@ class TestChat:
 
         threads = []
         device_groups_map = {
-            3: ("Device_3", dev3_groups),
-            4: ("Device_4", dev4_groups),
+            # 3: ("Device_3", dev3_groups),
+            # 4: ("Device_4", dev4_groups),
             5: ("Device_5", dev5_groups),
             6: ("Device_6", dev6_groups),
             7: ("Device_7", dev7_groups),

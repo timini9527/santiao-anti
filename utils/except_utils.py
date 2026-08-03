@@ -4,7 +4,12 @@ import inspect
 import re
 from functools import wraps
 import allure
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import (
+    NoSuchElementException,
+    TimeoutException,
+    WebDriverException,
+)
+from urllib3.exceptions import HTTPError
 from core.logger_utils import logger
 
 
@@ -21,17 +26,19 @@ def _take_screenshot_on_failure(driver, locator):
 
         # 2. 附加到 Allure 报告 (直接取二进制，不用存本地也能传)
         png_data = driver.get_screenshot_as_png()
-        allure.attach(png_data, name=f"失败截图: {clean_locator}", attachment_type=allure.attachment_type.PNG)
-
+        allure.attach(
+            png_data,
+            name=f"失败截图: {clean_locator}",
+            attachment_type=allure.attachment_type.PNG,
+        )
         # 3. 保存到本地 (可选，根据你的需求保留)
-        screenshot_dir = os.path.join(os.getcwd(), 'screenshots')
-        os.makedirs(screenshot_dir, exist_ok=True)  # Python 3.2+ 更优雅的创建目录方式
-        file_path = os.path.join(screenshot_dir, file_name)
-        driver.save_screenshot(file_path)
+        with open(file_path, "wb") as screenshot_file:
+            screenshot_file.write(png_data)
 
         logger.info(f"📸 已保存异常截图至: {file_path}")
-    except Exception as e:
+    except (HTTPError, WebDriverException):
         logger.warning(f"❌ 自动截图失败: {e}")
+        raise
 
 
 # ==========================================
@@ -82,7 +89,7 @@ def catch_exception(func):
 
         try:
             return func(self, *args, **kwargs)
-        except Exception as e:
+        except (TimeoutException, NoSuchElementException) as e:
             # 场景 1：预期元素不存在 (断言 "不应该出现" 的场景)
             if expect_missing:
                 logger.info(f"✅ 元素预期不存在，验证通过: {locator}")
@@ -98,6 +105,27 @@ def catch_exception(func):
             if hasattr(self, 'driver') and self.driver:
                 _take_screenshot_on_failure(self.driver, locator)
             return None
+        except HTTPError as error:
+            logger.error(
+                f"❌ Appium HTTP通信异常，"
+                f"停止当前操作: {locator} | "
+                f"{type(error).__name__}: {error}"
+            )
+            raise
+        except WebDriverException as error:
+            logger.error(
+                f"❌ Appium/WebDriver异常，"
+                f"停止当前操作: {locator} | "
+                f"{type(error).__name__}: {error}"
+            )
+            raise
+        except Exception as error:
+            logger.error(
+                f"❌ 元素查询发生程序异常: "
+                f"{locator} | "
+                f"{type(error).__name__}: {error}"
+            )
+            raise
     return wrapper
 
 
@@ -117,22 +145,57 @@ def catch_elements_exception(func):
 
         try:
             return func(self, *args, **kwargs)
-        except Exception as e:
-            # 场景 1：预期元素不存在
+        except (TimeoutException, NoSuchElementException) as error:
             if expect_missing:
-                logger.info(f"✅ 元素列表预期为空，验证通过: {locator}")
+                logger.info(
+                    f"✅ 元素列表预期为空: {locator}"
+                )
                 return []
 
-            # 场景 2：静默模式
             if not raise_err:
-                logger.warning(f"⚠️ 未找到元素列表 (静默模式): {locator}， 详情: {str(e)}")
+                logger.warning(
+                    f"⚠️ 未找到元素列表，静默返回: "
+                    f"{locator}"
+                )
                 return []
 
-            # 场景 3：默认模式 → 真正的异常
-            logger.error(f"❌ 查找元素列表失败: {locator}")
-            if hasattr(self, 'driver') and self.driver:
-                _take_screenshot_on_failure(self.driver, locator)
+            logger.error(
+                f"❌ 元素列表等待超时或未找到: "
+                f"{locator} | {type(error).__name__}"
+            )
+
+            if hasattr(self, "driver") and self.driver:
+                _take_screenshot_on_failure(
+                    self.driver,
+                    locator,
+                )
+
             return []
+
+        except HTTPError as error:
+            logger.error(
+                f"❌ Appium HTTP通信异常，"
+                f"停止当前列表查询: {locator} | "
+                f"{type(error).__name__}: {error}"
+            )
+            raise
+
+        except WebDriverException as error:
+            logger.error(
+                f"❌ Appium/WebDriver异常，"
+                f"停止当前列表查询: {locator} | "
+                f"{type(error).__name__}: {error}"
+            )
+            raise
+
+        except Exception as error:
+            logger.error(
+                f"❌ 元素列表查询发生程序异常: "
+                f"{locator} | "
+                f"{type(error).__name__}: {error}"
+            )
+            raise
+
     return wrapper
 
 

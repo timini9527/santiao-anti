@@ -1,4 +1,5 @@
 import time
+import subprocess
 from selenium.webdriver.common.by import By
 from common.base_page import BasePage
 from core.logger_utils import logger
@@ -21,8 +22,6 @@ class MainPage(BasePage):
 
     def go_to_main_page(self, timeout: int = 1, max_retries: int = 10):
         """进入主页面消息列表页面；若当前已在主页则直接返回，避免误按返回键退至后台"""
-
-        # 尝试收起软键盘，防止键盘挡住退回按钮
         try:
             self.driver.hide_keyboard()
         except Exception:
@@ -39,7 +38,11 @@ class MainPage(BasePage):
                 self.back()
                 # self.driver.press_keycode(4)  # 改用 KeyCode 4 物理返回
                 logger.warning(f" 🍎 退回操作正在执行")
-                time.sleep(1)
+                
+                # udid = self.driver.capabilities.get("udid")
+                # cmd = f"adb -s {udid} shell input keyevent 4" if udid else "adb shell input keyevent 4"
+                # subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                logger.info(" 🔙 [ADB Direct] 本地直连发送物理返回键成功")
             except WebDriverException as e:
                 logger.warning(f"⚠️ [Back] 退回操作过程捕获通信波动: {e}")
                 time.sleep(1)

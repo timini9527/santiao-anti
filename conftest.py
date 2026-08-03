@@ -10,7 +10,7 @@ from pages.main.main_page import MainPage
 
 logger = logging.getLogger(__name__)
 
-socket.setdefaulttimeout(15)
+# socket.setdefaulttimeout(15)
 
 def _get_default_env() -> str:
     """从 config/devices.yaml 中读取默认的运行环境，保持配置的一致性"""

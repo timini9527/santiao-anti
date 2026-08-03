@@ -2,6 +2,7 @@ import copy
 import os
 import subprocess
 from appium import webdriver
+from appium.webdriver.client_config import AppiumClientConfig
 from appium.options.android import UiAutomator2Options
 from core.logger_utils import logger
 from utils.file_reader.data_loader import load_yaml_data
@@ -173,7 +174,23 @@ class DriverFactory:
                 f"探测失败原因: {e}\n"
             )
 
-        driver = webdriver.Remote(command_executor=appium_url, options=options)
+        # driver = webdriver.Remote(command_executor=appium_url, options=options)
+        appium_http_timeout = 20
+
+        client_config = AppiumClientConfig(
+            remote_server_addr=appium_url,
+            timeout=appium_http_timeout,
+        )
+
+        logger.info(
+            f"[DriverFactory] Appium客户端HTTP超时: "
+            f"{appium_http_timeout}s"
+        )
+        driver = webdriver.Remote(
+            command_executor=appium_url,
+            options=options,
+            client_config=client_config,
+        )
 
         # 显式等待是最佳实践，隐式等待设为0防止冲突
         driver.implicitly_wait(0)
