@@ -62,9 +62,7 @@ class TestFriendRelationship:
     def _go_to_new_friend_page(self, side='R'):
         """辅助方法：进入‘新的朋友’申请列表页"""
         homePage = self.homePageR if side == 'R' else self.homePageS
-        homePage.click_bottom_expand_button()
-        homePage.click_friend()
-        homePage.wait_for_friend_page_load()
+        homePage.go_to_friend_page()
         homePage.click_new_friend()
 
     def _go_to_contact_detail_from_list(self, name: str, side='R', raise_exception: bool = True, timeout: int = 8) -> bool:
@@ -74,10 +72,12 @@ class TestFriendRelationship:
         contactSelect = self.contactSelectPageR if side == 'R' else self.contactSelectPageS
         contactDetail = self.contactDetailPageR if side == 'R' else self.contactDetailPageS
         
-        mainPage.go_to_main_page()
-        homePage.click_bottom_expand_button()
-        homePage.click_friend()
-        homePage.wait_for_friend_page_load()
+        if contactDetail.wait_for_detail_page_load(timeout=1):
+            contactDetail.click_iv_back()
+                    
+        if not homePage.is_on_friend_page():
+            mainPage.go_to_main_page()
+            homePage.go_to_friend_page()
         
         click_ok = contactSelect.click_contact_by_name(name, raise_exception=raise_exception, search=False)
         if click_ok:
@@ -289,40 +289,37 @@ class TestFriendRelationship:
     @allure.title("先拉黑后删除的好友状态流转校验与黑名单优先级验证-状态：已完成")
     def test_relationship_flow_block_and_delete(self):
         """测试 A 将 B 加入黑名单 -> A 将 B 删除 -> B 给 A 发消息被黑名单拒收 -> A 将 B 移出黑名单 -> B 给 A 发消息提示需要验证"""
-        # with allure.step("1. 确认前置：确保双方已经是好友关系"):
-        #     self._ensure_friendship_established("加个好友拉黑删除重试")
+        with allure.step("1. 确认前置：确保双方已经是好友关系"):
+            self._ensure_friendship_established("加个好友拉黑删除重试")
 
-        # with allure.step("2. S端（A）在好友详情页中将 R端（B）加入黑名单"):
-        #     block_ok = self.contactDetailPageS.set_contact_blocked(True)
-        #     check.is_true(block_ok, "❌ S端将好友 B 加入黑名单操作失败")
+        with allure.step("2. S端（A）在好友详情页中将 R端（B）加入黑名单"):
+            block_ok = self.contactDetailPageS.set_contact_blocked(True)
+            check.is_true(block_ok, "❌ S端将好友 B 加入黑名单操作失败")
 
-        # with allure.step("3. S端（A）在其个人详情页中删除好友 B"):
-        #     delete_ok = self.contactDetailPageS.delete_contact()
-        #     check.is_true(delete_ok, "❌ S端删除好友 B 失败")
-
-        # with allure.step("4. 校验好友列表中已无 B"):
-        #     has_receiver = self._go_to_contact_detail_from_list(RECEIVER_NAME, side='S', raise_exception=False, timeout=2)
-        #     check.is_false(has_receiver, f"❌ S端已删除 B，但 S端通讯录里仍然存在好友: {RECEIVER_NAME}")
-
-        with allure.step("5. 交叉校验黑名单优先级：B 给 A 发消息。因为 B 在 A 黑名单中，提示应当为拉黑拒收，而非请求验证"):
+        with allure.step("3. 交叉校验黑名单优先级：B 给 A 发消息。因为 B 在 A 黑名单中，提示应当为拉黑拒收，而非请求验证"):
             notification = self._send_msg_and_get_notification(SENDER_NAME, "拉黑且删除后测试消息拒收_B发给A", side='R')
             check.is_in("对方已将您加入黑名单", notification, "❌ A将B拉黑且删除后，B发消息给A应获得[加入黑名单]提示，实际提示不匹配")
 
         with allure.step("6. S端（A）通过精确搜索找到非好友 B 的资料页，并将其移出黑名单"):
             # self._sender_search_profile(RECEIVER_PHONE)
-            
-            # 使用针对黑名单非好友资料页的移出方法
             unblock_ok = self.contactDetailPageS.remove_contact_from_blacklist()
             is_unblock = self.contactDetailPageS.get_toast("已拉出黑名单")
             check.is_true(unblock_ok, "❌ S端非好友名片页上移出黑名单操作失败")
             check.is_true(is_unblock, "❌ S端非好友名片页上移出黑名单后未弹出[已拉出黑名单]提示")
+            
+        with allure.step("4. S端（A）在其个人详情页中删除好友 B"):
+            delete_ok = self.contactDetailPageS.delete_contact()
+            check.is_true(delete_ok, "❌ S端删除好友 B 失败")
+
+        with allure.step("5. 校验好友列表中已无 B"):
+            has_receiver = self._go_to_contact_detail_from_list(RECEIVER_NAME, side='S', raise_exception=False, timeout=2)
+            check.is_false(has_receiver, f"❌ S端已删除 B，但 S端通讯录里仍然存在好友: {RECEIVER_NAME}")
 
         with allure.step("7. 交叉校验验证申请优先级：由于已移出黑名单但仍是单向删除，B 给 A 发消息的提示应当变更为请求验证"):
             notification = self._send_msg_and_get_notification(SENDER_NAME, "移出黑名单后测试请求验证_B发给A", side='R')
             check.is_in("发送好友验证", notification, "❌ A将B移出黑名单后（仍单向删除），B发消息给A应获得[发送好友验证]提示")
 
         with allure.step("8. 重新申请加回好友，进行数据与状态清理"):
-            self.mainPageS.go_to_main_page()
             self._sender_send_friend_request(RECEIVER_PHONE, "拉黑删除恢复清理")
             self._accept_friend_request_in_detail(SENDER_NAME)
 

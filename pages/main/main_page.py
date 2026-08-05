@@ -34,17 +34,17 @@ class MainPage(BasePage):
                 return
 
             try:
-                logger.warning(f" 🍎 当前未处于主页面，执行安全退回... 剩余尝试次数：{max_retries}")
+                logger.warning(f" ⚠️ 当前未处于主页面，执行安全退回... 剩余尝试次数：{max_retries}")
                 self.back()
                 # self.driver.press_keycode(4)  # 改用 KeyCode 4 物理返回
-                logger.warning(f" 🍎 退回操作正在执行")
+                logger.info(f" 🍎 退回操作正在执行")
                 
                 # udid = self.driver.capabilities.get("udid")
                 # cmd = f"adb -s {udid} shell input keyevent 4" if udid else "adb shell input keyevent 4"
                 # subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                logger.info(" 🔙 [ADB Direct] 本地直连发送物理返回键成功")
+                # logger.info(" 🔙 [ADB Direct] 本地直连发送物理返回键成功")
             except WebDriverException as e:
-                logger.warning(f"⚠️ [Back] 退回操作过程捕获通信波动: {e}")
+                logger.error(f"❌ [Back] 退回操作过程捕获通信波动: {e}")
                 time.sleep(1)
 
             max_retries -= 1

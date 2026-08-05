@@ -13,7 +13,7 @@ app:
   "appium:appActivity": "com.vvchat.vcapp.activity.MainActivity"
   # --- 稳定性与超时控制（已修正单位和合理值） ---
   "appium:uiautomator2ServerLaunchTimeout": 30000   # 【毫秒】等待UIA2服务启动（原6000太短，改为30000防报错）
-  "appium:uiautomator2ServerReadTimeout": 15000     # Appium等待手机端UiAutomator2 Server响应的最长时间
+  "appium:uiautomator2ServerReadTimeout": 10000     # Appium等待手机端UiAutomator2 Server响应的最长时间
   "appium:adbExecTimeout": 20000                    # 【毫秒】ADB执行超时时间（原6000极易导致adb卡死，改为20000）
   "appium:newCommandTimeout": 120                   # 【秒】！新命令超时时间（原6000是100分钟，现改为120秒防资源死锁）
   "appium:ignoreHiddenApiPolicyError": true         # 【关键】忽略修改隐藏 API 策略时的权限错误 (解决 Security exception)
@@ -41,6 +41,11 @@ app:
   "appium:settings[waitForIdleTimeout]": 0
   "appium:settings[waitForSelectorTimeout]": 500
   
+  # adb -s 3B65BN02GU600000 shell settings put global cached_apps_freezer disabled
+  # adb -s 3B65BN02GU600000 shell svc power stayon true
+  # adb -s 3B65BN02GU600000 reboot
+  # adb -s 3B65BN02GU600000 wait-for-device
+  # adb -s 3B65BN02GU600000 shell settings get global cached_apps_freezer
 
 devices:
   dev:
@@ -52,10 +57,9 @@ devices:
       # platformVersion: "12.0"
       # udid: "20a5fa17"
       # udid: "3B65BN02GU600000"
-      udid: "192.168.1.29:5554"
+      # udid: "192.168.1.29:5554"
+      udid: "nzwcvo9ls87hws7t"
       # platformVersion: "16.0"
-      # udid: "nzwcvo9ls87hws7t"
-      # platformVersion: "13.0"
       # udid: "emulator-5554"   # 模拟器
       # udid: "emulator-5556"   # 模拟器
       deviceName: "SenderPhone"
@@ -67,8 +71,8 @@ devices:
     receiver:
       platformName: "Android"
       # platformVersion: "12.0"
-      udid: "3B65BN02GU600000"  
-      # udid: "192.168.1.111:5555"  
+      # udid: "3B65BN02GU600000"  
+      udid: "192.168.1.111:37871"  
       # udid: "192.168.1.29:36457"
       # udid: "emulator-5558"   # 模拟器  
       # udid: "emulator-5560"     # 模拟器（注意：此处的 udid 优先被 Web 回执中的 "设备1" 动态覆盖）

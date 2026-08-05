@@ -22,7 +22,7 @@ ENABLE_CONSOLE_LOG = True
 class AdvancedFormatter(logging.Formatter):
     """高级文件日志格式化器（添加统一的对齐图标，无 ANSI 颜色 escape 码）"""
     LEVEL_ICONS = {
-        'DEBUG': '🔍 ',
+        'DEBUG': '💠 ',
         'INFO': '🟢 ',
         'WARNING': '🟡 ',
         'ERROR': '🔴 ',
@@ -40,7 +40,7 @@ class AdvancedFormatter(logging.Formatter):
 class AdvancedColoredFormatter(colorlog.ColoredFormatter):
     """高级控制台日志格式化器（带对齐图标，且支持单独对元数据着色，保持正文清晰）"""
     LEVEL_ICONS = {
-        'DEBUG': '🔍 ',
+        'DEBUG': '💠 ',
         'INFO': '🟢 ',
         'WARNING': '🟡 ',
         'ERROR': '🔴 ',
@@ -138,7 +138,12 @@ class LoggerUtils:
                 datefmt=date_fmt_str,
                 reset=True,
                 log_colors={
-                    '🔍 ': 'cyan',       # 匹配 DEBUG
+                    'DEBUG': 'cyan',   
+                    'INFO': 'green',
+                    'WARNING': 'yellow',
+                    'ERROR': 'red',
+                    'CRITICAL': 'bold_red',
+                    '💠 ': 'cyan',       # 匹配 DEBUG
                     '🟢 ': 'green',      # 匹配 INFO
                     '🟡 ': 'yellow',     # 匹配 WARNING
                     '🔴 ': 'red',        # 匹配 ERROR

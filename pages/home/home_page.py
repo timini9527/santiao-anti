@@ -433,14 +433,34 @@ class HomePage(BasePage):
     # ================================================================================
     # 好友页面相关
     # ================================================================================
+        # 好友页面 - 判断当前是否处于好友页面（纯检测，不刷无用日志）
+    def is_on_friend_page(self, timeout: int = 1) -> bool:
+        """ 判断当前是否已处于好友/通讯录页面 """
+        try:
+            return self.get_attribute(HomeLocator.TV_TITLE, 'text', timeout=timeout) == '好友'
+        except Exception:
+            return False
+
+    # 好友页面 - 导航进入好友/通讯录页面
+    def go_to_friend_page(self, timeout: int = 10) -> bool:
+        """ 导航进入好友/通讯录页面（若当前已处于好友页则自动直接返回） """
+        if self.is_on_friend_page(timeout=1):
+            logger.info("🍏 当前已处于好友/通讯录页面，无需重复跳转")
+            return True
+        self.click_bottom_expand_button()
+        self.click_friend()
+        return self.wait_for_friend_page_load(timeout=timeout)
+
     # 好友页面 - 等待好友页面加载完成
     def wait_for_friend_page_load(self, timeout: int = 10) -> bool:
-        """ 好友页面 - 等待好友页面加载完成  """
-        is_exit = self.get_attribute(HomeLocator.TV_TITLE, 'text', timeout=timeout) == '好友'
+        """ 好友页面 - 等待好友页面加载完成 """
+        is_exit = self.is_on_friend_page(timeout=timeout)
         if not is_exit:
-            logger.warning(f"⚠️ 当前页面不是好友页面")
-        logger.info(f"✅ 好友页面加载完成")
+            logger.warning("⚠️ 当前页面不是好友页面")
+        else:
+            logger.info("✅ 好友页面加载完成")
         return is_exit
+
     
     # 好友页面 - 新的朋友文本
     def get_new_friend_text(self) -> str:

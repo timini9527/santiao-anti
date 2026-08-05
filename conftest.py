@@ -173,6 +173,33 @@ def prepare_api_token():
     # assert success, "API 账号登录失败"
     pass
 
+
+_DRIVER_FIXTURE_NAMES = (
+    "driver_sender",
+    "driver_receiver",
+    "driver_device3",
+    "driver_device4",
+    "driver_device5",
+    "driver_device6",
+    "driver_device7",
+    "driver_device8",
+    "driver_device9",
+)
+
+
+@pytest.fixture(autouse=True)
+def ensure_driver_session_health(request):
+    """每条用例执行前检查其 Driver；最近有成功命令时只做内存判断。"""
+    for fixture_name in _DRIVER_FIXTURE_NAMES:
+        if fixture_name not in request.fixturenames:
+            continue
+
+        driver = request.getfixturevalue(fixture_name)
+        health_check = getattr(driver, "ensure_healthy", None)
+        if health_check:
+            health_check(timeout=2.0)
+
+
 # --- Driver Fixtures ---
 @pytest.fixture(scope="session")
 def driver_sender():
