@@ -4,6 +4,7 @@ import time
 import logging
 from logging.handlers import TimedRotatingFileHandler
 import colorlog
+from colorlog.escape_codes import parse_colors
 
 
 # 日志保存路径
@@ -22,11 +23,11 @@ ENABLE_CONSOLE_LOG = True
 class AdvancedFormatter(logging.Formatter):
     """高级文件日志格式化器（添加统一的对齐图标，无 ANSI 颜色 escape 码）"""
     LEVEL_ICONS = {
-        'DEBUG': '💠 ',
+        'DEBUG': '🔵 ',
         'INFO': '🟢 ',
         'WARNING': '🟡 ',
         'ERROR': '🔴 ',
-        'CRITICAL': '🚨 ',
+        'CRITICAL': '🟥 ',
     }
 
     def format(self, record):
@@ -40,17 +41,21 @@ class AdvancedFormatter(logging.Formatter):
 class AdvancedColoredFormatter(colorlog.ColoredFormatter):
     """高级控制台日志格式化器（带对齐图标，且支持单独对元数据着色，保持正文清晰）"""
     LEVEL_ICONS = {
-        'DEBUG': '💠 ',
+        'DEBUG': '🔵 ',
         'INFO': '🟢 ',
         'WARNING': '🟡 ',
         'ERROR': '🔴 ',
-        'CRITICAL': '🚨 ',
+        'CRITICAL': '🟥 ',
     }
 
     def format(self, record):
         orig_levelname = record.levelname
+        line_color = parse_colors(self.log_colors.get(orig_levelname, ""))
         record.levelname = self.LEVEL_ICONS.get(orig_levelname, orig_levelname)
         result = super().format(record)
+        # 部分终端会在换行时丢失 ANSI 状态，因此每个物理行都重新应用当前日志级别颜色。
+        if line_color and "\n" in result:
+            result = result.replace("\n", f"\n{line_color}")
         record.levelname = orig_levelname
         return result
 
@@ -138,16 +143,16 @@ class LoggerUtils:
                 datefmt=date_fmt_str,
                 reset=True,
                 log_colors={
-                    'DEBUG': 'cyan',   
+                    'DEBUG': 'light_cyan',
                     'INFO': 'green',
                     'WARNING': 'yellow',
                     'ERROR': 'red',
                     'CRITICAL': 'bold_red',
-                    '💠 ': 'cyan',       # 匹配 DEBUG
+                    '🔵 ': 'light_cyan', # 匹配 DEBUG
                     '🟢 ': 'green',      # 匹配 INFO
                     '🟡 ': 'yellow',     # 匹配 WARNING
                     '🔴 ': 'red',        # 匹配 ERROR
-                    '🚨 ': 'bold_red',   # 匹配 CRITICAL
+                    '🟥 ': 'bold_red',   # 匹配 CRITICAL
                 }
             )
             console_handler.setFormatter(color_formatter)

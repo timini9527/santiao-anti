@@ -10,17 +10,17 @@ from selenium.common.exceptions import WebDriverException
 #   主页面
 class MainPage(BasePage):
 
-    def is_in_main_page(self, timeout: int = 1) -> bool:
+    def is_in_main_page(self, timeout: int = 1, raise_exception: bool = False) -> bool:
         """ 判断当前是否已处于主页面 """
-        title = self.get_attribute(HomeLocator.MIDDLE_TITLE, 'text', timeout=timeout, raise_exception=False)
+        title = self.get_attribute(HomeLocator.MIDDLE_TITLE, 'text', timeout=timeout, raise_exception=raise_exception)
         if title and '三条' in title:
-            logger.info(" 🍏 当前已成功处于主页面 (Title: 三条)")
+            logger.info("🍏 当前已成功处于主页面 (Title: 三条)")
             return True
         
-        logger.warning(" ⚠️ 当前未处于主页面")
+        logger.warning("⚠️ 当前未处于主页面")
         return False
 
-    def go_to_main_page(self, timeout: int = 1, max_retries: int = 10):
+    def go_to_main_page(self, timeout: int = 1, max_retries: int = 10, raise_exception: bool = False):
         """进入主页面消息列表页面；若当前已在主页则直接返回，避免误按返回键退至后台"""
         try:
             self.driver.hide_keyboard()
@@ -28,16 +28,16 @@ class MainPage(BasePage):
             pass
 
         while max_retries > 0:
-            if self.is_in_main_page(timeout=timeout):
-                logger.info(" 🍏 当前已成功处于主页面，无需退回")
+            if self.is_in_main_page(timeout=timeout, raise_exception=raise_exception):
+                logger.info("🍏 当前已成功处于主页面，无需退回")
                 time.sleep(0.5)
                 return
 
             try:
-                logger.warning(f" ⚠️ 当前未处于主页面，执行安全退回... 剩余尝试次数：{max_retries}")
+                logger.warning(f"⚠️ 当前未处于主页面，执行安全退回... 剩余尝试次数：{max_retries}")
                 self.back()
                 # self.driver.press_keycode(4)  # 改用 KeyCode 4 物理返回
-                logger.info(f" 🍎 退回操作正在执行")
+                logger.info(f"🍎 退回操作正在执行")
                 
                 # udid = self.driver.capabilities.get("udid")
                 # cmd = f"adb -s {udid} shell input keyevent 4" if udid else "adb shell input keyevent 4"
