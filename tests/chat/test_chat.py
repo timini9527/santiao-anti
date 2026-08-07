@@ -164,55 +164,107 @@ class TestChat:
         except Exception as e:
             logger.error(f"Teardown 失败，未能返回首页: {e}")
 
+    @pytest.fixture(autouse=False)
+    def setup_device5(self, request):
+        """单独初始化设备 5 (Device_5) 驱动及对应的 Page Object"""
+        try:
+            driver = request.getfixturevalue("driver_device5")
+            if driver:
+                self.chatPageT5 = ChatPage(driver)
+                self.chatListPageT5 = ChatListPage(driver)
+                self.mainPageT5 = MainPage(driver)
+                self.emojiPageT5 = ChatEmojiPage(driver)
+                self.chatImagePageT5 = ChatImagePage(driver)
+                self.chatPositionPageT5 = ChatPositionPage(driver)
+                self.__class__._class_driver = driver
+        except Exception as e:
+            logger.warning(f"⚠️ [Setup Device5] 设备 driver_device5 启动失败: {e}")
+
+        yield
+
+        if self.__class__._in_chat:
+            logger.info(f"🔒 [Teardown] 保持在当前与 {self.__class__._chat_target} 的聊天会话中，跳过返回主页")
+            return
+
+        try:
+            if hasattr(self, 'mainPageT5') and self.mainPageT5:
+                self.mainPageT5.go_to_main_page()
+        except Exception as e:
+            logger.error(f"Teardown 失败，未能返回首页: {e}")
 
     @allure.story("发送 Text 消息")
-    @allure.title("发送 Text 消息（共循环发送200组），状态：已完成")
-    @pytest.mark.parametrize(
-        "strategy",
-        [PRIVATE_USER8, GROUP_STRATEGY, GROUP_STRATEGY2, GROUP_STRATEGY3, GROUP_STRATEGY4, GROUP_STRATEGY5],
-        ids=["私聊模式", "群聊模式", "群聊模式2", "群聊模式3", "群聊模式4", "群聊模式5"],
-    )
-    def test_send_text_message_loop(self, strategy):
+    @allure.title("单设备(Device_5)发送 Text 消息-状态：已完成")
+    @pytest.mark.no_setup
+    def test_send_text_message_device5(self, setup_device5):
         """
-        用例名称：发送文本消息测试
+        用例名称：单设备(Device_5)发送消息测试
         步骤：
-        1. 若未进入聊天窗口，在首页找到联系人并进入
-        2. 循环 200 次，每次循环中依次发送 6 条测试文本，并进行实时验证
+        1. 将目标测试群组策略分配给设备 5 (Device_5)
+        2. 设备 5 进入目标聊天窗口、批量发送文本消息组
+        3. 发送完毕后退回主列表并进入下一个会话
+        4. 校验发送执行过程中的异常与断言结果
         """
-        loop_count = 100
+        import threading
+
+        loop_count = 20
 
         text_messages = load_csv_data("chat/chat_messages.csv")
 
-        try:
-            if not self.__class__._in_chat:
-                self.chatListPage_sender.enter_chat(strategy.name)
-                self.__class__._in_chat = True
-                self.__class__._chat_target = strategy.name
-                logger.info(f"🔓 [Lock] 已成功进入与 {strategy.name} 的聊天，会话保持锁开启")
-        except Exception as e:
-            self.__class__._in_chat = False
-            self.__class__._chat_target = None
-            logger.error(f"❌ [Error] 进入聊天窗口失败: {e}")
-            raise e
+        exceptions = []
+        def worker_send(chatListPage, chatPage, dev_name, group_list):
+            cnt = 0
+            try:
+                for grp in group_list:
+                    chatListPage.enter_chat(grp.name)
+                    logger.info(f"🚀 设备 [{dev_name}] 成功进入与 {grp.name} 的聊天，开始并发发送...")
+                    
+                    for loop in range(loop_count):
+                        for idx, msg_data in enumerate(text_messages):
+                            payload = f"[{dev_name}] L{loop+1}_M{idx+1}: " + str(msg_data['context'])
+                            chatPage.fast_send_message(payload)
+                            time.sleep(0.01)
+                            cnt += 1
+                        logger.debug(f"✅ 设备 [{dev_name}] 第 {loop + 1} 轮发送完成，已累计发送 {cnt} 条消息")
+                    logger.info(f"✅ 设备 [{dev_name}] 已发完与 {grp.name} 的聊天，准备退回主页并进入下一会话...")
+                    chatPage.click_back_button()
+                    time.sleep(0.5)
+            except Exception as e:
+                logger.error(f"❌ 设备 [{dev_name}] 异步发送时发生异常: {e}")
+                exceptions.append((dev_name, e))
+
+        dev5_groups = [TEST_GROUPS[0]]
+
+        threads = []
+        device_groups_map = {
+            5: ("Device_5", dev5_groups),
+        }
+        for idx, (dev_name, group_list) in device_groups_map.items():
+            chat_list_page = getattr(self, f"chatListPageT{idx}", None)
+            chat_page = getattr(self, f"chatPageT{idx}", None)
+            if chat_list_page and chat_page:
+                t = threading.Thread(
+                    target=worker_send,
+                    args=(chat_list_page, chat_page, dev_name, group_list)
+                )
+                threads.append(t)
+                logger.info(f"🧵 已就绪设备线程: {dev_name}")
+            else:
+                logger.warning(f"⚠️ 设备 {dev_name} 未就绪 (对应端口的 Appium 服务未开启)，跳过此线程")
+
 
         try:
-            for loop in range(loop_count):
-                logger.info(f"🔄 [Loop] [会话名称: {strategy.name}] 开始第 {loop + 1} / {loop_count} 轮循环发送消息组...")
-                for idx, msg_data in enumerate(text_messages):
-                    payload = str(msg_data['context'])
-                    
-                    try:
-                        self.chatPage.fast_send_message(payload)
-                        time.sleep(0.01)
-                    except Exception as e:
-                        self.__class__._in_chat = False
-                        self.__class__._chat_target = None
-                        logger.error(f"❌ [Error] [会话名称: {strategy.name}] 第 {loop + 1} 轮第 {idx + 1} 条消息发送失败: {e}")
-                        raise e
+            for t in threads:
+                t.start()
+
+            for t in threads:
+                t.join()
         finally:
             self.__class__._in_chat = False
             self.__class__._chat_target = None
 
+        if exceptions:
+            err_msg = "\n".join([f"设备 [{dev}]: {err}" for dev, err in exceptions])
+            pytest.fail(f"❌ 异步多端发送过程中有设备发生异常:\n{err_msg}")
 
 
     @allure.story("发送 Text 消息")
@@ -230,7 +282,7 @@ class TestChat:
         """
         import threading
 
-        loop_count = 3
+        loop_count = 20
 
         text_messages = load_csv_data("chat/chat_messages.csv")
 

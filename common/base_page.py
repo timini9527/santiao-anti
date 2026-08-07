@@ -321,6 +321,32 @@ class BasePage:
         logger.warning(f"⏱️ basePage-get_toast 未能捕获到预期【{expected_toast}】的提示框 (XML和OCR通道均未命中)")
         return False if expected_toast else ""
 
+    @allure.step("获取 Toast 弹窗文本")
+    def get_toast_text(self, timeout: float = 3.0) -> str:
+        """
+        监听并获取当前屏幕上显示的任意 Toast 提示框的文本内容（确保仅返回 str）。
+        :param timeout: 超时时间（秒）
+        :return: 捕获到的 Toast 文本；若超时未命中，则返回空字符串 ""
+        """
+        res = self.get_toast(expected_toast="", timeout=timeout)
+        if isinstance(res, str):
+            return res
+        return ""
+
+    @allure.step("校验 Toast 弹窗是否存在")
+    def verify_toast_exist(self, expected_toast: str, timeout: float = 3.0) -> bool:
+        """
+        在指定时间内校验是否存在包含指定期望文本的 Toast 弹窗（确保仅返回 bool）。
+        :param expected_toast: 期望的 Toast 文本内容
+        :param timeout: 超时时间（秒）
+        :return: 存在且匹配返回 True，超时未命中返回 False
+        """
+        if not expected_toast:
+            return False
+        res = self.get_toast(expected_toast=expected_toast, timeout=timeout)
+        return bool(res)
+
+
     @allure.step("轮询等待指定元素的文本符合预期条件")
     def wait_for_element_text(self, locator: tuple, expected_text: Union[str, list, tuple],
                                  timeout: float = 10.0, raise_exception: bool = True,
@@ -586,24 +612,52 @@ class BasePage:
 
     @allure.step("检查指定区域的 DOM 是否发生变化")
     def is_element_source_changed(self, locator: tuple, last_element_source: str) -> tuple[bool, str]:
+        """
+        判断指定区域的内容/布局是否有变化 (用于控制滑动翻页结束)。
+        [优化重构]：优先采用轻量级子元素属性与坐标签名算法，避免每次都获取并全量解析整页 XML。
+        若获取子元素异常，自动降级回退到 XML 全量解析兜底。
+        """
+        # 1. 尝试使用极速子元素状态签名方式 (首选，耗时约 50ms)
+        try:
+            child_loc = None
+            if locator[0] == AppiumBy.ID:
+                child_loc = (AppiumBy.XPATH, f'//*[@resource-id="{locator[1]}"]/*')
+            elif locator[0] == AppiumBy.XPATH:
+                base_xpath = locator[1].rstrip('/')
+                child_loc = (AppiumBy.XPATH, f'{base_xpath}/*')
+
+            if child_loc:
+                elements = self.find_elements(child_loc, timeout=2, raise_exception=False, expect_missing=True)
+                features = []
+                for el in elements:
+                    try:
+                        text = el.text or ""
+                        res_id = el.get_attribute("resource-id") or ""
+                        y = el.rect.get("y", 0)
+                        features.append(f"{res_id}_{text}_{y}")
+                    except Exception:
+                        pass
+                if features:
+                    signature = "|".join(features)
+                    is_changed = (signature != last_element_source) if last_element_source else True
+                    logger.info(f"⚡ [Fast Detection] 区域子元素状态是否变化: {is_changed} (签名长度: {len(signature)})")
+                    return is_changed, signature
+        except Exception as fast_err:
+            logger.debug(f"极速节点状态特征计算失败: {fast_err}，将使用全量 XML 降级兜底...")
+
+        # 2. 降级兜底：获取 page_source 并做 XML 局部解析 (耗时约 1500-3000ms)
         import xml.etree.ElementTree as ET
-        
         full_source = self.driver.page_source
         try:
-            # 1. 解析完整 XML
             root = ET.fromstring(full_source.encode('utf-8'))
-            
             target_node = None
-            # 2. 增强型节点查找
             if locator[0] == AppiumBy.ID:
                 target_id = locator[1]
-                # 遍历所有节点寻找匹配的 resource-id
                 for node in root.iter():
                     if node.get('resource-id') == target_id:
                         target_node = node
                         break
             elif locator[0] == AppiumBy.XPATH:
-                # 修复核心报错：如果 XPath 以 / 或 // 开头，ElementTree 会报错
                 xpath_expr = locator[1]
                 if xpath_expr.startswith('//'):
                     xpath_expr = '.' + xpath_expr
@@ -613,7 +667,6 @@ class BasePage:
                 try:
                     target_node = root.find(xpath_expr)
                 except Exception:
-                    # 如果 XPath 太复杂 ElementTree 搜不到，尝试提取 ID 兜底
                     import re
                     match = re.search(r"@resource-id=['\"]([^'\"]+)['\"]", locator[1])
                     if match:
@@ -623,7 +676,6 @@ class BasePage:
                                 target_node = node
                                 break
 
-            # 3. 比较结果
             if target_node is not None:
                 current_element_source = ET.tostring(target_node, encoding='unicode')
                 is_changed = (current_element_source != last_element_source) if last_element_source else True
@@ -633,8 +685,9 @@ class BasePage:
                 return True, ""
                 
         except Exception as e:
-            logger.error(f"提取指定区域 XML 失败: {e}")
+            logger.error(f"降级提取指定区域 XML 失败: {e}")
             return True, ""
+
 
     @allure.step("执行滑动操作")
     def swipe(self, start_x: int, start_y: int, end_x: int, end_y: int, duration: int = 500):
@@ -767,30 +820,33 @@ class BasePage:
         else:
             logger.warning(f"⚠️ 滑满上限({max_swipes}次)仍见变化，强制挂起停止")
 
-    @allure.step("通用动作: 模拟键盘点击“搜索/回车”")
-    def press_search_action(self, input_locator=None):
+    @allure.step("按键操作: 触发物理/软键盘按键")
+    def press_keycode(self, keycode: int = 66, input_locator=None) -> bool:
         """
-        [通用动作] 模拟键盘点击“搜索/回车”
-        :param input_locator: 输入框定位符 (仅用于通用 Keys 方式，Android Keycode 方式不需要)
+        [通用动作] 模拟发送物理/软键盘 Keycode 按键 (默认 66 为 ENTER/SEARCH 键，4 为 BACK 返回键)
+        :param keycode: Android 按键码 (66: ENTER/搜索, 4: BACK/返回, 67: DELETE/退格 等)
+        :param input_locator: 输入框定位符 (iOS/Web 兼容回落模式)
         """
         try:
-            # 方式 A: Android 原生 Keycode (推荐用于 Android Appium)
-            # 66 是 Android 的回车/搜索键 (KEYCODE_ENTER)
+            # 方式 A: Appium Android 原生 press_keycode
             if hasattr(self, 'driver') and hasattr(self.driver, 'press_keycode'):
-                logger.info("👉 使用 Android Keycode 66 触发搜索")
-                self.driver.press_keycode(66)
+                logger.info(f"👉 使用 Android Keycode {keycode} 触发按键")
+                self.driver.press_keycode(keycode)
+                return True
 
-            # 方式 B: 通用 Selenium Keys (推荐用于 Web 或 iOS，或者 Android 兼容模式)
+            # 方式 B: 通用 Selenium Keys (iOS / Web 兼容回落)
             elif input_locator:
                 logger.info("👉 使用 send_keys(Keys.ENTER) 触发搜索")
-                # 找到输入框，向其发送回车指令
                 element = self.find_element(*input_locator)
                 element.send_keys(Keys.ENTER)
+                return True
 
             else:
-                logger.error("❌ 无法触发搜索：未找到 driver.press_keycode 且未传入 input_locator")
+                logger.warning(f"⚠️ 无法触发 Keycode {keycode}: 当前驱动无 press_keycode 且未传入 input_locator")
+                return False
         except Exception as e:
-            logger.error(f"❌ 触发键盘搜索失败: {e}")
+            logger.error(f"❌ 触发键盘按键 Keycode {keycode} 失败: {e}")
+            raise e
     
     @allure.step("读取手机剪贴板内容")
     def paste_clipboard_text(self):

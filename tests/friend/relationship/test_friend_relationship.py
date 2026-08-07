@@ -128,7 +128,8 @@ class TestFriendRelationship:
         self.addFriendPageS.wait_for_send_friend_verify_page(timeout=5)
         self.addFriendPageS.input_remark(verify_message)
         self.addFriendPageS.click_finish()
-        toast = self.addFriendPageS.get_toast("发送成功")
+        toast = self.addFriendPageS.verify_toast_exist("发送成功")
+
         check.is_true(toast, "❌ S端点击发送好友申请后，未弹出 [发送成功] Toast 提示")
 
     
