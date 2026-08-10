@@ -254,11 +254,11 @@ class TestMoments:
     @pytest.mark.parametrize(
         "case_id, title, init_photo_count, add_photo_count, expected_behavior",
         [
-            ("MOMENT_PUB_001", "发布单张图片朋友圈", 1, 0, "success"),
-            ("MOMENT_PUB_002", "发布9张图片朋友圈", 9, 0, "success"),
-            ("MOMENT_PUB_003", "选择图片超过上限9张拦截提示", 10, 0, "overlimit_toast"),
-            ("MOMENT_PUB_004", "已选择图片少于9张时继续添加", 3, 2, "add_more_and_publish")
-        ], ids=["发布单张图片朋友圈", "发布9张图片朋友圈", "选择图片超过上限9张拦截提示", "已选择图片少于9张时继续添加"]
+            pytest.param("MOMENT_PUB_001", "发布单张图片朋友圈", 1, 0, "success", id="发布单张图片朋友圈"),
+            pytest.param("MOMENT_PUB_002", "发布9张图片朋友圈", 9, 0, "success", id="发布9张图片朋友圈"),
+            pytest.param("MOMENT_PUB_003", "选择图片超过上限9张拦截提示", 10, 0, "overlimit_toast", id="选择图片超过上限9张拦截提示"),
+            pytest.param("MOMENT_PUB_004", "已选择图片少于9张时继续添加", 3, 2, "add_more_and_publish", id="已选择图片少于9张时继续添加"),
+        ],
     )
     def test_post_image_moment_scenarios(self, request, case_id, title, init_photo_count, add_photo_count, expected_behavior):
         """测试多图发布朋友圈的各种场景 (包含单图发布、超限拦截和追加图片)"""
@@ -311,7 +311,13 @@ class TestMoments:
 
     @allure.story("发布朋友圈")
     @allure.title("朋友圈视频发布-状态：已完成")
-    @pytest.mark.parametrize("expect_overlimit_dialog", [False, True], ids=["正常发布", "超限弹窗处理后发布"])
+    @pytest.mark.parametrize(
+        "expect_overlimit_dialog",
+        [
+            pytest.param(False, id="正常发布"),
+            pytest.param(True, id="超限弹窗处理后发布"),
+        ],
+    )
     def test_post_video_moment(self, expect_overlimit_dialog):
         """测试发布视频朋友圈 (精准选择视频多媒体，支持超限弹窗处理)"""
         title = "朋友圈视频发布-超限弹窗处理后发布" if expect_overlimit_dialog else "朋友圈视频发布-正常发布"

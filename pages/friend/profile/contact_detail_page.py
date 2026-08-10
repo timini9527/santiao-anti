@@ -17,6 +17,15 @@ class ContactDetailPage(CommonPage):
             return True
         logger.warning("⚠️ [Wait - ContactDetail] 资料详情页未成功加载")
         return False
+    
+    # 资料页 - 等待资料卡加载成功
+    def wait_for_profile_card_load(self, timeout: int = 10, raise_exception: bool = True) -> bool:
+        is_exist = self.is_element_exist(ContactDetailLocator.ADD_FRIEND_TV_PROFILE_CARD_TITLE, timeout=timeout, raise_exception=raise_exception)
+        if is_exist:
+            logger.info("✅ [Wait - ContactDetail] 资料详情页加载成功")
+            return True
+        logger.warning("⚠️ [Wait - ContactDetail] 资料详情页未成功加载")
+        return False
 
     # 资料页 - 点击更多图标
     def click_iv_right(self):
@@ -89,6 +98,15 @@ class ContactDetailPage(CommonPage):
         self.click(ContactDetailLocator.SEND_MSG_BTN)
         logger.info("🚀 [Action - ContactDetail] 资料详情页 - 点击 [发送消息]")
         # time.sleep(1)
+
+    def has_send_message_button(self, timeout: int = 2) -> bool:
+        """资料页 - 判断是否显示 [发送消息] 按钮"""
+        visible = self.is_element_exist(ContactDetailLocator.SEND_MSG_BTN, timeout=timeout, raise_exception=False)
+        if visible:
+            logger.info("✅ [Action - ContactDetail] 资料详情页 - [发送消息] 按钮存在")
+        else:
+            logger.warning("⚠️ [Action - ContactDetail] 资料详情页 - [发送消息] 按钮不存在")
+        return visible
 
     # 资料页 - 点击音视频通话
     def click_voice_video_call(self):
@@ -191,13 +209,13 @@ class ContactDetailPage(CommonPage):
         return desc
 
     # 添加好友详情 - 检查是否显示为未添加好友
-    def is_add_friend_unfriend_visible(self) -> bool:
-        """ 添加好友详情 - 检查是否显示为未添加好友 """
-        res = self.is_element_exist(ContactDetailLocator.ADD_FRIEND_TV_ADD_FRIEND_XPATH)
+    def is_add_friend_unfriend_visible(self, timeout: int = 2, raise_exception: bool = False) -> bool:
+        """ 添加好友详情 - 检查是否显示为未添加好友 / [添加好友] 申请按钮 """
+        res = self.is_element_exist(ContactDetailLocator.ADD_FRIEND_TV_ADD_FRIEND_XPATH, timeout=timeout, raise_exception=raise_exception)
         if res:
-            logger.info(f" 🧐 [Action - ContactDetail] 添加好友页面 - 显示为未添加好友")
+            logger.info("🧐 [Action - ContactDetail] 添加好友页面 - 显示为未添加好友")
         else:
-            logger.error(f" ❌ [Action - ContactDetail] 添加好友页面 - 未显示未添加好友")
+            logger.warning("⚠️ [Action - ContactDetail] 添加好友页面 - 未显示未添加好友")
         return res
 
     # 添加好友详情 - 点击添加好友按钮

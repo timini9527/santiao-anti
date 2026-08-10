@@ -60,7 +60,8 @@ class AddFriendPage(BasePage):
             friend_content: 搜索的手机号或 STID 或 群ID等
         """
         self.click_search_input()
-        self.send_keys(AddFriendLocator.ET_SEARCH, friend_content)
+        if friend_content:
+            self.send_keys(AddFriendLocator.ET_SEARCH, friend_content)
         logger.info(f"🔍 [Action - AddFriend] 添加朋友页 - 搜索框输入内容: {friend_content}")
     
     # 添加朋友 - 点击取消
@@ -74,6 +75,15 @@ class AddFriendPage(BasePage):
         """ 添加朋友 - 点击确认搜索 """
         self.click(AddFriendLocator.TV_SEARCH_KEY_MARK)
         logger.info("⚙️ [Action - AddFriend] 添加朋友页 - 点击确认搜索")
+
+    def is_confirm_search_visible(self, timeout: int = 1) -> bool:
+        """添加朋友 - 判断确认搜索项是否可见"""
+        visible = self.is_element_exist(AddFriendLocator.TV_SEARCH_KEY_MARK, timeout=timeout, raise_exception=False)
+        if visible:
+            logger.info("✅ [Action - AddFriend] 添加朋友页 - 确认搜索项可见")
+        else:
+            logger.warning("⚠️ [Action - AddFriend] 添加朋友页 - 确认搜索项不可见")
+        return visible
     
     # 添加朋友 - 获取搜索结果昵称 item
     def get_search_result_item(self, raise_exception: bool = True) -> WebElement | None:
@@ -145,5 +155,3 @@ class AddFriendPage(BasePage):
         else:
             logger.error("❌ [Wait - AddFriend] 未能成功进入发送朋友验证页面")
         return isExit
-
-

@@ -135,7 +135,15 @@ class TestGroupBotKeyword:
 
     @allure.story("禁发关键词-添加关键词验证")
     @allure.title("校验最多添加 50 个关键词上限-状态：已完成")
-    @pytest.mark.parametrize("length", [0, 1, 50, 51], ids=["添加 0 个关键词", "添加第1个关键词", "添加第50个关键词", "添加第51个关键词"])
+    @pytest.mark.parametrize(
+        "length",
+        [
+            pytest.param(0, id="添加 0 个关键词"),
+            pytest.param(1, id="添加第1个关键词"),
+            pytest.param(50, id="添加第50个关键词"),
+            pytest.param(51, id="添加第51个关键词"),
+        ],
+    )
     def test_keyword_max_limit(self, length):
         """验证关键词最多只能添加 50 个的边界及上限提示"""
 
@@ -185,7 +193,13 @@ class TestGroupBotKeyword:
 
     @allure.story("禁发关键词-删除/清空关键词")
     @allure.title("校验删除关键词成功-状态：已完成")
-    @pytest.mark.parametrize("del_index", (1, 0), ids=["删除第1个关键词", "清空所有关键词"])
+    @pytest.mark.parametrize(
+        "del_index",
+        [
+            pytest.param(1, id="删除第1个关键词"),
+            pytest.param(0, id="清空所有关键词"),
+        ],
+    )
     def test_keyword_delete(self, del_index):
         """验证删除关键词功能"""
         with allure.step("1. 配置群助手-禁发关键词"):
@@ -228,7 +242,13 @@ class TestGroupBotKeyword:
     
     @allure.story("禁发关键词-输入规则限制")
     @allure.title("校验删除关键词二次确认流程-状态：已完成: {confirm_action}")
-    @pytest.mark.parametrize("confirm_action", ["confirm", "cancel"], ids=["确认删除", "取消删除"])
+    @pytest.mark.parametrize(
+        "confirm_action",
+        [
+            pytest.param("confirm", id="确认删除"),
+            pytest.param("cancel", id="取消删除"),
+        ],
+    )
     def test_keyword_delete_flow(self, confirm_action):
         """验证删除关键词时的二次确认弹窗的取消和确定逻辑"""
         with allure.step("1. 进入关键词配置页"):
@@ -270,13 +290,16 @@ class TestGroupBotKeyword:
     
     @allure.story("禁发关键词-警告语设置-添加")
     @allure.title("自定义警告语 - 配置校验与上限测试-状态：已完成")
-    @pytest.mark.parametrize("warning_count, warning_msg", [
-        (0, None), 
-        (1, ["第一条警告语"]),
-        (2, ["警告语敏感词：习近平"]),
-        (3, [f"自定义警告语{i+1}" for i in range(10)]),
-        (4, [f"超出上限的警告语{i+1}" for i in range(11)])],
-        ids=["添加0条警告语", "添加1条警告语", "添加敏感词警告语", "添加警告语到上限", "添加超过10条警告语"])
+    @pytest.mark.parametrize(
+        "warning_count, warning_msg",
+        [
+            pytest.param(0, None, id="添加0条警告语"),
+            pytest.param(1, ["第一条警告语"], id="添加1条警告语"),
+            pytest.param(2, ["警告语敏感词：敏感词"], id="添加敏感词警告语"),
+            pytest.param(3, [f"自定义警告语{i+1}" for i in range(10)], id="添加警告语到上限"),
+            pytest.param(4, [f"超出上限的警告语{i+1}" for i in range(11)], id="添加超过10条警告语"),
+        ],
+    )
     def test_group_bot_keyword_warning_message_setting(self, warning_count, warning_msg):
         """验证配置自定义警告语的规则与数量上限，包括空输入拦截和批量添加的边界值校验"""
         
@@ -331,11 +354,14 @@ class TestGroupBotKeyword:
 
     @allure.story("禁发关键词-警告语设置 - 删除")
     @allure.title("删除自定义警告语-状态：已完成")
-    @pytest.mark.parametrize("action, target_index, is_confirm", [
-        ("delete_custom", 1, True),    
-        ("delete_custom", 1, False),  
-        ("delete_last_one", 0, True)   
-        ], ids=["删除单条_确认", "删除单条_取消", "尝试删除最后一条警告语拦截"])
+    @pytest.mark.parametrize(
+        "action, target_index, is_confirm",
+        [
+            pytest.param("delete_custom", 1, True, id="删除单条_确认"),
+            pytest.param("delete_custom", 1, False, id="删除单条_取消"),
+            pytest.param("delete_last_one", 0, True, id="尝试删除最后一条警告语拦截"),
+        ],
+    )
     def test_group_bot_keyword_delete_warning_msg(self, action, target_index, is_confirm):
         """验证删除自定义警告语的功能"""
 
