@@ -117,6 +117,27 @@ class ContactTagGroupPage(BasePage):
         logger.error(f"❌ [Action - TagGroup] 未能找到分组 '{group_name}' 的编辑按钮")
         return False
 
+    # 管理分组页面 - 二次确认
+    def click_confirm_dialog(self) -> bool:
+        """ 管理分组页面 - 二次确认删除分组 """
+        if self.is_element_exist(ContactTagGroupLocator.DIALOG_CONFIRM_BTN, timeout=3):
+            self.click(ContactTagGroupLocator.DIALOG_CONFIRM_BTN)
+            logger.info("✅ [Action - TagGroup] 确认删除分组")
+            return True
+        logger.error("❌ [Action - TagGroup] 未找到删除二次确认弹窗")
+        return False
+    
+    # 管理分组页面 - 二次取消
+    def click_cancel_dialog(self) -> bool:
+        """ 管理分组页面 - 二次取消删除分组 """
+        if self.is_element_exist(ContactTagGroupLocator.DIALOG_CANCEL_BTN, timeout=3):
+            self.click(ContactTagGroupLocator.DIALOG_CANCEL_BTN)
+            logger.info("✅ [Action - TagGroup] 取消删除分组")
+            return True
+        logger.error("❌ [Action - TagGroup] 未找到取消二次确认弹窗")
+        return False
+    
+
 
     # =========================================================================
     # 3. 新建/管理分组详情页交互
@@ -163,17 +184,12 @@ class ContactTagGroupPage(BasePage):
         else:
             logger.warning("⚠️ [Action - TagGroup] 管理分组页面 - 未找到【删除分组】按钮，请检查分组是否已删除")
 
-    # 管理分组页面 - 删除分组完整交互流程（点击删除按钮 -> 弹窗二次确认并平滑切回列表页）
+    # 管理分组页面 - 删除分组完整交互流程（点击删除按钮 -> 弹窗二次确认并等待切回列表页）
     def delete_group_flow(self) -> bool:
         """ 管理分组页面 - 新建分组 - 删除分组完整交互流程（点击删除按钮 -> 弹窗二次确认并等待切回列表页） """
         logger.info("⚙️ [Action - TagGroup] 管理分组页面 - 新建分组 - 执行删除分组完整流程")
         self.click_delete_subgroup()
-        if self.is_element_exist(ContactTagGroupLocator.DIALOG_CONFIRM_BTN, timeout=3):
-            self.click(ContactTagGroupLocator.DIALOG_CONFIRM_BTN)
-            logger.info("✅ [Action - TagGroup] 确认删除分组")
-            return True
-        logger.error("❌ [Action - TagGroup] 未找到删除二次确认弹窗")
-        return False
+        return self.click_confirm_dialog()
 
     # 管理分组页面 - 指定删除分组或删除全部
     def delete_group_or_all_groups_flow(self, group_name: Optional[str] = None, is_all: bool = False) -> bool:
@@ -190,7 +206,10 @@ class ContactTagGroupPage(BasePage):
             if not self.click_group_edit_by_name(group_name):
                 logger.error(f"❌ [Action - TagGroup] 未能找到分组 '{group_name}' 的编辑按钮，删除操作终止")
                 return False
-            return self.delete_group_flow()
+            res = self.delete_group_flow()
+            if res:
+                self.wait_for_group_list_page_load(raise_exception=False)
+            return res
         else:
             logger.info("⚙️ [Action - TagGroup] 准备循环删除列表中所有的分组")
             deleted_count = 0

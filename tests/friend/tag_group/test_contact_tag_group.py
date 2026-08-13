@@ -8,7 +8,10 @@ from pages.friend.tag_group.contact_tag_group_page import ContactTagGroupPage
 from pages.common.contact_select_page import ContactSelectPage
 from pages.friend.profile.contact_detail_page import ContactDetailPage
 from core.logger_utils import logger
-RECEIVER_NAME = '极速自动化'
+
+
+
+
 
 @allure.epic('通讯录模块')
 @allure.feature('好友分组与标签管理')
@@ -28,48 +31,51 @@ class TestContactTagGroup:
 
     @pytest.fixture(autouse=True)
     def setup_base(self, driver_sender):
-        """用例级别前置与后置：初始化页面对象，后置确保停留在好友页面"""
-        self.mainPageS = MainPage(driver_sender)
-        self.homePageS = HomePage(driver_sender)
-        self.contactSelectPageS = ContactSelectPage(driver_sender)
-        self.contactDetailPageS = ContactDetailPage(driver_sender)
-        self.tagGroupPageS = ContactTagGroupPage(driver_sender)
-        self.tagGroupPage = self.tagGroupPageS
+        """用例级别前置与后置：初始化页面对象，后置确保安全留在分组管理列表页"""
+        self.mainPage = MainPage(driver_sender)
+        self.homePage = HomePage(driver_sender)
+        self.contactSelectPage = ContactSelectPage(driver_sender)
+        self.contactDetailPage = ContactDetailPage(driver_sender)
+        self.tagGroupPage = ContactTagGroupPage(driver_sender)
         yield
         try:
-            self.homePageS.click_friend()
+            if not self.tagGroupPage.wait_for_group_list_page_load(timeout=2, raise_exception=False):
+                self.tagGroupPage.click_iv_back()
+                if not self.tagGroupPage.wait_for_group_list_page_load(timeout=2, raise_exception=False):
+                    self.mainPage.go_to_main_page(raise_exception=False)
+                    self.homePage.click_bottom_expand_button()
+                    self.homePage.click_friend()
+                    self.homePage.click_category_manager()
         except Exception as e:
-            logger.error(f'⚠️ [Teardown] 返回好友页面失败: {e}')
+            logger.error(f'⚠️ [Teardown] 返回分组列表页面失败: {e}')
 
-    def _go_to_group_list_page(self):
-        """前置辅助函数：导航至好友分组/标签管理列表页"""
-        self.contactDetailPage.wait_for_detail_page_load()
+
 
     @allure.story('新建分组')
-    @allure.title('FD_GROUP_TAG_001 - 正向创建好友分组、添加成员并校验展示')
+    @allure.title('FD_GROUP_TAG_001 - 正向创建好友分组、添加成员并校验展示-状态：已完成')
     def test_create_and_delete_contact_group_normal(self):
         """测试创建新好友分组，校验保存后正确在分组列表显示，并测试删除销毁流程"""
         test_group_name = f'自动化组_{int(time.time())}'
         try:
             with allure.step('1. 进入分组管理页并点击新建'):
                 self.tagGroupPage.wait_for_group_list_page_load()
-                self.tagGroupPage.click_create_new_group()
+                self.tagGroupPage.click_add_subgroup()
             with allure.step(f"2. 输入分组名称 '{test_group_name}' 并保存"):
-                self.tagGroupPage.input_group_name(test_group_name)
+                self.tagGroupPage.input_subgroup_name(test_group_name)
                 self.tagGroupPage.click_save_group()
-                toast = self.tagGroupPage.get_toast('创建成功', timeout=10)
+                toast = self.tagGroupPage.get_toast('保存成功', timeout=2)
                 check.is_true(toast, '❌ 未收到分组创建成功的 Toast 提示')
             with allure.step('3. 校验新创建的分组是否在列表中展示'):
                 self.tagGroupPage.wait_for_group_list_page_load()
-                group_names = self.tagGroupPage.get_group_names()
-                check.is_in(test_group_name, group_names, f"❌ 新创建的分组未在列表中出现: '{test_group_name}'")
+                group_names = self.tagGroupPage.get_group_tag_names()
+                check.is_true(any(test_group_name in g for g in group_names), f"❌ 新创建的分组未在列表中出现: '{test_group_name}'，实际列表: {group_names}")
         finally:
             with allure.step('4. 环境恢复：点击进入新建的分组并执行删除'):
-                if self.tagGroupPage.click_group_by_name(test_group_name):
+                if self.tagGroupPage.click_group_edit_by_name(test_group_name):
                     self.tagGroupPage.delete_group_flow()
-                    toast_del = self.tagGroupPage.get_toast('删除成功', timeout=10)
+                    toast_del = self.tagGroupPage.get_toast('删除成功', timeout=2)
                     check.is_true(toast_del, '❌ 未收到删除成功的 Toast 提示')
-                self.tagGroupPage.click_back()
+
 
     @allure.story('删除分组')
     @allure.title('FD_GROUP_TAG_005 - 正向删除好友分组并校验展示')
@@ -79,96 +85,130 @@ class TestContactTagGroup:
         test_group_name = f'自动化组_{int(time.time())}'
         try:
             with allure.step('1. 进入管理分组页面并点击【添加分组】'):
-                self.tagGroupPage.wait_for_group_list_page_load(page_title='1')
+                self.tagGroupPage.wait_for_group_list_page_load()
                 self.tagGroupPage.click_add_subgroup()
             with allure.step(f"2. 输入分组名称 '{test_group_name}' 并保存"):
                 self.tagGroupPage.input_subgroup_name(test_group_name)
                 self.tagGroupPage.click_save_group()
-                toast = self.tagGroupPage.get_toast('保存成功', timeout=10)
+                toast = self.tagGroupPage.get_toast('保存成功', timeout=2)
                 check.is_true(toast, '❌ 未收到分组保存成功的 Toast 提示')
             with allure.step('3. 校验新创建的分组是否在列表中展示'):
-                self.tagGroupPage.wait_for_group_list_page_load(page_title='1')
+                self.tagGroupPage.wait_for_group_list_page_load()
                 group_names = self.tagGroupPage.get_group_tag_names()
-                check.is_in(test_group_name, group_names, f"❌ 新创建的分组未在列表中出现: '{test_group_name}'")
+                check.is_true(any(test_group_name in g for g in group_names), f"❌ 新创建的分组未在列表中出现: '{test_group_name}'，实际列表: {group_names}")
             with allure.step('4. 执行删除该新建分组操作'):
                 del_result = self.tagGroupPage.delete_group_or_all_groups_flow(group_name=test_group_name)
                 check.is_true(del_result, f"❌ 删除分组流程执行失败: '{test_group_name}'")
             with allure.step('5. 校验删除后分组已从列表中移除'):
-                self.tagGroupPage.wait_for_group_list_page_load(page_title='1')
+                self.tagGroupPage.wait_for_group_list_page_load()
                 latest_names = self.tagGroupPage.get_group_tag_names()
-                check.is_not_in(test_group_name, latest_names, f"❌ 已删除的分组依然存在于列表中: '{test_group_name}'")
+                check.is_false(any(test_group_name in g for g in latest_names), f"❌ 已删除的分组依然存在于列表中: '{test_group_name}'，实际列表: {latest_names}")
         finally:
             with allure.step('6. 环境恢复：如果依然残留该测试分组则执行兜底删除'):
-                current_names = self.tagGroupPage.get_group_tag_names(timeout=2)
-                if test_group_name in current_names:
+                current_names = self.tagGroupPage.get_group_tag_names(timeout=2, raise_exception=False)
+                if any(test_group_name in g for g in current_names):
                     self.tagGroupPage.delete_group_or_all_groups_flow(group_name=test_group_name)
 
+
     @allure.story('删除分组')
-    @allure.title('批量清空所有好友分组并校验列表为空')
+    @allure.title('批量清空所有好友分组并校验列表为空-状态：已完成')
     @pytest.mark.destructive
     def test_delete_all_contact_groups(self):
         """测试批量清空所有好友分组，校验列表清空后的状态"""
         test_group_1 = f'批量组1_{int(time.time())}'
         test_group_2 = f'批量组2_{int(time.time())}'
         try:
+            with allure.step(f"1. 预先创建测试分组1 '{test_group_1}'"):
+                self.tagGroupPage.wait_for_group_list_page_load()
+                self.tagGroupPage.click_add_subgroup()
+                self.tagGroupPage.input_subgroup_name(test_group_1)
+                self.tagGroupPage.click_save_group()
+                self.tagGroupPage.wait_for_group_list_page_load()
+            with allure.step(f"2. 预先创建测试分组2 '{test_group_2}'"):
+                self.tagGroupPage.click_add_subgroup()
+                self.tagGroupPage.input_subgroup_name(test_group_2)
+                self.tagGroupPage.click_save_group()
+                self.tagGroupPage.wait_for_group_list_page_load()
             with allure.step('3. 校验测试分组是否均已成功展示'):
-                self.tagGroupPage.wait_for_group_list_page_load(page_title='0')
                 group_names = self.tagGroupPage.get_group_tag_names()
+                check.is_true(any(test_group_1 in g for g in group_names), f"❌ 预先创建的分组1未在列表中出现: '{test_group_1}'，实际列表: {group_names}")
+                check.is_true(any(test_group_2 in g for g in group_names), f"❌ 预先创建的分组2未在列表中出现: '{test_group_2}'，实际列表: {group_names}")
             with allure.step('4. 执行批量清空所有分组操作'):
                 del_all_result = self.tagGroupPage.delete_group_or_all_groups_flow(is_all=True)
                 check.is_true(del_all_result, '❌ 批量清空所有分组流执行失败')
             with allure.step('5. 校验列表是否已完全清空'):
-                self.tagGroupPage.wait_for_group_list_page_load(page_title='0')
-                remaining_names = self.tagGroupPage.get_group_tag_names(timeout=3)
+                self.tagGroupPage.wait_for_group_list_page_load()
+                remaining_names = self.tagGroupPage.get_group_tag_names(timeout=1, raise_exception=False)
                 check.equal(len(remaining_names), 0, f'❌ 批量删除后列表中依然残留分组: {remaining_names}')
         finally:
             with allure.step('6. 环境恢复：若仍有残留则强制清空'):
-                remaining = self.tagGroupPage.get_group_tag_names(timeout=2)
+                remaining = self.tagGroupPage.get_group_tag_names(timeout=1, raise_exception=False)
                 if remaining:
                     self.tagGroupPage.delete_group_or_all_groups_flow(is_all=True)
 
+
     @allure.story('分组边界')
-    @allure.title('FD_GROUP_TAG_002 - 分组名称长度边界参数化校验')
-    @pytest.mark.parametrize('input_length, expected_length', [pytest.param(10, 10, id='10字-正常'), pytest.param(15, 15, id='15字-上限'), pytest.param(16, 15, id='16字-超限截断')])
+    @allure.title('FD_GROUP_TAG_002 - 分组名称长度 30 字上限边界参数化校验-状态：已完成')
+    @pytest.mark.parametrize('input_length, expected_length', [
+        pytest.param(29, 29, id='29字-正常'),
+        pytest.param(30, 30, id='30字-上限'), 
+        pytest.param(31, 30, id='31字-超限截断')
+        ])
     def test_group_name_length_limit_parametrize(self, input_length: int, expected_length: int):
-        """参数化验证分组名称输入长度上限限制"""
-        raw_name = ('组' + 'x' * input_length)[:input_length]
+        """参数化验证分组名称输入 30 字上限限制及截断落库"""
+        unique_prefix = f'qa{time.time_ns() % 100000}_'
+        needed_len = input_length - len(unique_prefix)
+        raw_name = (unique_prefix + '组' * needed_len)[:input_length]
         expected_name = raw_name[:expected_length]
         try:
             with allure.step('1. 进入新建分组页'):
                 self.tagGroupPage.wait_for_group_list_page_load()
-                self.tagGroupPage.click_create_new_group()
+                self.tagGroupPage.click_add_subgroup()
             with allure.step(f'2. 输入 {input_length} 字名称，校验实际输入框截断保留 {expected_length} 字'):
-                self.tagGroupPage.input_group_name(raw_name)
-                actual_input = self.tagGroupPage.get_input_group_name()
+                self.tagGroupPage.input_subgroup_name(raw_name)
+                actual_input = self.tagGroupPage.get_subgroup_name_input_text()
                 check.equal(len(actual_input), expected_length, f'❌ 分组名称长度截断不匹配，实际保留: {len(actual_input)}')
                 check.equal(actual_input, expected_name, f"❌ 分组名称内容不匹配，实际: '{actual_input}'")
+            with allure.step('3. 点击保存按钮并校验分组列表中成功渲染'):
+                self.tagGroupPage.click_save_group()
+                self.tagGroupPage.wait_for_group_list_page_load()
+                group_names = self.tagGroupPage.get_group_tag_names()
+                check.is_true(any(expected_name in g for g in group_names), f"❌ 保存后分组未在列表中出现: '{expected_name}'")
         finally:
-            with allure.step('3. 取消并安全返回列表页'):
-                self.tagGroupPage.click_back()
+            with allure.step('4. 环境恢复：如果成功保存则删除该测试分组'):
+                current_names = self.tagGroupPage.get_group_tag_names(timeout=1, raise_exception=False)
+                if any(expected_name in g for g in current_names):
+                    self.tagGroupPage.delete_group_or_all_groups_flow(group_name=expected_name)
+                else:
+                    if not self.tagGroupPage.wait_for_group_list_page_load(timeout=1, raise_exception=False):
+                        self.tagGroupPage.click_iv_back()
+
 
     @allure.story('分组异常处理')
-    @allure.title('FD_GROUP_TAG_003 - 尝试创建重复名称分组的拦截校验')
+    @allure.title('FD_GROUP_TAG_003 - 尝试创建重复名称分组的拦截校验-状态：已完成')
     def test_duplicate_group_name_interception(self):
-        """测试连续创建相同名称的分组，校验系统弹窗/Toast 重名拦截"""
+        """测试连续创建相同名称的分组，校验系统 Toast 重名拦截及安全退出"""
         duplicate_name = f'重名测试_{int(time.time())}'
         try:
             with allure.step('1. 先创建一个基础分组'):
                 self.tagGroupPage.wait_for_group_list_page_load()
-                self.tagGroupPage.click_create_new_group()
-                self.tagGroupPage.input_group_name(duplicate_name)
+                self.tagGroupPage.click_add_subgroup()
+                self.tagGroupPage.input_subgroup_name(duplicate_name)
                 self.tagGroupPage.click_save_group()
-                self.tagGroupPage.get_toast('创建成功', timeout=10)
-            with allure.step('2. 再次尝试创建同名分组，校验拦截'):
+                toast_save = self.tagGroupPage.get_toast('保存成功', timeout=2)
+                check.is_true(toast_save, '❌ 基础分组未收到保存成功的 Toast 提示')
+            with allure.step('2. 再次尝试创建同名分组，校验重名拦截 Toast'):
                 self.tagGroupPage.wait_for_group_list_page_load()
-                self.tagGroupPage.click_create_new_group()
-                self.tagGroupPage.input_group_name(duplicate_name)
+                self.tagGroupPage.click_add_subgroup()
+                self.tagGroupPage.input_subgroup_name(duplicate_name)
                 self.tagGroupPage.click_save_group()
-                toast_dup = self.tagGroupPage.get_toast('分组名称已存在', timeout=10)
-                check.is_true(toast_dup, '❌ 未收到分组名称重复拦截 Toast')
+                toast_dup = self.tagGroupPage.get_toast('分组名已存在！', timeout=2)
+                check.is_true(toast_dup, '❌ 未收到 [分组名已存在！] 重复拦截 Toast')
         finally:
-            with allure.step('3. 清理测试数据'):
-                self.tagGroupPage.click_back()
-                if self.tagGroupPage.click_group_by_name(duplicate_name):
-                    self.tagGroupPage.delete_group_flow()
-                self.tagGroupPage.click_back()
+            with allure.step('3. 环境清理：退出当前重名编辑页，并删除创建的测试分组'):
+                if not self.tagGroupPage.wait_for_group_list_page_load(timeout=1, raise_exception=False):
+                    self.tagGroupPage.click_iv_back()
+                    self.tagGroupPage.click_cancel_dialog()
+                current_names = self.tagGroupPage.get_group_tag_names(timeout=1, raise_exception=False)
+                if any(duplicate_name in g for g in current_names):
+                    self.tagGroupPage.delete_group_or_all_groups_flow(group_name=duplicate_name)
