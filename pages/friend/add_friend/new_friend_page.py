@@ -9,9 +9,9 @@ class NewFriendPage(BasePage):
     """新的朋友申请列表页面对象 (对应 0.4 添加好友模块 新朋友申请处理)"""
 
     # 等待页面加载完成
-    def wait_for_new_friend_page_load(self, timeout: int = 10) -> bool:
+    def wait_for_new_friend_page_load(self, timeout: int = 10, raise_exception: bool = True) -> bool:
         """ 等待新的朋友页面加载完成 """
-        is_exit = self.wait_for_element_text(NewFriendLocator.TV_TITLE, expected_text="新的朋友", timeout=timeout)
+        is_exit = self.wait_for_element_text(NewFriendLocator.TV_TITLE, expected_text="新的朋友", timeout=timeout, raise_exception=raise_exception)
         if is_exit:
             logger.info("⏳ [Wait - NewFriend] 新的朋友页面加载完成")
         else:
@@ -42,6 +42,12 @@ class NewFriendPage(BasePage):
         self.click(NewFriendLocator.CANCEL_BTN)
         logger.info("❌ [Action - NewFriend] 新的朋友页 - 点击取消清空")
 
+    # 新朋友申请列表 - 点击顶部添加朋友入口
+    def click_search_entry(self):
+        """ 新朋友申请列表 - 点击顶部搜索区域，进入添加朋友页面 """
+        self.click(NewFriendLocator.FB_SEARCH)
+        logger.info("🔍 [Action - NewFriend] 新的朋友页 - 点击添加朋友搜索入口")
+
     # 新朋友申请列表 - 输入搜索内容(也是添加好友入口)
     def send_keys_search(self, search_key: str):
         """ 新朋友申请列表 - 在页面顶部的搜索框中输入内容(也是添加好友入口) """
@@ -50,14 +56,24 @@ class NewFriendPage(BasePage):
 
 
     # 申请列表 - 获取申请列表的Item
-    def get_apply_list_item(self) -> list[WebElement]:
+    def get_apply_list_item(self, timeout: int = 2, raise_exception: bool = False) -> list[WebElement]:
         """ 申请列表 - 获取申请列表的Item """
-        items = self.find_elements(NewFriendLocator.CL_ITEM)
+        items = self.find_elements(NewFriendLocator.CL_ITEM, timeout=timeout, raise_exception=raise_exception)
         if not items:
             logger.warning("⚠️ [Action - NewFriend] 未找到申请列表的Item，请确认是否有新的好友申请，或者是否在列表页面")
             return []
         logger.info(f"✅ [Action - NewFriend] 获取到 {len(items)} 个申请列表的Item")
         return items
+
+    def get_apply_item_texts(self, timeout: int = 2) -> list[str]:
+        """ 申请列表 - 获取当前可见申请人的昵称文本 """
+        elements = self.find_elements(NewFriendLocator.TV_NAME_XPATH, timeout=timeout, raise_exception=False)
+        if not elements:
+            logger.warning("⚠️ [Action - NewFriend] 未找到申请列表的Item")
+            return []
+        texts = [element.get_attribute("text").strip() for element in elements]
+        logger.info(f"📋 [Action - NewFriend] 获取到 {len(texts)} 条申请人昵称")
+        return texts
     
     # 申请列表 - 获取Item，通过index=0
     def get_apply_item_by_index(self, index: int = 0) -> WebElement:
@@ -189,4 +205,3 @@ class NewFriendPage(BasePage):
         else:
             logger.error(f"❌ [Action - NewFriend] 校验失败，{sender_name} 的申请状态未流转为: {expected_status}")
         return res
-

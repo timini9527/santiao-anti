@@ -78,13 +78,22 @@ class ContactSelectPage(CommonPage):
         self.click(ContactSelectLocator.SEARCH_CLEAR)
         logger.info("🧹 [Action] 好友选择页 - 清除搜索内容")
 
+    def get_search_keyword(self) -> str:
+        """获取当前搜索框内容"""
+        keyword = self.get_attribute(ContactSelectLocator.SEARCH_EDIT, "text")
+        logger.info(f"🔍 [Action] 好友选择页 - 当前搜索内容: {keyword!r}")
+        return keyword
+
     # 获取当前页面可见的所有好友名称
-    def get_contact_names(self) -> list:
+    def get_contact_names(self, timeout: int = 3, raise_exception: bool = True) -> list[str]:
         """获取当前页面可见的所有好友名称"""
-        elements = self.find_elements(ContactSelectLocator.CONTACT_NAME, timeout=3)
-        names = [elem.text for elem in elements]
-        logger.info(f"📋 [Action] 好友选择页 - 获取到 {len(names)} 个好友名称")
-        return names
+        elements = self.find_elements(ContactSelectLocator.CONTACT_NAME, timeout=timeout, raise_exception=raise_exception)
+        if not elements:
+            logger.warning("⚠️ [Action] 好友选择页 - 未找到好友名称")
+            return []
+        texts = [element.get_attribute("text").strip() for element in elements]
+        logger.info(f"📋 [Action] 好友选择页 - 获取到 {len(texts)} 个好友名称")
+        return texts
 
     # 获取转发页面可见的好友列表
     def get_forward_contact_names(self) -> list:
@@ -185,7 +194,14 @@ class ContactSelectPage(CommonPage):
     # 检查搜索结果是否为空
     def is_empty_result(self) -> bool:
         """检查搜索结果是否为空"""
-        count = len(self.find_elements(ContactSelectLocator.CONTACT_ITEM_ROW, timeout=3))
+        count = len(
+            self.find_elements(
+                ContactSelectLocator.CONTACT_ITEM_ROW,
+                timeout=3,
+                raise_exception=False,
+                expect_missing=True,
+            )
+        )
         status = count == 0
         logger.info(f"❓ [Action] 好友选择页 - 搜索结果是否为空: {status}")
         return status

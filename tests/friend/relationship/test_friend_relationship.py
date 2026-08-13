@@ -13,10 +13,16 @@ from pages.chat.core.chat_page import ChatPage
 from pages.chat.setting.chat_setting_page import ChatSettingPage
 from pages.friend.profile.remark_setting_page import RemarkSettingPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER3
+
+
+
 SENDER_NAME = PRIVATE_USER3.name
 RECEIVER_NAME = PRIVATE_USER1.name
 RECEIVER_PHONE = PRIVATE_USER1.phone
 VERIFY_MESSAGE = f'你好，我是 {SENDER_NAME}，申请加你为好友。'
+
+
+
 
 @allure.epic('IM核心功能测试')
 @allure.feature('好友关系管理')

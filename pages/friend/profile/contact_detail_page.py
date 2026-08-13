@@ -1,17 +1,20 @@
+import time
 from typing import Literal
 from pages.common.common_page import CommonPage
 from pages.friend.profile.chat_contact_card_page import ChatContactCardPage
 from locators.friend.profile.contact_detail_locator import ContactDetailLocator
 from utils.cv_recognition.ocr_utils import OcrUtils
 from core.logger_utils import logger
-import time
+
+
+
 
 class ContactDetailPage(CommonPage):
     """好友资料详情页面对象"""
 
     # 资料页 - 等待加载资料详情页
     def wait_for_detail_page_load(self, timeout: int = 10, raise_exception: bool = True) -> bool:
-        is_exist = self.is_element_exist(ContactDetailLocator.ST_ID, timeout=timeout, raise_exception=raise_exception)
+        is_exist = self.is_element_exist(ContactDetailLocator.TV_NAME, timeout=timeout, raise_exception=raise_exception)
         if is_exist:
             logger.info("✅ [Wait - ContactDetail] 资料详情页加载完成")
             return True

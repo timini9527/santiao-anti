@@ -11,8 +11,13 @@ from pages.friend.profile.remark_setting_page import RemarkSettingPage
 from pages.chat.core.chat_page import ChatPage
 from pages.friend.tag_group.contact_tag_group_page import ContactTagGroupPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER3
+
+
 SENDER_NAME = PRIVATE_USER3.name
 RECEIVER_NAME = PRIVATE_USER1.name
+
+
+
 
 @allure.epic('IM核心功能测试')
 @allure.feature('好友资料模块')

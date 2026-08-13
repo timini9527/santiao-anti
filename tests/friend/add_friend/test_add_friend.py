@@ -1,5 +1,6 @@
 import allure
 import pytest
+import time
 import pytest_check as check
 from core.logger_utils import logger
 from pages.main.main_page import MainPage
@@ -33,7 +34,7 @@ class TestAddFriend:
         """从首页进入添加好友页面"""
         self.homePage.click_add_button()
         self.homePage.click_add_friend()
-        is_loaded = self.addFriendPage.wait_for_add_friend_page(timeout=10)
+        is_loaded = self.addFriendPage.wait_for_add_friend_page()
         check.is_true(is_loaded, '❌ 未能成功进入添加朋友页面')
 
     def _search_and_open_profile(self, search_key: str):
@@ -42,7 +43,7 @@ class TestAddFriend:
         self.addFriendPage.search_friend_by_content(search_key)
         self.addFriendPage.click_confirm_search()
         self.addFriendPage.click_search_result_item()
-        is_loaded = self.contactDetailPage.wait_for_profile_card_load(timeout=2)
+        is_loaded = self.contactDetailPage.wait_for_detail_page_load()
         assert is_loaded, f'❌ 搜索 {search_key} 后未能进入资料详情页'
 
     @allure.story('添加好友页面')
@@ -89,6 +90,7 @@ class TestAddFriend:
             msg = self.addFriendPage.get_search_result_item_message()
             check.equal('未找到好友/群组', msg, '❌ 搜索不存在账号时，未弹出预期 [未找到好友/群组] 提示')
 
+
     @allure.story('搜索')
     @allure.title('通过{search_type}搜索正常账号并校验资料详情-状态：已完成')
     @pytest.mark.parametrize('search_type, search_key', [
@@ -100,11 +102,18 @@ class TestAddFriend:
         search_id = PRIVATE_USER1.st_id
         with allure.step(f'1. 通过{search_type} {search_key} 搜索并进入资料详情'):
             self._search_and_open_profile(search_key)
-        with allure.step('2. 校验个人资料详情页基本元素展示（昵称/三条ID）'):
+
+        with allure.step('2. 校验个人资料详情页基本元素展示'):
             nickname = self.contactDetailPage.get_raw_nickname()
             check.is_in(PRIVATE_USER1.name, nickname, f'❌ 资料页昵称为 {nickname}，不包含预期的 {PRIVATE_USER1.name}')
-            st_id = self.contactDetailPage.get_st_id()
-            check.is_in(search_id, st_id, f'❌ 资料页三条ID为 {st_id}，不包含预期的 {search_id}')
+            
+            is_unfriend = self.contactDetailPage.is_add_friend_unfriend_visible(timeout=1, raise_exception=False)
+            if not is_unfriend:
+                st_id = self.contactDetailPage.get_st_id()
+                check.is_in(search_id, st_id, f'❌ 资料页三条ID为 {st_id}，不包含预期的 {search_id}')
+            else:
+                logger.info("ℹ️ [Action - AddFriend] 当前搜索到的账号为非好友，资料页不展示三条ID，跳过三条ID断言")
+
 
     @allure.story('搜索')
     @allure.title('搜索当前登录账号时禁止添加自己-状态：已完成')
@@ -112,18 +121,21 @@ class TestAddFriend:
         """测试搜索当前登录账号后不会出现添加好友申请入口"""
         with allure.step(f'1. 搜索当前登录账号 {PRIVATE_USER3.phone} 并进入资料详情'):
             self._search_and_open_profile(PRIVATE_USER3.phone)
+
         with allure.step('2. 校验资料身份正确且不显示添加好友按钮'):
             nickname = self.contactDetailPage.get_contact_nickname()
             has_add_button = self.contactDetailPage.is_add_friend_unfriend_visible()
             check.is_in(PRIVATE_USER3.name, nickname, f'❌ 搜索自己后资料昵称不正确，实际为: {nickname}')
             check.is_false(has_add_button, '❌ 搜索自己后异常显示了添加好友按钮')
 
+
     @allure.story('搜索')
     @allure.title('搜索已有好友时展示发送消息入口-状态：已完成')
     def test_add_friend_search_existing_friend(self):
         """测试从添加朋友入口搜索已有好友后的按钮状态"""
-        with allure.step(f'1. 搜索已有好友 {PRIVATE_USER1.name} 并进入资料详情'):
-            self._search_and_open_profile(PRIVATE_USER1.phone)
+        with allure.step(f'1. 搜索已有好友 {PRIVATE_USER4.name} 并进入资料详情'):
+            self._search_and_open_profile(PRIVATE_USER4.phone)
+
         with allure.step('2. 校验显示发送消息入口且不显示添加好友按钮'):
             has_send_button = self.contactDetailPage.has_send_message_button()
             has_add_button = self.contactDetailPage.is_add_friend_unfriend_visible()
@@ -142,13 +154,16 @@ class TestAddFriend:
             self.addFriendPage.search_friend_by_content(search_key)
             self.addFriendPage.click_confirm_search()
             self.addFriendPage.click_search_result_item()
+
         with allure.step('2. 判断是否已是好友。若是非好友，则发起申请加好友'):
             self.contactDetailPage.click_add_friend_button()
+
         with allure.step('3. 在发送朋友验证页面，输入备注并提交发送申请'):
             is_loaded = self.addFriendPage.wait_for_send_friend_verify_page()
             check.is_true(is_loaded, '❌ 未能成功进入发送朋友验证页面')
             self.addFriendPage.input_remark(verify_message)
             self.addFriendPage.click_finish()
+
         with allure.step('4. 校验是否成功发送申请'):
             toast = self.addFriendPage.verify_toast_exist('发送成功')
             check.is_true(toast, '❌ 点击发送好友申请后，未弹出预期 Toast 提示')

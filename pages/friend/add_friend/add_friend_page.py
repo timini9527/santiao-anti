@@ -11,9 +11,9 @@ class AddFriendPage(BasePage):
     """添加朋友页面对象"""
 
     # 添加朋友 - 等待添加朋友页面出现
-    def wait_for_add_friend_page(self, timeout=10) -> bool:
+    def wait_for_add_friend_page(self, timeout: int = 10, raise_exception: bool = False) -> bool:
         """ 添加朋友 - 等待添加朋友页面出现 """
-        isExit = self.wait_for_element_text(AddFriendLocator.TV_TITLE, expected_text="添加朋友", timeout=timeout)
+        isExit = self.wait_for_element_text(AddFriendLocator.TV_TITLE, expected_text="添加朋友", timeout=timeout, raise_exception=raise_exception)
         if isExit:
             logger.info("⏳ [Wait - AddFriend] 等待添加朋友页面")
         else:
@@ -119,6 +119,7 @@ class AddFriendPage(BasePage):
             logger.info("⚙️ [Action - AddFriend] 添加朋友页 - 点击搜索结果item")
         else:
             logger.error("❌ [Action - AddFriend] 搜索结果item获取失败，无法点击")
+        time.sleep(1)
     
     # 添加朋友 - 输入备注
     def input_remark(self, remark: str):

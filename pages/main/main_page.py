@@ -20,7 +20,7 @@ class MainPage(BasePage):
         logger.warning("⚠️ 当前未处于主页面")
         return False
 
-    def go_to_main_page(self, timeout: int = 1, max_retries: int = 10, raise_exception: bool = False):
+    def go_to_main_page(self, timeout: int = 1, raise_exception: bool = False, max_retries: int = 10):
         """进入主页面消息列表页面；若当前已在主页则直接返回，避免误按返回键退至后台"""
         try:
             self.driver.hide_keyboard()
