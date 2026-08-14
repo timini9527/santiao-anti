@@ -5,6 +5,7 @@ from core.logger_utils import logger
 from pages.main.main_page import MainPage
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_page import ChatPage
+from pages.chat.core.chat_long_press_page import ChatLongPressPage
 from pages.chat_options.file.chat_file_page import ChatFilePage
 from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
 
@@ -18,6 +19,7 @@ class TestChatFile:
         self.chatListPage = ChatListPage(driver_sender)
         self.chatFilePage = ChatFilePage(driver_sender)
         self.chatPage = ChatPage(driver_sender)
+        self.chatLongPressPage = ChatLongPressPage(driver_sender)
         self.mainPage = MainPage(driver_sender)
         yield
         try:
@@ -32,9 +34,22 @@ class TestChatFile:
 
     @allure.story('发送文件-正向流程')
     @allure.title('发送文件-正向流程-状态：已完成')
-    @pytest.mark.parametrize('sub_menu_item, file_type, dir_name', [pytest.param('图片', 'image', 'santiaoTalk', id='image'), pytest.param('视频', 'video', 'santiaoTalk', id='video'), pytest.param('音频', 'audio', 'Music', id='audio'), pytest.param('文档', 'document', 'File', id='document')])
-    @pytest.mark.parametrize('select_mode, target_index', [pytest.param('first', 0, id='first_file'), pytest.param('last', 0, id='last_file'), pytest.param('index', 1, id='second_file'), pytest.param('absolute_last', 0, id='absolute_last_file')])
-    @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
+    @pytest.mark.parametrize('sub_menu_item, file_type, dir_name', [
+        pytest.param('图片', 'image', 'santiaoTalk', id='image'), 
+        pytest.param('视频', 'video', 'santiaoTalk', id='video'),
+        pytest.param('音频', 'audio', 'Music', id='audio'), 
+        pytest.param('文档', 'document', 'File', id='document')
+    ])
+    @pytest.mark.parametrize('select_mode, target_index', [
+        pytest.param('first', 0, id='first_file'), 
+        pytest.param('last', 0, id='last_file'), 
+        pytest.param('index', 1, id='second_file'), 
+        pytest.param('absolute_last', 0, id='absolute_last_file')
+    ])
+    @pytest.mark.parametrize('strategy', [
+        pytest.param(PRIVATE_USER1, id='私聊模式'), 
+        pytest.param(GROUP_STRATEGY, id='群聊模式')
+    ])
     def test_send_file_success(self, strategy, sub_menu_item, file_type, dir_name, select_mode, target_index):
         """测试在聊天中成功发送文件"""
         allure.title(f'发送文件-正向流程【{strategy.desc}】- 模式: {select_mode}')
@@ -58,7 +73,10 @@ class TestChatFile:
 
     @allure.story('发送文件-取消操作')
     @allure.title('发送文件-取消操作-状态：已完成')
-    @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
+    @pytest.mark.parametrize('strategy', [
+        pytest.param(PRIVATE_USER1, id='私聊模式'), 
+        pytest.param(GROUP_STRATEGY, id='群聊模式')
+    ])
     def test_cancel_send_file(self, strategy):
         """验证进入文件选择页后取消返回"""
         with allure.step(f'1. 进入聊天并打开选择文件页'):
@@ -74,7 +92,10 @@ class TestChatFile:
     @allure.story('消息管理-文件撤回')
     @allure.title('消息管理-文件撤回-状态：未完成')
     @pytest.mark.skip(reason='UI元素匹配异常，待修复')
-    @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
+    @pytest.mark.parametrize('strategy', [
+        pytest.param(PRIVATE_USER1, id='私聊模式'), 
+        pytest.param(GROUP_STRATEGY, id='群聊模式')
+    ])
     def test_revoke_file_message_success(self, strategy):
         """测试发送文件后 2 分钟内成功撤回"""
         allure.title(f'文件管理-成功撤回消息【{strategy.desc}】')
@@ -83,19 +104,27 @@ class TestChatFile:
             self.chatFilePage.wait_for_file_page_load()
             self.chatFilePage.select_any_file_in_dir(file_type='image')
             self.chatFilePage.click_send_file()
-            check.is_true(self.chatPage.wait_for_last_sent_message_completed(), '❌ 文件发送未能在规定时间内完成')
+            self.chatPage.wait_for_chat_page_load()
+            check.is_true(self.chatPage.wait_for_last_message_send_status(), '❌ 文件发送未能在规定时间内完成')
         with allure.step('2. 长按消息并点击撤回'):
-            self.chatPage.long_press_last_message()
-            self.chatPage.click_revoke()
+            self.chatLongPressPage.long_press_last_message()
+            is_ok = self.chatLongPressPage._execute_and_verify_menu_item('撤回')
+            check.is_true(is_ok, '❌ 长按点击【撤回】操作失败')
         with allure.step('3. 验证撤回状态'):
-            notice_text = self.chatPage.get_revoke_notice_text()
-            check.is_in('撤回', notice_text, f'❌ 未能捕获到预期的撤回提示文字')
-            logger.info(f'✅ 文件消息撤回验证通过: {notice_text}')
+            withdraw_result = self.chatPage.get_withdraw_message()
+            check.is_not_none(withdraw_result, '❌ 未能捕获到预期的撤回提示')
+            if withdraw_result:
+                notice_text, _ = withdraw_result
+                check.is_in('撤回', notice_text, f'❌ 未能捕获到预期的撤回提示文字: {notice_text}')
+                logger.info(f'✅ 文件消息撤回验证通过: {notice_text}')
 
     @allure.story('发送异常-重试机制')
     @allure.title('发送异常-重试机制-状态：未完成')
     @pytest.mark.skip(reason='UI元素匹配异常，待修复')
-    @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
+    @pytest.mark.parametrize('strategy', [
+        pytest.param(PRIVATE_USER1, id='私聊模式'), 
+        pytest.param(GROUP_STRATEGY, id='群聊模式')
+    ])
     def test_resend_file_on_fail(self, strategy):
         with allure.step('1. 发送文件（模拟环境异常）'):
             self._enter_chat_and_open_file_page(strategy.name)
@@ -116,14 +145,20 @@ class TestChatFile:
     @allure.story('消息管理-文件删除')
     @allure.title('消息管理-文件删除-状态：未完成')
     @pytest.mark.skip(reason='删除功能待完善并接入通用交互逻辑')
-    @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
+    @pytest.mark.parametrize('strategy', [
+        pytest.param(PRIVATE_USER1, id='私聊模式'), 
+        pytest.param(GROUP_STRATEGY, id='群聊模式')
+    ])
     def test_delete_file_message(self, strategy):
         pass
 
     @allure.story('消息管理-文件转发')
     @allure.title('消息管理-文件转发-状态：未完成')
     @pytest.mark.skip(reason='转发功能待完善并接入通用交互逻辑')
-    @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
+    @pytest.mark.parametrize('strategy', [
+        pytest.param(PRIVATE_USER1, id='私聊模式'), 
+        pytest.param(GROUP_STRATEGY, id='群聊模式')
+    ])
     def test_forward_file_message(self, strategy):
         """验证文件消息可以被长按转发"""
         pass
@@ -131,7 +166,10 @@ class TestChatFile:
     @allure.story('消息管理-文件收藏')
     @allure.title('消息管理-文件收藏-状态：未完成')
     @pytest.mark.skip(reason='收藏功能待完善并接入通用交互逻辑')
-    @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
+    @pytest.mark.parametrize('strategy', [
+        pytest.param(PRIVATE_USER1, id='私聊模式'), 
+        pytest.param(GROUP_STRATEGY, id='群聊模式')
+    ])
     def test_favorite_file_message(self, strategy):
         """验证文件消息可以被长按收藏"""
         pass
@@ -139,7 +177,10 @@ class TestChatFile:
     @allure.story('消息管理-文件引用回复')
     @allure.title('消息管理-文件引用回复-状态：未完成')
     @pytest.mark.skip(reason='回复功能待完善并接入通用交互逻辑')
-    @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
+    @pytest.mark.parametrize('strategy', [
+        pytest.param(PRIVATE_USER1, id='私聊模式'), 
+        pytest.param(GROUP_STRATEGY, id='群聊模式')
+    ])
     def test_reply_file_message(self, strategy):
         """验证文件消息可以被长按引用回复"""
         pass

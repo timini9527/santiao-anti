@@ -80,7 +80,7 @@ class TestAdminPermissionsDouble:
             self.groupSettingR.click_group_name()
             dialog_message = self.groupSettingR.get_group_name_dialog_message()
             check.is_in('修改群聊名称后，将在群内通知其他成员', dialog_message, '❌ 未找到【修改群聊名称后，将在群内通知其他成员】提示')
-            self.groupSettingR.click_remark_cancel()
+            self.groupSettingR.click_tv_cancel_button()
         with allure.step('3. 校验编辑群公告权限'):
             self.groupSettingR.click_group_notice()
             dialog_message = self.groupSettingR.wait_for_notice_dialog_load()

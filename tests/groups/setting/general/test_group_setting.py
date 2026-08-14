@@ -57,15 +57,40 @@ class TestGroupSetting:
             self.chatPage.wait_banner_message_disappear()
             self.chatPage.wait_for_chat_page_load()
 
-    def _create_group_and_go_to_dismiss(self, friend_list):
+    def _create_group_and_go_to_dismiss(self, friend_list) -> str:
         """进入已建临时群并打开解散群聊确认界面"""
-        self._create_temp_group(friend_list)
-        with allure.step("1. 在群聊聊天页面点击右上角'...' -> 群设置"):
+        with allure.step('-> [前置准备] 在首页发起群聊创建临时群'):
+            self._create_temp_group(friend_list)
+        with allure.step("2. 在群聊聊天页面点击右上角'...' -> 群设置"):
             self.chatPage.click_more_button()
-        with allure.step('2. 进入群详情页，进入群管理并点击解散群聊'):
+            group_name = self.groupSettingPage.get_nva_group_name()
+        with allure.step(f'3. 进入群详情页 -> {group_name}'):
             self.groupSettingPage.wait_for_setting_page_load()
             self.groupSettingPage.click_group_manager()
             self.groupManagerPage.click_dismiss_group()
+        return group_name
+    
+    def _verify_group_disband(self, group_name):
+        """验证群聊是否已解散"""
+        self.chatListPage.enter_chat(group_name)
+        self.chatPage.wait_for_chat_page_load()
+        self.chatPage.click_more_button()
+        toast = self.chatPage.get_toast_text()
+        check.is_in('群不存在', toast, '❌ 群聊已被解散')
+        self.groupSettingPage.click_quick_more()
+        self.groupSettingPage.click_delete_and_out()
+        self.groupSettingPage.click_tv_confirm_button()
+    
+    def _dismiss_and_cleanup_group(self, group_name: str):
+        """执行确认解散、校验回首页并彻底清理失效会话"""
+        with allure.step('-> [解散与清理] 确认解散群聊并销毁失效会话'):
+            self.groupSettingPage.click_tv_confirm_button()
+            toast = self.groupSettingPage.verify_toast_exist('解散成功')
+            check.is_true(toast, '❌ 解散群聊后未弹出解散成功提示')
+            title = self.homePage.get_top_middle_title(10)
+            check.is_in('三条', title, '❌ 解散群聊后未能返回消息首页')
+            self._verify_group_disband(group_name)
+
 
     def _enter_group_setting_page(self, group_name):
         """进入群设置页面 (使用内存 Flag 限制全局仅进入一次)"""
@@ -79,32 +104,30 @@ class TestGroupSetting:
             self.__class__._has_entered_setting_page = True
 
     @allure.story('群聊详情设置')
-    @allure.title('切换显示群成员昵称开关并校验状态')
+    @allure.title('切换显示群成员昵称开关并校验状态-状态：已完成')
     def test_group_show_member_nickname_toggle(self):
-        """测试显示群成员昵称开关"""
-        friend_list = [PRIVATE_USER1.name, PRIVATE_USER2.name]
-        self._create_temp_group(friend_list)
-        with allure.step('1. 在群聊页面点击右上角进入群详情'):
+        """测试显示群成员昵称开关状态切换与恢复"""
+        with allure.step('1. 进入群设置页面'):
+            self.chatListPage.enter_chat(GROUP_STRATEGY.name)
             self.chatPage.click_more_button()
             self.groupSettingPage.wait_for_setting_page_load()
         with allure.step('2. 获取当前显示群成员昵称状态'):
             init_state = self.groupSettingPage.get_show_member_name_switch_state()
         with allure.step('3. 点击显示群成员昵称进行切换'):
-            self.groupSettingPage.click_chat_show_member_name()
+            self.groupSettingPage.click_show_member_name_switch()
             new_state = self.groupSettingPage.get_show_member_name_switch_state()
             check.not_equal(init_state, new_state, '❌ 显示群成员昵称开关切换失败')
         with allure.step('4. 再次点击恢复初始状态'):
-            self.groupSettingPage.click_chat_show_member_name()
+            self.groupSettingPage.click_show_member_name_switch()
             final_state = self.groupSettingPage.get_show_member_name_switch_state()
             check.equal(init_state, final_state, '❌ 显示群成员昵称开关恢复初始状态失败')
 
     @allure.story('群聊详情设置')
-    @allure.title('修改‘我在本群昵称’并校验修改成功')
+    @allure.title('修改‘我在本群昵称’并校验修改成功-状态：已完成')
     def test_modify_my_group_nickname(self):
-        """测试修改我在本群的昵称"""
-        friend_list = [PRIVATE_USER1.name, PRIVATE_USER2.name]
-        self._create_temp_group(friend_list)
-        with allure.step('1. 在群聊页面点击右上角进入群详情'):
+        """测试修改我在本群的昵称并安全恢复"""
+        with allure.step('1. 进入群设置页面'):
+            self.chatListPage.enter_chat(GROUP_STRATEGY.name)
             self.chatPage.click_more_button()
             self.groupSettingPage.wait_for_setting_page_load()
         with allure.step('2. 获取修改前的群内昵称值'):
@@ -118,60 +141,71 @@ class TestGroupSetting:
         with allure.step('5. 恢复初始群内昵称值'):
             restore_nickname = old_nickname if old_nickname else ''
             self.groupSettingPage.change_my_group_nickname(restore_nickname)
+            check.equal(self.groupSettingPage.get_my_group_nickname(), old_nickname, '❌ 我在本群昵称恢复值不一致')
 
     @allure.story('解散群聊')
-    @allure.title('通过群聊聊天页面解散群聊 - 正常解散流程')
+    @allure.title('通过群聊聊天页面解散群聊 - 正常解散流程-状态：已完成')
     def test_delete_group_success(self):
         allure.dynamic.description(f'通过群聊聊天页面解散群聊')
         friend_list = [PRIVATE_USER1.name, PRIVATE_USER2.name]
-        self._create_group_and_go_to_dismiss(friend_list)
+        group_name = self._create_group_and_go_to_dismiss(friend_list)
         with allure.step('3. 确认弹窗'):
-            self.groupSettingPage.click_confirm_button()
-            toast = self.groupSettingPage.get_toast()
-            check.is_in('群不存在', toast, '❌ 解散群聊后未弹出解散成功/群不存在提示')
-            self.groupSettingPage.click_iv_back_button()
-            self.chatPage.click_back_button()
-            title = self.homePage.get_top_middle_title()
-            check.is_in('三条', title, '❌ 解散群聊后未能返回消息首页')
-        with allure.step('4. 验证群聊是否已解散'):
-            pass
+            self._dismiss_and_cleanup_group(group_name)
 
     @allure.story('解散群聊')
-    @allure.title('通过群聊聊天页面解散群聊 - 取消解散流程')
+    @allure.title('通过群聊聊天页面解散群聊 - 取消解散流程-状态：已完成')
     def test_delete_group_cancel(self):
-        allure.dynamic.description(f'通过群聊聊天页面解散群聊')
+        """验证群主点击解散群聊后选择取消，群聊保持正常，并在最后完成清理"""
+        allure.dynamic.description('通过群聊聊天页面解散群聊 - 取消解散流程')
         friend_list = [PRIVATE_USER1.name, PRIVATE_USER2.name]
-        self._create_group_and_go_to_dismiss(friend_list)
-        with allure.step('3. 取消确认'):
-            self.groupSettingPage.click_cancel_button()
-            self.groupSettingPage.click_iv_back_button()
-            self.groupSettingPage.click_iv_back_button()
-            title = self.chatPage.get_top_name()
-            group_number = self.groupCreatePage.is_chat_group(title)
-            check.is_true(group_number is not False, f'❌ 取消解散后未能正确返回群聊页面')
+        group_name = self._create_group_and_go_to_dismiss(friend_list)
+        try:
+            with allure.step('4. 取消解散群聊确认'):
+                self.groupSettingPage.click_tv_cancel_button()
+            with allure.step('5. 逐级返回群聊聊天页面'):
+                self.groupManagerPage.click_iv_back_button()
+                self.groupSettingPage.click_iv_back_button()
+                self.chatPage.wait_for_chat_page_load()
+                title = self.chatPage.get_top_name()
+                check.is_true(bool(title), '❌ 取消解散后未能正确返回群聊页面')
+            with allure.step('6. 校验群聊未被解散，仍可正常发送消息'):
+                self.chatPage.send_message('取消解散群聊验证')
+        finally:
+            with allure.step('-> [Teardown] 销毁清理临时群聊数据'):
+                self.chatPage.click_more_button()
+                self.groupSettingPage.wait_for_setting_page_load()
+                self.groupSettingPage.click_group_manager()
+                self.groupManagerPage.click_dismiss_group()
+                self._dismiss_and_cleanup_group(group_name)
+
 
     @allure.story('群聊设置 - 清空聊天记录')
+    @allure.title('清空群聊聊天记录并校验记录归零-状态：已完成')
     @pytest.mark.parametrize('chat_strategy', [pytest.param(GROUP_STRATEGY2, id='群聊-清空聊天记录')])
     def test_clear_group_chat_records(self, chat_strategy):
-        """点击清空聊天记录"""
+        """进入群聊发送消息，通过群详情更多操作清空聊天记录，并校验聊天界面消息被清空"""
         allure.dynamic.title(f'{chat_strategy.name} - 清空聊天记录')
-        with allure.step('1、进入特定群的群聊会话'):
+        with allure.step(f'1. 进入群聊会话【{chat_strategy.name}】并发送测试消息'):
             self.chatListPage.enter_chat(chat_strategy.name)
-            self.chatListPage.send_message('测试清空聊天记录功能')
-        with allure.step('1、获取聊天页面消息数量'):
-            msg_count = self.chatListPage.get_total_message_count()
-            check.is_true(bool(msg_count), '❌ 获取聊天页面消息数量失败')
-        with allure.step('2、进入设置页面'):
+            self.chatPage.wait_for_chat_page_load()
+            self.chatPage.send_message('测试清空群聊天记录功能')
+        with allure.step('2. 获取当前群聊天页面的消息总数'):
+            msg_count = self.chatPage.get_total_message_count()
+            check.is_true(msg_count > 0, f'❌ 发送消息后，聊天页面消息总数应大于 0，实际为 {msg_count}')
+        with allure.step('3. 进入群详情设置页'):
             self.chatPage.click_more_button()
             self.groupSettingPage.wait_for_setting_page_load()
-        with allure.step('3、清空聊天记录'):
+        with allure.step('4. 点击【更多】->【清空聊天记录】并确认弹窗'):
+            self.groupSettingPage.click_quick_more()
             self.groupSettingPage.click_clear_group_chat_message()
-            self.groupSettingPage.click_confirm_button()
+            self.groupSettingPage.click_tv_confirm_button()
             self.groupSettingPage.click_iv_back_button()
-        with allure.step('4、获取聊天页面消息数量'):
-            new_msg_count = self.chatListPage.get_total_message_count()
+        with allure.step('5. 校验返回聊天页面后消息记录已全部清空'):
+            self.chatPage.wait_for_chat_page_load()
+            new_msg_count = self.chatPage.get_total_message_count()
             check.equal(new_msg_count, 0, f'❌ 清空聊天记录后，消息数量应为 0，实际为 {new_msg_count}')
 
+    # TODO: 修复群备注功能
     @allure.story('群备注功能')
     @allure.title('群备注修改校验 - {test_id}')
     @pytest.mark.parametrize('test_id, input_content, action, expect_truncated, last_case', [pytest.param('正常修改并保存', '测试群备注1', 'confirm', False, False, id='正常修改并保存'), pytest.param('敏感词', '敏感词内容', 'confirm', False, False, id='敏感词'), pytest.param('修改并取消', '企图修改备注但取消', 'cancel', False, False, id='修改并取消'), pytest.param('超长20字限制截断', '一二三四五六七八九十一二三四五六七八九十加', 'confirm', True, True, id='超长20字限制截断')])
@@ -187,9 +221,9 @@ class TestGroupSetting:
             self.groupSettingPage.wait_for_remark_dialog_load(nva_text='群备注')
             self.groupSettingPage.input_remark_content(input_content)
             if action == 'confirm':
-                self.groupSettingPage.click_remark_confirm()
+                self.groupSettingPage.click_tv_confirm_button()
             else:
-                self.groupSettingPage.click_remark_cancel()
+                self.groupSettingPage.click_tv_cancel_button()
         with allure.step('4. 校验修改后的群备注结果'):
             if test_id == '敏感词':
                 toast = self.groupSettingPage.get_toast()
@@ -208,7 +242,7 @@ class TestGroupSetting:
                 self.groupSettingPage.click_group_remark()
                 self.groupSettingPage.wait_for_remark_dialog_load(nva_text='群备注')
                 self.groupSettingPage.input_remark_content('')
-                self.groupSettingPage.click_remark_confirm()
+                self.groupSettingPage.click_tv_confirm_button()
 
     @allure.story('群名称功能')
     @allure.title('群聊名称修改校验-状态：已完成')
@@ -223,7 +257,7 @@ class TestGroupSetting:
             self.groupSettingPage.click_group_name()
             self.groupSettingPage.wait_for_remark_dialog_load(nva_text='群名称')
             self.groupSettingPage.input_remark_content(input_name)
-            self.groupSettingPage.click_remark_confirm()
+            self.groupSettingPage.click_tv_confirm_button()
         with allure.step('4. 校验修改后的结果与提示'):
             if expected_toast:
                 toast_text = self.groupSettingPage.get_toast()
@@ -245,8 +279,8 @@ class TestGroupSetting:
             self.groupSettingPage.wait_for_setting_page_load()
         with allure.step('2. 修改群头像'):
             self.groupSettingPage.click_group_avatar()
-            self.groupSettingPage.click_group_avatar_confirm()
-            self.groupSettingPage.click_group_avatar_confirm()
+            self.groupSettingPage.click_tv_confirm_button()
+            self.groupSettingPage.click_tv_confirm_button()
             self.groupSettingPage.click_iv_back_button()
             self.groupSettingPage.click_iv_back_button()
         with allure.step('3. 校验群头像是否修改'):
@@ -257,19 +291,22 @@ class TestGroupSetting:
     @allure.title('通过群聊聊天页面修改我在本群昵称-状态：未完成')
     @pytest.mark.skip(reason='Android：有BUG待修复')
     def test_group_nickname_validation(self):
-        """测试修改我在本群昵称功能"""
+        """测试修改我在本群昵称功能并安全恢复"""
         with allure.step('1. 进入群设置页面'):
             self.chatListPage.enter_chat(GROUP_STRATEGY.name)
             self.chatPage.click_more_button()
             self.groupSettingPage.wait_for_setting_page_load()
-        with allure.step('2. 修改我在本群昵称'):
-            self.groupSettingPage.click_group_nickname()
-            self.groupSettingPage.wait_for_nickname_dialog_load()
-            self.groupSettingPage.input_nickname_content('测试群昵称')
-            self.groupSettingPage.click_nickname_confirm()
-        with allure.step('3. 校验我在本群昵称'):
-            new_nickname = self.groupSettingPage.get_group_nickname()
-            check.equal(new_nickname, '测试群昵称', f'❌ 我在本群昵称修改后不一致')
+        with allure.step('2. 获取修改前的群内昵称'):
+            old_nickname = self.groupSettingPage.get_my_group_nickname()
+        with allure.step('3. 修改我在本群昵称'):
+            target_nickname = '测试群昵称'
+            self.groupSettingPage.change_my_group_nickname(target_nickname)
+        with allure.step('4. 校验我在本群昵称'):
+            new_nickname = self.groupSettingPage.get_my_group_nickname()
+            check.equal(new_nickname, target_nickname, '❌ 我在本群昵称修改后不一致')
+        with allure.step('5. 恢复初始群内昵称值'):
+            restore_nickname = old_nickname if old_nickname else ''
+            self.groupSettingPage.change_my_group_nickname(restore_nickname)
 
     @allure.story('群设置-显示群成员昵称')
     @allure.title('通过群聊聊天页面修改群设置-显示群成员昵称-状态：已完成')

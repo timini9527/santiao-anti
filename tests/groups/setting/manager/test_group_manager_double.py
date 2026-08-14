@@ -370,7 +370,7 @@ class TestGroupManagerDouble:
             self.groupSettingS.click_group_name()
             self.groupSettingS.wait_for_remark_dialog_load(nva_text='群名称')
             self.groupSettingS.input_remark_content(temp_name)
-            self.groupSettingS.click_remark_confirm()
+            self.groupSettingS.click_tv_confirm_button()
             self.chatS.wait_banner_message_disappear()
             self.groupSettingS.click_iv_back_button()
             self.chatS.send_message('临时群聊建立测试')
@@ -391,20 +391,20 @@ class TestGroupManagerDouble:
         with allure.step('1. 发送端(群主)在群管理中点击【解散群聊】'):
             self.groupManagerS.click_dismiss_group()
         with allure.step('2. 发送端确认弹窗解散'):
-            self.groupSettingS.click_confirm_button()
+            self.groupSettingS.click_tv_confirm_button()
             toast = self.groupSettingS.get_toast()
             check.is_in('群不存在', toast, '❌ 发送端解散群聊后未弹出提示')
         with allure.step('-> [发送端Teardown] 解散群聊并退出'):
             self.chatS.wait_banner_message_disappear()
             self.groupSettingS.click_delete_and_out()
-            self.groupSettingS.click_confirm_button()
+            self.groupSettingS.click_tv_confirm_button()
             time.sleep(1)
         with allure.step('-> [接收端Teardown] 解散群聊并退出'):
             self.chatR.click_more_button()
             toast = self.groupSettingR.get_toast()
             check.is_in('群不存在', toast, '❌ 接收端点击解散群聊后未弹出提示')
             self.groupSettingR.click_delete_and_out()
-            self.groupSettingR.click_confirm_button()
+            self.groupSettingR.click_tv_confirm_button()
 
     @allure.story('群管理-解散群聊双端校验')
     @allure.title('【解散群聊】群主取消解散群聊-群聊依然保持健在-状态：已完成')
@@ -413,7 +413,7 @@ class TestGroupManagerDouble:
         self._create_temp_group_double()
         with allure.step('1. 发送端(群主)在群管理中点击【解散群聊】并取消'):
             self.groupManagerS.click_dismiss_group()
-            self.groupSettingS.click_cancel_button()
+            self.groupSettingS.click_tv_cancel_button()
         with allure.step('2. 接收端(成员)尝试发送消息验证群聊是否正常'):
             self.chatR.send_message('群聊正常修改取消测试')
             total_msg = self.chatR.get_total_message_count()

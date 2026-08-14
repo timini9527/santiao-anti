@@ -37,10 +37,10 @@ class HomePage(BasePage):
         logger.info("[Action-Home] 主页 - 点击主页标题")
 
     # 主页 - 获取顶部中间标题 三条标题
-    def get_top_middle_title(self) -> str:
+    def get_top_middle_title(self, timeout: int = 2) -> str:
         """ 主页 - 获取顶部中间标题 三条标题 """
-        title = self.get_attribute(HomeLocator.MIDDLE_TITLE, 'text')
-        logger.info(f"[Action-Home] 主页 - 获取顶部中间标题: {title}")
+        title = self.get_attribute(HomeLocator.MIDDLE_TITLE, 'text', timeout=timeout)
+        logger.info(f"[Action-Home] 主页 - 获取顶部中间标题（{timeout} 秒内）: {title}")
         return title
 
     # 主页 - 点击 + 号按钮

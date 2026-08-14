@@ -223,7 +223,7 @@ class TestSmokeGroupManage(BaseSmokeGroupSingle):
                 is_dialog_loaded = self.groupSettingPage.wait_for_remark_dialog_load(nva_text='修改群聊名称')
                 check.is_true(is_dialog_loaded, '❌ 群名称编辑弹窗未加载')
                 self.groupSettingPage.input_remark_content(new_name)
-                self.groupSettingPage.click_remark_confirm()
+                self.groupSettingPage.click_tv_confirm_button()
             with allure.step('3. 校验修改后的群名称'):
                 current_name = self.groupSettingPage.get_nva_group_name()
                 check.equal(new_name, current_name, f"❌ 修改后的群聊名称与预期不符。预期: '{new_name}', 实际: '{current_name}'")
@@ -234,7 +234,7 @@ class TestSmokeGroupManage(BaseSmokeGroupSingle):
                     self.groupSettingPage.click_group_name()
                     self.groupSettingPage.wait_for_remark_dialog_load(nva_text='群名称')
                     self.groupSettingPage.input_remark_content(original_name)
-                    self.groupSettingPage.click_remark_confirm()
+                    self.groupSettingPage.click_tv_confirm_button()
                     restored_name = self.groupSettingPage.get_nva_group_name()
                     check.equal(original_name, restored_name, f"❌ 群名称未恢复为原始值，实际: '{restored_name}'")
 
@@ -324,7 +324,7 @@ class TestSmokeGroupManage(BaseSmokeGroupSingle):
             self.groupManagerPage.wait_for_page_load()
             self.groupManagerPage.click_dismiss_group()
         with allure.step('3. 确认弹窗解散群聊并验证退回首页'):
-            self.groupSettingPage.click_confirm_button()
+            self.groupSettingPage.click_tv_confirm_button()
             toast = self.groupSettingPage.get_toast(expected_toast='群不存在')
             check.is_true(toast, '❌ 解散群聊后未弹出提示')
         with allure.step('4. 删除并退出群聊'):

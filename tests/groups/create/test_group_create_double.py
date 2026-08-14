@@ -161,7 +161,7 @@ class TestGroupCreateDouble:
                 self.groupSettingPageS.wait_for_setting_page_load()
                 self.groupSettingPageS.swipe_page_quickly(slid_type='up')
                 self.groupSettingPageS.click_delete_and_out()
-                self.groupSettingPageS.click_confirm_button()
+                self.groupSettingPageS.click_tv_confirm_button()
 
             def first_cleanup_b():
                 self.chatPageR.wait_banner_message_disappear()
@@ -169,7 +169,7 @@ class TestGroupCreateDouble:
                 self.groupSettingPageR.wait_for_setting_page_load()
                 self.groupSettingPageR.swipe_page_quickly(slid_type='up')
                 self.groupSettingPageR.click_delete_and_out()
-                self.groupSettingPageR.click_confirm_button()
+                self.groupSettingPageR.click_tv_confirm_button()
         with allure.step('7. 并发步骤：双端进行第二轮进群退群销毁动作'):
 
             def second_cleanup_a():
@@ -180,7 +180,7 @@ class TestGroupCreateDouble:
                 self.groupManagerPageS.click_dismiss_group()
                 self.groupManagerPageS.click_black_remove_member_confirm()
                 self.groupSettingPageS.click_delete_and_out()
-                self.groupSettingPageS.click_confirm_button()
+                self.groupSettingPageS.click_tv_confirm_button()
 
             def second_cleanup_b():
                 self.chatPageR.wait_banner_message_disappear()
@@ -190,7 +190,7 @@ class TestGroupCreateDouble:
                 self.groupManagerPageR.click_dismiss_group()
                 self.groupManagerPageR.click_black_remove_member_confirm()
                 self.groupSettingPageR.click_delete_and_out()
-                self.groupSettingPageR.click_confirm_button()
+                self.groupSettingPageR.click_tv_confirm_button()
             run_parallel(second_cleanup_a, second_cleanup_b)
 
     @allure.title('双端建群协同 - A端拉B端建群并发送首发消息，B端查收并双端退群-状态：已完成')
@@ -237,10 +237,10 @@ class TestGroupCreateDouble:
                 self.groupSettingPageS.wait_for_setting_page_load()
                 self.groupSettingPageS.swipe_page_quickly(slid_type='up')
                 self.groupSettingPageS.click_delete_and_out()
-                self.groupSettingPageS.click_confirm_button()
+                self.groupSettingPageS.click_tv_confirm_button()
             with allure.step('B端删除并退出该群聊'):
                 self.chatPageR.click_more_button()
                 self.groupSettingPageR.wait_for_setting_page_load()
                 self.groupSettingPageR.swipe_page_quickly(slid_type='up')
                 self.groupSettingPageR.click_delete_and_out()
-                self.groupSettingPageR.click_confirm_button()
+                self.groupSettingPageR.click_tv_confirm_button()

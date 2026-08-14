@@ -1,4 +1,5 @@
 import time
+from typing import Optional
 from core.logger_utils import logger
 from common.base_page import BasePage
 from locators.groups.setting.manager.group_manager_locator import GroupManagerLocator
@@ -36,6 +37,23 @@ class GroupManagerPage(BasePage):
         self.click(GroupManagerLocator.EDIT_TO_BTN)
         logger.info("⚙️ [Action-groupManagerPage] 点击编辑【完成】按钮")
 
+    # =========================================================================
+    # 智能滚动查找辅助方法 (Scroll Helpers)
+    # =========================================================================
+    def _scroll_find_element(self, locator: tuple, max_swipes: int = 3, slid_type: str = 'up') -> Optional[WebElement]:
+        """智能滚动查找元素：先探测当前屏，未找到则按指定方向滑动探测"""
+        element = self.find_element(locator, timeout=1, raise_exception=False)
+        if element:
+            return element
+        for i in range(max_swipes):
+            self.swipe_page_quickly(slid_type=slid_type, duration=300)
+            element = self.find_element(locator, timeout=1, raise_exception=False)
+            if element:
+                logger.info(f"🔍 [Scroll] 滑动第 {i + 1} 次成功找到元素: {locator}")
+                return element
+        logger.warning(f"⚠️ [Scroll] 滑动 {max_swipes} 次后仍未找到目标元素: {locator}")
+        return None
+
     # 群管理-点击升级群组
     def click_upgrade_group(self):
         """群管理-点击升级群组"""
@@ -68,15 +86,23 @@ class GroupManagerPage(BasePage):
 
     # 群管理-点击转让群主
     def click_group_give(self):
-        """群管理-点击转让群主"""
-        self.click(GroupManagerLocator.GROUP_GIVE)
-        logger.info("⚙️ [Action-groupManagerPage] 点击【转让群主】")
+        """群管理-点击转让群主（智能滚动至底部查找）"""
+        element = self._scroll_find_element(GroupManagerLocator.GROUP_GIVE)
+        if element:
+            element.click()
+            logger.info("⚙️ [Action-groupManagerPage] 点击【转让群主】")
+        else:
+            logger.error("❌ [Action-groupManagerPage] 未找到【转让群主】按钮")
 
     # 群管理-点击解散群组
     def click_dismiss_group(self):
-        """点击解散群组"""
-        self.click(GroupManagerLocator.DISMISS_GROUP)
-        logger.info("⚙️ [Action-groupManagerPage] 点击【解散群组】")
+        """点击解散群组（智能滚动至底部查找）"""
+        element = self._scroll_find_element(GroupManagerLocator.DISMISS_GROUP)
+        if element:
+            element.click()
+            logger.info("⚙️ [Action-groupManagerPage] 点击【解散群组】")
+        else:
+            logger.error("❌ [Action-groupManagerPage] 未找到【解散群组】按钮")
 
 
     # ===================================================================================
