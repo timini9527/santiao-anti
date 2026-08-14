@@ -205,39 +205,43 @@ class TestGroupSetting:
             new_msg_count = self.chatPage.get_total_message_count()
             check.equal(new_msg_count, 0, f'❌ 清空聊天记录后，消息数量应为 0，实际为 {new_msg_count}')
 
-    # TODO: 修复群备注功能
     @allure.story('群备注功能')
-    @allure.title('群备注修改校验 - {test_id}')
-    @pytest.mark.parametrize('test_id, input_content, action, expect_truncated, last_case', [pytest.param('正常修改并保存', '测试群备注1', 'confirm', False, False, id='正常修改并保存'), pytest.param('敏感词', '敏感词内容', 'confirm', False, False, id='敏感词'), pytest.param('修改并取消', '企图修改备注但取消', 'cancel', False, False, id='修改并取消'), pytest.param('超长20字限制截断', '一二三四五六七八九十一二三四五六七八九十加', 'confirm', True, True, id='超长20字限制截断')])
+    @allure.title('群备注修改校验 - {test_id}-状态：已完成')
+    @pytest.mark.parametrize('test_id, input_content, action, expected_toast, expect_truncated, should_change, last_case', [
+        pytest.param('正常修改并保存', '测试群备注1', 'confirm', '', False, True, False, id='正常修改并保存'),
+        pytest.param('敏感词拦截', '敏感词内容', 'confirm', '群备注名不合法，请换个群备注名', False, False, False, id='敏感词拦截'),
+        pytest.param('修改并取消', '企图修改备注但取消', 'cancel', '', False, False, False, id='修改并取消'),
+        pytest.param('超长20字限制截断', '一二三四五六七八九十一二三四五六七八九十加', 'confirm', '', True, True, True, id='超长20字限制截断')
+    ])
     @pytest.mark.parametrize('chat_strategy', [pytest.param(GROUP_STRATEGY, id='群聊-群备注功能')])
-    def test_group_remark_validation(self, test_id, input_content, action, expect_truncated, last_case, chat_strategy):
-        """测试不同场景下的群备注修改逻辑（保存、取消、超长限制）"""
-        with allure.step('1. 进入群设置页面'):
-            self._enter_group_setting_page(chat_strategy.name)
+    def test_group_remark_validation(self, test_id, input_content, action, expected_toast, expect_truncated, should_change, last_case, chat_strategy):
+        """测试不同场景下的群备注修改逻辑（保存、取消、敏感词拦截、超长20字限制截断与安全恢复）"""
+        self._enter_group_setting_page(chat_strategy.name)
         with allure.step('2. 获取修改前的群备注'):
             old_remark = self.groupSettingPage.get_group_remark()
-        with allure.step(f"3. 点击群备注，输入待测内容: '{input_content}'并执行【{action}】"):
+        with allure.step(f"3. 点击群备注，输入待测内容: '{input_content}' 并执行【{action}】"):
             self.groupSettingPage.click_group_remark()
-            self.groupSettingPage.wait_for_remark_dialog_load(nva_text='群备注')
+            is_dialog = self.groupSettingPage.wait_for_remark_dialog_load(nva_text='群备注')
+            check.is_true(is_dialog, '❌ 群备注编辑弹窗未加载')
             self.groupSettingPage.input_remark_content(input_content)
             if action == 'confirm':
                 self.groupSettingPage.click_tv_confirm_button()
             else:
                 self.groupSettingPage.click_tv_cancel_button()
-        with allure.step('4. 校验修改后的群备注结果'):
-            if test_id == '敏感词':
+        with allure.step('4. 校验修改后的群备注结果与提示'):
+            if expected_toast:
                 toast = self.groupSettingPage.get_toast()
-                check.is_in('群备注名不合法，请换个群备注名', toast, '❌ 群备注包含敏感词后未弹出提示')
+                check.is_in(expected_toast, toast, f"❌ 未能监测到预期的 Toast 提示: '{expected_toast}', 实际: '{toast}'")
+                if self.groupSettingPage.wait_for_remark_dialog_load(nva_text='群备注'):
+                    self.groupSettingPage.click_tv_cancel_button()
+            if not should_change:
                 new_remark = self.groupSettingPage.get_group_remark()
-                check.equal(new_remark, old_remark, f'❌ 敏感词被拦截后，群备注发生意外变更')
+                check.equal(new_remark, old_remark, '❌ 异常操作或取消后，群备注发生意外变更')
             else:
                 new_remark = self.groupSettingPage.get_group_remark()
-                if action == 'confirm':
-                    expected_remark = input_content[:20] if expect_truncated else input_content
-                    check.equal(new_remark, expected_remark, f'❌ 群备注确认修改后保存内容不一致')
-                else:
-                    check.equal(new_remark, old_remark, f'❌ 取消修改后群备注被变更了')
-        with allure.step('6. 恢复初始群备注值'):
+                expected_remark = input_content[:20] if expect_truncated else input_content
+                check.equal(new_remark, expected_remark, f"❌ 群备注修改后与预期不符。预期: '{expected_remark}', 实际: '{new_remark}'")
+        with allure.step('5. 恢复初始群备注值'):
             if last_case:
                 self.groupSettingPage.click_group_remark()
                 self.groupSettingPage.wait_for_remark_dialog_load(nva_text='群备注')
