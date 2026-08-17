@@ -543,9 +543,9 @@ class ChatPage(BasePage):
         return False
 
     # 群聊页面-获取群聊页面显示用户昵称
-    def get_group_chat_user_name_elements(self) -> list[WebElement]:
+    def get_group_chat_user_name_elements(self, timeout: int = 2) -> list[WebElement]:
         """群聊页面-获取群聊页面显示用户昵称"""
-        user_names = self.find_elements(ChatLocator.GROUP_CHAT_USER_NAME_XPATH)
+        user_names = self.find_elements(ChatLocator.GROUP_CHAT_USER_NAME_XPATH, timeout=timeout)
         if not user_names or len(user_names) == 0:
             logger.error(f"没有找到群聊页面显示用户昵称")
             return []
@@ -553,9 +553,9 @@ class ChatPage(BasePage):
         return user_names
     
     # 群聊页面-获取群聊页面某个用户的昵称
-    def get_group_chat_user_name_by_index(self, index: int = -1) -> str:
+    def get_group_chat_user_name_by_index(self, index: int = -1, timeout: int = 2) -> str:
         """群聊页面-获取群聊页面某个用户的昵称"""
-        user_names = self.get_group_chat_user_name_elements()
+        user_names = self.get_group_chat_user_name_elements(timeout=timeout)
         if not user_names or len(user_names) == 0:
             logger.error(f"没有找到群聊页面显示用户昵称")
             return ""

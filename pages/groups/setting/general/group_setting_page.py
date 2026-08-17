@@ -137,6 +137,7 @@ class GroupSettingPage(BasePage):
 
     def get_nva_group_name(self) -> str:
         """获取当前显示的群聊名称"""
+        time.sleep(0.5)
         res = self.get_attribute(GroupSettingLocator.GROUP_NAME_HEADER, 'text', timeout=2)
         if not res:
             logger.warning("❌ [Action-groupSettingPage] 获取群聊名称失败")
@@ -150,11 +151,13 @@ class GroupSettingPage(BasePage):
         logger.info("✅ [Action-groupSettingPage] 点击【群备注】行")
 
     def get_group_remark(self) -> str:
-        """获取当前显示的群备注文本"""
+        """获取当前显示的群备注文本（自动剥离‘备注：’前缀）"""
+        time.sleep(0.5)
         res = self.get_attribute(GroupSettingLocator.GROUP_REMARK_HEADER, "text", raise_exception=False)
         if res:
-            logger.info(f"📖 [Action-groupSettingPage] 获取当前【群备注】文本: '{res}'")
-            return res
+            cleaned = res.replace("备注：", "").replace("备注:", "").strip()
+            logger.info(f"📖 [Action-groupSettingPage] 获取当前【群备注】文本: '{cleaned}' (原始展示: '{res}')")
+            return cleaned
         logger.warning("❌ [Action-groupSettingPage] 获取当前【群备注】文本失败")
         return ""
 
@@ -403,7 +406,7 @@ class GroupSettingPage(BasePage):
     def wait_for_remark_dialog_load(self, nva_text: str = "群备注") -> bool:
         """等待群备注/修改名称输入弹窗加载"""
         title = self.get_attribute(GroupSettingLocator.REMARK_DIALOG_TITLE, 'text', timeout=2, raise_exception=False)
-        res = (title == nva_text) if title else False
+        res = (nva_text in title) if title else False
         logger.info(f"✅ [Action-groupSettingPage] 弹窗加载状态: {res}, 当前标题: '{title}'")
         return res
 
@@ -415,16 +418,20 @@ class GroupSettingPage(BasePage):
     # =========================================================================
     # 13. 我在本群昵称修改业务流
     # =========================================================================
-    def change_my_group_nickname(self, nickname: str):
-        """修改我在本群昵称完整流"""
+    def change_my_group_nickname(self, nickname: str, action: str = "confirm"):
+        """修改我在本群昵称业务流（支持 confirm 确认或 cancel 取消）"""
         self.click_chat_name_forme()
-        self.wait_for_remark_dialog_load(nva_text="我在本群的昵称")
+        self.wait_for_remark_dialog_load(nva_text="我在本群")
         self.input_remark_content(nickname)
-        self.click_tv_confirm_button()
-        logger.info(f"✅ [Action-groupSettingPage] 修改【我在本群昵称】为: '{nickname}'")
+        if action == "confirm":
+            self.click_tv_confirm_button()
+        else:
+            self.click_tv_cancel_button()
+        logger.info(f"✅ [Action-groupSettingPage] 修改【我在本群昵称】为: '{nickname}', 执行【{action}】")
 
     def get_my_group_nickname(self) -> str:
         """获取当前【我在本群昵称】显示的文本"""
+        time.sleep(0.25)
         element = self._scroll_find_element(GroupSettingLocator.GROUP_NAME_FORME_NVA_TV)
         if element:
             res = element.get_attribute("text")
@@ -433,13 +440,6 @@ class GroupSettingPage(BasePage):
         logger.warning("❌ [Action-groupSettingPage] 未找到【我在本群昵称】元素")
         return ""
 
-    # =========================================================================
-    # 14. 群头像辅助操作
-    # =========================================================================
-    def get_group_avatar(self) -> str:
-        """获取群头像属性/文本"""
-        res = self.get_attribute(GroupSettingLocator.GROUP_HEADER, "text", raise_exception=False)
-        return res or ""
 
 
 

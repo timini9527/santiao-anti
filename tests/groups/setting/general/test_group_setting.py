@@ -6,17 +6,20 @@ from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.groups.create.group_create_page import GroupCreatePage
 from pages.groups.setting.general.group_setting_page import GroupSettingPage
+from pages.groups.setting.general.group_avatar_page import GroupAvatarPage
 from pages.groups.setting.manager.group_manager_page import GroupManagerPage
 from pages.chat.core.chat_page import ChatPage
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.common.contact_select_page import ContactSelectPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, GROUP_STRATEGY, GROUP_STRATEGY2
+from utils.cv_recognition.screenshot_utils import ImageComparator
 
 @allure.epic('IM核心功能测试')
 @allure.feature('群聊模块-群管理')
 class TestGroupSetting:
     """群聊设置/群管理相关测试用例"""
     _has_entered_setting_page = False
+    _initial_my_group_nickname = "__UNSET__"
 
     @pytest.fixture(autouse=True)
     def setup_class(self, request, driver_sender):
@@ -25,6 +28,7 @@ class TestGroupSetting:
         self.homePage = HomePage(driver_sender)
         self.groupCreatePage = GroupCreatePage(driver_sender)
         self.groupSettingPage = GroupSettingPage(driver_sender)
+        self.groupAvatarPage = GroupAvatarPage(driver_sender)
         self.groupManagerPage = GroupManagerPage(driver_sender)
         self.chatPage = ChatPage(driver_sender)
         self.contactSelectPage = ContactSelectPage(driver_sender)
@@ -209,7 +213,7 @@ class TestGroupSetting:
     @allure.title('群备注修改校验 - {test_id}-状态：已完成')
     @pytest.mark.parametrize('test_id, input_content, action, expected_toast, expect_truncated, should_change, last_case', [
         pytest.param('正常修改并保存', '测试群备注1', 'confirm', '', False, True, False, id='正常修改并保存'),
-        pytest.param('敏感词拦截', '敏感词内容', 'confirm', '群备注名不合法，请换个群备注名', False, False, False, id='敏感词拦截'),
+        pytest.param('敏感词拦截', '习近平', 'confirm', '群备注名不合法，请换个群备注名', False, False, False, id='敏感词拦截'),
         pytest.param('修改并取消', '企图修改备注但取消', 'cancel', '', False, False, False, id='修改并取消'),
         pytest.param('超长20字限制截断', '一二三四五六七八九十一二三四五六七八九十加', 'confirm', '', True, True, True, id='超长20字限制截断')
     ])
@@ -249,89 +253,149 @@ class TestGroupSetting:
                 self.groupSettingPage.click_tv_confirm_button()
 
     @allure.story('群名称功能')
-    @allure.title('群聊名称修改校验-状态：已完成')
-    @pytest.mark.parametrize('scenario, input_name, expected_toast, expected_result, should_change', [pytest.param('empty', '', '群名称不能为空', '', False, id='群名称设置为空'), pytest.param('success', '新群聊名称', '', '新群聊名称', True, id='群名称正常修改'), pytest.param('limit_10', '一二三四五六七八九十', '', '一二三四五六七八九十', True, id='群名称上限10个字'), pytest.param('limit_over', '一二三四五六七八九十一二', '', '一二三四五六七八九十', True, id='群名称超限10字截断'), pytest.param('sensitive', '敏感词内容', '操作不成功，请换个名称！', '', False, id='群名称包含敏感词')])
+    @allure.title('群聊名称修改校验 - {scenario}-状态：已完成')
+    @pytest.mark.parametrize('scenario, input_name, action, expected_toast, expected_result, should_change, last_case', [
+        pytest.param('empty', '', 'confirm', '群名称不能为空', '', False, False, id='群名称设置为空'),
+        pytest.param('success', '新群聊名称', 'confirm', '', '新群聊名称', True, False, id='群名称正常修改'),
+        pytest.param('cancel', '企图修改群名称但取消', 'cancel', '', '', False, False, id='修改群名称并取消'),
+        pytest.param('limit_20', '一二三四五六七八九十一二三四五六七八九十', 'confirm', '', '一二三四五六七八九十一二三四五六七八九十', True, False, id='群名称上限20个字'),
+        pytest.param('limit_20_over', '一二三四五六七八九十一二三四五六七八九十超限', 'confirm', '', '一二三四五六七八九十一二三四五六七八九十', True, False, id='群名称超限20字截断'),
+        pytest.param('sensitive', '习近平', 'confirm', '操作不成功，请换个名称！', '', False, True, id='群名称包含敏感词')
+    ])
     @pytest.mark.parametrize('chat_strategy', [pytest.param(GROUP_STRATEGY, id='群聊-群名称功能')])
-    def test_group_name_validation(self, scenario, input_name, expected_toast, expected_result, should_change, chat_strategy):
-        """验证群聊名称的修改规则，包含空输入、字数上限10个字截断、敏感词拦截等边界与异常场景"""
+    def test_group_name_validation(self, scenario, input_name, action, expected_toast, expected_result, should_change, last_case, chat_strategy):
+        """验证群聊名称的修改规则，包含空输入、字数上限20个字截断、敏感词拦截、取消修改与环境恢复"""
         self._enter_group_setting_page(chat_strategy.name)
         with allure.step('2. 获取修改前的群名称'):
             old_group_name = self.groupSettingPage.get_nva_group_name()
-        with allure.step(f"3. 触发修改群名称，输入: '{input_name}'"):
+        with allure.step(f"3. 触发修改群名称，输入: '{input_name}' 并执行【{action}】"):
             self.groupSettingPage.click_group_name()
-            self.groupSettingPage.wait_for_remark_dialog_load(nva_text='群名称')
+            is_dialog = self.groupSettingPage.wait_for_remark_dialog_load(nva_text='群聊名称')
+            check.is_true(is_dialog, '❌ 群名称编辑弹窗未加载')
             self.groupSettingPage.input_remark_content(input_name)
-            self.groupSettingPage.click_tv_confirm_button()
+            if action == 'confirm':
+                self.groupSettingPage.click_tv_confirm_button()
+            else:
+                self.groupSettingPage.click_tv_cancel_button()
         with allure.step('4. 校验修改后的结果与提示'):
             if expected_toast:
                 toast_text = self.groupSettingPage.get_toast()
                 check.is_in(expected_toast, toast_text, f"❌ 未能监测到预期的 Toast 提示: '{expected_toast}', 实际: '{toast_text}'")
+                if self.groupSettingPage.wait_for_remark_dialog_load(nva_text='群聊名称'):
+                    self.groupSettingPage.click_tv_cancel_button()
             if not should_change:
                 current_name = self.groupSettingPage.get_nva_group_name()
-                check.equal(old_group_name, current_name, f'❌ 异常输入后，群聊名称意外发生了改变')
+                check.equal(current_name, old_group_name, '❌ 异常输入或取消后，群聊名称意外发生了改变')
             else:
                 current_name = self.groupSettingPage.get_nva_group_name()
-                check.equal(expected_result, current_name, f"❌ 修改后的群聊名称与预期不符。预期: '{expected_result}', 实际: '{current_name}'")
+                check.equal(current_name, expected_result, f"❌ 修改后的群聊名称与预期不符。预期: '{expected_result}', 实际: '{current_name}'")
+        with allure.step('5. 恢复初始群名称'):
+            if last_case:
+                self.groupSettingPage.click_group_name()
+                self.groupSettingPage.wait_for_remark_dialog_load(nva_text='群聊名称')
+                self.groupSettingPage.input_remark_content(chat_strategy.name)
+                self.groupSettingPage.click_tv_confirm_button()
 
     @allure.story('群设置-群头像')
     @allure.title('通过群聊聊天页面修改群头像-状态：已完成')
     def test_change_group_avatar(self):
-        """通过群聊聊天页面修改群头像"""
-        with allure.step('1. 进入群设置页面'):
-            self.chatListPage.enter_chat(GROUP_STRATEGY.name)
-            self.chatPage.click_more_button()
-            self.groupSettingPage.wait_for_setting_page_load()
-        with allure.step('2. 修改群头像'):
-            self.groupSettingPage.click_group_avatar()
-            self.groupSettingPage.click_tv_confirm_button()
-            self.groupSettingPage.click_tv_confirm_button()
-            self.groupSettingPage.click_iv_back_button()
-            self.groupSettingPage.click_iv_back_button()
-        with allure.step('3. 校验群头像是否修改'):
-            new_avatar = self.groupSettingPage.get_group_avatar()
-            check.equal(new_avatar, GROUP_STRATEGY.avatar, f'❌ 群头像修改后不一致')
+        """建临时群进入大图预览，从相册修改群头像，校验哈希变动后解散群聊清理环境"""
+        friend_list = [PRIVATE_USER1.name, PRIVATE_USER2.name]
+        self._create_temp_group(friend_list)
+        try:
+            with allure.step('1. 进入群设置页面与群头像大图预览'):
+                self.chatPage.click_more_button()
+                self.groupSettingPage.wait_for_setting_page_load()
+                group_name = self.groupSettingPage.get_nva_group_name()
+                self.groupAvatarPage.click_group_avatar()
+                self.groupAvatarPage.wait_group_avatar_page_load()
+                old_hash = self.groupAvatarPage.get_group_avatar_hash()
+            with allure.step('2. 打开修改面板，从相册选择新头像并保存'):
+                self.groupAvatarPage.click_confirm_change_group_avatar()
+                self.groupAvatarPage.wait_for_album_dialog()
+                self.groupAvatarPage.click_group_avatar_pick_gallery()
+                self.groupAvatarPage.wait_album_panel_load()
+                self.groupAvatarPage.click_album_image_by_index(index=0)
+                toast_text = self.groupAvatarPage.get_toast()
+                check.equal('头像更新成功', toast_text, f'❌ 未弹出【头像更新成功】提示，实际:【{toast_text}】')
+                self.groupAvatarPage.wait_group_avatar_page_load()
+            with allure.step('3. 校验群头像哈希已发生物理变更'):
+                self.groupAvatarPage.click_back_to_group_setting()
+                self.groupAvatarPage.click_group_avatar()
+                new_hash = self.groupAvatarPage.get_group_avatar_hash()
+                is_similar = ImageComparator.is_hash_similar(old_hash, new_hash, threshold=10)
+                check.is_false(is_similar, '❌ 修改前后的群头像哈希相似度过高，群头像可能更新失败')
+                self.groupAvatarPage.click_back_to_group_setting()
+        finally:
+            with allure.step('-> [Teardown] 解散临时群聊并清理会话'):
+                self.groupSettingPage.click_group_manager()
+                self.groupManagerPage.click_dismiss_group()
+                self._dismiss_and_cleanup_group(group_name)
 
     @allure.story('群设置-我在本群昵称')
-    @allure.title('通过群聊聊天页面修改我在本群昵称-状态：未完成')
-    @pytest.mark.skip(reason='Android：有BUG待修复')
-    def test_group_nickname_validation(self):
-        """测试修改我在本群昵称功能并安全恢复"""
-        with allure.step('1. 进入群设置页面'):
-            self.chatListPage.enter_chat(GROUP_STRATEGY.name)
-            self.chatPage.click_more_button()
-            self.groupSettingPage.wait_for_setting_page_load()
+    @allure.title('我在本群昵称修改校验 - {scenario}-状态：已完成')
+    @pytest.mark.parametrize('scenario, input_nickname, action, expected_result, should_change, last_case', [
+        pytest.param('success', '自动化群昵称', 'confirm', '自动化群昵称', True, False, id='我在本群昵称正常修改'),
+        pytest.param('cancel', '企图修改昵称但取消', 'cancel', '', False, False, id='我在本群昵称取消修改'),
+        pytest.param('limit_10', '1234567890', 'confirm', '1234567890', True, False, id='我在本群昵称上限10字'),
+        pytest.param('limit_over', '一二三四五六七八九十一二', 'confirm', '一二三四五六七八九十', True, False, id='我在本群昵称超限10字截断'),
+        pytest.param('sensitive', '习近平', 'confirm', '', False, True, id='我在本群昵称敏感词拦截')
+    ])
+    @pytest.mark.parametrize('chat_strategy', [pytest.param(GROUP_STRATEGY, id='群聊-我在本群昵称')])
+    def test_group_nickname_validation(self, scenario, input_nickname, action, expected_result, should_change, last_case, chat_strategy):
+        """测试不同场景下修改我在本群昵称（保存、取消、字数上限10字、敏感词拦截与环境安全恢复）"""
+        self._enter_group_setting_page(chat_strategy.name)
         with allure.step('2. 获取修改前的群内昵称'):
             old_nickname = self.groupSettingPage.get_my_group_nickname()
-        with allure.step('3. 修改我在本群昵称'):
-            target_nickname = '测试群昵称'
-            self.groupSettingPage.change_my_group_nickname(target_nickname)
-        with allure.step('4. 校验我在本群昵称'):
-            new_nickname = self.groupSettingPage.get_my_group_nickname()
-            check.equal(new_nickname, target_nickname, '❌ 我在本群昵称修改后不一致')
-        with allure.step('5. 恢复初始群内昵称值'):
-            restore_nickname = old_nickname if old_nickname else ''
-            self.groupSettingPage.change_my_group_nickname(restore_nickname)
+            if self.__class__._initial_my_group_nickname == "__UNSET__":
+                self.__class__._initial_my_group_nickname = old_nickname
+        with allure.step(f"3. 触发修改我在本群昵称，输入: '{input_nickname}' 并执行【{action}】"):
+            self.groupSettingPage.change_my_group_nickname(input_nickname, action=action)
+        with allure.step('4. 校验修改后的结果与弹窗清理'):
+            if self.groupSettingPage.wait_for_remark_dialog_load(nva_text='本群昵称'):
+                self.groupSettingPage.click_tv_cancel_button()
+            current_nickname = self.groupSettingPage.get_my_group_nickname()
+            if not should_change:
+                check.equal(current_nickname, old_nickname, '❌ 异常输入或取消后，我在本群昵称意外发生了改变')
+            else:
+                check.equal(current_nickname, expected_result, f"❌ 修改后的群内昵称与预期不符。预期: '{expected_result}', 实际: '{current_nickname}'")
+        with allure.step('5. 恢复初始群内昵称'):
+            if last_case:
+                restore_val = self.__class__._initial_my_group_nickname if self.__class__._initial_my_group_nickname != "__UNSET__" else ""
+                self.groupSettingPage.change_my_group_nickname(restore_val)
+                self.__class__._initial_my_group_nickname = "__UNSET__"
 
     @allure.story('群设置-显示群成员昵称')
-    @allure.title('通过群聊聊天页面修改群设置-显示群成员昵称-状态：已完成')
+    @allure.title('开启显示群成员昵称并校验聊天页昵称展示-状态：已完成')
     def test_group_display_member_nickname(self):
-        """测试修改群设置-显示群成员昵称功能"""
+        """进入群设置开启显示群成员昵称开关，返回聊天页校验昵称元素可见，并在最后恢复开关状态"""
         with allure.step('1. 进入群设置页面'):
             self.chatListPage.enter_chat(GROUP_STRATEGY.name)
             self.chatPage.click_more_button()
             self.groupSettingPage.wait_for_setting_page_load()
-        with allure.step('2. 修改群设置-显示群成员昵称'):
-            self.groupSettingPage.click_show_member_name_switch()
-            self.groupSettingPage.click_iv_back_button()
-        with allure.step('3. 校验群设置-显示群成员昵称'):
-            user_name_elements = self.chatPage.get_group_chat_user_name_elements()
-            check.is_true(len(user_name_elements) > 0, f'❌ 群设置-显示群成员昵称校验失败')
+        with allure.step('2. 记录初始状态并将开关设置为开启'):
+            init_state = self.groupSettingPage.get_show_member_name_switch_state()
+            self.groupSettingPage.click_show_member_name_switch(target_state=True)
+        try:
+            with allure.step('3. 返回群聊天页面'):
+                self.groupSettingPage.click_iv_back_button()
+                self.chatPage.wait_for_chat_page_load()
+            with allure.step('4. 校验聊天界面中群成员昵称元素正常展示'):
+                user_name_elements = self.chatPage.get_group_chat_user_name_elements()
+                check.is_true(len(user_name_elements) > 0, '❌ 开启开关后聊天界面未展示群成员昵称')
+        finally:
+            with allure.step('-> [Teardown] 恢复显示群成员昵称初始开关状态'):
+                self.chatPage.click_more_button()
+                self.groupSettingPage.wait_for_setting_page_load()
+                self.groupSettingPage.click_show_member_name_switch(target_state=init_state)
+                self.groupSettingPage.click_iv_back_button()
 
-    @allure.story('群设置-成员进群提醒')
-    @allure.title('通过群聊聊天页面修改群设置-成员进群提醒-未完成')
-    @pytest.mark.skip(reason='暂时无法测试')
-    def test_group_member_join_remind(self):
-        """测试修改群设置-成员进群提醒功能"""
+
+    @allure.story('群设置-消息免打扰')
+    @allure.title('切换消息免打扰开关状态并校验-状态：未完成')
+    @pytest.mark.skip(reason="切换消息免打扰开关状态并校验-状态：未完成")
+    def test_group_dnd_toggle(self):
+        """测试群详情消息免打扰开关的切换与状态恢复"""
         with allure.step('1. 进入群设置页面'):
             self.chatListPage.enter_chat(GROUP_STRATEGY.name)
             self.chatPage.click_more_button()

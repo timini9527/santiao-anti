@@ -29,7 +29,7 @@ class GroupSettingLocator(ChatSettingLocator):
     # =========================================================================
     # 3. 基础信息设置项
     # =========================================================================
-    GROUP_HEADER = (AppiumBy.ID, f"{PACKAGE_ID}/group_header")                                          # 群头像
+    GROUP_HEADER = (AppiumBy.ID, f"{PACKAGE_ID}/group_avatar_header")                                   # 群头像
     GROUP_NAME_ROW = (AppiumBy.ID, f"{PACKAGE_ID}/group_name_row")                                      # 群聊名称容器/行
     GROUP_NAME_HEADER = (AppiumBy.ID, f"{PACKAGE_ID}/group_name_header")                                # 群聊名称文本
     GROUP_REMARK_ROW = (AppiumBy.ID, f"{PACKAGE_ID}/group_remark_row")                                  # 群备注容器/行
