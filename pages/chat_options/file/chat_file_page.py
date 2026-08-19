@@ -369,7 +369,7 @@ class ChatFilePage(ChatPage):
         suffix_map = {
             'image': ['.jpg', '.png', '.webp', '.gif', '.bmp'],
             'video': ['.mp4', '.mov', '.avi', '.wmv', '.flv', '.mkv'],
-            'audio': ['.mp3', '.wav', '.aac', '.flac', '.m4a'],
+            'audio': ['.mp3', '.wav', '.aac', '.flac', '.m4a', '.ogg'],
             'document': ['.doc', '.docx', '.xls', '.xlsx', '.pdf', '.txt', '.xml', '.xmls', '.ppt', '.pptx'],
             'download': ['.apk', '.dmg', '.exe', '.ipa', '.rar', '.zip']
         }
@@ -404,20 +404,147 @@ class ChatFilePage(ChatPage):
     # 获取最新一条文件气泡的文件名
     def get_last_file_name_in_chat(self) -> str:
         """获取聊天列表最新的一条文件消息的名称"""
-        elements = self.find_elements(ChatLocator.FILE_NAME_ITEM, timeout=3, expect_missing=True)
+        elements = self.find_elements(ChatLocator.FILE_NAME_ITEM, timeout=2, expect_missing=True)
         if elements:
             name = elements[-1].text
             logger.info(f"📋 [Action] 获取到最新发送的文件名: {name}")
             return name
         return ""
 
-    # 点击发送文件按钮（系统文件管理器确认选择后自动返回聊天页）
-    def click_send_file(self):
+
+
+    # ======================================
+    # 新增的业务方法
+    # ======================================
+
+    # 点击最近页面顶部导航栏
+    def click_recently_page_top_nav_bar(self, item_name: str = "图片", timeout: int = 2):
+        """ 点击最近页面顶部导航栏 """
+        locator = ChatFileLocator.get_recently_page_top_nav_bar(item_name)
+        nav_bar = self.find_element(locator, timeout=timeout)
+        if not nav_bar:
+            logger.error(f"❌ [Action] 未获取到最近页面顶部导航栏: {item_name}")
+            return
+        nav_bar.click()
+        logger.info(f"🚀 [Action] 点击最近页面顶部导航栏: {item_name}")
+
+    # 最近页面：通过顶部导航获取对应分类下的文件并选择发送
+    def get_recently_page_files(self, file_type: str = 'image', sub_menu_item: str = "图片", select_mode: str = "first", target_index: int = 0, loop_max: int = 10, timeout: int = 2) -> bool:
         """
-        确认发送文件。
-        在系统文件管理器中点击文件后，通常会自动返回聊天页并触发发送。
-        此方法用于兼容部分设备需要额外确认的场景。
+        最近页面：通过顶部导航栏（图片、音频、视频、文档等）切换分类并选择匹配文件。
+
+        业务流程:
+        1. 类型过滤：根据 file_type 映射常见格式后缀（image/video/audio/document/download）。
+        2. 导航切换：点击顶部分类 Chip（如 '图片'、'音频'、'视频'、'文档'）。
+        3. 滑动匹配：在当前分类视图内滑动查找匹配后缀的文件列表。
+        4. 执行选择：根据 select_mode (first/last/index/absolute_last) 选中目标文件。
+
+        :param file_type: 业务文件类型 (image, video, audio, document, download)
+        :param sub_menu_item: 顶部导航栏显示名称 (默认 "图片")
+        :param select_mode: 文件选中模式 ('first', 'last', 'index', 'absolute_last')
+        :param target_index: 针对 'index' 模式的目标索引位置
+        :param loop_max: 当前视图内滑动探测最大次数
+        :param timeout: 元素查找超时时间
+        :return: 是否成功选中文件
         """
-        logger.info("🚀 [Action] 文件选择完成，等待返回聊天页")
-        time.sleep(1)
+        # 1. 映射后缀与分类名
+        type_nav_map = {
+            'image': '图片',
+            'video': '视频',
+            'audio': '音频',
+            'document': '文档',
+            'download': '下载',
+            'big_file': '大型文件',
+            'week': '本周'
+        }
+        nav_title = sub_menu_item or type_nav_map.get(file_type.lower(), '图片')
+
+        suffix_map = {
+            'image': ['.jpg', '.png', '.webp', '.gif', '.bmp'],
+            'video': ['.mp4', '.mov', '.avi', '.wmv', '.flv', '.mkv'],
+            'audio': ['.mp3', '.wav', '.aac', '.flac', '.m4a', '.ogg'],
+            'document': ['.doc', '.docx', '.xls', '.xlsx', '.pdf', '.txt', '.xml', '.xmls', '.ppt', '.pptx'],
+            'download': ['.apk', '.dmg', '.exe', '.ipa', '.rar', '.zip']
+        }
+        common_suffixes = suffix_map.get(file_type.lower())
+        if not common_suffixes:
+            logger.error(f"❌ 文件类型 [{file_type}] 不支持")
+            return False
+
+        logger.info(f"🔍 [Action] 最近页面 - 开始通过顶部导航栏选择文件，类型: [{file_type}], 导航栏: [{nav_title}], 模式: [{select_mode}]")
+
+        # 2. 点击最近页面顶部导航栏切换分类
+        self.click_recently_page_top_nav_bar(nav_title, timeout=timeout)
+        time.sleep(0.5)
+
+        # 3. 在当前分类列表中查找匹配后缀的文件
+        file_elems = self.find_file_by_suffix(common_suffixes, loop_max=loop_max)
+        if file_elems and self._click_file_by_mode(file_elems, select_mode, target_index):
+            logger.info(f"✅ [Action] 最近页面 - 成功通过顶部导航 [{nav_title}] 选中并发送文件")
+            return True
+
+        logger.error(f"❌ [Action] 最近页面 - 在顶部导航 [{nav_title}] 下未找到匹配文件")
+        return False
+
+    # 点击文件选择页搜索按钮
+    def click_file_search_button(self, timeout: int = 2) -> bool:
+        """ 点击文件选择页搜索按钮 """
+        if not self.is_element_exist(ChatFileLocator.SEARCH_BTN, timeout=timeout):
+            logger.error("❌ [Action] 未找到搜索按钮")
+            return False
+        self.click(ChatFileLocator.SEARCH_BTN)
+        logger.info("🚀 [Action] 点击文件选择页搜索按钮")
+        return True
+
+    # ==================== 搜索功能 ====================
+    # 搜索框输入文件名
+    def input_search_file_name(self, file_name: str, timeout: int = 2) -> bool:
+        """ 在搜索框中输入文件名 """
+        search_input = self.find_element(ChatFileLocator.SEARCH_INPUT, timeout=timeout)
+        if not search_input:
+            logger.error("❌ [Action] 未找到搜索输入框")
+            return False
+        search_input.clear()
+        search_input.send_keys(file_name)
+        logger.info(f"✍️ [Action] 搜索框输入文件名: {file_name}")
+        return True
+
+    # 核心业务方法：通过固定完整文件名搜索并点击发送
+    def search_and_select_file_by_name(self, exact_file_name: str, search_timeout: int = 3, select_timeout: int = 3) -> bool:
+        """
+        [固定文件名搜索模式] 通过顶部搜索栏精准搜索固定文件名并点击选择。
+
+        业务流程:
+        1. 点击文件选择页顶部搜索按钮。
+        2. 在搜索输入框中输入完整文件名（如 'test_doc.pdf', 'IMG_20260817_142457.jpg'）。
+        3. 等待搜索结果列表渲染，并通过完整文件名精确匹配目标条目。
+        4. 点击匹配条目，系统自动完成选择并返回聊天页。
+
+        :param exact_file_name: 完整固定文件名（包含扩展名）
+        :param search_timeout: 搜索框等待超时时间
+        :param select_timeout: 搜索结果条目等待超时时间
+        :return: bool: 是否成功精准选中文件
+        """
+        logger.info(f"🔍 [Action] 开始通过固定文件名精准搜索选择: [{exact_file_name}]")
+        # 1. 点击搜索按钮
+        if not self.click_file_search_button(timeout=search_timeout):
+            return False
+        time.sleep(0.5)
+
+        # 2. 输入固定文件名
+        if not self.input_search_file_name(exact_file_name, timeout=search_timeout):
+            return False
+        time.sleep(0.5)
+
+        # 3. 在搜索结果列表中精准查找目标文件
+        file_locator = ChatFileLocator.get_file_by_name(exact_file_name)
+        target_file = self.find_element(file_locator, timeout=select_timeout)
+        if not target_file:
+            logger.error(f"❌ [Action] 搜索结果中未找到目标文件: {exact_file_name}")
+            return False
+
+        logger.info(f"✅ [Action] 成功精准定位到固定文件: {target_file.text}，执行选择")
+        target_file.click()
+        return True
+
 

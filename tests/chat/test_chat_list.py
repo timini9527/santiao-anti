@@ -196,7 +196,7 @@ class TestChatList:
                 assert not message, f'聊天记录展示未被清空，实际显示为: {message}'
                 session_status = self.chatListPage.enter_session(strategy.name)
                 assert session_status is True, f'未找到目标会话: {strategy.name}'
-                _, bubble_num = self.chatListPage.find_chat_bubbles()
+                bubble_num = self.chatListPage.get_total_message_count()
                 assert bubble_num == 0, f'进入会话内发现聊天气泡没有被删除，实际为: {bubble_num}'
             else:
                 session_status = self.chatListPage._find_session_element_in_list(strategy.name)

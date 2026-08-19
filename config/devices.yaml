@@ -72,7 +72,7 @@ devices:
       platformName: "Android"
       # platformVersion: "12.0"
       # udid: "3B65BN02GU600000"  
-      udid: "192.168.1.111:37049"  
+      udid: "192.168.1.111:36335"  
       # udid: "192.168.1.29:36457"
       # udid: "emulator-5558"   # 模拟器  
       # udid: "emulator-5560"     # 模拟器（注意：此处的 udid 优先被 Web 回执中的 "设备1" 动态覆盖）
@@ -126,7 +126,8 @@ devices:
 
     device9:
       platformName: "Android"
-      udid: "emulator-5570"     # 模拟器9
+      # udid: "emulator-5570"     # 模拟器9
+      udid: "192.168.1.16:5555"     # 模拟器9
       deviceName: "Device9Phone"
       systemPort: 8208
       appiumServerUrl: "http://127.0.0.1:4731"

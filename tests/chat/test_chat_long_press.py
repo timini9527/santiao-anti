@@ -46,8 +46,16 @@ class TestChatLongPress:
 
     @allure.story('不同消息长按菜单的完整性校验')
     @allure.title('不同消息长按菜单的完整性校验-状态：已完成')
-    @pytest.mark.parametrize('msg_type', [pytest.param(t, id=f'消息类型-{t}') for t in ['text', 'voice', 'image', 'video', 'position', 'card', 'file', 'package']])
-    @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
+    @pytest.mark.parametrize(
+        'msg_type',[
+            pytest.param(t, id=f'消息类型-{t}')
+            for t in ['text', 'voice', 'image', 'video', 'position', 'card', 'file', 'package']
+        ])
+    @pytest.mark.parametrize(
+        'strategy',[
+            pytest.param(PRIVATE_USER1, id='私聊模式'),
+            pytest.param(GROUP_STRATEGY, id='群聊模式')
+        ])
     def test_long_press_display_action(self, strategy, msg_type):
         with allure.step(f'1. 前置准备：进入聊天页面并发送一条【{msg_type}】消息'):
             self.chatListPage.enter_chat(strategy.name)

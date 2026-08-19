@@ -90,7 +90,7 @@ class ChatLongPressPage(ChatPage):
     # 长按消息-长按最后一条消息
     def long_press_last_message(self):
         """执行长按最后一条消息的操作"""
-        message_content = self.get_last_message_content_bubble()
+        message_content = self.get_last_message_layout_item()
         self.long_press_action(message_content)
         logger.info("🖱️ [Action] - 正在长按最后一条聊天消息...")
         time.sleep(0.5)

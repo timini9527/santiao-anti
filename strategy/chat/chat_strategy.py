@@ -245,7 +245,7 @@ SENDER_BUBBLE_STRATEGY = BubbleMessageScenario(
     desc="发送方气泡验证",
     message_content="这是发送方测试消息",
     is_sender=True,
-    bubble_locator=ChatLocator.SENT_HEAD_ID,
+    bubble_locator=ChatLocator.AVATAR_ID,
     avatar_locator=ChatLocator.SENT_HEAD_ITEM,
     status_locator=None
 )
@@ -253,7 +253,7 @@ RECEIVER_BUBBLE_STRATEGY = BubbleMessageScenario(
     desc="接收方气泡验证",
     message_content="这是接收方测试消息",
     is_sender=False,
-    bubble_locator=ChatLocator.RECEIVED_HEAD_ID,
+    bubble_locator=ChatLocator.AVATAR_ID,
     avatar_locator=ChatLocator.RECEIVED_HEAD_ITEM,
     status_locator=None
 )

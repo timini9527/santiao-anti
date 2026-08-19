@@ -13,6 +13,17 @@ from selenium.webdriver.remote.webelement import WebElement
 @allure.story("聊天页面")
 class ChatPage(BasePage):
 
+    # 消息类型与对应特征定位器映射表
+    _BUBBLE_TYPE_MAP = {
+        "text": ChatLocator.MESSAGE_CONTENT_ITEM,         # id/message_text
+        "image": ChatLocator.IMAGE_ITEM,                  # id/message_image
+        "video": ChatLocator.VIDEO_PLAY_BUTTON_ITEM,      # id/video_cover
+        "file": ChatLocator.FILE_CARD_ITEM,               # id/file_card
+        "location": ChatLocator.LOCATION_CARD_ITEM,       # id/location_card
+        "card": ChatLocator.PROFILE_CARD_ITEM,            # id/profile_card
+    }
+
+
     # 消息类型(msg_type)+方向(side) -> 定位器 映射表。
     # 内容全为 ChatLocator 静态类属性，与入参无关，提为类常量避免每次调用 get_message_elements 重建。
     _MSG_LOC_MAP = {
@@ -177,16 +188,18 @@ class ChatPage(BasePage):
         logger.info("🚀[Action-chat] - chat 点击底部语音按钮")
 
     # 聊天输入-在文本输入框中输入数据
-    def input_text(self, text: str):
-        """聊天输入-在文本输入框中输入数据"""
-        self.send_keys(ChatLocator.TEXT_INPUT, text)
-        logger.info(f"🚀[Action-chat] - chat 输入框输入数据: {text}")
-
-    # 聊天输入-快速输入数据（不使用基础封装）
-    def fast_input_text(self, text: str):
-        """聊天输入-快速输入数据（不使用基础封装，降低驱动层抽象开销）"""
-        self.fast_send_keys(ChatLocator.TEXT_INPUT, text)
-        logger.info(f"🚀[Action-chat] - chat 输入框注入数据: {text}")
+    def input_text(self, text: str, fast: bool = False):
+        """
+        聊天输入-在文本输入框中输入数据
+        :param text: 输入文本内容
+        :param fast: 是否使用快速注入（降低驱动层开销）
+        """
+        if fast:
+            self.fast_send_keys(ChatLocator.TEXT_INPUT, text)
+            logger.info(f"🚀[Action-chat] - chat 输入框快速注入数据: {text}")
+        else:
+            self.send_keys(ChatLocator.TEXT_INPUT, text)
+            logger.info(f"🚀[Action-chat] - chat 输入框输入数据: {text}")
 
     # 聊天输入-点击底部表情按钮
     def click_emoji_button(self):
@@ -235,16 +248,20 @@ class ChatPage(BasePage):
         return True
     
     # 消息接收-获取聊天页面消息所有行容器列表
-    def get_message_layout_items(self) -> list:
+    def get_message_layout_items(self, timeout: int = 2, raise_exception: bool = True) -> list:
         """消息接收-获取聊天页面消息所有行容器列表"""
-        message_layout_items = self.find_elements(ChatLocator.MESSAGE_LAYOUT_ITEM, timeout=2, expect_missing=True)
-        logger.info(f"🚀[Action-chat] - chat 获取聊天页面消息所有容器数量: {len(message_layout_items)}")
+        message_layout_items = self.find_elements(ChatLocator.MESSAGE_LAYOUT_ITEM, timeout=timeout, raise_exception=raise_exception)
+        if message_layout_items:
+            logger.info(f"🚀[Action-chat] - chat 获取聊天页面消息所有容器数量: {len(message_layout_items)}")
+        else:
+            logger.error(f"❌ [Action-chat] - 未检测到聊天页面消息所有容器，当前会话可能存在异常")
         return message_layout_items
 
     # 消息接收-获取当前聊天页面的消息总数量
     def get_total_message_count(self) -> int:
         """消息接收-获取当前聊天页面的消息总数量"""
-        count = len(self.get_message_layout_items())
+        items = self.get_message_layout_items(raise_exception=False) or []
+        count = len(items)
         logger.info(f"🚀[Action-chat] - chat 获取聊天页面消息总数: {count}")
         return count
     
@@ -263,14 +280,6 @@ class ChatPage(BasePage):
         side_name = "发送方" if side == 'sent' else "接收方"
         logger.info(f"🚀[Action-chat] - chat 获取 {side_name} 消息发送失败数量: {len(fail_items)}")
         return fail_items
-
-    # 消息接收-查找并获取页面中的聊天记录气泡元素及数量
-    def find_chat_bubbles(self) -> tuple:
-        """消息接收-查找并获取页面中的聊天记录气泡元素及数量"""
-        message_container_items = self.find_elements(ChatLocator.MESSAGE_CONTAINER_ITEM)
-        count = len(message_container_items)
-        logger.info(f"🚀[Action-chat] - chat 查找页面聊天记录气泡数量: {count}")
-        return message_container_items, count
         
     # 快捷功能-打开底部表情面板
     def enter_emoji_page(self):
@@ -291,36 +300,6 @@ class ChatPage(BasePage):
         input_text = self.get_attribute(ChatLocator.TEXT_INPUT, 'text')
         logger.info(f"[Assert] 获取输入框中的数据: {input_text}")
         return input_text
-    
-    # 消息接收-获取发送方的所有聊天行容器元素
-    def get_sent_message_row_item(self) -> list:
-        """消息接收-获取发送方的所有聊天行容器元素"""
-        items = self.find_elements(ChatLocator.SENT_MESSAGE_ROW_ITEM, timeout=3)
-        if not items:
-            logger.warning(f"🚀[Action-chat] - chat 未检测到发送方聊天行容器")
-            return []
-        logger.info(f"🚀[Action-chat] - chat 获取发送方聊天行容器数量: {len(items)}")
-        return items
-    
-    # 消息接收-获取发送方的所有消息内容容器元素
-    def get_sent_message_content_item(self) -> list:
-        """消息接收-获取发送方的所有消息内容容器元素"""
-        items = self.find_elements(ChatLocator.SENT_MESSAGE_CONTENT_ITEM, timeout=3)
-        if not items:
-            logger.warning(f"🚀[Action-chat] - chat 未检测到发送方聊天内容容器")
-            return []
-        logger.info(f"🚀[Action-chat] - chat 获取发送方聊天内容容器数量: {len(items)}")
-        return items
-        
-    # 消息接收-获取接收方的所有消息内容容器元素
-    def get_received_message_content_item(self) -> list:
-        """消息接收-获取接收方的所有消息内容容器元素"""
-        items = self.find_elements(ChatLocator.RECEIVED_MESSAGE_CONTENT_ITEM, timeout=3)
-        if not items:
-            logger.warning(f"🚀[Action-chat] - chat 未检测到接收方聊天内容容器")
-            return []
-        logger.info(f"🚀[Action-chat] - chat 获取接收方聊天内容容器数量: {len(items)}")
-        return items
 
     # 消息接收-根据类型和方向获取聊天页面中的消息元素列表
     def get_message_elements(self, msg_type: Literal['text', 'image', 'videoDuration', 'videoPlay', 'locTitle', 'locSubTitle', 'card', 'card_detail', 'fileName', 'fileSize', 'fileStatus', 'history'], 
@@ -331,7 +310,7 @@ class ChatPage(BasePage):
         if not locator:
             raise ValueError(f"❌ ChatPage.get_message_elements - 不支持的消息类型或方向: msg_type={msg_type}, side={side}")
 
-        items = self.find_elements(locator, timeout=3, expect_missing=expect_missing)
+        items = self.find_elements(locator, timeout=2, expect_missing=expect_missing)
         return items if items else []
 
     # 消息接收-统计聊天页面中指定类型与方向的消息数量
@@ -352,39 +331,24 @@ class ChatPage(BasePage):
             logger.info(f"🚀[Action-chat] - chat 通过气泡框查找发送的文本消息: {result}")
             return result
         logger.info("🚀[Action-chat] - chat 通过气泡框未找到发送的文本消息")
-        return  ""
+        return ""
 
     # 消息发送-发送一条文本消息并等待
-    def send_message(self, message: str):
-        """消息发送-发送一条文本消息并等待"""
-        self.input_text(message)
+    def send_message(self, message: str, fast: bool = False):
+        """
+        消息发送-发送一条文本消息并等待
+        :param message: 文本内容
+        :param fast: 是否使用极速输入
+        """
+        self.input_text(message, fast=fast)
         self.click_send_button()
-        logger.info(f"🚀[Action-chat] - chat 发送消息: {message}")
+        logger.info(f"🚀[Action-chat] - chat {'极速' if fast else ''}发送消息: {message}")
         time.sleep(0.5)
-
-    # 消息发送-极速发送一条文本消息并等待
-    def fast_send_message(self, message: str):
-        """消息发送-极速发送一条文本消息并等待"""
-        self.fast_input_text(message)
-        self.click_send_button()
-        logger.info(f"🚀[Action-chat] - chat 极速发送消息: {message}")
-
-    # 消息接收-获取指定索引与方向的消息文本内容
-    def find_message_content(self, index: int = -1, side: Literal['sent', 'received'] = 'sent') -> str:
-        """消息接收-获取指定索引与方向的消息文本内容"""
-        send_text_items = self.get_message_elements(msg_type="text", side=side, expect_missing=True)
-        if not send_text_items:
-            logger.error(f"没有找到 {side} 的文本消息元素")
-            raise NoSuchElementException(f"没有找到 {side} 的文本消息元素")
-        actual_text = send_text_items[index].text
-        actual_text = actual_text.replace("\uFFFC ", "").strip()  # 去掉这个字符 ￼
-        logger.info(f"[Assert] 获取 {side} 第 {index} 条文本消息的内容: {actual_text}")
-        return actual_text
 
     # ========================================================================================
     # 逻辑相关
     # ========================================================================================
-    # 消息状态-等待最后一条发送的消息完成
+    # 消息状态-等待最后一条发送的消息完成（转发调用智能监控器）
     def wait_for_last_sent_message_completed(self, timeout: int = 60) -> bool:
         """消息状态-等待最后一条发送的消息完成"""
         logger.info(f"⏳ [Status] 等待发送状态图标 (btn_state) 消失...")
@@ -404,31 +368,32 @@ class ChatPage(BasePage):
         logger.info(f"⏳ [Status] 启动智能监控：等待消息最终结果 (Max: {timeout}s)...")
         start_time = time.time()
         last_log_time = start_time
+        time.sleep(0.3)
 
         while time.time() - start_time < timeout:
             try:
-                last_item = self._get_last_message_layout_item()
-                status_icons = last_item.find_elements(*ChatLocator.FAIL_MSG)
-                
-                if not status_icons:
-                    logger.info(f"✅ [Status] 标识消失，发送成功！(耗时: {int(time.time() - start_time)}s)")
+                last_item = self.get_last_message_layout_item()
+                read_status = last_item.find_elements(*ChatLocator.READ_STATUS_ITEM)
+                if read_status and any(r.is_displayed() for r in read_status):
+                    logger.info(f"✅ [Status] 判定条件 1：监测到已读/未读状态，发送成功！(耗时: {int(time.time() - start_time)}s)")
                     return True
-                
-                if status_icons[0].get_attribute("clickable") == "true":
-                    logger.error("❌ [Status] 监测到红点标识，判定为发送失败。")
-                    return False
-                
-                if time.time() - last_log_time >= 5:
-                    logger.info(f"⏳ [Status] 文件正在上传中... 已耗时 {int(time.time() - start_time)}s")
+                status_icons = last_item.find_elements(*ChatLocator.FAIL_MSG)
+                visible_icons = [icon for icon in status_icons if icon.is_displayed()]
+
+                if not visible_icons:
+                    logger.info(f"✅ [Status] 判定条件 2：发送中状态标识已消失，发送成功！(耗时: {int(time.time() - start_time)}s)")
+                    return True
+                if time.time() - last_log_time >= 3:
+                    logger.info(f"⏳ [Status] 判定条件 3：消息正在发送中(转圈)... 已等待 {int(time.time() - start_time)}s")
                     last_log_time = time.time()
             except Exception:
-                pass 
-            time.sleep(0.5)
-        logger.error(f"❌ [Status] 监控超时，未能在 {timeout}s 内确认最终状态")
+                pass
+            time.sleep(0.3)
+        logger.error(f"❌ [Status] 监控超时({timeout}s)，状态图标仍未消失(转为失败红点)，判定发送失败。")
         return False
 
     # 消息接收-获取最后一条消息的行容器组件
-    def _get_last_message_layout_item(self):
+    def get_last_message_layout_item(self) -> WebElement:
         """消息接收-获取最后一条消息的行容器组件"""
         msg_layout_items = self.get_message_layout_items()
         if not msg_layout_items or len(msg_layout_items) == 0:
@@ -439,47 +404,33 @@ class ChatPage(BasePage):
     # 消息状态-获取最后一条消息是否包含发送失败状态
     def get_last_message_send_fail_status(self) -> bool:
         """消息状态-获取最后一条消息是否包含发送失败状态"""
-        last_item = self._get_last_message_layout_item()
+        last_item = self.get_last_message_layout_item()
         fail_msgs = last_item.find_elements(*ChatLocator.FAIL_MSG)
         
         status = len(fail_msgs) > 0
         logger.info(f"最后一条消息发送{'失败' if status else '成功'}")
         return status
-    
-    # 消息接收-获取所有消息气泡容器
-    def get_message_content_bubbles(self):
-        """消息接收-获取所有消息气泡容器"""
-        elements = self.find_elements(ChatLocator.MESSAGE_CONTENT_XPATH)
-        if not elements:
-            logger.error("没有找到任何消息气泡容器")
-            raise NoSuchElementException("没有找到任何消息气泡容器")
-        return elements
-
-    # 消息接收-获取最后一条消息的气泡内容容器
-    def get_last_message_content_bubble(self):
-        """消息接收-获取最后一条消息的气泡内容容器"""
-        elements = self.get_message_content_bubbles()
-        return elements[-1]
 
     # 消息接收-获取最后一条消息的气泡内容容器，是否包含某种类型的消息
     def get_last_message_content_bubble_has_type(self, msg_type: str, index: int = -1) -> bool:
-        """消息接收-获取指定索引的消息的气泡内容容器，是否包含某种类型的消息"""
-        msg_items = self.get_message_content_bubbles()
-        last_item = msg_items[index]
-        if msg_type == "text":
-            return len(last_item.find_elements(*ChatLocator.TEXT_MESSAGE_VIEW_ITEM)) > 0
-        elif msg_type == "image":
-            return len(last_item.find_elements(*ChatLocator.IMAGE_ITEM)) > 0
-        elif msg_type == "video":
-            return len(last_item.find_elements(*ChatLocator.VIDEO_ITEM)) > 0
-        else:
-            raise ValueError(f"不支持的消息类型: {msg_type}")
+        """消息接收-检查指定索引的消息行容器是否包含某种类型的消息组件"""
+        layout_items = self.get_message_layout_items()
+        if not layout_items:
+            logger.error("❌ 页面中未找到任何消息行容器")
+            return False
 
+        target_row = layout_items[index]
+        loc = self._BUBBLE_TYPE_MAP.get(msg_type)
+        if not loc:
+            raise ValueError(f"❌ 不支持的消息类型: {msg_type}")
+
+        elems = target_row.find_elements(*loc)
+        return len(elems) > 0
 
     # 视频消息-验证最后一条视频消息的状态是否完整成功
     def get_last_message_video_status(self) -> bool:
         """视频消息-验证最后一条视频消息的状态是否完整成功"""
-        last_item = self._get_last_message_layout_item()
+        last_item = self.get_last_message_layout_item()
         
         has_play = len(last_item.find_elements(*ChatLocator.VIDEO_PLAY_BUTTON_ITEM)) > 0
         has_duration = len(last_item.find_elements(*ChatLocator.VIDEO_DURATION_ITEM)) > 0
@@ -503,7 +454,7 @@ class ChatPage(BasePage):
     # CMD通知-获取聊天界面所有系统CMD通知消息: 包含撤回、截屏、进群消息、群聊等
     def get_all_cmd_notifications(self, timeout: int = 2) -> list:
         """CMD通知-获取聊天界面所有系统CMD通知消息: 包含撤回、截屏、进群消息、群聊等"""
-        cmd_elems = self.find_elements(ChatLocator.WITHDRAW_MESSAGE_ITEM, timeout=timeout)
+        cmd_elems = self.find_elements(ChatLocator.CMD_MESSAGE_ITEM, timeout=timeout)
         if not cmd_elems or len(cmd_elems) == 0:
             logger.error(f"没有找到聊天界面中的CMD通知消息")
             return []
@@ -599,7 +550,8 @@ class ChatPage(BasePage):
             logger.error(f"❌ 索引 {index} 超出范围，当前文本消息数为: {len(st_elems)}")
             return ""
         
-        message_content = st_elems[index].get_attribute('text')
+        raw_text = st_elems[index].get_attribute('text') or st_elems[index].text or ""
+        message_content = raw_text.replace("\uFFFC ", "").replace("\uFFFC", "").strip()
         logger.info(f"📊 [Content] 第 {index} 条文本消息内容: {message_content}")
         return message_content
     
@@ -858,7 +810,7 @@ class ChatPage(BasePage):
         logger.info(f"🔍 准备分页校验聊天区: 预期{msg_type} {expected_count} 张/条, 预期描述 '{expect_text}'")
 
         for slide in range(max_slide):
-            row_elems = self.get_sent_message_row_item() or []
+            row_elems = self.get_message_layout_items(raise_exception=False) or []
             if not row_elems:
                 logger.warning(f"第 {slide} 次滑动后未获取到任何消息元素")
                 break
@@ -970,16 +922,6 @@ class ChatPage(BasePage):
             logger.error("✖️ 未检测到聊天页面关键特征")
             return False
 
-    # 消息状态-验证最后一条消息的发送成功状态
-    def verify_message_sent_status(self) -> bool:
-        """消息状态-验证最后一条消息的发送成功状态"""
-        resend_btns = self.find_elements(ChatLocator.FAIL_MSG, timeout=2, expect_missing=True)
-        if resend_btns:
-            logger.error("❌ 检测到重发按钮，消息发送异常")
-            return False
-        logger.info("✅ 未检测到重发按钮，消息发送正常")
-        return True
-
     # =========================================================================================
     # 聊天页面【长按操作】位置消息相关方法 
     # =========================================================================================
@@ -994,35 +936,31 @@ class ChatPage(BasePage):
         logger.info(f"所有位置消息标题: {msg_titles}")
         return msg_titles
 
-    # 位置消息 - 验证已发送位置消息的标题与副标题并返回
+    # 位置消息 - 获取已发送最后一条位置消息的标题与副标题
     def verify_location_sent_status(self) -> dict:
-        """位置消息 - 验证已发送位置消息的标题与副标题并返回"""
-        title_locator = ChatLocator.get_avatar_bubble_locator(ChatLocator.LOCATION_MESSAGE_TITLE_ID, is_sender=True)
-        subtitle_locator = ChatLocator.get_avatar_bubble_locator(ChatLocator.LOCATION_MESSAGE_SUBTITLE_ID, is_sender=True)
-        
-        titles = self.find_elements(title_locator, timeout=2)
-        subtitles = self.find_elements(subtitle_locator, timeout=2)
+        """位置消息 - 获取已发送最后一条位置消息的标题与副标题字典"""
+        titles = self.get_message_elements('locTitle', side='sent')
+        subtitles = self.get_message_elements('locSubTitle', side='sent')
         
         if not titles or not subtitles:
-            logger.error("没有找到已发送的位置气泡")
+            logger.error("❌ 没有找到已发送的位置气泡")
             raise NoSuchElementException("位置气泡未上屏")
 
         address_dict = {
             "title": titles[-1].text,
             "detail_address": subtitles[-1].text
         }
-        logger.info(f"✅ 发送位置校验: {address_dict}")
+        logger.info(f"✅ 获取发送位置气泡信息: {address_dict}")
         return address_dict
 
     # 位置消息-点击最后一条位置消息进入地图详情页面
     def verify_location_enter_map_detail(self):
         """位置消息-点击最后一条位置消息进入地图详情页面"""
-        map_locator = ChatLocator.get_avatar_bubble_locator(ChatLocator.LOCATION_MESSAGE_MAP_ID, is_sender=True)
-        maps = self.find_elements(map_locator, timeout=2)
-        if not maps:
-            logger.error("没有找到已发送的位置气泡，无法点击详情")
+        loc_elems = self.get_message_elements('locTitle', side='sent')
+        if not loc_elems:
+            logger.error("❌ 没有找到已发送的位置气泡，无法点击详情")
             raise NoSuchElementException("无法进入地图详情")
-        maps[-1].click()
+        loc_elems[-1].click()
         logger.info("🚀 [Action-chat] 点击位置气泡进入地图详情")
         time.sleep(2)
     
@@ -1072,7 +1010,7 @@ class ChatPage(BasePage):
     # 名片消息-点击最后一条名片消息进入详情页面
     def click_last_card_message(self):
         """名片消息-点击最后一条名片消息进入详情页面"""
-        elem_card = self._get_last_message_layout_item()
+        elem_card = self.get_last_message_layout_item()
         if not elem_card:
             logger.error("❌ 未找到名片消息，无法进入详情页")
             raise Exception("未找到名片消息")
@@ -1260,7 +1198,7 @@ class ChatPage(BasePage):
     # 合并转发-等待合并转发消息详情页面加载完成
     def wait_for_chat_merge_forward_page_load(self, timeout: int = 10) -> bool:
         """合并转发-等待合并转发消息详情页面加载完成"""
-        res = self.is_element_exist(ChatLocator.CHAT_MERGE_FORWARD_TITLE, timeout=timeout)
+        res = self.is_element_exist(ChatLocator.HISTORY_TITLE_LAYOUT, timeout=timeout)
         if not res:
             logger.warning("❌ 聊天页面合并转发标题未加载完成")
             return False
@@ -1280,7 +1218,8 @@ class ChatPage(BasePage):
     # 合并转发-等待聊天记录合并转发的发送状态提示消失
     def wait_for_history_send_complete(self, timeout=60) -> bool:
         """合并转发-等待聊天记录合并转发的发送状态提示消失"""
-        hist_sending = self.wait_until_element_disappear(ChatLocator.MULIT_TOAST_MESSAGE, timeout=timeout)
+        from locators.common.common_locator import CommonLocator
+        hist_sending = self.wait_until_element_disappear(CommonLocator.TOAST_MSG, timeout=timeout)
         if not hist_sending:
             logger.error("❌ 聊天记录（合并转发）后 toast 发送中 未消失")
             return False
@@ -1330,7 +1269,7 @@ class ChatPage(BasePage):
     # 撤回消息-获取指定索引的撤回系统提示及其上一条正常消息
     def get_withdraw_message(self, index=-1) -> tuple[str, str] | None:
         """撤回消息-获取指定索引的撤回系统提示及其上一条正常消息"""
-        elements = self.find_elements(ChatLocator.WITHDRAW_MESSAGE_ITEM, timeout=2)
+        elements = self.find_elements(ChatLocator.CMD_MESSAGE_ITEM, timeout=2)
         if not elements:
             logger.error("❌ 未找到撤回消息")
             return None

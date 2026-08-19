@@ -21,7 +21,7 @@ class ChatFileLocator:
     GOOGLE_DOC_PACKAGE_ID = 'com.google.android.documentsui:id'
     
     # 巧妙利用 Python 字符串格式化，生成包含 OR 运算的 XPath 模板
-    DOC_OR_GOO = '//*[@resource-id="com.android.documentsui:id/{0}" or @resource-id="com.google.android.documentsui:id/{0}"]'
+    DOC_OR_GOO = f'//*[@resource-id="{DOC_PACKAGE_ID}/{{0}}" or @resource-id="{GOOGLE_DOC_PACKAGE_ID}/{{0}}"]'
 
     # 顶部 Bar
     TOP_BAR_XPATH = DOC_OR_GOO.format('toolbar')
@@ -100,4 +100,19 @@ class ChatFileLocator:
     ICON_CHECK = (AppiumBy.XPATH, DOC_OR_GOO.format('icon_check'))
 
 
+    # 最近页面-顶部导航栏
+    @classmethod
+    def get_recently_page_top_nav_bar(cls, title: str = '图片'):
+        """ 最近页面-顶部导航栏 """
+        return (AppiumBy.ANDROID_UIAUTOMATOR, f'new UiSelector().text("{title}")')
+
+    # ==================== 搜索功能 ====================
+    # 搜索输入框（兼容原生 SAF 和厂商定制机型）
+    SEARCH_INPUT = (AppiumBy.XPATH, DOC_OR_GOO.format('search_src_text'))
+
+    # 根据完整文件名定位元素
+    @classmethod
+    def get_file_by_name(cls, file_name: str):
+        """ 根据完整文件名精准定位 """
+        return (AppiumBy.ANDROID_UIAUTOMATOR, f'new UiSelector().resourceId("{cls.TITLE_ID}").text("{file_name}")')
 

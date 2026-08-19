@@ -142,7 +142,7 @@ class TestGroupCreateDouble:
                 check.is_true(enter_b_success, f'❌ A端在会话列表中未能进入B端创建的群聊: {session_name_b}')
                 if enter_b_success:
                     self.chatPageS.wait_for_chat_page_load()
-                    received_msg_on_a = self.chatPageS.find_message_content(index=-1, side='received')
+                    received_msg_on_a = self.chatPageS.get_text_message_content_by_index(index=-1, side='received')
                     check.equal(received_msg_on_a, msg_from_b, f'❌ A端在群二中接收的消息不匹配')
 
             def cross_check_b():
@@ -151,7 +151,7 @@ class TestGroupCreateDouble:
                 check.is_true(enter_a_success, f'❌ B端在会话列表中未能进入A端创建的群聊: {session_name_a}')
                 if enter_a_success:
                     self.chatPageR.wait_for_chat_page_load()
-                    received_msg_on_b = self.chatPageR.find_message_content(index=-1, side='received')
+                    received_msg_on_b = self.chatPageR.get_text_message_content_by_index(index=-1, side='received')
                     check.equal(received_msg_on_b, msg_from_a, f'❌ B端在群一中接收的消息不匹配')
         with allure.step('6. 并发步骤：双端进行第一轮交叉退群（A退群二，B退群一）'):
 
@@ -229,7 +229,7 @@ class TestGroupCreateDouble:
         with allure.step('6. B端加载群聊并核对首条消息内容'):
             is_in_chat_receiver = self.chatPageR.wait_for_chat_page_load(timeout=10)
             check.is_true(is_in_chat_receiver, '❌ B端未能成功加载群聊页面')
-            last_received_msg = self.chatPageR.find_message_content(index=-1, side='received')
+            last_received_msg = self.chatPageR.get_text_message_content_by_index(index=-1, side='received')
             check.equal(last_received_msg, group_first_msg, f"❌ B端接收到的群消息不一致！预期: '{group_first_msg}', 实际: '{last_received_msg}'")
         with allure.step('7. 清理群聊 - 双端依次删除并退出群组'):
             with allure.step('A端删除并退出该群聊'):

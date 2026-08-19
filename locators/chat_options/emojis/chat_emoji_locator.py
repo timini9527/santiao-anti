@@ -107,12 +107,10 @@ class ChatEmojiLocator(ChatLocator):
 
     # 表情包定位元素
     CHAT_EMOJI_PACKAGE = (AppiumBy.XPATH, f'(//*[@resource-id="{ChatLocator.AVATAR_ID}"]'
-                                        f'/preceding-sibling::*[@resource-id="{ChatLocator.MESSAGE_LAYOUT_ID}"]'
-                                        f'//*[@resource-id="{ChatLocator.MESSAGE_CONTENT_ID}"]/android.widget.ImageView)')
+                                        f'/following-sibling::*[@resource-id="{ChatLocator.MESSAGE_CONTENT_ID}"]//android.widget.ImageView)')
     # 表情包定位元素最后一条
     CHAT_EMOJI_LAST_PACKAGE = (AppiumBy.XPATH, f'(//*[@resource-id="{ChatLocator.AVATAR_ID}"]'
-                                        f'/preceding-sibling::*[@resource-id="{ChatLocator.MESSAGE_LAYOUT_ID}"]'
-                                        f'//*[@resource-id="{ChatLocator.MESSAGE_CONTENT_ID}"]/android.widget.ImageView)[last()]')
+                                        f'/following-sibling::*[@resource-id="{ChatLocator.MESSAGE_CONTENT_ID}"]//android.widget.ImageView)[last()]')
 
     EMOJI_PACKAGE_IMG_ID = f"//android.widget.ImageView"
     # 发送方表情包

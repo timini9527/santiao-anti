@@ -371,7 +371,7 @@ class ChatImagePage(ChatPage):
         """
         点击最后一张发送的图片
         """
-        image_elems = self.get_sent_message_content_item()
+        image_elems = self.get_message_elements('image', side='sent')
         if not image_elems:
             raise NoSuchElementException("未找到发送的图片")
         image_elems[-1].click()

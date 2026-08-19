@@ -163,7 +163,6 @@ class ChatMessageBuilder(ChatPage):
             primary_dir=kwargs.get("dir", "santiaotalk"),
             file_type=kwargs.get("file_type", 'image')
         )
-        file_page.click_send_file()
         self.click_add_button()
 
     # 统一消息特征值提取方法，将分散的提取逻辑集中起来，方便维护和扩展

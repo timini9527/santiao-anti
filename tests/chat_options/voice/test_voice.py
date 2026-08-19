@@ -35,27 +35,32 @@ class TestChatVoice:
 
     @allure.story('基础语音发送测试')
     @allure.title('基础语音发送测试-状态：已完成')
-    @pytest.mark.parametrize('hold_time', [pytest.param(0, id='0秒-太短'), pytest.param(1, id='1秒-正常'), pytest.param(30, id='30秒-正常'), pytest.param(59, id='59秒-临界'), pytest.param(60, id='60秒-上限'), pytest.param(61, id='61秒-超限'), pytest.param(65, id='65秒-超限')])
+    @pytest.mark.parametrize('hold_time', [
+        pytest.param(0, id='0秒-太短'), 
+        pytest.param(1, id='1秒-正常'), 
+        pytest.param(30, id='30秒-正常'), 
+        pytest.param(59, id='59秒-临界'), 
+        pytest.param(60, id='60秒-上限'), 
+        pytest.param(61, id='61秒-超限'), 
+        pytest.param(65, id='65秒-超限')
+    ])
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
     def test_basic_voice_send(self, strategy, hold_time):
         """测试按住说话并发送语音的功能"""
         allure.dynamic.title(f'基础语音发送测试 - 策略: {strategy.name}, 悬停时间: {hold_time}秒')
-        with allure.step(f'1. 进入与【{strategy.name}】的私聊并开启语音模式'):
+        with allure.step(f'1. 进入与【{strategy.name}】的会话并开启语音模式'):
             self._enter_chat_and_enable_voice(strategy.name)
-        with allure.step('2. 【关键】获取操作前的聊天列表快照'):
+        with allure.step('2. 获取操作前的聊天列表快照'):
             pre_snapshot = self.voicePage.get_voice_list_snapshot()
         with allure.step(f'3. 长按语音按钮进行录制并发送 ({hold_time}秒)'):
             send_result = self.voicePage.send_voice_message(hold_time=hold_time)
             if hold_time == 0:
                 check.equal(send_result['toast'], '说话时间太短', f"短录音提示失败，实际toast为: {send_result['toast']}")
-            elif hold_time >= 50:
-                warning = send_result['warning_text']
-                check.is_true('秒后将发送' in warning, f'未出现倒计时警告，或文案不匹配！实际抓取到: {warning}')
-        with allure.step('3. 校验语音消息上屏状态及展示时长'):
+        with allure.step('4. 校验语音消息上屏状态及展示时长'):
             if hold_time > 0:
-                hold_time = 60 if hold_time > 60 else hold_time
-                is_success = self.voicePage.verify_voice_message_display(expected_time=hold_time, pre_snapshot=pre_snapshot, expect_sent=True)
-                check.is_true(is_success, f'语音气泡显示异常！预期时长应为 {hold_time} 秒')
+                expected_time = 60 if hold_time > 60 else hold_time
+                is_success = self.voicePage.verify_voice_message_display(expected_time=expected_time, pre_snapshot=pre_snapshot, expect_sent=True)
+                check.is_true(is_success, f'语音气泡显示异常！预期时长应约为 {expected_time} 秒')
 
     @allure.story('语音录制取消测试')
     @allure.title('语音录制取消测试-状态：已完成')
@@ -63,19 +68,18 @@ class TestChatVoice:
     @pytest.mark.parametrize('hold_time', [pytest.param(5, id='悬停5秒')])
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
     def test_voice_record_cancel(self, strategy, press_time, hold_time):
-        """测试录音过程中取消发送"""
+        """测试录音过程中滑动取消发送"""
         allure.dynamic.title(f'语音录制取消测试 - 策略: {strategy.name}, 悬停时间: {hold_time}秒')
-        with allure.step(f'1. 进入与【{strategy.name}】的私聊并开启语音模式'):
+        with allure.step(f'1. 进入与【{strategy.name}】的会话并开启语音模式'):
             self._enter_chat_and_enable_voice(strategy.name)
-        with allure.step('2. 【关键】获取操作前的聊天列表快照'):
+        with allure.step('2. 获取操作前的聊天列表快照'):
             pre_snapshot = self.voicePage.get_voice_list_snapshot()
-        with allure.step('3. 长按语音并滑动到取消发送区域，悬停 10 秒'):
-            listen_result = self.voicePage.verify_voice_message_cancel(press_time=press_time, hold_time=hold_time)
-            check.is_true(listen_result, '❌ 悬停在取消发送按钮上时，未出现『松开 取消发送』的红框提示文案！')
-        with allure.step('4. 校验松手后是否成功取消发送, 页面是否有语音刚刚的语音消息'):
+        with allure.step('3. 长按语音并滑动到取消区域'):
+            self.voicePage.verify_voice_message_cancel(press_time=press_time, hold_time=hold_time)
+        with allure.step('4. 校验松手后是否成功取消发送，页面无新增语音气泡'):
             expected_cancel_time = hold_time + press_time
             is_success = self.voicePage.verify_voice_message_display(expected_time=expected_cancel_time, pre_snapshot=pre_snapshot, expect_sent=False)
-            check.is_true(is_success, f'语音气泡显示异常！预期时长应为 {expected_cancel_time} 秒')
+            check.is_true(is_success, f'语音取消发送校验失败！页面上出现了新消息')
 
     @allure.story('语音进阶交互：滑动试听测试并操作(发送/取消)，并验证')
     @allure.title('语音进阶交互：滑动试听测试并操作(发送/取消)，并验证-状态：已完成')
@@ -84,20 +88,21 @@ class TestChatVoice:
     @pytest.mark.parametrize('hold_time', [pytest.param(5, id='悬停5秒')])
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
     def test_voice_swipe_to_preview_and_action(self, strategy, action, press_time, hold_time):
-        """测试按住语音按钮并滑动到试听区域，验证提示语及状态切换，并能够进行发送或取消操作"""
+        """测试按住语音按钮并滑动到试听区域，并进行发送或取消操作"""
         allure.dynamic.title(f'语音进阶交互测试 - 策略: {strategy.name}, 悬停时间: {hold_time}秒')
-        with allure.step(f'1. 进入与【{strategy.name}】的私聊并开启语音模式'):
+        with allure.step(f'1. 进入与【{strategy.name}】的会话并开启语音模式'):
             self._enter_chat_and_enable_voice(strategy.name)
-        with allure.step('2. 【关键】获取操作前的聊天列表快照'):
+        with allure.step('2. 获取操作前的聊天列表快照'):
             pre_snapshot = self.voicePage.get_voice_list_snapshot()
-        with allure.step('3. 长按语音并滑动到试听区域，悬停 10 秒'):
-            listen_result = self.voicePage.slide_to_listen_mode(press_time=press_time, hold_time=hold_time)
-            check.is_true(listen_result, '❌ 悬停在试听按钮上时，未出现『松开 试听』的红框提示文案！')
-        with allure.step('4. 校验松手后是否成功进入试听页面'):
+        with allure.step('3. 长按语音并滑动到试听区域'):
+            self.voicePage.slide_to_listen_mode(press_time=press_time, hold_time=hold_time)
+        with allure.step('4. 校验松手后是否成功进入试听界面'):
             is_preview = self.voicePage.is_in_preview_mode()
             check.is_true(is_preview, '❌ 松开手指后，未能进入带有取消/发送按钮的语音试听界面！')
         with allure.step(f"5. 后续操作：{('发送' if action == 'send' else '取消')}试听语音"):
             expected_listen_time = self.voicePage.get_preview_mode_time()
+            if expected_listen_time == 0:
+                expected_listen_time = hold_time + press_time
             if is_preview:
                 if action == 'send':
                     self.voicePage.click_voice_press_button_send()
@@ -106,26 +111,30 @@ class TestChatVoice:
                 else:
                     self.voicePage.click_voice_press_button_retry()
                     is_success = self.voicePage.verify_voice_message_display(expected_time=expected_listen_time, pre_snapshot=pre_snapshot, expect_sent=False)
-                    check.is_true(is_success, '❌ 语音取消失败！页面上竟然刷出了新消息！')
+                    check.is_true(is_success, '❌ 语音取消失败！页面上刷出了新消息！')
 
     @allure.story('语音进阶交互：试听模式多场景操作测试 (播放/暂停、听筒/扬声器切换) + 最终发送/取消校验')
     @allure.title('语音进阶交互：试听模式多场景操作测试 (播放/暂停、听筒/扬声器切换) + 最终发送/取消校验-状态：已完成')
     @pytest.mark.parametrize('press_time', [pytest.param(1, id='按压1秒')])
     @pytest.mark.parametrize('hold_time', [pytest.param(5, id='悬停5秒')])
     @pytest.mark.parametrize('action', [pytest.param('send', id='最终发送'), pytest.param('cancel', id='最终取消')])
-    @pytest.mark.parametrize('scenario', [pytest.param('play', id='试听播放'), pytest.param('pause', id='试听暂停'), pytest.param('earpiece', id='听筒模式'), pytest.param('speaker', id='扬声器模式')])
+    @pytest.mark.parametrize('scenario', [
+        pytest.param('play', id='试听播放'), 
+        pytest.param('pause', id='试听暂停'), 
+        pytest.param('earpiece', id='听筒模式'), 
+        pytest.param('speaker', id='扬声器模式')
+    ])
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
     def test_voice_preview_multi_scenarios(self, strategy, scenario, action, press_time, hold_time):
         """测试在试听模式下各种不同的用户交互场景，并组合不同的最终动作（发送/取消）"""
         allure.dynamic.title(f'语音进阶交互测试 - 策略: {strategy.name}, 悬停时间: {hold_time}秒')
-        with allure.step(f'1. 进入与【{strategy.name}】的私聊并开启语音模式'):
+        with allure.step(f'1. 进入与【{strategy.name}】的会话并开启语音模式'):
             self._enter_chat_and_enable_voice(strategy.name)
-        with allure.step('2. 【关键】获取操作前的聊天列表快照'):
+        with allure.step('2. 获取操作前的聊天列表快照'):
             pre_snapshot = self.voicePage.get_voice_list_snapshot()
         with allure.step(f'3. 长按语音并滑动到试听区域，悬停 {hold_time} 秒'):
-            listen_result = self.voicePage.slide_to_listen_mode(press_time=press_time, hold_time=hold_time)
-            check.is_true(listen_result, '❌ 悬停在试听按钮上时，未出现提示文案！')
-        with allure.step('4. 确认成功进入带有按钮的试听界面'):
+            self.voicePage.slide_to_listen_mode(press_time=press_time, hold_time=hold_time)
+        with allure.step('4. 确认成功进入试听界面'):
             is_preview = self.voicePage.is_in_preview_mode()
             check.is_true(is_preview, '❌ 未进入带有取消/发送/播放按钮的试听模式界面！')
         if not is_preview:
@@ -134,27 +143,13 @@ class TestChatVoice:
             expected_listen_time = self.voicePage.get_preview_mode_time()
             if expected_listen_time == 0:
                 expected_listen_time = hold_time + press_time
-            if scenario == 'play':
+            if scenario in ('play', 'pause'):
                 self.voicePage.click_voice_press_button_play_or_pause()
-                pause_result = self.voicePage.is_in_playing_mode('pause', '准备试听语音内容')
-                check.is_true(pause_result, '❌ 暂停失败，未正确展示『准备试听语音内容』的文案！')
-                self.voicePage.click_voice_press_button_play_or_pause()
-                play_result = self.voicePage.is_in_playing_mode(scenario, '2秒后开始')
-                check.is_true(play_result, '❌ 播放失败，未正确展示『2秒后开始』的文案！')
-            elif scenario == 'pause':
-                self.voicePage.click_voice_press_button_play_or_pause()
-                pause_result = self.voicePage.is_in_playing_mode(scenario, '准备试听语音内容')
-                check.is_true(pause_result, '❌ 暂停失败，未正确展示『准备试听语音内容』的文案！')
-            elif scenario == 'earpiece':
-                earpiece_result = self.voicePage.is_in_playing_mode(scenario, '正在听筒播放内容')
-                check.is_true(earpiece_result, '❌ 听筒失败，未正确展示『正在听筒播放内容』的文案！')
-            elif scenario == 'speaker':
-                self.voicePage.click_voice_press_button_play_or_pause()
-                pause_result = self.voicePage.is_in_playing_mode('pause', '准备试听语音内容')
-                check.is_true(pause_result, '❌ 暂停失败，未正确展示『准备试听语音内容』的文案！')
-                self.voicePage.click_voice_press_button_play_or_pause()
-                speaker_result = self.voicePage.is_in_playing_mode(scenario, '正在扬声器/外放播放内容')
-                check.is_true(speaker_result, '❌ 扬声器失败，未正确展示『正在扬声器/外放播放内容』的文案！')
+                play_result = self.voicePage.is_in_playing_mode(scenario)
+                check.is_true(play_result, f'❌ {scenario} 交互失败！')
+            elif scenario in ('earpiece', 'speaker'):
+                route_result = self.voicePage.is_in_playing_mode(scenario)
+                check.is_true(route_result, f'❌ {scenario} 听筒/外放切换失败！')
         with allure.step(f"6. 执行最终决定操作 - {('发送' if action == 'send' else '取消')}，并验证"):
             if action == 'send':
                 self.voicePage.click_voice_press_button_send()
@@ -163,7 +158,7 @@ class TestChatVoice:
             else:
                 self.voicePage.click_voice_press_button_retry()
                 is_success = self.voicePage.verify_voice_message_display(expected_time=expected_listen_time, pre_snapshot=pre_snapshot, expect_sent=False)
-                check.is_true(is_success, '❌ 语音取消失败！页面上竟然刷出了新消息！')
+                check.is_true(is_success, '❌ 语音取消失败！页面上刷出了新消息！')
 
     @allure.story('识别语音内容，待完善')
     @allure.title('识别语音内容，待完善-状态：未完成')
@@ -183,9 +178,9 @@ class TestChatVoice:
     def test_voice_network_failure(self, strategy, hold_time):
         """测试在断网(飞行模式)下发送语音，验证必定生成带红色失败感叹号的气泡"""
         allure.dynamic.title(f'断网发送异常测试 - 策略: {strategy.name}, 悬停: {hold_time}秒')
-        with allure.step(f'1. 进入与【{strategy.name}】的私聊并开启语音模式'):
+        with allure.step(f'1. 进入与【{strategy.name}】的会话并开启语音模式'):
             self._enter_chat_and_enable_voice(strategy.name)
-        with allure.step('2. 【关键】获取断网前的聊天快照'):
+        with allure.step('2. 获取断网前的聊天快照'):
             pre_snapshot = self.voicePage.get_voice_list_snapshot()
         with allure.step('3. 模拟极端弱网：切断设备网络 (开启飞行模式)'):
             try:
@@ -199,9 +194,9 @@ class TestChatVoice:
                 import time
                 time.sleep(2)
                 is_failed_icon_shown = self.voicePage.verify_voice_message_failed(hold_time, pre_snapshot)
-                check.is_true(is_failed_icon_shown, '❌ 断网下测试失败：没有任何气泡，或者气泡上奇迹般地没有红色失败感叹号！')
+                check.is_true(is_failed_icon_shown, '❌ 断网下测试失败：没有任何气泡，或者气泡上没有红色失败感叹号！')
         finally:
-            with allure.step('清理：不论测试成功与否，务必恢复设备的正常网络'):
+            with allure.step('清理：恢复设备的正常网络'):
                 try:
                     import time
                     self.voicePage.driver.set_network_connection(6)

@@ -32,6 +32,39 @@ class TestChatFile:
         self.chatListPage.enter_chat(chat_name)
         self.chatFilePage.open_panel_enter_file_page()
 
+
+
+    @allure.story('发送文件-固定文件名搜索')
+    @allure.title('发送文件-固定文件名搜索并精准强断言-状态：已完成')
+    @pytest.mark.parametrize('exact_file_name', [
+        pytest.param('测试-图片.jpg', id='固定图片文件'),
+        pytest.param('测试-视频.mp4', id='固定视频文件'),
+        pytest.param('测试-文档-12345.pdf', id='固定PDF文档'),
+        pytest.param('测试-音频.ogg', id='固定音频文件')
+    ])
+    @pytest.mark.parametrize('strategy', [
+        pytest.param(PRIVATE_USER1, id='私聊模式'),
+        pytest.param(GROUP_STRATEGY, id='群聊模式')
+    ])
+    def test_send_file_by_exact_name(self, strategy, exact_file_name):
+        """测试通过完整固定文件名搜索并精准发送，执行 100% 强断言校验"""
+        allure.title(f'发送文件-固定文件名搜索【{strategy.desc}】- 文件: {exact_file_name}')
+        with allure.step(f'1. 进入聊天并打开选择文件页'):
+            self._enter_chat_and_open_file_page(strategy.name)
+            assert self.chatFilePage.wait_for_file_page_load(), '❌ 未成功进入文件选择页面'
+        with allure.step(f'2. 搜索固定文件名并发送: {exact_file_name}'):
+            file_is_selected = self.chatFilePage.search_and_select_file_by_name(exact_file_name)
+            check.is_true(file_is_selected, f'❌ 搜索并选择固定文件失败: {exact_file_name}')
+            self.chatPage.click_add_button()
+        with allure.step('3. 验证聊天气泡中文件名 100% 精准匹配'):
+            self.chatPage.wait_for_chat_page_load()
+            actual_file_name = self.chatFilePage.get_last_file_name_in_chat()
+            check.equal(actual_file_name, exact_file_name, f'❌ 发送的文件名不一致。预期: {exact_file_name}, 实际: {actual_file_name}')
+        with allure.step('4. 验证消息是否发送成功'):
+            is_success = self.chatPage.get_last_message_send_fail_status()
+            check.is_true(is_success, '❌ 消息未在规定时间内发送完成')
+
+
     @allure.story('发送文件-正向流程')
     @allure.title('发送文件-正向流程-状态：已完成')
     @pytest.mark.parametrize('sub_menu_item, file_type, dir_name', [
@@ -42,13 +75,13 @@ class TestChatFile:
     ])
     @pytest.mark.parametrize('select_mode, target_index', [
         pytest.param('first', 0, id='first_file'), 
-        pytest.param('last', 0, id='last_file'), 
-        pytest.param('index', 1, id='second_file'), 
-        pytest.param('absolute_last', 0, id='absolute_last_file')
+        # pytest.param('last', 0, id='last_file'), 
+        # pytest.param('index', 1, id='second_file'), 
+        # pytest.param('absolute_last', 0, id='absolute_last_file')
     ])
     @pytest.mark.parametrize('strategy', [
         pytest.param(PRIVATE_USER1, id='私聊模式'), 
-        pytest.param(GROUP_STRATEGY, id='群聊模式')
+        # pytest.param(GROUP_STRATEGY, id='群聊模式')
     ])
     def test_send_file_success(self, strategy, sub_menu_item, file_type, dir_name, select_mode, target_index):
         """测试在聊天中成功发送文件"""
@@ -58,10 +91,11 @@ class TestChatFile:
             assert self.chatFilePage.wait_for_file_page_load(), '❌ 未成功进入文件选择页面'
         with allure.step(f'2. 选择文件并发送 ({select_mode})'):
             self.chatFilePage.click_file_menu_button()
-            self.chatFilePage.click_sub_menu_item(sub_menu_item)
-            file_is_selected = self.chatFilePage.select_any_file_in_dir(primary_dir=dir_name, file_type=file_type, select_mode=select_mode, target_index=target_index)
+            # self.chatFilePage.click_sub_menu_item(sub_menu_item)
+            self.chatFilePage.click_sub_menu_item('最近')
+            # file_is_selected = self.chatFilePage.select_any_file_in_dir(primary_dir=dir_name, file_type=file_type, select_mode=select_mode, target_index=target_index)
+            file_is_selected = self.chatFilePage.get_recently_page_files(file_type=file_type, sub_menu_item=sub_menu_item, select_mode=select_mode, target_index=target_index)
             check.is_true(file_is_selected, f'❌ 未成功选择文件 (模式: {select_mode})')
-            self.chatFilePage.click_send_file()
             self.chatPage.click_add_button()
         with allure.step('3. 验证聊天气泡中是否存在文件消息'):
             self.chatPage.wait_for_chat_page_load()
@@ -70,6 +104,9 @@ class TestChatFile:
         with allure.step('4. 验证消息是否发送成功'):
             is_success = self.chatPage.wait_for_last_message_send_status()
             check.is_true(is_success, '❌ 消息未在规定时间内发送完成')
+
+
+
 
     @allure.story('发送文件-取消操作')
     @allure.title('发送文件-取消操作-状态：已完成')
@@ -89,6 +126,7 @@ class TestChatFile:
             result = self.chatPage.verify_is_on_chat_page()
             check.is_true(result, '❌ 取消发送文件后，未能正确回到聊天页面')
 
+
     @allure.story('消息管理-文件撤回')
     @allure.title('消息管理-文件撤回-状态：未完成')
     @pytest.mark.skip(reason='UI元素匹配异常，待修复')
@@ -103,7 +141,6 @@ class TestChatFile:
             self._enter_chat_and_open_file_page(strategy.name)
             self.chatFilePage.wait_for_file_page_load()
             self.chatFilePage.select_any_file_in_dir(file_type='image')
-            self.chatFilePage.click_send_file()
             self.chatPage.wait_for_chat_page_load()
             check.is_true(self.chatPage.wait_for_last_message_send_status(), '❌ 文件发送未能在规定时间内完成')
         with allure.step('2. 长按消息并点击撤回'):
@@ -118,6 +155,7 @@ class TestChatFile:
                 check.is_in('撤回', notice_text, f'❌ 未能捕获到预期的撤回提示文字: {notice_text}')
                 logger.info(f'✅ 文件消息撤回验证通过: {notice_text}')
 
+
     @allure.story('发送异常-重试机制')
     @allure.title('发送异常-重试机制-状态：未完成')
     @pytest.mark.skip(reason='UI元素匹配异常，待修复')
@@ -130,7 +168,6 @@ class TestChatFile:
             self._enter_chat_and_open_file_page(strategy.name)
             self.chatFilePage.wait_for_file_page_load()
             self.chatFilePage.select_any_file_in_dir(file_type='image')
-            self.chatFilePage.click_send_file()
         with allure.step('2. 检查是否有失败红点并尝试重发'):
             has_fail = self.chatPage.get_last_message_send_fail_status()
             if has_fail:

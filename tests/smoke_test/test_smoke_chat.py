@@ -56,7 +56,7 @@ class TestSmokeChatCore(BaseSmokeChat):
             self.chatListPage.enter_chat(PRIVATE_USER1.name)
             self.chatPage.send_message(payload)
         with allure.step('2. 校验消息上屏'):
-            text = self.chatPage.find_message_content(index=-1, side='sent')
+            text = self.chatPage.get_text_message_content_by_index(index=-1, side='sent')
             check.equal(text, expected, f'消息实际值 {text} 与预期值 {expected} 不匹配')
 
     @allure.story('查看好友昵称')

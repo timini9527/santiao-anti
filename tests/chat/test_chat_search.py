@@ -220,7 +220,6 @@ class TestChatSearch:
             self.filePage.click_file_menu_button()
             self.filePage.click_sub_menu_item('图片')
             self.filePage.select_any_file_in_dir(file_type='image')
-            self.filePage.click_send_file()
             file_name = self.filePage.get_last_file_name_in_chat()
         with allure.step(f'2、进入设置页面并进入‘查找聊天记录’'):
             self._enter_search_page(strategy)

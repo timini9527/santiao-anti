@@ -113,8 +113,8 @@ class TestSmokeChatOptions(BaseSmokeChatOptions):
             self.positionPage.click_send_button()
             check.is_true(self.chatPage.verify_is_on_chat_page(), '未成功返回聊天页面')
         with allure.step('3. 验证聊天气泡内容'):
+            check.is_true(self.chatPage.wait_for_last_message_send_status(), '测试发送位置失败，发送位置状态异常')
             actual_bubble = self.chatPage.verify_location_sent_status()
-            check.is_true(self.chatPage.verify_message_sent_status(), '测试发送位置失败，发送位置状态异常')
             check.is_in(poi_title, actual_bubble['title'], f"测试发送位置失败，地域匹配失败! Exp: 截取区域[{poi_title}] 未出现在, Act: 气泡地址[{actual_bubble['title']}] 中")
             check.equal(poi_detail, actual_bubble.get('detail_address'), f"发送位置 Exp: {poi_detail}, Act: {actual_bubble.get('detail_address')} 不匹配")
         with allure.step('4. 验证地图显示'):
@@ -134,7 +134,6 @@ class TestSmokeChatOptions(BaseSmokeChatOptions):
             self.filePage.click_sub_menu_item('图片')
             self.filePage.select_any_file_in_dir(file_type='image')
             file_name = self.filePage.get_last_file_name_in_chat()
-            self.filePage.click_send_file()
         with allure.step('3. 校验文件发送成功且上屏'):
             chat_file_names = self.chatPage.get_chat_all_file_name()
             check.is_true(file_name in chat_file_names, f'发送的文件名称 {file_name} 未在气泡中找到')

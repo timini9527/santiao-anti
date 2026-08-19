@@ -223,7 +223,7 @@ class TestFriendRelationship:
             self._go_to_contact_detail_from_list(SENDER_NAME, side='R')
             self.contactDetailPageR.click_send_message()
             self.chatPageR.wait_for_chat_page_load()
-            received_msg = self.chatPageR.find_message_content(index=-1, side='received')
+            received_msg = self.chatPageR.get_text_message_content_by_index(index=-1, side='received')
             check.equal(received_msg, chat_msg, f'❌ 双端重新加回好友后，B端未成功收到A端发送的聊天消息，实际接收: {received_msg}')
         with allure.step('7. S端删除好友进行环境清理'):
             self._sender_delete_friend()
