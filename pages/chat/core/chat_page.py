@@ -16,53 +16,34 @@ class ChatPage(BasePage):
     # 消息类型与对应特征定位器映射表
     _BUBBLE_TYPE_MAP = {
         "text": ChatLocator.MESSAGE_CONTENT_ITEM,         # id/message_text
+        "emoji": ChatLocator.MESSAGE_CONTENT_ITEM,        # id/message_text
         "image": ChatLocator.IMAGE_ITEM,                  # id/message_image
         "video": ChatLocator.VIDEO_PLAY_BUTTON_ITEM,      # id/video_cover
+        "voice": ChatLocator.AUDIO_BUBBLE,                # id/audio_bubble
         "file": ChatLocator.FILE_CARD_ITEM,               # id/file_card
+        "position": ChatLocator.LOCATION_CARD_ITEM,       # id/location_card
         "location": ChatLocator.LOCATION_CARD_ITEM,       # id/location_card
         "card": ChatLocator.PROFILE_CARD_ITEM,            # id/profile_card
+        "package": ChatLocator.IMAGE_ITEM,                # id/message_image
     }
 
 
-    # 消息类型(msg_type)+方向(side) -> 定位器 映射表。
-    # 内容全为 ChatLocator 静态类属性，与入参无关，提为类常量避免每次调用 get_message_elements 重建。
-    _MSG_LOC_MAP = {
-        ('text', 'sent'): ChatLocator.SENT_TEXT_MESSAGE_ITEM,
-        ('text', 'received'): ChatLocator.RECEIVED_TEXT_MESSAGE_ITEM,
-        ('text', 'all'): ChatLocator.TEXT_MESSAGE_VIEW_XPATH,
-        ('image', 'sent'): ChatLocator.SEND_IMAGE_ITEM,
-        ('image', 'received'): ChatLocator.RECEIV_IMAGE_ITEM,
-        ('image', 'all'): ChatLocator.IMAGE_ITEM,
-        ('videoDuration', 'sent'): ChatLocator.SENT_VIDEO_DURATION_ITEM,
-        ('videoDuration', 'received'): ChatLocator.RECEIVE_VIDEO_DURATION_ITEM,
-        ('videoDuration', 'all'): ChatLocator.VIDEO_DURATION_ITEM,
-        ('videoPlay', 'sent'): ChatLocator.SENT_VIDEO_PLAY_BUTTON_ITEM,
-        ('videoPlay', 'received'): ChatLocator.RECEIVE_VIDEO_PLAY_BUTTON_ITEM,
-        ('videoPlay', 'all'): ChatLocator.VIDEO_PLAY_BUTTON_ITEM,
-        ('locTitle', 'sent'): ChatLocator.SENT_LOCATION_MESSAGE_TITLE,
-        ('locTitle', 'received'): ChatLocator.RECEIVE_LOCATION_MESSAGE_TITLE,
-        ('locTitle', 'all'): ChatLocator.LOCATION_MESSAGE_TITLE,
-        ('locSubTitle', 'sent'): ChatLocator.SENT_LOCATION_MESSAGE_SUBTITLE,
-        ('locSubTitle', 'received'): ChatLocator.RECEIVE_LOCATION_MESSAGE_SUBTITLE,
-        ('locSubTitle', 'all'): ChatLocator.LOCATION_MESSAGE_SUBTITLE,
-        ('card', 'sent'): ChatLocator.SENT_CARD_NAME_ITEM,
-        ('card', 'received'): ChatLocator.RECEIVE_CARD_NAME_ITEM,
-        ('card', 'all'): ChatLocator.CARD_NICKNAME_ITEM,
-        ('card_detail', 'sent'): ChatLocator.SENT_CARD_ST_ITEM,
-        ('card_detail', 'received'): ChatLocator.RECEIVE_CARD_ST_ITEM,
-        ('card_detail', 'all'): ChatLocator.CARD_ST_ITEM,
-        ('fileName', 'sent'): ChatLocator.SENT_FILE_NAME_ITEM,
-        ('fileName', 'received'): ChatLocator.RECEIVE_FILE_NAME_ITEM,
-        ('fileName', 'all'): ChatLocator.FILE_NAME_ITEM,
-        ('fileSize', 'sent'): ChatLocator.SENT_FILE_SIZE_ITEM,
-        ('fileSize', 'received'): ChatLocator.RECEIVE_FILE_SIZE_ITEM,
-        ('fileSize', 'all'): ChatLocator.FILE_SIZE_ITEM,
-        ('fileStatus', 'sent'): ChatLocator.SENT_FILE_STATUS_ITEM,
-        ('fileStatus', 'received'): ChatLocator.RECEIVE_FILE_STATUS_ITEM,
-        ('fileStatus', 'all'): ChatLocator.FILE_STATUS_ITEM,
-        ('history', 'sent'): ChatLocator.SENT_CHAT_HISTORY_CONTENT,
-        ('history', 'received'): ChatLocator.RECEIVE_CHAT_HISTORY_CONTENT,
-        ('history', 'all'): ChatLocator.CHAT_HISTORY_CONTENT,
+    # 消息类型(msg_type) -> (发送方定位, 接收方定位, 全部定位) 结构化映射表
+    _MSG_LOC_CONFIG = {
+        'text':          (ChatLocator.SENT_TEXT_MESSAGE_ITEM,         ChatLocator.RECEIVED_TEXT_MESSAGE_ITEM,         ChatLocator.TEXT_MESSAGE_VIEW_XPATH),
+        'emoji':         (ChatLocator.SENT_TEXT_MESSAGE_ITEM,         ChatLocator.RECEIVED_TEXT_MESSAGE_ITEM,         ChatLocator.TEXT_MESSAGE_VIEW_XPATH),
+        'image':         (ChatLocator.SEND_IMAGE_ITEM,                ChatLocator.RECEIV_IMAGE_ITEM,                ChatLocator.IMAGE_ITEM),
+        'package':       (ChatLocator.SEND_IMAGE_ITEM,                ChatLocator.RECEIV_IMAGE_ITEM,                ChatLocator.IMAGE_ITEM),
+        'videoDuration': (ChatLocator.SENT_VIDEO_DURATION_ITEM,       ChatLocator.RECEIVE_VIDEO_DURATION_ITEM,       ChatLocator.VIDEO_DURATION_ITEM),
+        'videoPlay':     (ChatLocator.SENT_VIDEO_PLAY_BUTTON_ITEM,     ChatLocator.RECEIVE_VIDEO_PLAY_BUTTON_ITEM,     ChatLocator.VIDEO_PLAY_BUTTON_ITEM),
+        'locTitle':      (ChatLocator.SENT_LOCATION_MESSAGE_TITLE,     ChatLocator.RECEIVE_LOCATION_MESSAGE_TITLE,     ChatLocator.LOCATION_MESSAGE_TITLE),
+        'locSubTitle':   (ChatLocator.SENT_LOCATION_MESSAGE_SUBTITLE,  ChatLocator.RECEIVE_LOCATION_MESSAGE_SUBTITLE,  ChatLocator.LOCATION_MESSAGE_SUBTITLE),
+        'card':          (ChatLocator.SENT_CARD_NAME_ITEM,             ChatLocator.RECEIVE_CARD_NAME_ITEM,             ChatLocator.CARD_NICKNAME_ITEM),
+        'card_detail':   (ChatLocator.SENT_CARD_ST_ITEM,               ChatLocator.RECEIVE_CARD_ST_ITEM,               ChatLocator.CARD_ST_ITEM),
+        'fileName':      (ChatLocator.SENT_FILE_NAME_ITEM,             ChatLocator.RECEIVE_FILE_NAME_ITEM,             ChatLocator.FILE_NAME_ITEM),
+        'fileSize':      (ChatLocator.SENT_FILE_SIZE_ITEM,             ChatLocator.RECEIVE_FILE_SIZE_ITEM,             ChatLocator.FILE_SIZE_ITEM),
+        'fileStatus':    (ChatLocator.SENT_FILE_STATUS_ITEM,           ChatLocator.RECEIVE_FILE_STATUS_ITEM,           ChatLocator.FILE_STATUS_ITEM),
+        'history':       (ChatLocator.SENT_CHAT_HISTORY_CONTENT,       ChatLocator.RECEIVE_CHAT_HISTORY_CONTENT,       ChatLocator.CHAT_HISTORY_CONTENT),
     }
 
     # 页面导航-等待聊天页面加载完成
@@ -202,22 +183,44 @@ class ChatPage(BasePage):
             logger.info(f"🚀[Action-chat] - chat 输入框输入数据: {text}")
 
     # 聊天输入-点击底部表情按钮
-    def click_emoji_button(self):
-        """聊天输入-点击底部表情按钮"""
-        if self.get_attribute(ChatLocator.EMOJI_BUTTON, 'checked') != 'true':
-            self.click(ChatLocator.EMOJI_BUTTON, force_wait=True)
-            logger.info("🚀[Action-chat] - chat 点击表情按钮")
+    def click_emoji_button(self, is_open: bool = True):
+        """
+        聊天输入-点击底部表情按钮，展开或收起表情面板
+        :param is_open: True 为展开表情面板，False 为收起/关闭表情面板
+        """
+        is_checked = self.get_attribute(ChatLocator.EMOJI_BUTTON, 'checked') == 'true'
+        if is_open:
+            if not is_checked:
+                self.click(ChatLocator.EMOJI_BUTTON, force_wait=True)
+                logger.info("🚀[Action-chat] - chat 点击表情按钮，展开表情面板")
+            else:
+                logger.info("🚀[Action-chat] - chat 表情面板已处于展开状态，无需重复点击")
         else:
-            logger.info("🚀[Action-chat] - chat 表情按钮已选中，无需点击")
+            if is_checked:
+                self.click(ChatLocator.EMOJI_BUTTON, force_wait=True)
+                logger.info("🚀[Action-chat] - chat 点击表情按钮，收起/关闭表情面板")
+            else:
+                logger.info("🚀[Action-chat] - chat 表情面板已处于关闭状态，无需重复点击")
 
-    # 聊天输入-点击 + 号按钮，展开其它功能面板按钮
-    def click_add_button(self):
-        """聊天输入-点击 + 号按钮，展开其它功能面板按钮"""
-        if self.get_attribute(ChatLocator.ADD_BUTTON, 'checked') != 'true':
-            self.click(ChatLocator.ADD_BUTTON, force_wait=True)
-            logger.info("🚀[Action-chat] - chat 点击 + 号按钮，展开其它功能元素")
+    # 聊天输入-点击 + 号按钮，展开或收起其它功能面板按钮
+    def click_add_button(self, is_open: bool = True):
+        """
+        聊天输入-点击 + 号按钮，展开或收起其它功能面板按钮
+        :param is_open: True 为展开面板，False 为收起/关闭面板
+        """
+        is_checked = self.get_attribute(ChatLocator.ADD_BUTTON, 'checked') == 'true'
+        if is_open:
+            if not is_checked:
+                self.click(ChatLocator.ADD_BUTTON, force_wait=True)
+                logger.info("🚀[Action-chat] - chat 点击 + 号按钮，展开其它功能元素")
+            else:
+                logger.info("🚀[Action-chat] - chat + 号按钮已处于展开状态，无需重复点击")
         else:
-            logger.info("🚀[Action-chat] - chat + 号按钮已选中，无需点击")
+            if is_checked:
+                self.click(ChatLocator.ADD_BUTTON, force_wait=True)
+                logger.info("🚀[Action-chat] - chat 点击 + 号按钮，收起/关闭其它功能元素")
+            else:
+                logger.info("🚀[Action-chat] - chat + 号按钮已处于关闭状态，无需重复点击")
     
     # 聊天输入-点击发送消息按钮
     def click_send_button(self):
@@ -302,19 +305,42 @@ class ChatPage(BasePage):
         return input_text
 
     # 消息接收-根据类型和方向获取聊天页面中的消息元素列表
-    def get_message_elements(self, msg_type: Literal['text', 'image', 'videoDuration', 'videoPlay', 'locTitle', 'locSubTitle', 'card', 'card_detail', 'fileName', 'fileSize', 'fileStatus', 'history'], 
-                              side: Literal['sent', 'received', 'all'] = 'all', 
-                              expect_missing: bool = False) -> list[WebElement]:
+    def get_message_elements(
+        self,
+        msg_type: Literal[
+            'text', 'emoji', 'image', 'package', 'videoDuration', 'videoPlay',
+            'locTitle', 'locSubTitle', 'card', 'card_detail',
+            'fileName', 'fileSize', 'fileStatus', 'history'
+        ],
+        side: Literal['sent', 'received', 'all'] = 'all',
+        expect_missing: bool = False
+    ) -> list[WebElement]:
         """消息接收-根据类型和方向获取聊天页面中的消息元素列表"""
-        locator = self._MSG_LOC_MAP.get((msg_type, side))
-        if not locator:
-            raise ValueError(f"❌ ChatPage.get_message_elements - 不支持的消息类型或方向: msg_type={msg_type}, side={side}")
+        loc_tuple = self._MSG_LOC_CONFIG.get(msg_type)
+        if not loc_tuple:
+            raise ValueError(f"❌ ChatPage.get_message_elements - 不支持的消息类型: {msg_type}")
+
+        sent_loc, recv_loc, all_loc = loc_tuple
+        if side == 'sent':
+            locator = sent_loc
+        elif side == 'received':
+            locator = recv_loc
+        else:
+            locator = all_loc
 
         items = self.find_elements(locator, timeout=2, expect_missing=expect_missing)
         return items if items else []
 
     # 消息接收-统计聊天页面中指定类型与方向的消息数量
-    def get_message_count(self, msg_type: Literal['text', 'image', 'videoDuration', 'videoPlay', 'locTitle', 'locSubTitle', 'card', 'card_detail', 'fileName', 'fileSize', 'fileStatus', 'history'] = 'text', side: Literal['sent', 'received', 'all'] = 'all') -> int:
+    def get_message_count(
+        self,
+        msg_type: Literal[
+            'text', 'emoji', 'image', 'package', 'videoDuration', 'videoPlay',
+            'locTitle', 'locSubTitle', 'card', 'card_detail',
+            'fileName', 'fileSize', 'fileStatus', 'history'
+        ] = 'text',
+        side: Literal['sent', 'received', 'all'] = 'all'
+    ) -> int:
         """消息接收-统计聊天页面中指定类型与方向的消息数量"""
         items = self.get_message_elements(msg_type, side)
         count = len(items)
@@ -393,13 +419,52 @@ class ChatPage(BasePage):
         return False
 
     # 消息接收-获取最后一条消息的行容器组件
-    def get_last_message_layout_item(self) -> WebElement:
+    def get_last_message_layout_item(self, index: int = -1) -> WebElement:
         """消息接收-获取最后一条消息的行容器组件"""
         msg_layout_items = self.get_message_layout_items()
         if not msg_layout_items or len(msg_layout_items) == 0:
-            logger.info("没有找到已发送的消息元素")
+            logger.warning(" ⚠️ 没有找到已发送的消息元素")
             raise NoSuchElementException("没有找到已发送的消息元素")
-        return msg_layout_items[-1]
+        return msg_layout_items[index]
+
+    # 消息接收-获取最后一条消息的具体内容组件元素（智能穿透外层 ViewGroup 行容器）
+    def get_last_message_content_element(self, msg_type: str = None) -> WebElement:
+        """
+        消息接收-获取最后一条消息的具体内容组件元素（智能穿透外层 ViewGroup 行容器，精确定位到具体的 message_image、video_cover、message_text 等）
+        :param msg_type: 消息类型，可选 'text', 'image', 'video', 'voice', 'file', 'position', 'location', 'card', 'package', 'emoji'
+        :return: 消息内容组件的 WebElement
+        """
+        last_row = self.get_last_message_layout_item()
+        
+        # 1. 若指定了类型，优先查找对应定位器
+        if msg_type:
+            loc = self._BUBBLE_TYPE_MAP.get(msg_type)
+            if loc:
+                elems = last_row.find_elements(*loc)
+                if elems:
+                    return elems[0]
+            logger.warning(f"⚠️ 在最后一条消息行中未直接匹配到指定类型 [{msg_type}] 的组件，尝试智能探测...")
+
+        # 2. 智能探测：按常见富媒体与文本组件优先级扫描当前行
+        for t, loc in self._BUBBLE_TYPE_MAP.items():
+            elems = last_row.find_elements(*loc)
+            if elems:
+                logger.debug(f"🔍 自动命中最后一条消息的组件类型: {t}")
+                return elems[0]
+
+        # 3. 子元素穿透过滤：排除头像、发送状态、已读未读等辅助控件
+        try:
+            children = last_row.find_elements(AppiumBy.XPATH, "./*")
+            content_children = [
+                c for c in children
+                if not any(k in (c.get_attribute("resource-id") or "") for k in ["avatar", "read_status", "delivery_status", "sender_name"])
+            ]
+            if content_children:
+                return content_children[0]
+        except Exception:
+            pass
+
+        return last_row
 
     # 消息状态-获取最后一条消息是否包含发送失败状态
     def get_last_message_send_fail_status(self) -> bool:
@@ -1122,14 +1187,43 @@ class ChatPage(BasePage):
         logger.info("✅ 点击取消发送按钮（聊天记录）")
     
     # 多选操作-获取当前页面所有可勾选的消息复选框元素
-    def _get_select_checkbox_buttons(self) -> list[WebElement]:
-        """多选操作-获取当前页面所有可勾选的消息复选框元素"""
+    def _get_select_checkbox_buttons(self, filter_safe_area: bool = True) -> list[WebElement]:
+        """多选操作-获取当前页面所有可勾选的消息复选框元素（自动过滤被顶部/底部固定栏遮挡的危险元素）"""
         check_btns = self.find_elements(ChatLocator.BT_SELECT_NOT_FAIL, timeout=2)
         if not check_btns:
             logger.error("❌ 未找到多选转发页面不包含发送失败消息的勾选按钮")
             return []
-        logger.info(f"✅ 多选转发页面加载完成，获取到 {len(check_btns)} 个不包含发送失败消息的勾选按钮")
-        return check_btns
+
+        if not filter_safe_area:
+            return check_btns
+
+        # 动态计算安全可视区域，防止滑动时顶部复选框与导航栏“取消”按键重叠导致误触退出多选
+        try:
+            top_back_elem = self.find_element(ChatLocator.TOP_BACK_BUTTON, timeout=1, expect_missing=True)
+            min_y = top_back_elem.rect['y'] + top_back_elem.rect['height'] if top_back_elem else 180
+
+            share_elem = self.find_element(ChatLocator.IV_SHARE, timeout=1, expect_missing=True)
+            max_y = share_elem.rect['y'] if share_elem else (self.get_window_size()['height'] - 160)
+        except Exception:
+            window_size = self.get_window_size()
+            min_y = int(window_size['height'] * 0.12)
+            max_y = int(window_size['height'] * 0.88)
+
+        safe_btns = []
+        for btn in check_btns:
+            try:
+                rect = btn.rect
+                center_y = rect['y'] + rect['height'] / 2
+                # 处于顶部栏下方且底部栏上方时为安全可点击区域（保留 10px 保护缓冲带）
+                if (min_y + 10) <= center_y <= (max_y - 10):
+                    safe_btns.append(btn)
+                else:
+                    logger.info(f"🛡️ [SafeArea] 复选框中心 Y={center_y} 超出安全可视区 ({min_y}, {max_y})，跳过以防误触返回/取消")
+            except Exception:
+                safe_btns.append(btn)
+
+        logger.info(f"✅ 多选页面已过滤安全可视区勾选按钮: {len(safe_btns)}/{len(check_btns)}")
+        return safe_btns
 
     # 多选操作-点击勾选指定索引的消息复选框
     def click_select_checkbox_button(self, index=-1):

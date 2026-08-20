@@ -31,7 +31,7 @@ class ChatEmojiPage(ChatEmojiPanelBase):
         logger.info(f"初始状态下，当前可见最近使用的表情总数: {len(late_emoji_list)}")
         return late_emoji_list
 
-    def _send_all_emojis_by_paging(self, max_slide: int = 20, duration: int = 1000):
+    def _send_all_emojis_by_paging(self, max_slide: int = 20, duration: int = 500):
         """
         发送所有表情 (一行一行地发送与滑动), 分页全量发送表情。
         :param max_slide: 最大滑动行数，防止死循环
@@ -47,7 +47,7 @@ class ChatEmojiPage(ChatEmojiPanelBase):
             return 0
             
         container_rect = metrics['container_rect']
-        stride_y = metrics['stride_y'] + 0                 # 精准的一行滑动距离
+        stride_y = metrics['stride_y'] + 0                  # 精准的一行滑动距离
         pkg_per_row = metrics['pkg_per_row'] - 1            # 每一行显示的个数
         container_top_y = metrics['container_top_y']
 
@@ -63,8 +63,6 @@ class ChatEmojiPage(ChatEmojiPanelBase):
         last_bottom_signature = []   # 用于判定是否触底的指纹
         
         for step in range(max_slide):
-            # is_changed, last_source = self.is_element_source_changed(ChatEmojiLocator.EMOJI_ALL, last_source)
-
             emoji_elems = self.find_elements(ChatEmojiLocator.EMOJI_ALL_ITEM_IN, 'visibility', timeout=1)
             if not emoji_elems:
                 logger.warning("未找到可见表情元素")
@@ -83,14 +81,21 @@ class ChatEmojiPage(ChatEmojiPanelBase):
             current_y_signature = [e.rect['y'] for e in emoji_elems]
             
             if is_changed or current_y_signature != last_y_signature:
-                out_elem_new = self.find_element(ChatEmojiLocator.EMOJI_ALL_ITEM_OUT, 'visibility', timeout=1)
-                out_elem_new_height = out_elem_new.rect['height']
-                if abs(out_elem_new_height - out_elem_height) <= 10 and out_elem_new.rect['y'] >= container_top_y - 5:
-                    click_items = emoji_elems[:pkg_per_row]
+                out_elem_new = self.find_element(ChatEmojiLocator.EMOJI_ALL_ITEM_OUT, 'visibility', timeout=2, raise_exception=False)
+                if out_elem_new:
+                    out_elem_new_height = out_elem_new.rect['height']
+                    is_height_valid = (abs(out_elem_new_height - out_elem_height) <= 25) or (out_elem_new_height >= 80)
+                    is_position_valid = out_elem_new.rect['y'] >= (container_top_y - 20)
+                    if is_height_valid and is_position_valid:
+                        click_items = emoji_elems[:pkg_per_row]
+                    else:
+                        logger.warning(f"Step {step + 1}: 首排处于边缘残缺区域，跳过以待滑动对齐，当前高度：{out_elem_new_height}px, Y={out_elem_new.rect['y']}")
+                        click_items = []
                 else:
-                    logger.warning(f"Step {step + 1}: 首排处于边缘区域，跳过以待滑动对齐，当前表情距离：{out_elem_new_height}")
-                    click_items = []
+                    out_elem_new_height = out_elem_height
+                    click_items = emoji_elems[:pkg_per_row]
             else:
+                out_elem_new_height = out_elem_height
                 logger.info("🚩 检测到已到达面板底部，发送剩余所有表情...")
                 click_items = emoji_elems[pkg_per_row:] if len(emoji_elems) > pkg_per_row else []
             
@@ -106,16 +111,15 @@ class ChatEmojiPage(ChatEmojiPanelBase):
                 duration = 600           # 模拟器滑动时间
                 watime = 0.05            # 模拟器点击间隔
             else:
-                slop_compensation = 25   # 真机补偿
-                duration = 1000          # 真机滑动时间
-                watime = 0.5             # 真机点击间隔
+                slop_compensation = 28   # 真机补偿
+                duration = 500           # 真机滑动时间
+                watime = 0.1             # 真机点击间隔
                 
             wucha = out_elem_new_height - out_elem_height
             actual_swipe_distance = out_elem_new_height + slop_compensation
 
             for i, elem in enumerate(click_items, start=1):
                 try:
-                    # self._click_single_emoji(elem)
                     elem.click()
                     total_clicked += 1
                     time.sleep(watime)
@@ -135,7 +139,7 @@ class ChatEmojiPage(ChatEmojiPanelBase):
                         f"duration {duration}ms")
 
             self.swipe_by_offset(rect=container_rect, x_offset=0, y_offset=-actual_swipe_distance, duration=duration)
-            time.sleep(0.5)
+            time.sleep(0.1)
         return total_clicked
 
     # 发送并全量验证当前面板全部表情功能
@@ -143,7 +147,7 @@ class ChatEmojiPage(ChatEmojiPanelBase):
         logger.info("[Action] 准备全量发送面板内所有的展示表情")
         panel_elem, _ = self._find_panel()
         # 1. 自动对齐到顶部
-        grid_emoji_elem, _ = self._swipe_to_distance_exact(panel_elem, 'top')
+        grid_emoji_elem, _ = self._swipe_to_distance_exact(panel_elem)
         
         if grid_emoji_elem is None:
             raise ValueError("未能将表情对齐到顶部")

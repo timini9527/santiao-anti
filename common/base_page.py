@@ -251,10 +251,63 @@ class BasePage:
         logger.info(f"[Action] 极速注入文本成功: {text}")
 
 
-    @allure.step("系统返回")
-    def back(self):
-        self.driver.back()
-        logger.info("🔙 [Action] 系统返回")
+    @allure.step("智能系统与UI安全返回")
+    def back(self, prefer_ui: bool = True):
+        """
+        标准智能安全返回：
+        1. 软键盘抑制：若软键盘弹起，先行收起，避免遮挡及吞没返回事件。
+        2. UI 按钮优先：单次聚合 XPath 极速扫描左上角可见的 UI 返回按钮并点击（精准走业务 Fragment / 导航栈）。
+        3. 系统返回兜底：若无 UI 返回按钮，执行一次系统返回 (driver.back / KEYCODE_BACK)。
+        """
+        # 1. 若软键盘处于开启状态，先尝试收起软键盘
+        try:
+            if hasattr(self.driver, "is_keyboard_shown") and self.driver.is_keyboard_shown():
+                self.driver.hide_keyboard()
+                logger.info("⌨️ [Back] 检测到软键盘弹起，已先行收起")
+                time.sleep(0.2)
+        except Exception:
+            pass
+
+        # 2. 优先尝试点击页面内常规返回按钮（最可靠，精准回退 Fragment 栈）
+        if prefer_ui:
+            try:
+                from locators.common.common_locator import CommonLocator
+                pkg = CommonLocator.PACKAGE_ID
+                unified_xpath = (
+                    f"//*[("
+                    f"contains(@resource-id, '{pkg}/back') or "
+                    f"contains(@resource-id, '{pkg}/iv_back') or "
+                    f"contains(@resource-id, '{pkg}/action_back') or "
+                    f"contains(@resource-id, '{pkg}/ps_iv_left_back') or "
+                    f"contains(@resource-id, '{pkg}/back_bnt') or "
+                    f"@content-desc='返回' or "
+                    f"@content-desc='转到上一层级' or "
+                    f"@content-desc='Navigate up' or "
+                    f"@text='返回'"
+                    f") and (not(@clickable) or @clickable='true')]"
+                )
+                elems = self.driver.find_elements(AppiumBy.XPATH, unified_xpath)
+                for elem in elems:
+                    if elem.is_displayed():
+                        elem.click()
+                        logger.info(f"🔙 [Action] 成功点击页面 UI 返回组件: {elem.get_attribute('resource-id') or elem.get_attribute('content-desc')}")
+                        time.sleep(0.3)
+                        return
+            except Exception:
+                pass
+
+        # 3. 兜底执行系统级返回（若 driver.back 抛异常则使用 press_keycode(4)）
+        try:
+            self.driver.back()
+            logger.info("🔙 [Action] 执行系统返回 driver.back()")
+            time.sleep(0.3)
+        except Exception:
+            try:
+                self.driver.press_keycode(4)
+                logger.info("🔙 [Action] 执行系统按键码 KEYCODE_BACK (4)")
+                time.sleep(0.3)
+            except Exception as e:
+                logger.error(f"❌ 系统返回执行失败: {e}")
 
     @allure.step("匹配所有 Toast 弹窗")
     def toast_message(self, expected_toast: str = "", timeout: float = 3.0) -> str:
@@ -392,8 +445,8 @@ class BasePage:
         """
         logger.info(f"🔎 正在计算布局指标: 容器={container_locator}, 元素={item_locator}")
         try:
-            container = self.find_element(container_locator, 'visibility', timeout=3)
-            item = self.find_element(item_locator, 'visibility', timeout=3)
+            container = self.find_element(container_locator, 'visibility', timeout=2)
+            item = self.find_element(item_locator, 'visibility', timeout=2)
             
             if not container or not item:
                 logger.warning("未能获取到足够的元素进行布局计算")
@@ -699,15 +752,15 @@ class BasePage:
             logger.info(f"滑动轨迹: ({start_x}, {start_y}) -> ({end_x}, {end_y}) | 时长: {duration}ms")
             actions, touch_input = self.init_w3c_actions()
 
-            # 3. 构建动作序列 移动 -> 按下 -> 暂停 -> 移动 -> 松开
+            # 动作序列: 移动至起点 -> 按下 -> 短暂停顿贴合 -> 平滑移动至终点 -> 终点停顿120ms(初速度归零杀死Fling惯性) -> 抬起手指
             touch_input.create_pointer_move(x=start_x, y=start_y, duration=0, origin="viewport")
             touch_input.create_pointer_down(button=0)
             touch_input.create_pause(duration/1000) 
             touch_input.create_pointer_move(x=end_x, y=end_y, duration=duration, origin="viewport")
-            touch_input.create_pause(0.1) # 强制加速度归零防止列表抛滑(Fling)
+            touch_input.create_pause(0.12)  # 强制将抬手瞬间加速度归零，彻底杀死列表抛滑(Fling)惯性
             touch_input.create_pointer_up(button=0)
             actions.perform()
-            time.sleep(0.5)
+            time.sleep(0.1)
         except Exception as e:
             logger.error(f"滑动操作失败: {e}")
             raise RuntimeError(f"执行手指手势操作失败: {str(e)}")
@@ -800,7 +853,7 @@ class BasePage:
         end_y = max(5, min(end_y, max_y - 5))
 
         self.swipe(start_x, start_y, end_x, end_y, duration)
-        time.sleep(0.5)
+        time.sleep(0.08)
 
     @allure.step("极速滑动与状态检测(刷底/刷顶)")
     def swipe_page_quickly(self, element=None, slid_type: str = "down", duration: int = 100, max_swipes: int = 10):

@@ -82,12 +82,25 @@ class ChatEmojiLocator(ChatLocator):
                                          f'//*[@resource-id="{EMOJI_ID}"]')             # 最近使用内部框
     EMOJI_RECENT_ITEM_OUT = (AppiumBy.XPATH, f'//*[@resource-id="{EMOJI_RECENT_ID}"]'
                                              f'//android.widget.FrameLayout')           # 最近使用外部框
+                                             
     # 所有表情整个框
     EMOJI_ALL_ID = f'{PACKAGE_ID}/all_emojis' # 内部框
     EMOJI_ALL = (AppiumBy.ID, EMOJI_ALL_ID)
-    EMOJI_ALL_ITEM_OUT = (AppiumBy.XPATH, f'//*[@resource-id="{EMOJI_ALL_ID}"]'
-                                         f'//android.widget.FrameLayout')               # 所有表情外部框
-    EMOJI_ALL_ITEM_IN = (AppiumBy.XPATH, f'//*[@resource-id="{EMOJI_ALL_ID}"]//*[@resource-id="{EMOJI_ID}"]') # 所有表情内部框
+    # 所有表情外部框
+    EMOJI_ALL_ITEM_OUT = (
+        AppiumBy.XPATH,
+        f'//*[@resource-id="{EMOJI_ALL_ID}"]//android.widget.FrameLayout'
+    ) 
+    # 所有表情中的第一个表情外框，用于精确对齐
+    EMOJI_ALL_FIRST_ITEM_OUT = (
+        AppiumBy.XPATH,
+        f'(//*[@resource-id="{EMOJI_ALL_ID}"]/android.widget.FrameLayout)[1]'
+    )
+    # 所有表情内部框
+    EMOJI_ALL_ITEM_IN = (
+        AppiumBy.XPATH,
+        f'//*[@resource-id="{EMOJI_ALL_ID}"]//*[@resource-id="{EMOJI_ID}"]'
+    )
     
     # =======================================================
     # 更新后UI
@@ -105,18 +118,20 @@ class ChatEmojiLocator(ChatLocator):
     # 表情包容器
     EMOJI_PACKAGE_CONTAINER = (AppiumBy.ID, f'{PACKAGE_ID}/downloaded_emojis')
 
-    # 表情包定位元素
-    CHAT_EMOJI_PACKAGE = (AppiumBy.XPATH, f'(//*[@resource-id="{ChatLocator.AVATAR_ID}"]'
-                                        f'/following-sibling::*[@resource-id="{ChatLocator.MESSAGE_CONTENT_ID}"]//android.widget.ImageView)')
-    # 表情包定位元素最后一条
-    CHAT_EMOJI_LAST_PACKAGE = (AppiumBy.XPATH, f'(//*[@resource-id="{ChatLocator.AVATAR_ID}"]'
-                                        f'/following-sibling::*[@resource-id="{ChatLocator.MESSAGE_CONTENT_ID}"]//android.widget.ImageView)[last()]')
+    # =======================================================
+    # 聊天消息列表中的大表情包（新版UI与图片共用 message_image 控件）
+    # =======================================================
+    EMOJI_PACKAGE_MSG_ID = ChatLocator.IMAGE_ID
 
-    EMOJI_PACKAGE_IMG_ID = f"//android.widget.ImageView"
+    # 表情包定位元素
+    CHAT_EMOJI_PACKAGE = (AppiumBy.XPATH, f'//*[@resource-id="{ChatLocator.IMAGE_ID}"]')
+    # 表情包定位元素最后一条
+    CHAT_EMOJI_LAST_PACKAGE = (AppiumBy.XPATH, f'(//*[@resource-id="{ChatLocator.IMAGE_ID}"])[last()]')
+
     # 发送方表情包
-    SENT_CHAT_EMOJI_PACKAGE = ChatLocator._BUBBLE_XPATH_TEXT("preceding-sibling", EMOJI_PACKAGE_IMG_ID)
+    SENT_CHAT_EMOJI_PACKAGE = ChatLocator._BUBBLE_XPATH("following-sibling", ChatLocator.IMAGE_ID)
     # 接收方表情包
-    RECEIVE_CHAT_EMOJI_PACKAGE = ChatLocator._BUBBLE_XPATH_TEXT("following-sibling", EMOJI_PACKAGE_IMG_ID)
+    RECEIVE_CHAT_EMOJI_PACKAGE = ChatLocator._BUBBLE_XPATH("preceding-sibling", ChatLocator.IMAGE_ID)
 
 
     # ---- 常量区 ----

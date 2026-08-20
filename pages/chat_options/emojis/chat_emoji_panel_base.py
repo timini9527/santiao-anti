@@ -156,45 +156,38 @@ class ChatEmojiPanelBase(BasePage):
         self.click_by_coordinate(click_x, click_y)
 
     # [内部方法] 动态对齐滑动（用于滑动表情）
-    def _swipe_to_distance_exact(self, parent_elem, slid_type: str, duration: int = 1200, max_adjust: int = 3) -> Tuple[Any, dict]:
+    def _swipe_to_distance_exact(self, parent_elem, duration: int = 500, max_adjust: int = 3) -> Tuple[Any, dict]:
         """
         彻底解决偏移的动态对齐滑动（内置 Touch Slop 动态补偿和反馈环），将所有表情中的第一行表情滑到表情框第一行
         :param parent_elem: 父元素对象 (WebElement)
-        :param slid_type: 对齐方式（例如 "top" 代表子元素底部对齐父元素顶部）
         :param duration: 初始滑动时间
         :param max_adjust: 最大微调次数（防止死循环，通常1-2次即可完美对齐）
         :return: (子元素对象, 子元素区域字典)
         """
-        from typing import Tuple
-
         if parent_elem is None:
             raise ValueError("请提供有效的父元素和子元素对象")
+        p_rect = parent_elem.rect
 
-        for attempt in range(max_adjust):
+        def get_grid_metrics():
             grid_emoji = self.find_element(ChatEmojiLocator.EMOJI_ALL_ITEM_OUT, 'visibility', timeout=2)
-
-            logger.info(f"所有表情中外框所占大小: {parent_elem.rect}")
-            logger.info(f"所有表情中内框表情所占大小坐标: {grid_emoji}")
             if grid_emoji is None:
-                raise ValueError("请提供有效的子元素对象")
-
-            p_rect = parent_elem.rect
+                raise ValueError("未定位到所有表情外层容器元素")
             c_rect = grid_emoji.rect
-
             logger.info(f"父元素区域：{p_rect['x'], p_rect['y'], p_rect['width'], p_rect['height']}")
             logger.info(f"子元素区域：{c_rect['x'], c_rect['y'], c_rect['width'], c_rect['height']}")
+            return grid_emoji, c_rect
 
+        _, c_rect = get_grid_metrics()
+        distance = c_rect['y'] - p_rect['y']
+        gu_size = c_rect.get('height')
+
+        for attempt in range(max_adjust):
             distance = c_rect['y'] - p_rect['y']
-
             if abs(distance) <= 6:
                 logger.info(f"[{attempt}] 对齐成功！最终偏差仅为: {distance}px")
                 return grid_emoji, c_rect
-
             logger.info(f"[{attempt}] 当前偏差 {distance}px，执行滑动补偿...")
 
-            # slop_compensation = 1
-
-            # 真机 Touch Slop 补偿，修复真机滑动偏少（被系统吃掉起步像素）的问题
             # 动态判断是否为模拟器以分配不同的补偿值
             udid = str(self.driver.capabilities.get("deviceUDID", self.driver.capabilities.get("udid", ""))).lower()
             logger.info(f"由于滑动表情到达底部要上滑所有表情，设置补偿值：设备UDID: {udid}")
@@ -204,11 +197,10 @@ class ChatEmojiPanelBase(BasePage):
                 duration = 600
             else:
                 slop_compensation = 15
-                
             finger_move_distance = distance + slop_compensation * (1 if distance > 0 else -1)
-
             self.swipe_by_offset(rect=p_rect, x_offset=0, y_offset=-finger_move_distance, duration=duration)
-            time.sleep(0.8)
+        
+            grid_emoji, c_rect = get_grid_metrics()
         else:
             final_emoji = self.find_element(ChatEmojiLocator.EMOJI_ALL_ITEM_OUT, 'visibility', timeout=2)
             logger.warning(f"警告: 达到最大微调次数 {max_adjust}，可能仍有轻微偏差，偏移量: {distance}px")

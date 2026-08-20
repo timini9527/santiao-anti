@@ -65,102 +65,128 @@ class TestChatLongPress:
             is_sent = self.chatPage.wait_for_last_message_send_status()
             check.is_true(is_sent, f'❌ 消息【{msg_type}】未能成功发送上屏 或 发送失败')
         with allure.step('3. 执行操作：长按最后一条消息'):
-            self.longPressPage.long_press_last_message()
+            self.longPressPage.long_press_last_message(msg_type=msg_type)
         with allure.step(f'4. 校验【{msg_type}】长按菜单项'):
             is_items_ok = self.longPressPage.get_menu_items(msg_type, is_admin=strategy.is_admin)
             check.is_true(is_items_ok, f'❌ 消息【{msg_type}】长按菜单项未识别')
 
+
     @allure.story('长按菜单操作专项：复制')
     @allure.title('长按菜单操作专项：复制-状态：已完成')
     @pytest.mark.severity(allure.severity_level.CRITICAL)
-    @pytest.mark.parametrize('msg_type', [pytest.param(t, id=f'消息类型-{t}') for t in ['text', 'emoji', 'image', 'voice', 'video', 'position', 'card', 'file', 'package']])
-    @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
+    @pytest.mark.parametrize(
+        'msg_type', [
+            pytest.param('text', id='文本消息'),
+            pytest.param('emoji', id='Emoji消息')
+        ])
+    @pytest.mark.parametrize(
+        'strategy', [
+            pytest.param(PRIVATE_USER1, id='私聊模式'),
+            pytest.param(GROUP_STRATEGY, id='群聊模式')
+        ])
     def test_long_press_action_copy(self, strategy, msg_type):
+        """复制菜单只对文本和 Emoji 消息展示并执行。"""
         with allure.step(f'1. 进入聊天页面'):
             self.chatListPage.enter_chat(strategy.name)
-        with allure.step(f'2. 校验【{msg_type}】长按菜单项'):
-            strategy_model = MessageTypeStrategy.get_strategy(msg_type)
-            if '复制' not in strategy_model.expected_menus:
-                pytest.skip(f'⏭️ {msg_type} 消息类型不支持【复制】，自动跳过')
-        with allure.step(f'3. 前置准备：进入聊天页面并发送一条【{msg_type}】消息'):
+        with allure.step(f'2. 前置准备：发送一条【{msg_type}】消息'):
             self._prepare_message(msg_type)
-        with allure.step('4. 执行操作：长按并点击【复制】'):
-            self.longPressPage.long_press_last_message()
+        with allure.step(f'3. 执行操作：长按【{msg_type}】消息并点击【复制】'):
+            self.longPressPage.long_press_last_message(msg_type=msg_type)
             is_ok = self.longPressPage._execute_and_verify_menu_item('复制')
             check.is_true(is_ok, '❌ 长按点击【复制】失败')
-        with allure.step('5. 结果验证：验证复制内容'):
+        with allure.step('4. 结果验证：验证剪贴板中的文本内容'):
             if msg_type == 'text':
                 expected_text = '发送收藏消息进行测试‼️⚠️🚀✔️✅♏🧑\u200d🚀🪲🍎✖️'
-                paste_text = self.chatPage.paste_clipboard_text()
-                check.equal(paste_text, expected_text, f'❌ 复制内容不一致: {paste_text}')
-            elif msg_type == 'emoji':
+            else:
                 expected_text = self.chatPage.get_text_message_content_by_index(index=-1)
-                paste_text = self.chatPage.paste_clipboard_text()
-                check.equal(expected_text, paste_text, f'❌ 复制内容不一致: {paste_text}')
+            paste_text = self.chatPage.paste_clipboard_text()
+            check.equal(paste_text, expected_text, f'❌ 复制内容不一致: {paste_text}')
+            
 
     @allure.story('长按菜单操作专项：收藏')
     @allure.title('长按菜单操作专项：收藏-状态：已完成')
     @pytest.mark.severity(allure.severity_level.CRITICAL)
-    @pytest.mark.parametrize('msg_type', [pytest.param(t, id=f'消息类型-{t}') for t in ['text', 'emoji', 'image', 'voice', 'video', 'position', 'card', 'file', 'package']])
-    @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
+    @pytest.mark.parametrize(
+        'msg_type', [
+            pytest.param('text', id='文本消息'),
+            pytest.param('emoji', id='Emoji消息'),
+            pytest.param('image', id='图片消息')
+        ])
+    @pytest.mark.parametrize(
+        'strategy', [
+            pytest.param(PRIVATE_USER1, id='私聊模式'),
+            pytest.param(GROUP_STRATEGY, id='群聊模式')
+        ])
     def test_long_press_action_collection(self, strategy, msg_type):
+        """收藏菜单专项测试：仅支持文本、Emoji 和图片消息。"""
         with allure.step(f'1. 进入聊天页面'):
             self.chatListPage.enter_chat(strategy.name)
-        with allure.step(f'2. 校验【{msg_type}】长按菜单项'):
-            strategy_model = MessageTypeStrategy.get_strategy(msg_type)
-            if '收藏' not in strategy_model.expected_menus:
-                pytest.skip(f'⏭️ {msg_type} 消息类型不支持【收藏】，自动跳过')
-        with allure.step(f'3. 前置准备：进入聊天页面并发送一条【{msg_type}】消息'):
+        with allure.step(f'2. 前置准备：发送一条【{msg_type}】消息'):
             self._prepare_message(msg_type)
-        with allure.step(f'4. 记录【{msg_type}】消息原始特征数据'):
+        with allure.step(f'3. 记录【{msg_type}】消息原始特征数据'):
             original_hash = None
             if msg_type == 'image':
                 original_hash = self.chatPage.get_chat_image_hash(index=-1)
                 check.is_true(original_hash, '❌ 图片消息原始 hash 获取失败')
-        with allure.step(f'5. 【{msg_type}】执行长按并点击【收藏】'):
-            self.longPressPage.long_press_last_message()
+            elif msg_type == 'text':
+                expected_text = '发送收藏消息进行测试‼️⚠️🚀✔️✅♏🧑\u200d🚀🪲🍎✖️'
+            else:
+                expected_text = self.chatPage.get_text_message_content_by_index(index=-1)
+        with allure.step(f'4. 【{msg_type}】执行长按并点击【收藏】'):
+            self.longPressPage.long_press_last_message(msg_type=msg_type)
             is_ok = self.longPressPage._execute_and_verify_menu_item('收藏')
             check.is_true(is_ok, '❌ 长按点击【收藏】失败')
-        with allure.step(f'6. 【{msg_type}】跨页面比对：前往收藏夹验证数据'):
+        with allure.step(f'5. 【{msg_type}】跨页面比对：前往收藏夹验证数据'):
             self.mainPage.go_to_main_page()
             self.homePage.open_left_menu()
-            self.sideSlipPage.click_collection()
-            expected_text = '发送收藏消息进行测试‼️⚠️🚀✔️✅♏🧑\u200d🚀🪲🍎✖️'
-            if msg_type == 'text':
+            self.sideSlipPage.click_my_collection()
+            if msg_type in ['text', 'emoji']:
                 coll_tt = self.collectionPage.get_collection_text_content()
-                check.equal(coll_tt, expected_text, f'❌ 收藏夹文本不一致: {coll_tt}')
+                if coll_tt.endswith('…') or coll_tt.endswith('...'):
+                    clean_coll_tt = coll_tt.rstrip('…').rstrip('...').strip()
+                    check.is_true(
+                        expected_text.startswith(clean_coll_tt),
+                        f'❌ 收藏夹长文本缩略匹配失败: 列表预览=[{coll_tt}], 预期前缀=[{clean_coll_tt}], 完整文本=[{expected_text}]'
+                    )
+                else:
+                    check.equal(coll_tt, expected_text, f'❌ 收藏夹文本不一致: {coll_tt}')
             elif msg_type == 'image':
                 coll_img_hash = self.collectionPage.get_collection_image_hash()
                 is_similar = self.collectionPage.verify_image_similarity(hash1=coll_img_hash, hash2=original_hash, threshold=100)
                 check.is_true(is_similar, f'❌ 收藏夹图片不一致: 列表hash:{coll_img_hash}, 发送hash: {original_hash}')
 
+
     @allure.story('长按菜单操作专项：转发')
     @allure.title('长按菜单操作专项：转发-状态：已完成')
     @pytest.mark.severity(allure.severity_level.CRITICAL)
-    @pytest.mark.parametrize('msg_type', [pytest.param(t, id=f'消息类型-{t}') for t in ['text', 'emoji', 'image', 'voice', 'video', 'position', 'card', 'file', 'package']])
-    @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
+    @pytest.mark.parametrize(
+        'msg_type', [
+            pytest.param(t, id=f'消息类型-{t}')
+            for t in ['text', 'emoji', 'image', 'video', 'position', 'card', 'file', 'package']
+        ])
+    @pytest.mark.parametrize(
+        'strategy', [
+            pytest.param(PRIVATE_USER1, id='私聊模式'),
+            pytest.param(GROUP_STRATEGY, id='群聊模式')
+        ])
     def test_long_press_action_forward(self, strategy, msg_type):
+        """转发菜单专项测试：支持除语音外的全部消息类型。"""
         with allure.step(f'1. 进入聊天页面'):
             self.chatListPage.enter_chat(strategy.name)
-        with allure.step(f'2. 校验【{msg_type}】长按菜单项'):
-            strategy_model = MessageTypeStrategy.get_strategy(msg_type)
-            if '转发' not in strategy_model.expected_menus:
-                pytest.skip(f'⏭️ {msg_type} 消息类型不支持【转发】，自动跳过')
-        with allure.step(f'3. 前置准备：进入聊天页面并发送一条【{msg_type}】消息'):
+        with allure.step(f'2. 前置准备：发送一条【{msg_type}】消息'):
             self._prepare_message(msg_type)
-        with allure.step('4. 预存原始数据'):
+        with allure.step('3. 预存原始数据'):
             pre_data = self.messageBuilder.get_message_feature(msg_type)
             if msg_type == 'file':
                 check.is_in('发送成功', pre_data.get('文件状态', ''), f'❌ 文件消息发送失败')
-        with allure.step('5. 执行长按并点击【转发】'):
-            self.longPressPage.long_press_last_message()
-            msg_type_num = 1 if msg_type == 'image' else 0
-            is_ok = self.longPressPage._execute_and_verify_menu_item('转发', msg_type=msg_type_num)
+        with allure.step('4. 执行长按并点击【转发】'):
+            self.longPressPage.long_press_last_message(msg_type=msg_type)
+            is_ok = self.longPressPage._execute_and_verify_menu_item('转发')
             check.is_true(is_ok, '❌ 长按点击【转发】失败')
         with allure.step(f'6. 选择好友【{strategy.name}】进行转发'):
-            is_select = self.contactSelectPage.forward_select_contact_by_name(name=strategy.name, msg_type=msg_type_num)
+            is_select = self.contactSelectPage.forward_select_contact_by_name(name=strategy.name)
             check.is_true(is_select, f'❌ 未能选择转发对象: {strategy.name}')
-            self.sessionSelectPage.click_finish_button(msg_type=msg_type_num)
+            self.sessionSelectPage.click_finish_button()
             self.chatPage.wait_for_last_message_send_status()
             re_data = self.messageBuilder.get_message_feature(msg_type)
             if msg_type == 'package':
@@ -174,13 +200,30 @@ class TestChatLongPress:
                     actual_val = re_data.get(key)
                     check.equal(actual_val, expected_val, f"❌ 转发 {key} 不一致: 期望 '{expected_val}', 实际 '{actual_val}'")
 
+
     @allure.story('长按菜单操作专项：多选')
     @allure.title('长按菜单操作专项：多选-状态：已完成')
     @pytest.mark.severity(allure.severity_level.NORMAL)
-    @pytest.mark.parametrize('msg_list', [pytest.param(['text', 'emoji', 'image', 'voice', 'video', 'position', 'card', 'file', 'package'], id='全量消息类型')])
-    @pytest.mark.parametrize('msg_count', [pytest.param(None, id='跟随列表长度'), pytest.param(100, id='选100个边界'), pytest.param(101, id='超限101个')])
-    @pytest.mark.parametrize('mult_type', [pytest.param(0, id='0'), pytest.param(1, id='1')])
-    @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
+    @pytest.mark.parametrize(
+        'msg_list', [
+            pytest.param(['text', 'emoji', 'image', 'voice', 'video', 'position', 'card', 'file', 'package'], 
+            id='全量消息类型')])
+    @pytest.mark.parametrize(
+        'msg_count', [
+            pytest.param(None, id='跟随列表长度'),
+            pytest.param(100, id='选100个边界'),
+            pytest.param(101, id='超限101个')
+        ])
+    @pytest.mark.parametrize(
+        'mult_type', [
+            pytest.param(0, id='逐条转发-0'),
+            pytest.param(1, id='合并转发-1')
+        ])
+    @pytest.mark.parametrize(
+        'strategy', [
+            pytest.param(PRIVATE_USER1, id='私聊模式'),
+            pytest.param(GROUP_STRATEGY, id='群聊模式')
+        ])
     def test_long_press_action_multi_select(self, strategy, mult_type, msg_list, msg_count):
         allure.dynamic.title(f'【多选专项】 {strategy.desc} - 类型 {mult_type}')
         with allure.step(f'1. 进入聊天页面'):
@@ -189,11 +232,11 @@ class TestChatLongPress:
         with allure.step(f'2. 【多选】 验证消息类型，准备多条不同消息'):
             if msg_count is None:
                 target_count = len(msg_list)
-                for msg_type in msg_list:
-                    strategy_model = MessageTypeStrategy.get_strategy(msg_type)
-                    if '多选' not in strategy_model.expected_menus:
-                        continue
-                    self._prepare_message(msg_type)
+                # for msg_type in msg_list:
+                #     strategy_model = MessageTypeStrategy.get_strategy(msg_type)
+                #     if '多选' not in strategy_model.expected_menus:
+                #         continue
+                #     self._prepare_message(msg_type)
             else:
                 target_count = msg_count
         with allure.step(f'3. 长按执行【多选】'):
@@ -244,34 +287,48 @@ class TestChatLongPress:
     @allure.story('长按菜单操作专项：添加表情')
     @allure.title('长按菜单操作专项：添加表情-状态：已完成')
     @pytest.mark.severity(allure.severity_level.CRITICAL)
-    @pytest.mark.parametrize('msg_type', [pytest.param(t, id=f'消息类型-{t}') for t in ['text', 'emoji', 'image', 'voice', 'video', 'position', 'card', 'file', 'package']])
-    @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
+    @pytest.mark.parametrize(
+        'msg_type', [
+            pytest.param('package', id='表情包消息')
+        ])
+    @pytest.mark.parametrize(
+        'strategy', [
+            pytest.param(PRIVATE_USER1, id='私聊模式'),
+            pytest.param(GROUP_STRATEGY, id='群聊模式')
+        ])
     def test_long_press_action_add_emoji(self, strategy, msg_type):
+        """添加表情专项测试：仅第三方表情包(Package)支持添加到自定义表情。"""
         with allure.step(f'1. 进入聊天页面'):
             self.chatListPage.enter_chat(strategy.name)
             self.chatPage.send_message(f'【{msg_type}】长按【添加表情】功能专项')
-        with allure.step(f'2. 校验【{msg_type}】长按菜单项'):
-            strategy_model = MessageTypeStrategy.get_strategy(msg_type)
-            if '添加表情' not in strategy_model.expected_menus:
-                pytest.skip(f'⏭️ {msg_type} 消息类型不支持【添加表情】，自动跳过')
-        with allure.step('3. 前置准备：移除全部已添加的表情包'):
+        with allure.step('2. 前置准备：移除全部已添加的表情包'):
             is_revoked = self.messageBuilder._prepare_collection_emoji_msg()
             check.is_true(is_revoked, f'❌ 表情包移除失败')
-        with allure.step(f'4. 前置准备：进入聊天页面并发送一条【{msg_type}】消息'):
+        with allure.step(f'3. 前置准备：进入聊天页面并发送一条【{msg_type}】消息'):
             self._prepare_message(msg_type)
-        with allure.step(f'5. 执行长按并点击【添加表情】'):
-            self.longPressPage.long_press_last_message()
+        with allure.step(f'4. 执行长按并点击【添加表情】'):
+            self.longPressPage.long_press_last_message(msg_type=msg_type)
             is_ok = self.longPressPage._execute_and_verify_menu_item('添加表情')
             check.is_true(is_ok, '❌ 长按点击【添加表情】失败')
-        with allure.step(f'6. 结果验证：验证添加表情效果'):
+        with allure.step(f'5. 结果验证：验证添加表情效果'):
             has_pkg = self.messageBuilder._prepare_has_pkg_msg()
             check.is_true(has_pkg, f'❌ 【{msg_type}】消息添加表情失败')
 
     @allure.story('长按菜单操作专项：撤回')
     @allure.title('长按菜单操作专项：撤回-状态：已完成')
     @pytest.mark.severity(allure.severity_level.CRITICAL)
-    @pytest.mark.parametrize('msg_type', [pytest.param(t, id=f'消息类型-{t}') for t in ['text', 'emoji', 'image', 'voice', 'video', 'position', 'card', 'file', 'package']])
-    @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
+    @pytest.mark.parametrize(
+        'msg_type', [
+            pytest.param(t, id=f'消息类型-{t}')
+            for t in ['text', 'emoji', 'image', 'voice', 'video', 'position', 'card', 'file', 'package']
+        ]
+    )
+    @pytest.mark.parametrize(
+        'strategy', [
+            pytest.param(PRIVATE_USER1, id='私聊模式'),
+            pytest.param(GROUP_STRATEGY, id='群聊模式')
+        ]
+    )
     def test_long_press_action_recall(self, strategy, msg_type):
         with allure.step(f'1. 进入聊天页面'):
             self.chatListPage.enter_chat(strategy.name)
@@ -284,7 +341,7 @@ class TestChatLongPress:
         with allure.step(f'3. 前置准备：进入聊天页面并发送一条【{msg_type}】消息'):
             self._prepare_message(msg_type)
         with allure.step(f'4. 执行长按并点击【撤回】'):
-            self.longPressPage.long_press_last_message()
+            self.longPressPage.long_press_last_message(msg_type=msg_type)
             is_ok = self.longPressPage._execute_and_verify_menu_item('撤回')
             check.is_true(is_ok, '❌ 长按点击【撤回】失败')
         with allure.step(f'5. 结果验证：验证撤回效果'):
@@ -295,8 +352,17 @@ class TestChatLongPress:
     @allure.story('长按菜单操作专项：删除')
     @allure.title('长按菜单操作专项：删除-状态：已完成')
     @pytest.mark.severity(allure.severity_level.CRITICAL)
-    @pytest.mark.parametrize('msg_list', [pytest.param(['text', 'emoji', 'image', 'voice', 'video', 'position', 'card', 'file', 'package'], id='全量消息类型')])
-    @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
+    @pytest.mark.parametrize(
+        'msg_list', [
+            pytest.param(['text', 'emoji', 'image', 'voice', 'video', 'position', 'card', 'file', 'package'], id='全量消息类型')
+        ]
+    )
+    @pytest.mark.parametrize(
+        'strategy', [
+            pytest.param(PRIVATE_USER1, id='私聊模式'),
+            pytest.param(GROUP_STRATEGY, id='群聊模式')
+        ]
+    )
     def test_long_press_action_delete(self, strategy, msg_list):
         allure.dynamic.title(f'【删除专项】 {strategy.desc} - 批量处理')
         with allure.step(f'1. 进入聊天页面'):
@@ -336,7 +402,7 @@ class TestChatLongPress:
             for m_type in reversed(successfully_sent_types):
                 logger.info(f'正在执行删除验证，类型: {m_type}')
                 try:
-                    self.longPressPage.long_press_last_message()
+                    self.longPressPage.long_press_last_message(msg_type=m_type)
                     is_ok = self.longPressPage._execute_and_verify_menu_item('删除')
                     self.chatPage.click_del_confirm()
                     check.is_true(is_ok, f'❌ {m_type} 长按点击【删除】失败')

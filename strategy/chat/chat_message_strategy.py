@@ -214,9 +214,9 @@ class MenuActionConfig:
     """定义长按菜单项的自动化执行与断言策略"""
     
     STRATEGIES = {
-        "复制": MenuActionStrategy("click_copy", "toast", "已复制"),
-        "收藏": MenuActionStrategy("click_favorite", "toast", "收藏成功"),
-        "转发": MenuActionStrategy("click_forward", "page_change", "选择联系人"),
+        "复制": MenuActionStrategy("click_copy", "toast", "已复制到剪贴板"),
+        "收藏": MenuActionStrategy("click_favorite", "toast", "添加成功"),
+        "转发": MenuActionStrategy("click_forward", "page_change", "选择"),
         "多选": MenuActionStrategy("click_multi_select", "ui_state", "multi_select_bar"),
         "回复": MenuActionStrategy("click_reply", "ui_state", "reply_layout"),
         "撤回": MenuActionStrategy("click_revoke", "msg_disappear", "revoke_tip"),

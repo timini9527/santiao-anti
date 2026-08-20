@@ -126,6 +126,11 @@ class ChatLocator:
     FAIL_MSG = (AppiumBy.ID, FAIL_MSG_ID)
     # 发送方和接收方的消息发送失败
     SENT_MESSAGE_FAIL_ITEM = (AppiumBy.XPATH, f'//*[@resource-id="{AVATAR_ID}"]/following-sibling::*[@resource-id="{FAIL_MSG_ID}"]')
+
+    
+    # 语音消息相关
+    AUDIO_BUBBLE_ID = f'{PACKAGE_ID}/audio_bubble'
+    AUDIO_BUBBLE = (AppiumBy.ID, AUDIO_BUBBLE_ID)                                   # 语音气泡
     RECEIVE_MESSAGE_FAIL_ITEM = (AppiumBy.XPATH, f'//*[@resource-id="{AVATAR_ID}"]/following-sibling::*[@resource-id="{FAIL_MSG_ID}"]')
     
 

@@ -88,12 +88,19 @@ class ChatLongPressPage(ChatPage):
             logger.info("🖱️ [Action] - 正在切换到听筒...")
 
     # 长按消息-长按最后一条消息
-    def long_press_last_message(self):
-        """执行长按最后一条消息的操作"""
-        message_content = self.get_last_message_layout_item()
-        self.long_press_action(message_content)
-        logger.info("🖱️ [Action] - 正在长按最后一条聊天消息...")
-        time.sleep(0.5)
+    def long_press_last_message(self, msg_type: str = None):
+        """
+        执行长按最后一条消息的操作（精准穿透长按具体的图片、视频、文本、语音或卡片组件）
+        :param msg_type: 消息类型（可选，如 'text', 'image', 'video', 'voice', 'file', 'position', 'card', 'package', 'emoji'）
+        """
+        message_element = self.get_last_message_content_element(msg_type=msg_type)
+        if msg_type == 'package' or msg_type == 'emoji':
+            self.click_emoji_button(is_open=False)
+        else:
+            self.click_add_button(is_open=False)
+        time.sleep(0.3)
+        self.long_press_action(message_element)
+        logger.info(f"🖱️ [Action] - 正在精准长按最后一条聊天消息组件: {msg_type or '智能穿透探测'}")
 
     # 弹窗-点击确认/确定
     def click_dialog_confirm(self):
@@ -291,7 +298,6 @@ class ChatLongPressPage(ChatPage):
         
         # 1. 执行动作
         action_method()
-        time.sleep(0.5)
         
         # 2. 根据校验类型进行验证
         verify_type = config.verify_type
@@ -300,12 +306,12 @@ class ChatLongPressPage(ChatPage):
         logger.info(f"🔍 [Verify] - 正在进行 【{menu_name}】 的结果校验 (类型: {verify_type})")
         
         if verify_type == "toast":
-            toast = self.get_toast(expected_toast=expect_val)
-            if (toast and expect_val in toast) or (not toast):
-                logger.info(f"✅ 【{menu_name}】 校验成功: 预期 {expect_val} 在 Toast 【{toast}】 中 (或未捕获提示框)")
+            is_toast_ok = self.get_toast(expected_toast=expect_val)
+            if is_toast_ok:
+                logger.info(f"✅ 【{menu_name}】 校验成功: 成功捕获预期提示框 【{expect_val}】")
                 return True
             else:
-                logger.error(f"❌ 【{menu_name}】 校验失败: 预期 {expect_val} 不在 Toast 【{toast}】 中")
+                logger.error(f"❌ 【{menu_name}】 校验失败: 未能捕获预期提示框 【{expect_val}】")
                 return False
         elif verify_type == "page_change":
             from pages.common.contact_select_page import ContactSelectPage
