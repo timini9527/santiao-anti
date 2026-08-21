@@ -9,7 +9,7 @@ class ChatEmojiLocator(ChatLocator):
 
     # 顶部菜单
     EMOJI_TOP_MENU = (AppiumBy.ID, f'{PACKAGE_ID}/emoji_container')
-    EMOJI_TOP_MENU_ITEM_ID =f'{PACKAGE_ID}/emoji_tab_image'
+    EMOJI_TOP_MENU_ITEM_ID = f'{PACKAGE_ID}/emoji_tab_image'
     EMOJI_TOP_MENU_ITEM = (AppiumBy.ID, EMOJI_TOP_MENU_ITEM_ID)
 
     # =======================================================
@@ -128,20 +128,8 @@ class ChatEmojiLocator(ChatLocator):
     # 表情包定位元素最后一条
     CHAT_EMOJI_LAST_PACKAGE = (AppiumBy.XPATH, f'(//*[@resource-id="{ChatLocator.IMAGE_ID}"])[last()]')
 
-    # 发送方表情包
-    SENT_CHAT_EMOJI_PACKAGE = ChatLocator._BUBBLE_XPATH("following-sibling", ChatLocator.IMAGE_ID)
-    # 接收方表情包
-    RECEIVE_CHAT_EMOJI_PACKAGE = ChatLocator._BUBBLE_XPATH("preceding-sibling", ChatLocator.IMAGE_ID)
-
 
     # ---- 常量区 ----
     _FIXED_TAB_COUNT = 3  # 商店 + 收藏 + 默认表情，固定占用前3个坑位
     _SLIDE_TRIGGER_INDEX = 4  # 点击第5个图标(index=4)会触发自动左滑
     _MAX_STALE_RETRIES = 2  # 单次点击因StaleElement失败的最大重试次数
-
-
-
-
-
-
-

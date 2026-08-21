@@ -56,9 +56,10 @@ devices:
       # udid: "daccd58aaff4"
       # platformVersion: "12.0"
       # udid: "20a5fa17"
-      # udid: "3B65BN02GU600000"
+      udid: "3B65BN02GU600000"
       # udid: "192.168.1.29:5554"
-      udid: "nzwcvo9ls87hws7t"
+      # udid: "nzwcvo9ls87hws7t"
+      # udid: "192.168.1.111:45845"
       # platformVersion: "16.0"
       # udid: "emulator-5554"   # 模拟器
       # udid: "emulator-5556"   # 模拟器

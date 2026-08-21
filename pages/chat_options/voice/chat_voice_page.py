@@ -253,12 +253,10 @@ class ChatVoicePage(ChatPage):
 
     # 获取语音消息列表快照
     def get_voice_list_snapshot(self, role: str = 'sender') -> dict:
-        """
-        在执行 发送/取消 动作之前调用，拍摄当前语音消息列表的基准快照。
-        """
+        """ 在执行 发送/取消 动作之前调用，拍摄当前语音消息列表的基准快照 """
         try:
-            locator = ChatVoiceLocator.get_sent_voice_message_time_locator(role)
-            elems = self.find_elements(locator, timeout=2, raise_exception=False)
+            side = 'sent' if role == 'sender' else 'received'
+            elems = self.get_message_elements('voiceDuration', side=side, expect_missing=True)
             if not elems:
                 logger.info(f"📷 [{role}] 语音消息列表快照：当前无消息（count=0）")
                 return {"count": 0, "last_elem_id": None}
@@ -283,8 +281,8 @@ class ChatVoicePage(ChatPage):
         """
         try:
             time.sleep(1)
-            locator = ChatVoiceLocator.get_sent_voice_message_time_locator(role)
-            elems = self.find_elements(locator, timeout=2)
+            side = 'sent' if role == 'sender' else 'received'
+            elems = self.get_message_elements('voiceDuration', side=side, expect_missing=True)
             if not elems:
                 if expect_sent:
                     logger.error("❌ 验证失败：消息列表为空，未找到任何语音消息气泡")

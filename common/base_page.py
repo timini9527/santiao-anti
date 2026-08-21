@@ -251,35 +251,34 @@ class BasePage:
         logger.info(f"[Action] 极速注入文本成功: {text}")
 
 
-    @allure.step("智能系统与UI安全返回")
+    @allure.step("智能UI安全返回")
     def back(self, prefer_ui: bool = True):
         """
-        标准智能安全返回：
-        1. 软键盘抑制：若软键盘弹起，先行收起，避免遮挡及吞没返回事件。
-        2. UI 按钮优先：单次聚合 XPath 极速扫描左上角可见的 UI 返回按钮并点击（精准走业务 Fragment / 导航栈）。
-        3. 系统返回兜底：若无 UI 返回按钮，执行一次系统返回 (driver.back / KEYCODE_BACK)。
+        标准智能安全返回（以应用 UI 导航栈为绝对核心）：
+        1. 软键盘抑制：若软键盘处于开启状态，先行收起，防止遮挡。
+        2. UI 按钮精准回退：极速定位并点击页面顶部左上角 UI 返回按钮（精准回退 Fragment 栈）。
+        3. 系统返回极简兜底：若未找到 UI 按钮，仅在必要时执行一次系统返回。
         """
-        # 1. 若软键盘处于开启状态，先尝试收起软键盘
-        try:
-            if hasattr(self.driver, "is_keyboard_shown") and self.driver.is_keyboard_shown():
-                self.driver.hide_keyboard()
-                logger.info("⌨️ [Back] 检测到软键盘弹起，已先行收起")
-                time.sleep(0.2)
-        except Exception:
-            pass
+        # 1. 软键盘静默收起防遮挡
+        # try:
+        #     if hasattr(self.driver, "is_keyboard_shown") and self.driver.is_keyboard_shown():
+        #         self.driver.hide_keyboard()
+        #         time.sleep(0.2)
+        # except Exception:
+        #     pass
 
-        # 2. 优先尝试点击页面内常规返回按钮（最可靠，精准回退 Fragment 栈）
+        # 2. 优先点击页面内精准的 UI 返回组件（最可靠核心逻辑）
         if prefer_ui:
             try:
                 from locators.common.common_locator import CommonLocator
                 pkg = CommonLocator.PACKAGE_ID
                 unified_xpath = (
                     f"//*[("
-                    f"contains(@resource-id, '{pkg}/back') or "
-                    f"contains(@resource-id, '{pkg}/iv_back') or "
-                    f"contains(@resource-id, '{pkg}/action_back') or "
-                    f"contains(@resource-id, '{pkg}/ps_iv_left_back') or "
-                    f"contains(@resource-id, '{pkg}/back_bnt') or "
+                    f"@resource-id='{pkg}/back' or "
+                    f"@resource-id='{pkg}/iv_back' or "
+                    f"@resource-id='{pkg}/action_back' or "
+                    f"@resource-id='{pkg}/ps_iv_left_back' or "
+                    f"@resource-id='{pkg}/back_bnt' or "
                     f"@content-desc='返回' or "
                     f"@content-desc='转到上一层级' or "
                     f"@content-desc='Navigate up' or "
@@ -290,24 +289,19 @@ class BasePage:
                 for elem in elems:
                     if elem.is_displayed():
                         elem.click()
-                        logger.info(f"🔙 [Action] 成功点击页面 UI 返回组件: {elem.get_attribute('resource-id') or elem.get_attribute('content-desc')}")
-                        time.sleep(0.3)
+                        logger.info(f"🔙 [Action] 成功点击 UI 返回组件: {elem.get_attribute('resource-id') or elem.get_attribute('content-desc')}")
+                        time.sleep(0.4)
                         return
             except Exception:
                 pass
 
-        # 3. 兜底执行系统级返回（若 driver.back 抛异常则使用 press_keycode(4)）
+        # 3. 兜底执行一次系统返回（极简单次尝试，不搞多次重复重试）
         try:
             self.driver.back()
             logger.info("🔙 [Action] 执行系统返回 driver.back()")
-            time.sleep(0.3)
-        except Exception:
-            try:
-                self.driver.press_keycode(4)
-                logger.info("🔙 [Action] 执行系统按键码 KEYCODE_BACK (4)")
-                time.sleep(0.3)
-            except Exception as e:
-                logger.error(f"❌ 系统返回执行失败: {e}")
+            time.sleep(0.4)
+        except Exception as e:
+            logger.warning(f"⚠️ [Back] 系统返回未响应或执行失败: {e}")
 
     @allure.step("匹配所有 Toast 弹窗")
     def toast_message(self, expected_toast: str = "", timeout: float = 3.0) -> str:

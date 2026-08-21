@@ -187,7 +187,7 @@ class ChatPositionPage(ChatPage):
         """
         if not address_text:
             logger.error("未获取到地址信息")
-            raise ""
+            raise ValueError("未获取到地址信息")
         # 正则解释：
         # .+?   : 匹配任意字符 (非贪婪模式，尽可能少匹配)
         # [省市] : 遇到 '省' 或 '市' 任意一个字符就停止

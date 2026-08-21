@@ -1,6 +1,40 @@
 from appium.webdriver.common.appiumby import AppiumBy
 from locators.common.common_locator import CommonLocator
 
+
+
+
+def _build_doc_xpath(
+    *res_ids: str,
+    extra: list[str] | None = None,
+    prefix: str = "",
+    text: str = ""
+) -> str:
+    """
+    全自动跨品牌文件系统 XPath 构造器：
+    自动将候选 ID 列表与各大厂商包名（AOSP、Google、OPPO ColorOS、OPlus 等）组合生成 OR 表达式，
+    支持可选的 prefix 前缀与 text 文本精确/模糊匹配。
+    """
+    pkgs = [
+        'com.android.documentsui:id',
+        'com.google.android.documentsui:id',
+        'com.coloros.filemanager:id',
+        'com.oplus.filemanager:id',
+    ]
+    conditions = [f"@resource-id='{pkg}/{r_id}'" for r_id in res_ids for pkg in pkgs]
+    if extra:
+        conditions.extend(extra)
+    
+    id_clause = " or ".join(conditions)
+    if text:
+        text_clause = f"@text='{text}' or contains(@text, '{text}') or contains(@content-desc, '{text}')"
+        inner = f"*[({id_clause}) and ({text_clause})]" if id_clause else f"*[{text_clause}]"
+    else:
+        inner = f"*[{id_clause}]"
+    
+    return f"{prefix}//{inner}" if prefix else f"//{inner}"
+
+
 class ChatFileLocator:
     """聊天-文件功能定位器"""
 
@@ -15,13 +49,14 @@ class ChatFileLocator:
     FILE_ROOT = (AppiumBy.XPATH, f'//*[@resource-id="{FILE_ROOT_ID}" and .//*[@text="文件"]]')
 
     # ==================== 顶部元素 ====================
-    # 文档选择器的包名（标准版）
+    # 文档选择器的包名（标准版 / Google 原生版 / OPPO ColorOS 版 / 一加 Realme OPlus 版）
     DOC_PACKAGE_ID = 'com.android.documentsui:id'
-    # 文档选择器的包名（Google 版）
     GOOGLE_DOC_PACKAGE_ID = 'com.google.android.documentsui:id'
+    COLOROS_DOC_PACKAGE_ID = 'com.coloros.filemanager:id'
+    OPLUS_DOC_PACKAGE_ID = 'com.oplus.filemanager:id'
     
-    # 巧妙利用 Python 字符串格式化，生成包含 OR 运算的 XPath 模板
-    DOC_OR_GOO = f'//*[@resource-id="{DOC_PACKAGE_ID}/{{0}}" or @resource-id="{GOOGLE_DOC_PACKAGE_ID}/{{0}}"]'
+    # 跨平台 OR 运算的 XPath 模板（兼容 .format 调用）
+    DOC_OR_GOO = _build_doc_xpath('{0}')
 
     # 顶部 Bar
     TOP_BAR_XPATH = DOC_OR_GOO.format('toolbar')
@@ -29,8 +64,14 @@ class ChatFileLocator:
     DRAWER_MENU_BTN = (AppiumBy.XPATH, '//android.widget.ImageButton[@content-desc = "显示根目录"]')
     # 顶部 Toolbar 上的目录/面包屑文本 
     TOOLBAR_DIR_NAME = (AppiumBy.XPATH, f'{TOP_BAR_XPATH}/android.widget.TextView')
-    # 搜索按钮
-    SEARCH_BTN = (AppiumBy.XPATH, DOC_OR_GOO.format('option_menu_search'))
+    # 搜索按钮（自适应 AOSP / Google / OPPO ColorOS / OPlus / content-desc）
+    SEARCH_BTN = (
+        AppiumBy.XPATH,
+        _build_doc_xpath(
+            'option_menu_search', 'action_search', 'search',
+            extra=["@content-desc='搜索'", "@text='搜索'"]
+        )
+    )
     # 右上角更多选项
     MORE_OPTIONS_BTN = (AppiumBy.XPATH, f'//android.widget.ImageView[@content-desc="更多选项"]')
     
@@ -69,22 +110,29 @@ class ChatFileLocator:
     DIR_LIST_XPATH = DOC_OR_GOO.format('dir_list')
     DIR_LIST = (AppiumBy.XPATH, DIR_LIST_XPATH)
 
-    # 列表 ITEM
-    DIR_LIST_ITEM_XPATH = DOC_OR_GOO.format('item_root')
+    # 列表 ITEM（自适应原生 item_root 与 OPPO search_item_root
+    DIR_LIST_ITEM_XPATH = _build_doc_xpath('item_root', 'search_item_root')
     DIR_LIST_ITEM = (AppiumBy.XPATH, DIR_LIST_ITEM_XPATH)
 
     
     # ==================== 文件列表 ====================
-    # 文件夹和文件名称
-    DIR_NAME = (AppiumBy.XPATH, f'{DIR_LIST_ITEM_XPATH}//*[@resource-id="{TITLE_ID}"]')
+    # 文件夹和文件名称（自适应原生 android:id/title 与 OPPO file_list_item_title）
+    DIR_NAME = (
+        AppiumBy.XPATH,
+        _build_doc_xpath(
+            'file_list_item_title',
+            extra=[f"@resource-id='{TITLE_ID}'", "contains(@resource-id, 'file_list_item_title')"],
+            prefix=DIR_LIST_ITEM_XPATH
+        )
+    )
 
     # 预览按钮
-    PREVIEW_ICON_XPATH = DOC_OR_GOO.format('preview_icon')
+    PREVIEW_ICON_XPATH = _build_doc_xpath('preview_icon', 'file_list_item_icon', 'icon')
     PREVIEW_ICON = (AppiumBy.XPATH, PREVIEW_ICON_XPATH)
 
-    # 文件详细信息
-    LINE2_INFO = (AppiumBy.XPATH, DOC_OR_GOO.format('line2'))
-    METADATA_XPATH = DOC_OR_GOO.format('metadata')
+    # 文件详细信息（自适应原生 line2/metadata 与 OPPO mark_file_list_item_detail）
+    LINE2_INFO = (AppiumBy.XPATH, _build_doc_xpath('line2', 'mark_file_list_item_detail'))
+    METADATA_XPATH = _build_doc_xpath('metadata', 'mark_file_list_item_detail')
     METADATA = (AppiumBy.XPATH, METADATA_XPATH)
 
 
@@ -107,12 +155,25 @@ class ChatFileLocator:
         return (AppiumBy.ANDROID_UIAUTOMATOR, f'new UiSelector().text("{title}")')
 
     # ==================== 搜索功能 ====================
-    # 搜索输入框（兼容原生 SAF 和厂商定制机型）
-    SEARCH_INPUT = (AppiumBy.XPATH, DOC_OR_GOO.format('search_src_text'))
+    # 搜索输入框（自适应 AOSP / Google / OPPO ColorOS / 厂商定制 / EditText）
+    SEARCH_INPUT = (
+        AppiumBy.XPATH,
+        _build_doc_xpath(
+            'search_src_text', 'search_text', 'search_input', 'input_search',
+            extra=["contains(@resource-id, 'search_src_text')", "@class='android.widget.EditText'"]
+        )
+    )
 
-    # 根据完整文件名定位元素
+    # 根据完整/部分文件名定位元素（全品牌通用：精准匹配文件名文本）
     @classmethod
     def get_file_by_name(cls, file_name: str):
-        """ 根据完整文件名精准定位 """
-        return (AppiumBy.ANDROID_UIAUTOMATOR, f'new UiSelector().resourceId("{cls.TITLE_ID}").text("{file_name}")')
+        """ 根据完整/部分文件名精准定位（自适应全品牌文件管理器） """
+        return (
+            AppiumBy.XPATH,
+            _build_doc_xpath(
+                'file_list_item_title',
+                extra=[f"@resource-id='{cls.TITLE_ID}'", "contains(@resource-id, 'file_list_item_title')"],
+                text=file_name
+            )
+        )
 

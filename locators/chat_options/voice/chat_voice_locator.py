@@ -2,6 +2,7 @@ from appium.webdriver.common.appiumby import AppiumBy
 from locators.common.common_locator import CommonLocator
 from locators.chat.core.chat_locator import ChatLocator
 
+
 class ChatVoiceLocator(CommonLocator, ChatLocator):
     PACKAGE_ID = CommonLocator.PACKAGE_ID
 
@@ -20,27 +21,11 @@ class ChatVoiceLocator(CommonLocator, ChatLocator):
     VOICE_PREVIEW_SEND_ACTION = (AppiumBy.ID, f'{PACKAGE_ID}/voice_preview_send_action')        # 试听下发送按钮
     VOICE_RECORD_OVERLAY = (AppiumBy.ID, f'{PACKAGE_ID}/voice_record_overlay')                  # 录音悬浮窗
 
-    # 语音消息整行容器
-    AUDIO_BUBBLE_ID = f'{PACKAGE_ID}/audio_bubble'
-    AUDIO_BUBBLE = (AppiumBy.ID, AUDIO_BUBBLE_ID)
-    # 语音时长
-    SENT_VOICE_MESSAGE_TIME_ID = f'{PACKAGE_ID}/duration'
-    SENT_VOICE_MESSAGE_TIME = (AppiumBy.ID, SENT_VOICE_MESSAGE_TIME_ID) # 语音时长
-    
-    # 发送消息失败状态
-    SENT_VOICE_MESSAGE_STATUS_ID = ChatLocator.FAIL_MSG_ID
-    SENT_VOICE_MESSAGE_STATUS = ChatLocator.FAIL_MSG # 发送消息失败状态
-
-
-    # 精确定位是发送方还是接收方的语音时长
-    @classmethod
-    def get_sent_voice_message_time_locator(cls, role: str = "sender"):
-        """
-        获取语音消息时长元素的定位器
-        role: "sender" (发送方) / "receiver" (接收方)
-        """
-        side = "sent" if role == "sender" else "received"
-        return cls._BUBBLE_XPATH(side, cls.SENT_VOICE_MESSAGE_TIME_ID)
+    # 语音时长与状态
+    VOICE_DURATION_ID = f'{PACKAGE_ID}/duration'
+    VOICE_DURATION_ITEM = (AppiumBy.ID, VOICE_DURATION_ID)                                     # 语音时长
+    VOICE_FAIL_MSG_ID = ChatLocator.FAIL_MSG_ID
+    VOICE_FAIL_MSG = ChatLocator.FAIL_MSG                                                       # 发送消息失败状态
 
     # 语音消息不同文案显示
     @classmethod
@@ -53,6 +38,6 @@ class ChatVoiceLocator(CommonLocator, ChatLocator):
         """
         定位指定时长语音消息的发送状态图标(红点)
         """
-        xpath = (f'(//*[@resource-id="{cls.MESSAGES_LIST_ID}"]//*[contains(@resource-id, "{cls.SENT_VOICE_MESSAGE_TIME_ID}") and contains(@text, "{time_text}")])[last()]'
+        xpath = (f'(//*[@resource-id="{cls.MESSAGES_LIST_ID}"]//*[contains(@resource-id, "{cls.VOICE_DURATION_ID}") and contains(@text, "{time_text}")])[last()]'
                  f'/following-sibling::*[@resource-id="{cls.FAIL_MSG_ID}"]')
         return (AppiumBy.XPATH, xpath)

@@ -62,12 +62,11 @@ class ChatMessageBuilder(ChatPage):
         self.send_message(content)
     
     def _prepare_emoji_msg(self, **kwargs):
-        """发送/准备 Emoji 表情消息"""
+        """发送/准备 Emoji 表情消息（长按/多选等专项测试数据准备：仅快速发送第一排表情，高效省时）"""
         from pages.chat_options.emojis.chat_emoji_page import ChatEmojiPage
         emojiPage = ChatEmojiPage(self.driver)
         self.enter_emoji_page()
-        emojiPage.sent_all_emoji()
-        input_text = self.get_input_text()
+        emojiPage.sent_first_row_emoji(count=kwargs.get("count", 8))
         self.click_send_button()
         self.enter_emoji_page()
     
@@ -152,18 +151,14 @@ class ChatMessageBuilder(ChatPage):
         self.click_add_button()
 
     def _prepare_file_msg(self, **kwargs):
-        """发送/准备本地文件消息"""
+        """发送/准备本地文件消息（使用固定文件名搜索并发送，稳定高效）"""
         from pages.chat_options.file.chat_file_page import ChatFilePage
         file_page = ChatFilePage(self.driver)
         file_page.open_panel_enter_file_page()
         file_page.wait_for_file_page_load()
-        file_page.click_file_menu_button()
-        file_page.click_sub_menu_item(kwargs.get("sub_menu", "图片"))
-        file_page.select_any_file_in_dir(
-            primary_dir=kwargs.get("dir", "santiaotalk"),
-            file_type=kwargs.get("file_type", 'image')
-        )
-        self.click_add_button()
+        file_name = kwargs.get("file_name", "测试-图片")
+        file_page.search_and_select_file_by_name(file_name)
+        # self.click_add_button()
 
     # 统一消息特征值提取方法，将分散的提取逻辑集中起来，方便维护和扩展
     def get_message_feature(self, msg_type: str, expect_missing: bool = False, index: int = -1) -> dict:

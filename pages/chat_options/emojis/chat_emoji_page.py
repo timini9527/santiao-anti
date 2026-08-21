@@ -23,6 +23,7 @@ class ChatEmojiPage(ChatEmojiPanelBase):
         logger.info(f"初始状态下，当前可见所有表情总数: {len(all_emoji_list)}")
         return all_emoji_list
 
+    # 最近表情 - 获取表情面板中可见的最近使用表情元素
     def _get_late_emoji(self):
         """  查找最近使用的表情   """
         late_emoji_list = self.find_elements(ChatEmojiLocator.EMOJI_RECENT_ITEM_IN, 'visibility', timeout=3)
@@ -31,11 +32,9 @@ class ChatEmojiPage(ChatEmojiPanelBase):
         logger.info(f"初始状态下，当前可见最近使用的表情总数: {len(late_emoji_list)}")
         return late_emoji_list
 
+    # 所有表情 - 发送表情面板中所有表情
     def _send_all_emojis_by_paging(self, max_slide: int = 20, duration: int = 500):
-        """
-        发送所有表情 (一行一行地发送与滑动), 分页全量发送表情。
-        :param max_slide: 最大滑动行数，防止死循环
-        """
+        """ 发送所有表情 (一行一行地发送与滑动), 分页全量发送表情 """
         # 1. 获取表情面板布局度量数据
         metrics = self.get_grid_layout_metrics(
             ChatEmojiLocator.EMOJI_ALL, 
@@ -142,7 +141,13 @@ class ChatEmojiPage(ChatEmojiPanelBase):
             time.sleep(0.1)
         return total_clicked
 
-    # 发送并全量验证当前面板全部表情功能
+    # 发送表情 - 发送第一排基础表情
+    def sent_first_row_emoji(self, count: int = 8):
+        """发送第一排基础表情（快速发送第一排指定数量表情，避免全量滑动耗时）"""
+        logger.info(f"🚀 [Action] 快速发送第一排表情 (数量: {count})")
+        self.sent_emoji(emoji_type="sequential", count=count)
+
+    # 发送表情 - 发送并全量验证当前面板全部表情功能
     def sent_all_emoji(self):
         logger.info("[Action] 准备全量发送面板内所有的展示表情")
         panel_elem, _ = self._find_panel()
@@ -154,10 +159,10 @@ class ChatEmojiPage(ChatEmojiPanelBase):
 
         self._send_all_emojis_by_paging()
     
+
+    # 表情 - 滑动到绝对底部
     def _scroll_to_absolute_bottom(self, panel_elem: WebElement, max_slide: int = 15) -> list[WebElement]:
-        """
-        滑动到表情面板的最底部。利用 BasePage 的局部 XML 探测机制，自动识别边界。
-        """
+        """ 滑动到表情面板的最底部。利用 BasePage 的局部 XML 探测机制，自动识别边界。 """
         logger.info("🚀 准备滑动到表情面板最底部...")
         last_source = ""
         for i in range(max_slide):
@@ -169,15 +174,13 @@ class ChatEmojiPage(ChatEmojiPanelBase):
                 logger.info(f"✅ 经过 {i} 次滑动，已到达表情面板最底部")
                 return self.find_elements(ChatEmojiLocator.EMOJI_ALL_ITEM_IN, 'visibility', timeout=2)
             self.swipe_on_element(panel_elem, slid_type='up', duration=400)
-            time.sleep(0.5)
+            time.sleep(0.3)
         logger.warning(f"达到最大滑动次数 {max_slide}，可能未到绝对底部")
         return self.find_elements(ChatEmojiLocator.EMOJI_ALL_ITEM_IN)
 
+    # 表情 - 根据策略获取目标表情元素列表
     def _get_target_elements(self, emoji_type: str, count: int, emoji_list: list, panel_elem: WebElement) -> List:
-        """
-        根据策略获取目标表情元素列表
-        返回: List[WebElement] (无论多少个，统统返回列表)
-        """
+        """ 根据策略获取目标表情元素列表,返回: List[WebElement] (无论多少个，统统返回列表) """
         if not emoji_list:
             raise RuntimeError("当前页面未找到可用的表情元素")
 
@@ -216,12 +219,14 @@ class ChatEmojiPage(ChatEmojiPanelBase):
 
         raise ValueError(f"未知用例测试表情类型: {emoji_type}")
 
-    # 发送单个或多个表情
-    def sent_emoji(self, emoji_type: str, count: int = 1):
+    
+    # 发送表情 - 发送单个或多个表情
+    def sent_emoji(self, emoji_type: str = "first", count: int = 1) -> int:
         """
         统一发送表情的 API（支持单个/多个）
-        :param emoji_type: 策略("first", "sequential", "random", "absolute_last" 等)
+        :param emoji_type: 策略("first", "sequential", "random", "absolute_last", "eight", "current_last" 等)
         :param count: 需要发送的个数（仅对 sequential 和 random 策略生效）
+        :return: 实际成功点击的表情数量
         """
         logger.info(f"[Action] 执行发送普通表情, 策略: {emoji_type}, 数量: {count}")
         panel_elem, _ = self._find_panel()
@@ -229,32 +234,51 @@ class ChatEmojiPage(ChatEmojiPanelBase):
         target_elems = self._get_target_elements(emoji_type, count, emoji_list, panel_elem)
 
         logger.info(f"策略【{emoji_type}】要求点击 {count} 个，实际准备点击 {len(target_elems)} 个")
-        for index, elem in enumerate(target_elems):
-            self._click_single_emoji(elem)
-            if len(target_elems) > 1:
-                time.sleep(0.2)
+        clicked_count = 0
+        for elem in target_elems:
+            try:
+                self._click_single_emoji(elem)
+                clicked_count += 1
+                if len(target_elems) > 1:
+                    time.sleep(0.2)
+            except Exception as e:
+                logger.warning(f"⚠️ 点击表情元素失败，跳过当前项: {e}")
+        return clicked_count
 
-    # 发送最近使用过的历史表情
-    def sent_late_emoji(self, emoji_type: str, count: int = 1):
-        """  计算最近使用的表情当前表情包一排有多少个表情，根据手机大小显示   """
+    # 发送表情 - 发送最近使用过的历史表情
+    def sent_late_emoji(self, emoji_type: str = "first", count: int = 1) -> int:
+        """
+        发送最近使用过的历史表情
+        :param emoji_type: 策略标识（保持与 sent_emoji API 风格统一）
+        :param count: 计划点击的最近表情数量
+        :return: 实际成功点击的表情数量
+        """
         logger.info(f"[Action] 执行发送最近使用表情, 策略: {emoji_type}, 首选数量: {count}")
-        _, panel_rect = self._find_panel()
+        self._find_panel()
         late_emoji_elems = self._get_late_emoji()
-        target_elems = late_emoji_elems[:count]
+        target_elems = late_emoji_elems[:count] if late_emoji_elems else []
         logger.info(
             f"验证最近表情: 发送策略为【{emoji_type}】，"
             f"计划点击前 {count} 个，实际准备点击 {len(target_elems)} 个"
         )
-        for index, elem in enumerate(target_elems):
-            logger.info(f"正在点击最近使用表情，第 {index}/{len(target_elems)} 个")
-            current_late_emojis = self._get_late_emoji()
-            if index >= len(current_late_emojis):
-                logger.warning("UI 刷新后表情数量减少，跳出点击循环")
-                break
-            fresh_elem = current_late_emojis[index]
-            self._click_single_emoji(fresh_elem)
-            if len(late_emoji_elems) > 1:
-                time.sleep(0.1)
+        clicked_count = 0
+        for index in range(len(target_elems)):
+            try:
+                logger.info(f"正在点击最近使用表情，第 {index + 1}/{len(target_elems)} 个")
+                current_late_emojis = self._get_late_emoji()
+                if index >= len(current_late_emojis):
+                    logger.warning("UI 刷新后最近表情数量变动，跳出点击循环")
+                    break
+                fresh_elem = current_late_emojis[index]
+                self._click_single_emoji(fresh_elem)
+                clicked_count += 1
+                if len(target_elems) > 1:
+                    time.sleep(0.1)
+            except Exception as e:
+                logger.warning(f"⚠️ 点击最近表情元素失败，跳过: {e}")
+
+        return clicked_count
+
 
     # 反转表情数据
     @staticmethod

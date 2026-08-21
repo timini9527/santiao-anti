@@ -232,11 +232,11 @@ class TestChatLongPress:
         with allure.step(f'2. 【多选】 验证消息类型，准备多条不同消息'):
             if msg_count is None:
                 target_count = len(msg_list)
-                # for msg_type in msg_list:
-                #     strategy_model = MessageTypeStrategy.get_strategy(msg_type)
-                #     if '多选' not in strategy_model.expected_menus:
-                #         continue
-                #     self._prepare_message(msg_type)
+                for msg_type in msg_list:
+                    strategy_model = MessageTypeStrategy.get_strategy(msg_type)
+                    if '多选' not in strategy_model.expected_menus:
+                        continue
+                    self._prepare_message(msg_type)
             else:
                 target_count = msg_count
         with allure.step(f'3. 长按执行【多选】'):
@@ -265,8 +265,8 @@ class TestChatLongPress:
             is_select = self.contactSelectPage.forward_select_contact_by_name(name=strategy.name)
             check.is_true(is_select, f'❌ 未能选择转发对象: {strategy.name}')
             self.sessionSelectPage.click_finish_button()
+            self.chatPage.swipe_page_quickly(slid_type='up', duration=50, max_swipes=100)
             self.chatPage.wait_for_history_send_complete()
-            self.chatPage.wait_for_last_message_send_status()
         with allure.step(f"7. 验证【{('逐条转发' if mult_type == 0 else '合并转发')}】后的消息"):
             is_sent = self.chatPage.wait_for_last_message_send_status()
             check.is_true(is_sent, f"❌ {('逐条转发' if mult_type == 0 else '合并转发')}后，末尾消息发送失败或未上屏")
@@ -276,13 +276,14 @@ class TestChatLongPress:
                     is_rendered = self.emojiPackagePage.verify_emoji_message_rendered()
                     check.is_true(is_rendered, f"❌ {'逐条转发'}的最后一条不是预期的 Package 动态表情")
             elif mult_type == 1:
-                forward_title = self.chatPage.get_merge_forward_message()
-                check.is_in('聊天记录', forward_title, f'❌ 合并转发后，末尾消息不是聊天记录消息')
+                is_rendered = self.chatPage.get_merge_forward_message()
+                check.is_true(is_rendered, f'❌ 合并转发后，末尾消息不是聊天记录消息')
                 with allure.step('7. 穿透验证：解析合并转发预览文本与防 Crash 验证'):
                     is_history_correct = self.chatPage.verify_chat_history_content(expected_count=target_count)
                     check.is_true(is_history_correct, f'❌ 合并转发验证失败（预览条数不匹配或详情页崩溃）')
             else:
                 pass
+
 
     @allure.story('长按菜单操作专项：添加表情')
     @allure.title('长按菜单操作专项：添加表情-状态：已完成')
@@ -314,6 +315,7 @@ class TestChatLongPress:
             has_pkg = self.messageBuilder._prepare_has_pkg_msg()
             check.is_true(has_pkg, f'❌ 【{msg_type}】消息添加表情失败')
 
+
     @allure.story('长按菜单操作专项：撤回')
     @allure.title('长按菜单操作专项：撤回-状态：已完成')
     @pytest.mark.severity(allure.severity_level.CRITICAL)
@@ -321,14 +323,12 @@ class TestChatLongPress:
         'msg_type', [
             pytest.param(t, id=f'消息类型-{t}')
             for t in ['text', 'emoji', 'image', 'voice', 'video', 'position', 'card', 'file', 'package']
-        ]
-    )
+        ])
     @pytest.mark.parametrize(
         'strategy', [
             pytest.param(PRIVATE_USER1, id='私聊模式'),
             pytest.param(GROUP_STRATEGY, id='群聊模式')
-        ]
-    )
+        ])
     def test_long_press_action_recall(self, strategy, msg_type):
         with allure.step(f'1. 进入聊天页面'):
             self.chatListPage.enter_chat(strategy.name)
@@ -344,10 +344,12 @@ class TestChatLongPress:
             self.longPressPage.long_press_last_message(msg_type=msg_type)
             is_ok = self.longPressPage._execute_and_verify_menu_item('撤回')
             check.is_true(is_ok, '❌ 长按点击【撤回】失败')
+            self.chatPage.click_two_confirm()
         with allure.step(f'5. 结果验证：验证撤回效果'):
             withmsg, smsg = self.chatPage.get_withdraw_message(index=-1)
-            check.is_in('您撤回了一条消息', withmsg, f'❌ 【{msg_type}】消息撤回失败，没有显示撤回标识')
+            check.is_in('你撤回了一条消息', withmsg, f'❌ 【{msg_type}】消息撤回失败，没有显示撤回标识')
             check.equal(smsg, base_msg_text, f'❌ 【{msg_type}】消息撤回失败，撤回消息与正常消息不匹配')
+
 
     @allure.story('长按菜单操作专项：删除')
     @allure.title('长按菜单操作专项：删除-状态：已完成')
@@ -355,14 +357,12 @@ class TestChatLongPress:
     @pytest.mark.parametrize(
         'msg_list', [
             pytest.param(['text', 'emoji', 'image', 'voice', 'video', 'position', 'card', 'file', 'package'], id='全量消息类型')
-        ]
-    )
+        ])
     @pytest.mark.parametrize(
         'strategy', [
             pytest.param(PRIVATE_USER1, id='私聊模式'),
             pytest.param(GROUP_STRATEGY, id='群聊模式')
-        ]
-    )
+        ])
     def test_long_press_action_delete(self, strategy, msg_list):
         allure.dynamic.title(f'【删除专项】 {strategy.desc} - 批量处理')
         with allure.step(f'1. 进入聊天页面'):
@@ -404,7 +404,7 @@ class TestChatLongPress:
                 try:
                     self.longPressPage.long_press_last_message(msg_type=m_type)
                     is_ok = self.longPressPage._execute_and_verify_menu_item('删除')
-                    self.chatPage.click_del_confirm()
+                    # self.chatPage.click_del_confirm()
                     check.is_true(is_ok, f'❌ {m_type} 长按点击【删除】失败')
                     current = self.messageBuilder.get_message_feature(m_type, expect_missing=True)
                     check.not_equal(current, pre_data[m_type], f'❌ 【{m_type}】删除后消息仍存在')

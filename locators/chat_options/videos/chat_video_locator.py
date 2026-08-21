@@ -21,6 +21,4 @@ class ChatVideoLocator(MediaSelectLocator):
     # ==================== 聊天页面中的视频气泡 ====================
     VIDEO_PLAY_BUTTON_ID = ChatLocator.VIDEO_PLAY_BUTTON_ID                     # 视频播放按钮ID
     VIDEO_PLAY_BUTTON_ITEM = ChatLocator.VIDEO_PLAY_BUTTON_ITEM                 # 视频播放按钮
-    SENT_VIDEO_PLAY_BUTTON_ITEM = ChatLocator.SENT_VIDEO_PLAY_BUTTON_ITEM       # 发送方视频播放按钮
-    RECEIVE_VIDEO_PLAY_BUTTON_ITEM = ChatLocator.RECEIVE_VIDEO_PLAY_BUTTON_ITEM # 接收方视频播放按钮
 

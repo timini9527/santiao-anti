@@ -11,6 +11,7 @@ class ChatPositionLocator(CommonLocator):
     LOCATION_SELECT_ROOT_ID = ChatPanelLocator.MORE_ACTION_ROOT_ID
     LOCATION_SELECT_ROOT = ChatPanelLocator.MORE_ACTION_ROOT
     LOCATION_SELECT_TEXT = ChatPanelLocator.BTN_LOCATION
+    LOCATION_SELECT_BTN = ChatPanelLocator.BTN_LOCATION
 
     # ==================== 位置选择页面 (地图页) ====================
     CANCEL_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/left_text') # 左上角取消按钮
@@ -35,20 +36,6 @@ class ChatPositionLocator(CommonLocator):
     LOCATION_ZOOM_IN_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/iv_zoomin')  # 放大按钮
     LOCATION_ZOOM_OUT_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/iv_zoom_out')    # 缩小按钮
     LOCATION_NAME = (AppiumBy.ID, f'{PACKAGE_ID}/bubble_title') # 位置名称标题
-    
-
-    # ==================== 聊天页面中的位置气泡 ====================
-    SENT_LOCATION_ID = f'{PACKAGE_ID}/sent_location'
-    SENT_LOCATION_ITEM = (AppiumBy.ID, SENT_LOCATION_ID) # 整个位置气泡框
-    
-    SENT_LOCATION_ADDRESS_ID = f'{PACKAGE_ID}/location_address'
-    SENT_LOCATION_ADDRESS_ITEM = (AppiumBy.ID, SENT_LOCATION_ADDRESS_ID) # 位置气泡框的地址
-    
-    SENT_LOCATION_DETAIL_ADDRESS_ID = f'{PACKAGE_ID}/location_detail_address'
-    SENT_LOCATION_DETAIL_ADDRESS_ITEM = (AppiumBy.ID, SENT_LOCATION_DETAIL_ADDRESS_ID) # 位置气泡框的详细地址
-    
-    SENT_LOCATION_IMG_ID = f'{PACKAGE_ID}/location_img'
-    SENT_LOCATION_IMG_ITEM = (AppiumBy.ID, SENT_LOCATION_IMG_ID) # 位置气泡框的图片
 
 
 
