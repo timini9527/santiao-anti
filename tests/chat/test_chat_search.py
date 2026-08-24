@@ -15,9 +15,12 @@ from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
 from pages.groups.setting.general.group_setting_page import GroupSettingPage
 from pages.common.contact_select_page import ContactSelectPage
 
+
+
+
 @allure.epic('IM核心功能测试')
 @allure.feature('聊天设置')
-@allure.story('单聊设置 - 查找聊天记录')
+@allure.story('单聊/群聊设置 - 查找聊天记录')
 class TestChatSearch:
 
     @pytest.fixture(autouse=True)
@@ -51,11 +54,19 @@ class TestChatSearch:
             self.chatSettingPage.click_search_chat_record()
         self.chatSearchPage.wait_for_search_page_load()
 
+
+
+
     @allure.story('文本内容检索 - 消息存在')
     @allure.title('文本内容检索 - 消息存在-状态：已完成')
-    @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='param_1'), pytest.param(GROUP_STRATEGY, id='param_2')])
+    @pytest.mark.parametrize(
+        'strategy', [
+            pytest.param(PRIVATE_USER1, id='私聊模式'),
+            pytest.param(GROUP_STRATEGY, id='群聊模式')
+        ])
     def test_search_by_text_content_and_locate(self, strategy):
         """测试在搜索框中输入特定文本，找到对应的记录并定位回聊天界面"""
+        allure.dynamic.title(f'【文本检索定位】 {strategy.desc}')
         keyword = 'SearchMarker'
         test_msg = f'这是一条用于聊天记录搜索测试的独占关键字消息: {keyword}'
         with allure.step(f"前置准备：进入目标好友的{('群' if strategy.is_admin else '单')}聊会话"):
@@ -78,11 +89,17 @@ class TestChatSearch:
             last_message = self.chatSettingPage.get_text_message_content_by_index()
             check.is_in(keyword, last_message, f"❌ 未能在聊天屏幕上找到包含关键字 '{keyword}' 的定位消息")
 
+
     @allure.story('文本内容检索 - 消息不存在')
     @allure.title('文本内容检索 - 消息不存在-状态：已完成')
-    @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='param_1'), pytest.param(GROUP_STRATEGY, id='param_2')])
+    @pytest.mark.parametrize(
+        'strategy', [
+            pytest.param(PRIVATE_USER1, id='私聊模式'),
+            pytest.param(GROUP_STRATEGY, id='群聊模式')
+        ])
     def test_search_by_text_content_not_exist(self, strategy):
         """测试在搜索框中输入特定文本，未找到对应的记录"""
+        allure.dynamic.title(f'【无结果文本检索】 {strategy.desc}')
         keyword = 'SearchMarkerNotExist'
         with allure.step(f"前置准备：进入目标好友的{('群' if strategy.is_admin else '单')}聊会话"):
             self.chatListPage.enter_chat(strategy.name)
@@ -94,12 +111,26 @@ class TestChatSearch:
             results_count = self.chatSearchPage.get_search_results_count()
             check.equal(results_count, 0, f"❌ 检索到包含关键字 '{keyword}' 的消息记录")
 
+
     @allure.story('日期日历面板筛选聊天记录状态校验')
     @allure.title('日期日历面板筛选聊天记录状态校验-状态：已完成')
-    @pytest.mark.parametrize('day_type, delta_days, fixed_date, expected_gray, send_msg_before', [pytest.param('today_has_msg', 0, None, False, True, id='今天（有消息）'), pytest.param('future_no_msg', 2, None, True, False, id='未来某天（无消息）'), pytest.param('past_no_msg', -60, None, True, False, id='过去某天（无消息）'), pytest.param('fixed_date_no_msg', None, ('2026-4', '19'), True, False, id='固定日期2026年4月19日（无消息）'), pytest.param('fixed_date_has_msg', None, ('2026-4', '30'), False, True, id='固定日期2026年4月30日（有消息）'), pytest.param('fixed_date_no_msg', None, ('2026-5', '24'), True, False, id='固定日期2026年5月24日（无消息）'), pytest.param('fixed_date_has_msg', None, ('2026-5', '25'), False, True, id='固定日期2026年5月25日（有消息）')])
-    @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='param_1'), pytest.param(GROUP_STRATEGY, id='param_2')])
+    @pytest.mark.parametrize('day_type, delta_days, fixed_date, expected_gray, send_msg_before', [
+        pytest.param('today_has_msg', 0, None, False, True, id='今天（有消息）'),
+        pytest.param('future_no_msg', 2, None, True, False, id='未来某天（无消息）'),
+        pytest.param('past_no_msg', -60, None, True, False, id='过去某天（无消息）'),
+        pytest.param('fixed_date_no_msg', None, ('2026-8', '1'), True, False, id='固定日期2026年8月1日（无消息）'),
+        pytest.param('fixed_date_has_msg', None, ('2026-8', '18'), False, True, id='固定日期2026年8月18日（有消息）'),
+        pytest.param('fixed_date_no_msg', None, ('2026-8', '1'), True, False, id='固定日期2026年8月1日（无消息）'),
+        pytest.param('fixed_date_has_msg', None, ('2026-8', '18'), False, True, id='固定日期2026年8月18日（有消息）')
+    ])
+    @pytest.mark.parametrize(
+        'strategy', [
+            pytest.param(PRIVATE_USER1, id='私聊模式'),
+            pytest.param(GROUP_STRATEGY, id='群聊模式')
+        ])
     def test_search_by_date_calendar(self, strategy, day_type, delta_days, fixed_date, expected_gray, send_msg_before):
         """测试按不同日期类型筛选，验证日历中日期的灰显/激活状态"""
+        allure.dynamic.title(f'【日历检索】 {strategy.desc} - {day_type}')
         now = datetime.now()
         if fixed_date:
             year_month_input, target_day = fixed_date
@@ -147,11 +178,17 @@ class TestChatSearch:
                         found = any((expected_date_str in t or expected_short_str in t or target_day in t for t in texts))
                         check.is_true(found, f"❌ OCR识别的文本列表 '{texts}' 中，均不包含目标日期 '{expected_date_str}' 或 '{target_day}'")
 
+
     @allure.story('多媒体（图片/视频/文件）分类过滤定位测试')
     @allure.title('多媒体（图片/视频/文件）分类过滤定位测试-状态：已完成')
-    @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='param_1'), pytest.param(GROUP_STRATEGY, id='param_2')])
+    @pytest.mark.parametrize(
+        'strategy', [
+            pytest.param(PRIVATE_USER1, id='私聊模式'),
+            pytest.param(GROUP_STRATEGY, id='群聊模式')
+        ])
     def test_search_by_media_category_and_locate(self, strategy):
         """测试进入图片/视频/文件分类视图，选择媒体项并定位到聊天上下文"""
+        allure.dynamic.title(f'【图片分类检索】 {strategy.desc}')
         with allure.step(f"前置准备：进入目标好友的{('群' if strategy.is_admin else '单')}聊会话"):
             self.chatListPage.enter_chat(strategy.name)
         with allure.step('1、发送一张图片作为测试数据'):
@@ -177,11 +214,17 @@ class TestChatSearch:
                 chat_image_hash = self.chatPage.get_chat_all_image_hash()
                 check.is_true(image_hash in chat_image_hash, f'❌ 图片 hash 值不匹配')
 
+
     @allure.story('视频分类过滤定位测试')
     @allure.title('视频分类过滤定位测试-状态：已完成')
-    @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='param_1'), pytest.param(GROUP_STRATEGY, id='param_2')])
+    @pytest.mark.parametrize(
+        'strategy', [
+            pytest.param(PRIVATE_USER1, id='私聊模式'),
+            pytest.param(GROUP_STRATEGY, id='群聊模式')
+        ])
     def test_search_by_video_category_and_locate(self, strategy):
         """测试进入视频分类视图，选择视频并定位到聊天上下文"""
+        allure.dynamic.title(f'【视频分类检索】 {strategy.desc}')
         with allure.step(f"前置准备：进入目标好友的{('群' if strategy.is_admin else '单')}聊会话"):
             self.chatListPage.enter_chat(strategy.name)
         with allure.step('1、发送一段视频作为测试数据'):
@@ -207,11 +250,17 @@ class TestChatSearch:
                 chat_video_duration = self.chatPage.get_chat_all_video_duration()
                 check.is_true(video_duration in chat_video_duration, f'❌ 视频时长不匹配')
 
+
     @allure.story('文件分类过滤定位测试')
     @allure.title('文件分类过滤定位测试-状态：已完成')
-    @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='param_1'), pytest.param(GROUP_STRATEGY, id='param_2')])
+    @pytest.mark.parametrize(
+        'strategy', [
+            pytest.param(PRIVATE_USER1, id='私聊模式'),
+            pytest.param(GROUP_STRATEGY, id='群聊模式')
+        ])
     def test_search_by_file_category_and_locate(self, strategy):
         """测试进入文件分类视图，选择文件并定位到聊天上下文"""
+        allure.dynamic.title(f'【文件分类检索】 {strategy.desc}')
         with allure.step(f"前置准备：进入目标好友的{('群' if strategy.is_admin else '单')}聊会话"):
             self.chatListPage.enter_chat(strategy.name)
         with allure.step('1、发送一个文件作为测试数据'):
@@ -237,11 +286,16 @@ class TestChatSearch:
                 chat_file_names = self.chatPage.get_chat_all_file_name()
                 check.is_true(file_name in chat_file_names, f'❌ 文件名称不匹配')
 
+
     @allure.story('群成员分类过滤定位测试')
     @allure.title('群成员分类过滤定位测试-状态：已完成')
-    @pytest.mark.parametrize('strategy', [pytest.param(GROUP_STRATEGY, id='param_1')])
+    @pytest.mark.parametrize(
+        'strategy', [
+            pytest.param(GROUP_STRATEGY, id='群聊模式')
+        ])
     def test_search_by_group_member_category_and_locate(self, strategy):
         """测试进入群成员分类视图，选择群成员并定位到聊天上下文"""
+        allure.dynamic.title(f'【群成员分类检索】 {strategy.desc}')
         keyword = 'GroupMemberSearchMarker'
         test_msg = f'这是一条群成员定位专属测试消息: {keyword}'
         with allure.step(f'前置准备：进入目标好友的群聊会话'):

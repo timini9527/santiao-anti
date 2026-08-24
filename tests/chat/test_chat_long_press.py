@@ -351,6 +351,7 @@ class TestChatLongPress:
             check.equal(smsg, base_msg_text, f'❌ 【{msg_type}】消息撤回失败，撤回消息与正常消息不匹配')
 
 
+    # TODO：发送表情包有问题，需要检查
     @allure.story('长按菜单操作专项：删除')
     @allure.title('长按菜单操作专项：删除-状态：已完成')
     @pytest.mark.severity(allure.severity_level.CRITICAL)
@@ -368,22 +369,31 @@ class TestChatLongPress:
         with allure.step(f'1. 进入聊天页面'):
             self.chatListPage.enter_chat(strategy.name)
             self.chatPage.send_message(f'【{msg_list}】长按【删除】功能专项')
-        with allure.step(f'2. 校验支持【删除】的菜单项'):
+            
+        valid_msg_list = []
+        with allure.step(f'2. 校验并筛选支持【删除】的菜单项'):
             for m_type in msg_list:
                 strategy_model = MessageTypeStrategy.get_strategy(m_type)
-                if '撤回/删除' not in strategy_model.expected_menus:
-                    pytest.skip(f'⏭️ {m_type} 消息类型不支持【删除】，自动跳过')
+                if '撤回/删除' in strategy_model.expected_menus or '删除' in strategy_model.expected_menus:
+                    valid_msg_list.append(m_type)
+                else:
+                    logger.info(f'⏭️ {m_type} 消息类型不支持【删除】，过滤跳过')
+                    
+        if not valid_msg_list:
+            pytest.skip('⏭️ 当前列表中无任何支持【删除】的消息类型，跳过用例')
+
         pre_data = {}
         successfully_sent_types = []
         with allure.step(f'3. 集中火力：准备多条不同消息并预存数据'):
-            for m_type in msg_list:
+            for m_type in valid_msg_list:
                 try:
                     self._prepare_message(m_type)
                     pre_data[m_type] = self.messageBuilder.get_message_feature(m_type, expect_missing=False)
                     if m_type == 'file':
                         file_status = pre_data[m_type].get('文件状态', '')
-                        if file_status:
+                        if file_status and '发送成功' not in file_status:
                             check.is_in('发送成功', file_status, f'❌ 文件消息发送失败')
+                            continue
                     successfully_sent_types.append(m_type)
                 except Exception as e:
                     logger.error(f'❌ 发送 {m_type} 消息过程中崩溃: {e}')
@@ -393,20 +403,19 @@ class TestChatLongPress:
                             break
                         logger.warning(f'⚠️ {m_type} 测试卡在其他页面，正在尝试按返回键恢复...')
                         self.chatPage.back_to_chat_page()
+
         if not successfully_sent_types:
             pytest.fail('❌ 所有类型的消息发送均失败，无法进行后续验证！')
-        with allure.step(f'4. 统一挂机等待：只等一次 2 分钟'):
-            if strategy.name == '测试0222' or strategy.is_admin != True:
-                self.chatPage.wait_for_x_minutes(120)
-        with allure.step(f'5. 批量验证并从下往上删除'):
+
+        with allure.step(f'4. 批量验证并从下往上删除'):
             for m_type in reversed(successfully_sent_types):
                 logger.info(f'正在执行删除验证，类型: {m_type}')
                 try:
                     self.longPressPage.long_press_last_message(msg_type=m_type)
                     is_ok = self.longPressPage._execute_and_verify_menu_item('删除')
-                    # self.chatPage.click_del_confirm()
                     check.is_true(is_ok, f'❌ {m_type} 长按点击【删除】失败')
                     current = self.messageBuilder.get_message_feature(m_type, expect_missing=True)
                     check.not_equal(current, pre_data[m_type], f'❌ 【{m_type}】删除后消息仍存在')
                 except Exception as e:
                     logger.error(f'❌ 验证删除 {m_type} 时发生异常: {e}')
+                    check.is_true(False, f'❌ 验证删除 {m_type} 时发生异常: {e}')

@@ -278,11 +278,11 @@ class ChatPage(BasePage):
         return fail_items
         
     # 快捷功能-打开底部表情面板
-    def enter_emoji_page(self):
+    def enter_emoji_page(self, is_open: bool = True):
         """快捷功能-打开底部表情面板"""
-        self.click_emoji_button()
+        self.click_emoji_button(is_open=is_open)
         logger.info("🚀[Action-chat] - chat 打开表情面板")
-        time.sleep(1)
+        time.sleep(0.5)
 
     # 聊天输入-清空文本输入框中的内容
     def clear_input_text(self):
@@ -310,42 +310,43 @@ class ChatPage(BasePage):
         expect_missing: bool = False
     ) -> list[WebElement]:
         """
-        消息接收-根据类型和方向获取聊天页面中的消息元素列表
-        利用物理贴边锚定算法进行方向判定，单次 Appium 请求极速返回，并支持原生 WebElement 操作。
+        消息接收-根据类型和方向获取聊天页面中的消息元素列表。
+        区分发送方和接收方时，使用同一消息行内头像与目标元素的实际中心 X 坐标。
+        没有头像的系统通知不归入 sent/received。
         """
         locator = self._MSG_BASE_LOCATORS.get(msg_type)
         if not locator:
             raise ValueError(f"❌ ChatPage.get_message_elements - 不支持的消息类型: {msg_type}")
 
-        # 1. 批量获取当前页面所有匹配元素
-        elements = self.find_elements(locator, timeout=2, expect_missing=expect_missing)
-        if not elements or side == 'all':
-            return elements or []
+        if side not in {'sent', 'received', 'all'}:
+            raise ValueError(f"❌ ChatPage.get_message_elements - 不支持的消息方向: {side}")
 
-        # 2. 获取屏幕物理宽度并计算贴边安全阈值 (25% 屏幕宽度)
+        if side == 'all':
+            return self.find_elements(locator, timeout=2, expect_missing=expect_missing) or []
+        
+        message_rows = self.find_elements(ChatLocator.MESSAGE_LAYOUT_ITEM, expect_missing=expect_missing) or []
         try:
             screen_width = self.driver.get_window_size()['width']
         except Exception:
             screen_width = 1080
-        edge_threshold = screen_width * 0.25
+        mid_x = screen_width / 2.0
 
-        # 3. 内存物理几何判定
         filtered_elements = []
-        for elem in elements:
+        for row in message_rows:
             try:
-                rect = elem.rect
-                elem_left = rect['x']
-                elem_right_margin = screen_width - (rect['x'] + rect['width'])
+                avatars = row.find_elements(*ChatLocator.AVATAR_ITEM)
+                row_elements = row.find_elements(*locator)
 
-                # 发送方特征：右边距在右侧贴边锚定区内 (<= 25% 屏宽)
-                if side == 'sent' and elem_right_margin <= edge_threshold:
-                    filtered_elements.append(elem)
-                # 接收方特征：左边距在左侧贴边锚定区内 (<= 25% 屏宽)
-                elif side == 'received' and elem_left <= edge_threshold:
-                    filtered_elements.append(elem)
-            except Exception:
-                continue
+                if not avatars or not row_elements:
+                    logger.debug(f"[Action-chat] - chat 跳过无法判断方向的消息行: {row}")
+                    continue
+                avatar_x = avatars[0].rect['x']
+                is_sent_row = avatar_x > mid_x
 
+                if (side == 'sent' and is_sent_row) or (side == 'received' and not is_sent_row):
+                    filtered_elements.extend(row_elements)
+            except Exception as exc:
+                logger.debug(f"跳过无法判断方向的消息行: {exc}")
         return filtered_elements
 
     # 消息接收-统计聊天页面中指定类型与方向的消息数量
@@ -708,7 +709,7 @@ class ChatPage(BasePage):
             logger.warning(f"⚠️ [Content] - 已知没有视频时长，跳过该消息的断言")
             return ""
         if not vd_elems:
-            logger.error(f"❌ [Action-chat] - 未找到任何视频时长控件")
+            logger.error(f"❌ [Action-chat] - 未找到任何音频或视频时长控件")
             return ""
         if index >= len(vd_elems):
             logger.error(f"❌ [Action-chat] - 未找到索引为 {index} 的视频时长")

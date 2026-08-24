@@ -339,12 +339,12 @@ class TestContactDetailSingle:
             click_tag = self.remarkSettingPageS.click_tag(tag_type=1, target=tag_name)
             check.is_true(click_tag, f'❌ 点击标签 [{tag_name}] 失败')
             is_selected = self.remarkSettingPageS.is_tag_selected(tag_name)
-            check.is_false(is_selected, f'❌ 点击标签 [{tag_name}] 后未变为选中状态')
+            check.is_true(is_selected, f'❌ 点击标签 [{tag_name}] 后未变为选中状态')
         with allure.step(f'5. 再次点击标签 [{tag_name}]，校验取消选中（灰色）'):
             click_tag = self.remarkSettingPageS.click_tag(tag_type=1, target=tag_name)
             check.is_true(click_tag, f'❌ 再次点击标签 [{tag_name}] 失败')
             after_unselected = self.remarkSettingPageS.is_tag_selected(tag_name)
-            check.is_true(after_unselected, f'❌ 再次点击后标签 [{tag_name}] 仍处于选中状态')
+            check.is_false(after_unselected, f'❌ 再次点击后标签 [{tag_name}] 仍处于选中状态')
         with allure.step('6. 取消编辑并平滑退回好友详情页'):
             self.remarkSettingPageS.click_tv_cancel()
             self.contactDetailPageS.cancel_two_btn_comment()
@@ -382,7 +382,7 @@ class TestContactDetailSingle:
                 self.remarkSettingPageS.click_tag(tag_type=1, target=sixteenth_tag_name)
                 sel_toast = self.remarkSettingPageS.get_toast(timeout=10)
                 is_selected = self.remarkSettingPageS.is_tag_selected(sixteenth_tag_name)
-                check.is_true(is_selected, f'❌ 第16个标签 [{sixteenth_tag_name}] 已选中')
+                check.is_false(is_selected, f'❌ 第16个标签 [{sixteenth_tag_name}] 不应被选中')
                 check.is_in('最多选择15个标签', sel_toast, f'❌ 未收到15个标签上限 Toast，实际: {sel_toast}')
         with allure.step(f'4. 校验最终资料页和卡片页选中的标签数量为 {expected_selected_count}'):
             self.remarkSettingPageS.click_save()
@@ -419,7 +419,7 @@ class TestContactDetailSingle:
         with allure.step('3. 校验新增后的标签名称及默认选中状态'):
             check.is_in(expected_tag_name, tag_names, f'❌ 新增标签未出现在标签列表: {expected_tag_name}')
             if expected_tag_name in tag_names:
-                check.is_false(self.remarkSettingPageS.is_tag_selected(expected_tag_name), f'❌ 新增标签 [{expected_tag_name}] 默认选中')
+                check.is_true(self.remarkSettingPageS.is_tag_selected(expected_tag_name), f'❌ 新增标签 [{expected_tag_name}] 未默认选中')
         with allure.step('4. 环境恢复：清空创建的测试标签'):
             self._cancel_from_tag_search_to_detail()
 

@@ -151,7 +151,7 @@ class ChatSearchPage(BasePage):
         if not element:
             logger.warning("⚠️ [Action-Search] 未找到日期元素，无法判断是否为灰色")
             return False
-        is_gray = VerifyColor.verify_btn_is_gray(element)
+        is_gray = VerifyColor.verify_calendar_day_is_gray(element)
         logger.info(f"📊 [Action-Search] 日期是否为灰色(无消息): {is_gray}")
         return is_gray
 

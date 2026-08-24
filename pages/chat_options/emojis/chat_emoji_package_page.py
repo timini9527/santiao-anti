@@ -322,7 +322,7 @@ class ChatEmojiPackagePage(ChatEmojiPanelBase):
         获取聊天页面中的所有表情包元素
         :return: (表情包元素列表, 元素数量)
         """
-        empkg_elems = self.find_elements(ChatEmojiLocator.CHAT_EMOJI_PACKAGE, 'visibility', timeout=2, expect_missing=expect_missing)
+        empkg_elems = self.find_elements(ChatEmojiLocator.CHAT_EMOJI_PACKAGE, timeout=3, expect_missing=expect_missing)
         if expect_missing and not empkg_elems:
             logger.warning("⚠️ [Content] - 未获取到表情包元素")
             return [], 0

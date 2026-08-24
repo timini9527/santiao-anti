@@ -1,6 +1,17 @@
 import io
+from dataclasses import dataclass
 from PIL import Image
 from core.logger_utils import logger
+
+
+@dataclass(frozen=True)
+class _ColorFeatures:
+    """元素截图的通用颜色特征。只保存特征，不包含具体页面语义。"""
+
+    colored_ratio: float
+    green_ratio: float
+    light_ratio: float
+    avg_darkest: float | None
 
 
 # 颜色验证工具类
@@ -83,70 +94,120 @@ class VerifyColor:
             return False
 
     @staticmethod
+    def _extract_color_features(element) -> _ColorFeatures:
+        """提取元素截图的颜色特征，供不同页面的语义判断复用。"""
+        image_data = element.screenshot_as_png
+        img = Image.open(io.BytesIO(image_data)).convert("RGB")
+        width, height = img.size
+
+        # 排除元素边缘，避免把相邻控件或边界线算入结果。
+        margin_x = min(int(width * 0.15), max((width - 1) // 2, 0))
+        margin_y = min(int(height * 0.15), max((height - 1) // 2, 0))
+
+        brightness_list = []
+        colored_pixels = 0
+        green_pixels = 0
+        total_pixels = 0
+
+        for y in range(margin_y, height - margin_y):
+            for x in range(margin_x, width - margin_x):
+                r, g, b = img.getpixel((x, y))
+                total_pixels += 1
+
+                # 绿色用于标签“已选中”状态，单独统计而不是把所有彩色都当成选中。
+                if g > r + 20 and g > b + 20:
+                    green_pixels += 1
+
+                if max(r, g, b) - min(r, g, b) > 30:
+                    colored_pixels += 1
+                else:
+                    brightness_list.append((r + g + b) // 3)
+
+        if total_pixels == 0:
+            raise ValueError("元素截图中心区域为空")
+
+        brightness_list.sort()
+        if brightness_list:
+            # 至少取 10 个像素；元素过小时限制不超过实际像素数量。
+            sample_size = min(len(brightness_list), max(10, len(brightness_list) // 100))
+            avg_darkest = sum(brightness_list[:sample_size]) / sample_size
+            light_ratio = sum(1 for value in brightness_list if value >= 200) / len(brightness_list)
+        else:
+            avg_darkest = None
+            light_ratio = 0.0
+
+        return _ColorFeatures(
+            colored_ratio=colored_pixels / total_pixels,
+            green_ratio=green_pixels / total_pixels,
+            light_ratio=light_ratio,
+            avg_darkest=avg_darkest,
+        )
+
+    @staticmethod
+    def verify_calendar_day_is_gray(day_elem) -> bool:
+        """判断日历日期文字是否为灰色不可用状态。"""
+        try:
+            features = VerifyColor._extract_color_features(day_elem)
+            logger.info(
+                f"🎨 [CalendarColor] 彩色占比: {features.colored_ratio:.1%}, "
+                f"最暗文字亮度: {features.avg_darkest if features.avg_darkest is not None else 'N/A'}"
+            )
+
+            # 今天等日期可能带绿色背景/文字，直接视为可用。
+            if features.colored_ratio > 0.05:
+                return False
+
+            # 日期 TextView 截图包含大量白色背景，不能用白色背景占比判断灰色。
+            if features.avg_darkest is None:
+                logger.warning("⚠️ [CalendarColor] 未提取到日期文字像素，按不可判定处理")
+                return False
+
+            return features.avg_darkest >= 120
+        except Exception as e:
+            logger.error(f"❌ [CalendarColor] 分析日期颜色失败: {e}")
+            return False
+
+    @staticmethod
+    def verify_tag_is_selected(tag_elem) -> bool:
+        """判断标签是否为绿色选中状态。"""
+        try:
+            features = VerifyColor._extract_color_features(tag_elem)
+            # 绿色文字可能只占 TextView 截图的一小部分，阈值低于通用彩色判断。
+            is_selected = features.green_ratio >= 0.01
+            logger.info(
+                f"🎨 [TagColor] 绿色像素占比: {features.green_ratio:.1%}, "
+                f"判定为{'已选中' if is_selected else '未选中'}"
+            )
+            return is_selected
+        except Exception as e:
+            logger.error(f"❌ [TagColor] 分析标签颜色失败: {e}")
+            return False
+
+    @staticmethod
     def verify_btn_is_gray(btn_elem) -> bool:
         """
-        通过颜色验证元素是否呈现为灰色（如日历中的灰色未激活日期）
-        使用彩色占比与最暗无色像素均值相结合的综合检测算法。
+        兼容旧调用：判断元素是否呈现为灰色。
+
+        新的页面代码应优先使用语义明确的
+        ``verify_calendar_day_is_gray`` 或 ``verify_tag_is_selected``，
+        不要让不同页面共用同一个业务判定规则。
         """
         try:
-            # 1. 获取该控件的局部截图
-            image_data = btn_elem.screenshot_as_png
+            features = VerifyColor._extract_color_features(btn_elem)
+            logger.info(f"🎨 [ColorVerify] 中心区域彩色像素占比: {features.colored_ratio:.1%} (阈值: 5.0%)")
 
-            # 2. 将二进制数据转换为 PIL Image 并转为 RGB 模式
-            img = Image.open(io.BytesIO(image_data)).convert("RGB")
-            width, height = img.size
-
-            # 3. 仅分析中心区域，排除边界线和相邻格子的干扰 (留 15% 的安全边距)
-            margin_x = int(width * 0.15)
-            margin_y = int(height * 0.15)
-            
-            brightness_list = []
-            colored_pixels = 0
-            total_center_pixels = 0
-
-            for x in range(margin_x, width - margin_x):
-                for y in range(margin_y, height - margin_y):
-                    r, g, b = img.getpixel((x, y))
-                    total_center_pixels += 1
-
-                    # 如果红绿蓝通道最大差值大于 30，说明是具有明显色彩特征的像素（如今天日期的绿色背景或文字）
-                    if max(r, g, b) - min(r, g, b) > 30:
-                        colored_pixels += 1
-                    else:
-                        # 无色系（灰黑白）特征：三个通道差值很小
-                        brightness_list.append((r + g + b) // 3)
-
-            # 4. 特征一：彩色像素占比分析
-            colored_ratio = colored_pixels / total_center_pixels
-            logger.info(f"🎨 [ColorVerify] 中心区域彩色像素占比: {colored_ratio:.1%} (阈值: 5.0%)")
-            
-            # 如果彩色像素点比例超过 5%，说明元素是有彩色的（例如绿色的“今天”圆圈或高亮文字），直接认定为已激活（非灰色）
-            if colored_ratio > 0.05:
+            if features.colored_ratio > 0.05:
                 logger.info("🎨 [ColorVerify] 判定结果：非灰色（检测到彩色活跃元素，如绿色背景/文本） 🩵 (已激活)")
                 return False
 
-            if not brightness_list:
+            if features.avg_darkest is None:
                 logger.warning("⚠️ [ColorVerify] 未在元素中心区域提取到有效的无色系像素点，默认判定为非灰色")
                 return False
 
-            # 5. 特征二：无色系最暗像素亮度分析
-            brightness_list.sort()
-            # 取最暗的前 15 个像素（或前 1% 的像素，以过滤孤立噪点）
-            sample_size = max(10, len(brightness_list) // 100)
-            darkest_pixels = brightness_list[:sample_size]
-            avg_darkest = sum(darkest_pixels) / len(darkest_pixels)
-
-            logger.info(f"🎨 [ColorVerify] 无色系最暗像素样本均值亮度: {avg_darkest:.1f} (样本数: {len(darkest_pixels)})")
-
-            # 💡 优化浅灰底深色字按钮的检测：
-            # 如果虽然检测到深色字（最暗像素 < 120），但无色系像素中绝大多数（> 80%）都是亮度很高的灰白底（>= 200），
-            # 且整个元素彩色像素占比极低（< 3.0%），说明该元素为未选中的浅灰/白底深字标签按钮，应判定为灰色。
-            light_pixels = sum(1 for b in brightness_list if b >= 200)
-            light_ratio = light_pixels / len(brightness_list) if brightness_list else 0
-            logger.info(f"🎨 [ColorVerify] 浅色背景像素占比: {light_ratio:.1%} (阈值: 80.0%)")
-
-            # 如果最暗的像素均值 >= 120，说明页面上只有白底和浅灰字，无深色/黑色字，即呈现为灰色（未激活）
-            if avg_darkest >= 120 or (light_ratio > 0.8 and colored_ratio < 0.03):
+            # 保留旧调用的背景兼容规则；日期页面不再使用本方法。
+            if features.avg_darkest >= 120 or (
+                features.light_ratio > 0.8 and features.colored_ratio < 0.03
+            ):
                 logger.info("🎨 [ColorVerify] 判定结果：灰色 🩶 (未激活/未选中)")
                 return True
             else:

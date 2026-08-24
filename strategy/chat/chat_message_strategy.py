@@ -68,7 +68,7 @@ class ChatMessageBuilder(ChatPage):
         self.enter_emoji_page()
         emojiPage.sent_first_row_emoji(count=kwargs.get("count", 8))
         self.click_send_button()
-        self.enter_emoji_page()
+        self.enter_emoji_page(is_open=False)
     
     def _prepare_package_msg(self, **kwargs):
         """发送/准备第三方表情包消息"""
@@ -77,7 +77,7 @@ class ChatMessageBuilder(ChatPage):
         self.enter_emoji_page()
         emoji_package.switch_to_emoji_package(index=1)
         emoji_package.sent_emoji_package(strategy="first", count=1)
-        self.enter_emoji_page()
+        self.enter_emoji_page(is_open=False)
     
     # 收藏表情包专项：用于验证“收藏表情”功能，重置测试环境
     def _prepare_collection_emoji_msg(self, **kwargs) -> bool:
@@ -192,7 +192,6 @@ class ChatMessageBuilder(ChatPage):
                 "文件名": self.get_chat_file_name(index=index, expect_missing=expect_missing),
                 "文件状态": self.get_chat_file_status(index=index, expect_missing=expect_missing)
             }
-        
         return {}
 
 

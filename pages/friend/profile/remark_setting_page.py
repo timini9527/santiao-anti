@@ -289,12 +289,12 @@ class RemarkSettingPage(BasePage):
         if not elem:
             logger.warning(f"⚠️ [Action - RemarkSetting] 标签 - 未找到 [{tag_name}] 标签的 WebElement")
             return False
-        is_gray = VerifyColor.verify_btn_is_gray(elem)
-        if is_gray:
+        is_selected = VerifyColor.verify_tag_is_selected(elem)
+        if is_selected:
             logger.info(f"✅ [Action - RemarkSetting] 标签 - [{tag_name}] 标签被选中")
         else:
             logger.warning(f"⚠️ [Action - RemarkSetting] 标签 - [{tag_name}] 标签未被选中")
-        return is_gray
+        return is_selected
 
     # 标签 - 点击标签 (0-连续点击X个 / 1-按名称点击 / 2-按索引点击)
     def click_tag(self, tag_type: int = 0, target: Union[int, str] = 0) -> bool:
