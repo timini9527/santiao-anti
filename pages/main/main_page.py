@@ -43,7 +43,6 @@ class MainPage(BasePage):
                 logger.warning(f"⚠️ 当前未处于主页面，执行多级安全退回... 剩余尝试次数：{max_retries}")
                 self.back()
                 logger.info(f"🍎 退回操作已完成，等待转场动画稳定")
-                time.sleep(0.5)
             except Exception as e:
                 logger.error(f"❌ [Back] 退回操作捕获异常: {e}")
             max_retries -= 1

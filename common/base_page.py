@@ -271,37 +271,37 @@ class BasePage:
         try:
             self.driver.back()
             logger.info("🔙 [Action] 执行系统返回 driver.back()")
-            time.sleep(0.4)
+            time.sleep(0.3)
             return
         except Exception as e:
             logger.warning(f"⚠️ [Back] 系统返回未响应或执行失败: {e}")
 
         # 2. 兜底点击页面内 UI 返回组件
-        if prefer_ui:
-            try:
-                pkg = CommonLocator.PACKAGE_ID
-                unified_xpath = (
-                    f"//*[("
-                    f"@resource-id='{pkg}/back' or "
-                    f"@resource-id='{pkg}/iv_back' or "
-                    f"@resource-id='{pkg}/action_back' or "
-                    f"@resource-id='{pkg}/ps_iv_left_back' or "
-                    f"@resource-id='{pkg}/back_bnt' or "
-                    f"@content-desc='返回' or "
-                    f"@content-desc='转到上一层级' or "
-                    f"@content-desc='Navigate up' or "
-                    f"@text='返回'"
-                    f") and (not(@clickable) or @clickable='true')]"
-                )
-                elems = self.driver.find_elements(AppiumBy.XPATH, unified_xpath)
-                for elem in elems:
-                    if elem.is_displayed():
-                        elem.click()
-                        logger.info(f"🔙 [Action] 成功点击 UI 返回组件: {elem.get_attribute('resource-id') or elem.get_attribute('content-desc')}")
-                        time.sleep(0.4)
-                        return
-            except Exception:
-                pass
+        # if prefer_ui:
+        #     try:
+        #         pkg = CommonLocator.PACKAGE_ID
+        #         unified_xpath = (
+        #             f"//*[("
+        #             f"@resource-id='{pkg}/back' or "
+        #             f"@resource-id='{pkg}/iv_back' or "
+        #             f"@resource-id='{pkg}/action_back' or "
+        #             f"@resource-id='{pkg}/ps_iv_left_back' or "
+        #             f"@resource-id='{pkg}/back_bnt' or "
+        #             f"@content-desc='返回' or "
+        #             f"@content-desc='转到上一层级' or "
+        #             f"@content-desc='Navigate up' or "
+        #             f"@text='返回'"
+        #             f") and (not(@clickable) or @clickable='true')]"
+        #         )
+        #         elems = self.driver.find_elements(AppiumBy.XPATH, unified_xpath)
+        #         for elem in elems:
+        #             if elem.is_displayed():
+        #                 elem.click()
+        #                 logger.info(f"🔙 [Action] 成功点击 UI 返回组件: {elem.get_attribute('resource-id') or elem.get_attribute('content-desc')}")
+        #                 time.sleep(0.4)
+        #                 return
+        #     except Exception:
+        #         pass
 
     @allure.step("匹配所有 Toast 弹窗")
     def toast_message(self, expected_toast: str = "", timeout: float = 3.0) -> str:

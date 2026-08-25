@@ -11,7 +11,7 @@ from pages.main.main_page import MainPage
 from pages.chat_options.images.chat_image_page import ChatImagePage
 from pages.chat_options.videos.chat_video_page import ChatVideoPage
 from pages.chat_options.file.chat_file_page import ChatFilePage
-from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
+from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER3, GROUP_STRATEGY
 from pages.groups.setting.general.group_setting_page import GroupSettingPage
 from pages.common.contact_select_page import ContactSelectPage
 
@@ -269,10 +269,8 @@ class TestChatSearch:
         with allure.step('1、发送一个文件作为测试数据'):
             self.filePage.open_panel_enter_file_page()
             self.filePage.wait_for_file_page_load()
-            self.filePage.click_file_menu_button()
-            self.filePage.click_sub_menu_item('图片')
-            self.filePage.select_any_file_in_dir(file_type='image')
-            file_name = self.filePage.get_last_file_name_in_chat()
+            file_name = '测试-图片'
+            self.filePage.search_and_select_file_by_name(file_name)
         with allure.step(f'2、进入设置页面并进入‘查找聊天记录’'):
             self._enter_search_page(strategy)
         with allure.step('3、点击‘文件’分类过滤项'):
@@ -287,7 +285,8 @@ class TestChatSearch:
                 to_user_name = self.chatPage.get_top_name()
                 check.is_true(strategy.name in to_user_name, f'❌ 返回聊天窗口与预期不符')
                 chat_file_names = self.chatPage.get_chat_all_file_name()
-                check.is_true(file_name in chat_file_names, f'❌ 文件名称不匹配')
+                is_contained = any(file_name in name for name in chat_file_names)
+                check.is_true(is_contained, f'❌ 文件名称不匹配')
 
 
     @allure.story('群成员分类过滤定位测试')
@@ -311,7 +310,7 @@ class TestChatSearch:
         with allure.step('3、点击‘群成员’分类过滤项'):
             self.chatSearchPage.click_group_member_option()
         with allure.step('4、验证群成员分类归档列表中有数据并点击首个群成员项'):
-            self.contactSelectPage.click_contact_by_name(name='1234567890', select_type='forward')
+            self.contactSelectPage.click_contact_by_name(name=PRIVATE_USER3.name, select_type='forward')
         with allure.step('5、在该成员的消息检索结果中，点击对应的消息并跳转回聊天页'):
             results_count = self.chatSearchPage.get_group_members_count()
             check.greater(results_count, 0, '❌ 未找到该成员的任何聊天记录')
