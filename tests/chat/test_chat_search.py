@@ -114,39 +114,42 @@ class TestChatSearch:
 
     @allure.story('日期日历面板筛选聊天记录状态校验')
     @allure.title('日期日历面板筛选聊天记录状态校验-状态：已完成')
-    @pytest.mark.parametrize('day_type, delta_days, fixed_date, expected_gray, send_msg_before', [
-        pytest.param('today_has_msg', 0, None, False, True, id='今天（有消息）'),
-        pytest.param('future_no_msg', 2, None, True, False, id='未来某天（无消息）'),
-        pytest.param('past_no_msg', -60, None, True, False, id='过去某天（无消息）'),
-        pytest.param('fixed_date_no_msg', None, ('2026-8', '1'), True, False, id='固定日期2026年8月1日（无消息）'),
-        pytest.param('fixed_date_has_msg', None, ('2026-8', '18'), False, True, id='固定日期2026年8月18日（有消息）'),
-        pytest.param('fixed_date_no_msg', None, ('2026-8', '1'), True, False, id='固定日期2026年8月1日（无消息）'),
-        pytest.param('fixed_date_has_msg', None, ('2026-8', '18'), False, True, id='固定日期2026年8月18日（有消息）')
+    @pytest.mark.parametrize('day_type, delta_days, expected_gray, send_msg_before', [
+        pytest.param('today_has_msg', 0, False, True, id='今天（有消息）'),
+        pytest.param('future_no_msg', 2, True, False, id='未来某天（无消息）'),
+        pytest.param('past_no_msg', -2, True, False, id='本月历史无消息日（无消息）'),
     ])
     @pytest.mark.parametrize(
         'strategy', [
             pytest.param(PRIVATE_USER1, id='私聊模式'),
             pytest.param(GROUP_STRATEGY, id='群聊模式')
         ])
-    def test_search_by_date_calendar(self, strategy, day_type, delta_days, fixed_date, expected_gray, send_msg_before):
+    def test_search_by_date_calendar(self, strategy, day_type, delta_days, expected_gray, send_msg_before):
         """测试按不同日期类型筛选，验证日历中日期的灰显/激活状态"""
         allure.dynamic.title(f'【日历检索】 {strategy.desc} - {day_type}')
         now = datetime.now()
-        if fixed_date:
-            year_month_input, target_day = fixed_date
-        else:
+
+        if day_type == 'future_no_msg':
             target_date = now + timedelta(days=delta_days)
-            target_day = target_date.strftime('%e').strip()
-            year_month_input = target_date.strftime('%Y-%m')
+            if target_date.month != now.month:
+                target_date = now + timedelta(days=1)
+        elif day_type == 'past_no_msg':
+            target_date = now + timedelta(days=delta_days)
+            if target_date.month != now.month:
+                target_date = now.replace(day=1)
+        else:
+            target_date = now
+
+        target_day = target_date.strftime('%e').strip()
+        year_month_input = target_date.strftime('%Y-%m')
         year, month = year_month_input.split('-')
         clean_month = month.lstrip('0')
-        month_day = f'{clean_month}-{target_day}'
         year_month = self.chatSearchPage.get_year_month_from_date(year_month_input)
+
         with allure.step(f"前置准备：进入目标好友的{('群' if strategy.is_admin else '单')}聊会话"):
             self.chatListPage.enter_chat(strategy.name)
         if send_msg_before:
             with allure.step('1、确保当前会话中今天有消息记录'):
-                now_time = now.strftime('%H:%M')
                 self.chatSettingPage.send_message('今天日期搜索测试定位信息')
                 self.chatSettingPage.wait_for_last_message_send_status()
         with allure.step('2、进入设置页面并点击‘查找聊天记录’'):

@@ -47,6 +47,14 @@ app:
   # adb -s 3B65BN02GU600000 wait-for-device
   # adb -s 3B65BN02GU600000 shell settings get global cached_apps_freezer
 
+  # 1. 彻底禁用系统深度休眠与电量低功耗拦截（所有安卓通用）
+  # adb -s 3B65BN02GU600000 shell dumpsys deviceidle disable
+
+  # 2. 将 Appium 的通信服务永久加入系统电池保护白名单
+  # adb -s 3B65BN02GU600000 shell dumpsys deviceidle whitelist +io.appium.uiautomator2.server
+  # adb -s 3B65BN02GU600000 shell dumpsys deviceidle whitelist +io.appium.settings
+
+
 devices:
   dev:
     sender:

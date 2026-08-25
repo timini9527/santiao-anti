@@ -1,4 +1,5 @@
 import io
+import math
 from dataclasses import dataclass
 from PIL import Image
 from core.logger_utils import logger
@@ -8,16 +9,25 @@ from core.logger_utils import logger
 class _ColorFeatures:
     """元素截图的通用颜色特征。只保存特征，不包含具体页面语义。"""
 
-    colored_ratio: float
-    green_ratio: float
-    light_ratio: float
-    avg_darkest: float | None
+    colored_ratio: float                # 彩色像素占比 (0.0~1.0)
+    green_ratio: float                  # 绿色像素占比 (0.0~1.0)
+    light_ratio: float                  # 高光/浅色像素占比 (0.0~1.0)
+    avg_darkest: float | None           # 最暗像素平均亮度 (0~255)
+    avg_text_brightness: float | None   # 文本笔画平均亮度 (0~255)
+
+
+class FigmaDesignColor:
+    """Figma 设计规范标准色值 Token 表"""
+    TEXT_DISABLE = "#9D9D9D"                # 灰色通用 - 日期(置灰无消息)
+    TEXT_DATE_MSG = "#0A0A0A"               # 黑色通用 - 日期(有消息)
+    TEXT_DATE_TODAY = "#20C064"             # 浅绿通用 - 日期(今天)
+    MALE_BLUE = "#468BFF"                   # 男性标识蓝
+    FEMALE_PINK = "#FD4E4E"                 # 女性标识红
 
 
 # 颜色验证工具类
 class VerifyColor:
     """ 颜色验证工具类 """
-
     @staticmethod
     def verify_sex(gender_elem) -> str | None:
         """通过性别图片颜色验证性别"""
@@ -132,15 +142,24 @@ class VerifyColor:
             sample_size = min(len(brightness_list), max(10, len(brightness_list) // 100))
             avg_darkest = sum(brightness_list[:sample_size]) / sample_size
             light_ratio = sum(1 for value in brightness_list if value >= 200) / len(brightness_list)
+            
+            # 剥离纯白背景像素(亮度>=225)，专门抽取日期数字文字笔画像素的平均亮度
+            text_pixels = [b for b in brightness_list if b < 225]
+            if text_pixels:
+                avg_text_brightness = sum(text_pixels) / len(text_pixels)
+            else:
+                avg_text_brightness = None
         else:
             avg_darkest = None
             light_ratio = 0.0
+            avg_text_brightness = None
 
         return _ColorFeatures(
             colored_ratio=colored_pixels / total_pixels,
             green_ratio=green_pixels / total_pixels,
             light_ratio=light_ratio,
             avg_darkest=avg_darkest,
+            avg_text_brightness=avg_text_brightness,
         )
 
     @staticmethod
@@ -150,19 +169,30 @@ class VerifyColor:
             features = VerifyColor._extract_color_features(day_elem)
             logger.info(
                 f"🎨 [CalendarColor] 彩色占比: {features.colored_ratio:.1%}, "
-                f"最暗文字亮度: {features.avg_darkest if features.avg_darkest is not None else 'N/A'}"
+                f"绿色占比: {features.green_ratio:.1%}, "
+                f"文字笔画平均亮度: {features.avg_text_brightness if features.avg_text_brightness is not None else 'N/A'}, "
+                f"最暗像素亮度: {features.avg_darkest if features.avg_darkest is not None else 'N/A'}"
             )
 
-            # 今天等日期可能带绿色背景/文字，直接视为可用。
-            if features.colored_ratio > 0.05:
+            # 今天等日期可能带绿色背景/文字 (如25日 "今天")，直接视为激活/可用 (非灰色)。
+            if features.colored_ratio > 0.05 or features.green_ratio > 0.02:
+                logger.info("🎨 [CalendarColor] 判定结果：非灰色 (检测到绿色/彩色活跃元素，如今天)")
                 return False
 
-            # 日期 TextView 截图包含大量白色背景，不能用白色背景占比判断灰色。
-            if features.avg_darkest is None:
-                logger.warning("⚠️ [CalendarColor] 未提取到日期文字像素，按不可判定处理")
-                return False
+            # 未提取到任何非白色文字像素，说明是空白日期格，视为不可点/灰色。
+            if features.avg_text_brightness is None:
+                logger.info("🎨 [CalendarColor] 判定结果：灰色 (未提取到文字笔画像素，空白格)")
+                return True
 
-            return features.avg_darkest >= 120
+            # 黑色/深色文字 (有消息/可点) 笔画亮度一般在 30~90 之间；
+            # 浅灰色文字 (无消息/不可点) 笔画亮度一般在 140~210 之间；
+            # 以 125 为分割阈值：>= 125 判定为灰色不可用，< 125 判定为黑色可用。
+            is_gray = features.avg_text_brightness >= 125
+            logger.info(
+                f"🎨 [CalendarColor] 判定结果：{'灰色 🩶 (不可点/无记录)' if is_gray else '黑色 🩵 (可点/有记录)'} "
+                f"(文字平均亮度: {features.avg_text_brightness:.1f}, 阈值: 125.0)"
+            )
+            return is_gray
         except Exception as e:
             logger.error(f"❌ [CalendarColor] 分析日期颜色失败: {e}")
             return False
@@ -215,6 +245,153 @@ class VerifyColor:
                 return False
         except Exception as e:
             logger.error(f"❌ [ColorVerify] 分析灰色状态失败: {e}")
+            return False
+
+
+
+class FigmaColorToken:
+    # ======================================
+    # 核心工具方法
+    # ======================================
+    @staticmethod
+    def hex_to_rgb(hex_str: str) -> tuple[int, int, int]:
+        """将 Figma 的 HEX 颜色代码（如 '#07C160'）转换为 (R, G, B) 元组"""
+        clean_hex = hex_str.lstrip('#')
+        if len(clean_hex) != 6:
+            raise ValueError(f"不合法的 HEX 颜色格式: {hex_str}")
+        return (
+            int(clean_hex[0:2], 16),
+            int(clean_hex[2:4], 16),
+            int(clean_hex[4:6], 16)
+        )
+
+    @staticmethod
+    def color_distance(rgb1: tuple[int, int, int], rgb2: tuple[int, int, int]) -> float:
+        """计算两个 RGB 颜色的欧氏色差距离（数值越小说明颜色越接近）"""
+        return math.sqrt(
+            (rgb1[0] - rgb2[0]) ** 2 +
+            (rgb1[1] - rgb2[1]) ** 2 +
+            (rgb1[2] - rgb2[2]) ** 2
+        )
+
+    @classmethod
+    def verify_element_color_match(
+        cls,
+        element,
+        target_hex: str,
+        tolerance: float = 35.0,
+        min_ratio: float = 0.02
+    ) -> bool:
+        """
+        根据 Figma UI 设计规范中的 HEX 颜色直接进行断言校验。
+        :param element: Appium WebElement 对象
+        :param target_hex: Figma 标注中的 16 进制颜色代码（如 '#07C160' 或 '#CCCCCC'）
+        :param tolerance: 色差容差范围（默认 35.0，兼容 GPU 渲染抗锯齿与色彩空间微调）
+        :param min_ratio: 目标颜色像素占元素中心区域的最小比例（默认 2.0%）
+        :return: 是否匹配 Figma 设计规范
+        """
+        try:
+            target_rgb = cls.hex_to_rgb(target_hex)
+            image_data = element.screenshot_as_png
+            img = Image.open(io.BytesIO(image_data)).convert("RGB")
+            width, height = img.size
+
+            margin_x = min(int(width * 0.15), max((width - 1) // 2, 0))
+            margin_y = min(int(height * 0.15), max((height - 1) // 2, 0))
+
+            matched_pixels = 0
+            total_pixels = 0
+
+            for y in range(margin_y, height - margin_y):
+                for x in range(margin_x, width - margin_x):
+                    pixel_rgb = img.getpixel((x, y))
+                    total_pixels += 1
+                    if cls.color_distance(pixel_rgb, target_rgb) <= tolerance:
+                        matched_pixels += 1
+
+            if total_pixels == 0:
+                return False
+
+            ratio = matched_pixels / total_pixels
+            is_matched = ratio >= min_ratio
+            logger.info(
+                f"🎨 [FigmaColor] 目标 HEX: {target_hex} (RGB: {target_rgb}), "
+                f"匹配像素占比: {ratio:.1%} (期望阈值: {min_ratio:.1%}, 色差容差: {tolerance}) -> "
+                f"判定: {'符合设计规范 ✅' if is_matched else '不匹配 ❌'}"
+            )
+            return is_matched
+        except Exception as e:
+            logger.error(f"❌ [FigmaColor] Figma 颜色匹配校验异常: {e}")
+            return False
+
+    # ==================================================================================================
+    # 基于 Figma 设计规范 (FigmaDesignColor) 的全新语义断言方法
+    # ==================================================================================================
+    @classmethod
+    def verify_sex_figma(cls, gender_elem) -> str | None:
+        """通过 Figma 蓝色/粉色 Token 校验性别图标"""
+        try:
+            if cls.verify_element_color_match(gender_elem, FigmaDesignColor.MALE_BLUE):
+                logger.info("🎨 [FigmaSex] 匹配 Figma 男性蓝色 Token -> 判定为: 男")
+                return '男'
+            elif cls.verify_element_color_match(gender_elem, FigmaDesignColor.FEMALE_PINK):
+                logger.info("🎨 [FigmaSex] 匹配 Figma 女性粉色 Token -> 判定为: 女")
+                return '女'
+            else:
+                logger.info("🎨 [FigmaSex] 未匹配性别颜色 Token -> 判定为: 未知")
+                return '未知'
+        except Exception as e:
+            logger.error(f"❌ [FigmaSex] 校验性别颜色失败: {e}")
+            return None
+
+    @classmethod
+    def verify_agree_btn_figma(cls, btn_elem) -> bool:
+        """通过 Figma 浅绿 Token 校验同意勾选按钮"""
+        try:
+            is_agreed = cls.verify_element_color_match(btn_elem, FigmaDesignColor.TEXT_DATE_TODAY)
+            logger.info(f"🎨 [FigmaAgree] 同意勾选按钮判定: {'已勾选 ✅' if is_agreed else '未勾选 ❎'}")
+            return is_agreed
+        except Exception as e:
+            logger.error(f"❌ [FigmaAgree] 分析勾选按钮状态失败: {e}")
+            return False
+
+    @classmethod
+    def verify_calendar_day_is_gray_figma(cls, day_elem) -> bool:
+        """根据 Figma 日期颜色 Token 判断日历日期是否为灰色无消息状态"""
+        try:
+            # 1. 优先校验是否为今天浅绿色背景/文字 (如25日 "今天") -> 属于激活状态 (非灰色)
+            if cls.verify_element_color_match(day_elem, FigmaDesignColor.TEXT_DATE_TODAY):
+                logger.info("🎨 [FigmaCalendar] 匹配 Figma 今天绿色 Token -> 判定为: 非灰色/已激活")
+                return False
+
+            # 2. 校验是否匹配置灰无消息文字 Token (#9D9D9D)
+            is_gray = cls.verify_element_color_match(day_elem, FigmaDesignColor.TEXT_DISABLE)
+            logger.info(f"🎨 [FigmaCalendar] 校验置灰 Token ({FigmaDesignColor.TEXT_DISABLE}) -> 判定为: {'灰色 🩶 (无消息/不可点)' if is_gray else '黑色 🩵 (有消息/可点)'}")
+            return is_gray
+        except Exception as e:
+            logger.error(f"❌ [FigmaCalendar] 分析日历日期颜色失败: {e}")
+            return False
+
+    @classmethod
+    def verify_tag_is_selected_figma(cls, tag_elem) -> bool:
+        """根据 Figma 绿色 Token 判断标签是否为已选中状态"""
+        try:
+            is_selected = cls.verify_element_color_match(tag_elem, FigmaDesignColor.TEXT_DATE_TODAY)
+            logger.info(f"🎨 [FigmaTag] 标签选中校验: {'已选中 ✅' if is_selected else '未选中 ❎'}")
+            return is_selected
+        except Exception as e:
+            logger.error(f"❌ [FigmaTag] 分析标签颜色失败: {e}")
+            return False
+
+    @classmethod
+    def verify_btn_is_gray_figma(cls, btn_elem) -> bool:
+        """根据 Figma 置灰 Token 判断按钮是否呈现灰色未激活状态"""
+        try:
+            is_gray = cls.verify_element_color_match(btn_elem, FigmaDesignColor.TEXT_DISABLE)
+            logger.info(f"🎨 [FigmaBtn] 按钮置灰校验: {'灰色未激活 🩶' if is_gray else '活跃正常 🩵'}")
+            return is_gray
+        except Exception as e:
+            logger.error(f"❌ [FigmaBtn] 分析按钮置灰状态失败: {e}")
             return False
 
 

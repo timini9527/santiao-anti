@@ -15,7 +15,7 @@ from selenium.webdriver.common.actions.action_builder import ActionBuilder
 from core.logger_utils import logger
 from utils.except_utils import catch_exception, check_element_status, catch_elements_exception
 from appium.webdriver.common.appiumby import AppiumBy
-
+from locators.common.common_locator import CommonLocator
 
 
 # 预编译文本清理正则，避免在频繁调用的 clean_ui_text 中重复编译，提升性能
@@ -267,10 +267,18 @@ class BasePage:
         # except Exception:
         #     pass
 
-        # 2. 优先点击页面内精准的 UI 返回组件（最可靠核心逻辑）
+        # 1. 优先执行系统返回 driver.back()
+        try:
+            self.driver.back()
+            logger.info("🔙 [Action] 执行系统返回 driver.back()")
+            time.sleep(0.4)
+            return
+        except Exception as e:
+            logger.warning(f"⚠️ [Back] 系统返回未响应或执行失败: {e}")
+
+        # 2. 兜底点击页面内 UI 返回组件
         if prefer_ui:
             try:
-                from locators.common.common_locator import CommonLocator
                 pkg = CommonLocator.PACKAGE_ID
                 unified_xpath = (
                     f"//*[("
@@ -295,14 +303,6 @@ class BasePage:
             except Exception:
                 pass
 
-        # 3. 兜底执行一次系统返回（极简单次尝试，不搞多次重复重试）
-        try:
-            self.driver.back()
-            logger.info("🔙 [Action] 执行系统返回 driver.back()")
-            time.sleep(0.4)
-        except Exception as e:
-            logger.warning(f"⚠️ [Back] 系统返回未响应或执行失败: {e}")
-
     @allure.step("匹配所有 Toast 弹窗")
     def toast_message(self, expected_toast: str = "", timeout: float = 3.0) -> str:
         """
@@ -317,7 +317,6 @@ class BasePage:
         :param expected_toast: 期望的 Toast 内容。为空时返回捕获到的文本字符串；不为空时返回布尔值(True/False)。
         :param timeout: 超时时间（秒）
         """
-        from locators.common.common_locator import CommonLocator
         from utils.cv_recognition.ocr_utils import OcrUtils
 
         locator = CommonLocator.TOAST_MSG

@@ -147,11 +147,12 @@ class ChatSearchPage(BasePage):
         """
         判断日历中某天是否呈现为灰色（代表当天无消息记录）
         """
-        from business_helpers.verify_color import VerifyColor
+        from business_helpers.verify_color import VerifyColor, FigmaColorToken
         if not element:
             logger.warning("⚠️ [Action-Search] 未找到日期元素，无法判断是否为灰色")
             return False
-        is_gray = VerifyColor.verify_calendar_day_is_gray(element)
+        # is_gray = VerifyColor.verify_calendar_day_is_gray(element)
+        is_gray = FigmaColorToken.verify_calendar_day_is_gray_figma(element)
         logger.info(f"📊 [Action-Search] 日期是否为灰色(无消息): {is_gray}")
         return is_gray
 
