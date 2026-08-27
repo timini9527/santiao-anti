@@ -75,7 +75,7 @@ class ChatFileLocator:
     # 右上角更多选项
     MORE_OPTIONS_BTN = (AppiumBy.XPATH, f'//android.widget.ImageView[@content-desc="更多选项"]')
     
-    # ==================== 抽屉菜单 ====================
+    # ==================== 抽屉菜单与全品牌分类入口 ====================
     # 菜单选项容器
     DRAWER_MENU_FILE_ITEM = (AppiumBy.XPATH, DOC_OR_GOO.format('drawer_roots'))
     # 菜单根目录容器
@@ -86,6 +86,11 @@ class ChatFileLocator:
     # 菜单名称、文件夹名称
     TITLE_ID = 'android:id/title'
     FOLDER_NAME = (AppiumBy.XPATH, f'{DOC_OR_GOO.format("roots_list")}//*[@resource-id="{TITLE_ID}"]')
+
+    # OPPO / ColorOS / 跨品牌分类卡片与全部文件入口
+    ALL_FILES_ENTRY = (AppiumBy.XPATH, "//*[@text='全部文件' or @text='内部存储设备' or contains(@text, '内部存储')]")
+    TAB_RECENT = (AppiumBy.XPATH, "//*[@text='最近']")
+    TAB_FILE = (AppiumBy.XPATH, "//*[@text='文件']")
 
     # ==================== 文件选择页面 ====================
     # 已选择菜单名称
@@ -115,14 +120,18 @@ class ChatFileLocator:
     DIR_LIST_ITEM = (AppiumBy.XPATH, DIR_LIST_ITEM_XPATH)
 
     
-    # ==================== 文件列表 ====================
-    # 文件夹和文件名称（自适应原生 android:id/title 与 OPPO file_list_item_title）
+    # ==================== 文件与相册列表 ====================
+    # 文件夹、相册和文件名称（自适应原生 android:id/title 与 OPPO album_name、file_list_item_title 等）
     DIR_NAME = (
         AppiumBy.XPATH,
         _build_doc_xpath(
-            'file_list_item_title',
-            extra=[f"@resource-id='{TITLE_ID}'", "contains(@resource-id, 'file_list_item_title')"],
-            prefix=DIR_LIST_ITEM_XPATH
+            'album_name', 'file_list_item_title', 'title', 'file_name', 'name',
+            extra=[
+                f"@resource-id='{TITLE_ID}'", 
+                "contains(@resource-id, 'album_name')",
+                "contains(@resource-id, 'file_list_item_title')",
+                "contains(@resource-id, 'title')"
+            ]
         )
     )
 
@@ -171,8 +180,10 @@ class ChatFileLocator:
         return (
             AppiumBy.XPATH,
             _build_doc_xpath(
-                'file_list_item_title',
-                extra=[f"@resource-id='{cls.TITLE_ID}'", "contains(@resource-id, 'file_list_item_title')"],
+                'album_name', 'file_list_item_title', 'title', 'file_name',
+                extra=[f"@resource-id='{cls.TITLE_ID}'", 
+                "contains(@resource-id, 'album_name')", 
+                "contains(@resource-id, 'file_list_item_title')"],
                 text=file_name
             )
         )

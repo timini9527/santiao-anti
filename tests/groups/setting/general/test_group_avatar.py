@@ -9,6 +9,12 @@ from pages.groups.setting.general.group_avatar_page import GroupAvatarPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, GROUP_STRATEGY
 from utils.cv_recognition.screenshot_utils import ImageComparator
 
+
+
+
+
+
+
 @allure.epic('IM核心功能测试')
 @allure.feature('群聊模块-通用设置')
 class TestGroupAvatar:

@@ -169,12 +169,13 @@ class ChatVoicePage(ChatPage):
         # ========================================================
         # 1. 开启长时间录音
         # ========================================================
-        actions, touch_input = self.init_w3c_actions()
         logger.info(f"👉 开启长录音模式 ({hold_time}秒)，启动纯 W3C 长按监听...")
-        
+        actions, touch_input = self.init_w3c_actions()
         self.pointer_down_and_hold(actions, start_x, start_y, hold_time)
         self.pointer_up_at_location(touch_input, start_x, start_y)
         logger.info("👉 手指松开，语音录制结束。")
+        if hold_time == 0:
+            result["toast"] = self.get_toast()
         return result
 
     # 语音消息取消发送
@@ -256,7 +257,7 @@ class ChatVoicePage(ChatPage):
         """ 在执行 发送/取消 动作之前调用，拍摄当前语音消息列表的基准快照 """
         try:
             side = 'sent' if role == 'sender' else 'received'
-            elems = self.get_message_elements('voiceDuration', side=side, expect_missing=True)
+            elems = self.get_message_elements('videoDuration', side=side, expect_missing=True)
             if not elems:
                 logger.info(f"📷 [{role}] 语音消息列表快照：当前无消息（count=0）")
                 return {"count": 0, "last_elem_id": None}
@@ -280,9 +281,8 @@ class ChatVoicePage(ChatPage):
         :param expect_sent: True 表示预期发送成功，False 表示预期取消发送(未发送)
         """
         try:
-            time.sleep(1)
             side = 'sent' if role == 'sender' else 'received'
-            elems = self.get_message_elements('voiceDuration', side=side, expect_missing=True)
+            elems = self.get_message_elements('videoDuration', side=side, expect_missing=True)
             if not elems:
                 if expect_sent:
                     logger.error("❌ 验证失败：消息列表为空，未找到任何语音消息气泡")

@@ -1,5 +1,6 @@
 import allure
 import pytest
+import time
 import pytest_check as check
 from core.logger_utils import logger
 from pages.main.main_page import MainPage
@@ -40,7 +41,7 @@ class TestChatFile:
         pytest.param('测试-图片.jpg', id='固定图片文件'),
         pytest.param('测试-视频.mp4', id='固定视频文件'),
         pytest.param('测试-文档-12345.pdf', id='固定PDF文档'),
-        pytest.param('测试-音频.ogg', id='固定音频文件')
+        pytest.param('测试-音乐.ogg', id='固定音频文件')
     ])
     @pytest.mark.parametrize('strategy', [
         pytest.param(PRIVATE_USER1, id='私聊模式'),
@@ -61,8 +62,9 @@ class TestChatFile:
             actual_file_name = self.chatFilePage.get_last_file_name_in_chat()
             check.equal(actual_file_name, exact_file_name, f'❌ 发送的文件名不一致。预期: {exact_file_name}, 实际: {actual_file_name}')
         with allure.step('4. 验证消息是否发送成功'):
-            is_success = self.chatPage.get_last_message_send_fail_status()
-            check.is_true(is_success, '❌ 消息未在规定时间内发送完成')
+            time.sleep(0.5)
+            result = self.chatPage.get_last_message_send_fail_status()
+            check.is_false(result, '❌ 消息发送失败')
 
 
     @allure.story('发送文件-正向流程')
@@ -70,18 +72,18 @@ class TestChatFile:
     @pytest.mark.parametrize('sub_menu_item, file_type, dir_name', [
         pytest.param('图片', 'image', 'santiaoTalk', id='image'), 
         pytest.param('视频', 'video', 'santiaoTalk', id='video'),
-        pytest.param('音频', 'audio', 'Music', id='audio'), 
+        pytest.param('音频', 'audio', 'Music', id='audio'),  
         pytest.param('文档', 'document', 'File', id='document')
     ])
     @pytest.mark.parametrize('select_mode, target_index', [
         pytest.param('first', 0, id='first_file'), 
-        # pytest.param('last', 0, id='last_file'), 
-        # pytest.param('index', 1, id='second_file'), 
-        # pytest.param('absolute_last', 0, id='absolute_last_file')
+        pytest.param('last', 0, id='last_file'), 
+        pytest.param('index', 1, id='second_file'), 
+        pytest.param('absolute_last', 0, id='absolute_last_file')
     ])
     @pytest.mark.parametrize('strategy', [
         pytest.param(PRIVATE_USER1, id='私聊模式'), 
-        # pytest.param(GROUP_STRATEGY, id='群聊模式')
+        pytest.param(GROUP_STRATEGY, id='群聊模式')
     ])
     def test_send_file_success(self, strategy, sub_menu_item, file_type, dir_name, select_mode, target_index):
         """测试在聊天中成功发送文件"""
@@ -90,13 +92,11 @@ class TestChatFile:
             self._enter_chat_and_open_file_page(strategy.name)
             assert self.chatFilePage.wait_for_file_page_load(), '❌ 未成功进入文件选择页面'
         with allure.step(f'2. 选择文件并发送 ({select_mode})'):
-            self.chatFilePage.click_file_menu_button()
-            # self.chatFilePage.click_sub_menu_item(sub_menu_item)
-            self.chatFilePage.click_sub_menu_item('最近')
-            # file_is_selected = self.chatFilePage.select_any_file_in_dir(primary_dir=dir_name, file_type=file_type, select_mode=select_mode, target_index=target_index)
-            file_is_selected = self.chatFilePage.get_recently_page_files(file_type=file_type, sub_menu_item=sub_menu_item, select_mode=select_mode, target_index=target_index)
+            file_type_flag = self.chatFilePage.click_file_menu_button()
+            self.chatFilePage.click_sub_menu_item('最近' if file_type_flag else '文件')
+            file_is_selected = self.chatFilePage.get_recently_page_files(file_type=file_type, sub_menu_item=sub_menu_item, 
+                                primary_dir=dir_name, select_mode=select_mode, target_index=target_index)
             check.is_true(file_is_selected, f'❌ 未成功选择文件 (模式: {select_mode})')
-            self.chatPage.click_add_button()
         with allure.step('3. 验证聊天气泡中是否存在文件消息'):
             self.chatPage.wait_for_chat_page_load()
             file_name = self.chatFilePage.get_last_file_name_in_chat()
@@ -104,8 +104,6 @@ class TestChatFile:
         with allure.step('4. 验证消息是否发送成功'):
             is_success = self.chatPage.wait_for_last_message_send_status()
             check.is_true(is_success, '❌ 消息未在规定时间内发送完成')
-
-
 
 
     @allure.story('发送文件-取消操作')

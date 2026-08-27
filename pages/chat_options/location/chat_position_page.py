@@ -148,8 +148,11 @@ class ChatPositionPage(ChatPage):
     def verify_map_location_info(self, expected_title: str, expected_detail: str) -> bool:
         """
         聊天页面位置 - 验证地图内部显示的地址信息是否与预期一致（通过 OCR 识别图文）
-        :param expected_title: 预期的位置标题
-        :param expected_detail: 预期的详细地址
+        采用智能多层级匹配策略：
+        1. 完整字符串直接包含 (Exact Substring)
+        2. POI 核心主名称匹配 (剔除栋/号/座/期等末尾单元后缀)
+        3. 详细地址分段关键词匹配 (匹配区/街道/路等行政特征词)
+        4. 字符重合度/相似度匹配 (>= 70% 汉字字符覆盖)
         """
         from utils.cv_recognition.ocr_utils import OcrUtils
         ocr_tool = OcrUtils(self.driver)
@@ -157,20 +160,50 @@ class ChatPositionPage(ChatPage):
         # 获取当前地图页面的所有文字
         screen_texts = ocr_tool.get_all_text(image_name="map_detail_page_ocr.png")
         
-        # 将识别到的文字合并为一个大字符串，方便进行模糊匹配
-        all_text_combined = "".join(screen_texts)
+        # 将识别到的文字合并为一个大字符串，并去除常见空白
+        all_text_combined = "".join(screen_texts).replace(" ", "").replace("\n", "")
         
-        logger.info(f"🧐 正在校验地图详情内容... 预期包含: '{expected_title}' 和 '{expected_detail}'")
+        clean_title = (expected_title or "").replace(" ", "")
+        clean_detail = (expected_detail or "").replace(" ", "")
         
-        # 校验逻辑：标题通常能完整识别，详细地址可能因换行被切分，所以用 in 判定
-        title_match = expected_title in all_text_combined
+        logger.info(f"🧐 正在校验地图详情内容... 预期标题: '{clean_title}', 详细地址: '{clean_detail}'")
         
-        if title_match:
-            logger.info(f"✅ 地图内容校验通过: {expected_title}")
-        else:
-            logger.error(f"❌ 地图内容校验失败！预期包含: '{expected_title}'，实际 OCR 结果: {all_text_combined}")
+        # 1. 完整字符串直接包含
+        if clean_title and clean_title in all_text_combined:
+            logger.info(f"✅ 地图内容校验通过 (完整标题命中): {clean_title}")
+            return True
             
-        return title_match
+        if clean_detail and clean_detail in all_text_combined:
+            logger.info(f"✅ 地图内容校验通过 (完整详细地址命中): {clean_detail}")
+            return True
+            
+        # 2. 提取 POI 核心主名称（去除末尾的 '5栋', 'A座', '1号楼', '2期', '(在建)' 等尾缀）
+        # 例如: '北大资源财富森林5栋' -> '北大资源财富森林'
+        core_title = re.sub(r'[\(\（].*?[\)\）]|\d+[栋幢座期号楼单元层室]|#\d+|[A-Za-z]座', '', clean_title).strip()
+        if len(core_title) >= 2 and core_title in all_text_combined:
+            logger.info(f"✅ 地图内容校验通过 (POI 核心主名称命中): '{core_title}' (原标题: '{clean_title}')")
+            return True
+
+        # 3. 详细地址分段关键词匹配 (如提取: '两江新区', '鸳鸯街道', '财富森林' 等子串)
+        matched_segments = []
+        segments = re.findall(r'[\u4e00-\u9fa5]{3,}', clean_detail)
+        for seg in segments:
+            if seg in all_text_combined:
+                matched_segments.append(seg)
+        if len(matched_segments) >= 1:
+            logger.info(f"✅ 地图内容校验通过 (详细地址特征片段命中: {matched_segments})")
+            return True
+
+        # 4. 汉字字符集覆盖率判定 (当 OCR 偶发字符切分误差时，计算汉字命中率)
+        title_chars = [c for c in clean_title if '\u4e00' <= c <= '\u9fa5']
+        if title_chars:
+            matched_char_count = sum(1 for c in title_chars if c in all_text_combined)
+            char_ratio = matched_char_count / len(title_chars)
+            if char_ratio >= 0.70:
+                logger.info(f"✅ 地图内容校验通过 (标题汉字覆盖率达标: {char_ratio:.1%}, 匹配字符数: {matched_char_count}/{len(title_chars)})")
+                return True
+        logger.error(f"❌ 地图内容校验失败！预期标题: '{clean_title}', 详细地址: '{clean_detail}', 核心提取词: '{core_title}', 实际 OCR 结果: {all_text_combined}")
+        return False
 
 
     

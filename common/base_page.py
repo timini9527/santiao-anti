@@ -849,20 +849,30 @@ class BasePage:
         time.sleep(0.08)
 
     @allure.step("极速滑动与状态检测(刷底/刷顶)")
-    def swipe_page_quickly(self, element=None, slid_type: str = "down", duration: int = 100, max_swipes: int = 10):
-        """ 智能边界嗅探：不停滑动直到 DOM (page_source) 停止变化 """
+    def swipe_page_quickly(self, element=None, slid_type: str = "down", duration: int = 100, max_swipes: int = 10, item_locator: tuple | None = None):
+        """ 智能边界嗅探：不停滑动直到 DOM (page_source) 或列表条目停止变化 """
         logger.info(f"极速滑动自动探测边界启动 (Max:{max_swipes}次)")
         previous_source = ""
+        previous_items_text = []
         
         for i in range(max_swipes):
-            is_changed, previous_source = self.is_page_source_changed(previous_source)
-            if not is_changed:
-                break
-            # 若给定了目标元素则作局部探测，否则执行全屏盲探
+            # 1. 优先采用列表条目指纹比对（100% 免疫阻尼回弹坐标抖动）
+            if item_locator:
+                elems = self.find_elements(item_locator, timeout=1, expect_missing=True)
+                current_items_text = [e.text for e in elems if e.text]
+                if i > 0 and current_items_text and current_items_text == previous_items_text:
+                    logger.info(f"✅ [Swipe] 列表条目指纹无变化，确认已触达边界 (滑动次数: {i})")
+                    break
+                previous_items_text = current_items_text
+            else:
+                is_changed, previous_source = self.is_page_source_changed(previous_source)
+                if not is_changed:
+                    break
             if element:
                 self.swipe_on_element(element=element, slid_type=slid_type, duration=duration)
             else:
                 self.swipe_page(slid_type=slid_type, duration=duration, times=1)
+            time.sleep(0.2)
         else:
             logger.warning(f"⚠️ 滑满上限({max_swipes}次)仍见变化，强制挂起停止")
 

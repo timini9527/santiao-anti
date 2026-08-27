@@ -179,8 +179,8 @@ class TestSmokeChatCore(BaseSmokeChat):
     def test_clear_chat_records(self):
         with allure.step('1. 进入会话并发送待清理的消息'):
             self.chatListPage.enter_chat(PRIVATE_USER2.name)
-            self.chatListPage.send_message('测试清空聊天记录功能')
-            msg_count = self.chatListPage.get_total_message_count()
+            self.chatPage.send_message('测试清空聊天记录功能')
+            msg_count = self.chatPage.get_total_message_count()
             check.is_true(bool(msg_count), '❌ 获取聊天消息数量失败')
         with allure.step('2. 进入设置页面执行清空'):
             self.chatSettingPage.click_more_button()
@@ -189,7 +189,7 @@ class TestSmokeChatCore(BaseSmokeChat):
             self.chatSettingPage.click_two_confirm()
             self.chatSettingPage.click_iv_back_button()
         with allure.step('3. 验证聊天记录已清空'):
-            new_msg_count = self.chatListPage.get_total_message_count()
+            new_msg_count = self.chatPage.get_total_message_count()
             check.equal(new_msg_count, 0, f'❌ 清空后消息数量应为 0，实际为 {new_msg_count}')
 
 @allure.epic('IM核心功能测试')
@@ -204,8 +204,8 @@ class TestSmokeChatSearch(BaseSmokeChat):
         test_msg = f'这是一条用于聊天记录搜索测试的独占关键字消息: {keyword}'
         with allure.step('1. 进入私聊并发送包含关键字的测试消息'):
             self.chatListPage.enter_chat(PRIVATE_USER1.name)
-            self.chatSettingPage.send_message(test_msg)
-            self.chatSettingPage.wait_for_last_message_send_status()
+            self.chatPage.send_message(test_msg)
+            self.chatPage.wait_for_last_message_send_status()
         with allure.step('2. 进入设置页，查找聊天记录'):
             self.chatSettingPage.click_more_button()
             self.chatSettingPage.wait_for_setting_page_load()
@@ -218,9 +218,9 @@ class TestSmokeChatSearch(BaseSmokeChat):
             if results_count > 0:
                 self.chatSearchPage.click_search_result_item(0)
         with allure.step('4. 验证是否精准定位回聊天主界面'):
-            is_in_chat = self.chatSettingPage.wait_for_last_message_send_status()
+            is_in_chat = self.chatPage.wait_for_chat_page_load()
             check.is_true(is_in_chat, '❌ 未成功返回聊天主会话流页面')
-            last_message = self.chatSettingPage.get_text_message_content_by_index()
+            last_message = self.chatPage.get_text_message_content_by_index(index=-1, side='sent')
             check.is_in(keyword, last_message, f'❌ 未能在屏幕上找到定位消息')
 
     @allure.story('文本消息检索 - 消息不存在')
@@ -332,5 +332,5 @@ class TestSmokeChatLongPress(BaseSmokeChat):
             check.is_true(is_ok, '❌ 长按点击【撤回】失败')
             self.longPressPage.click_dialog_confirm()
         with allure.step('3. 验证撤回通知上屏'):
-            notice_msg, _ = self.chatListPage.get_withdraw_message()
+            notice_msg, _ = self.chatPage.get_withdraw_message()
             check.is_in('撤回了一条消息', notice_msg, "❌ 聊天流中未发现'撤回了一条消息'的提示信息")

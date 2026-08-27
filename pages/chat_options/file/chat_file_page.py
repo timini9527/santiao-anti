@@ -31,9 +31,9 @@ class ChatFilePage(ChatPage):
     # 文件-寻找文件入口并点击
     def enter_file_page(self):
         """寻找文件入口并点击，如当前页未找到则向左滑动面板后点击"""
-        if not self.is_element_exist(ChatFileLocator.FILE_ROOT, timeout=2):
+        if not self.is_element_exist(ChatFileLocator.FILE_ROOT, timeout=2, raise_exception=False):
             logger.info("🔍 [Action] 当前面板未找到文件按钮，尝试向左滑动快捷面板...")
-            self.swip_input_more_page('left')
+            self.swip_input_more_page('left', duration=400)
         self.click(ChatFileLocator.FILE_ROOT, timeout=2)
         logger.info("🚀 [Action] 进入系统文件选择页面")
 
@@ -46,13 +46,16 @@ class ChatFilePage(ChatPage):
 
 
     # 点击文件左上角菜单按钮
-    def click_file_menu_button(self):
+    def click_file_menu_button(self) -> bool:
         """
-        点击文件左上角菜单按钮
+        点击文件左上角抽屉菜单按钮（自适应 AOSP 抽屉模式与 OPPO/ColorOS 卡片平铺模式）
         """
-        self.click(ChatFileLocator.DRAWER_MENU_BTN)
-        logger.info("🚀 [Action] 点击文件左上角菜单按钮")
-        time.sleep(0.5)
+        if self.is_element_exist(ChatFileLocator.DRAWER_MENU_BTN, timeout=1, raise_exception=False):
+            self.click(ChatFileLocator.DRAWER_MENU_BTN)
+            logger.info("🚀 [Action] 点击文件左上角抽屉菜单按钮")
+            return True
+        logger.info("📱 [Action] 当前设备为 OPPO/ColorOS 卡片模式文件管理器，无需抽屉展开，直接使用界面分类入口")
+        return False
 
     # 获取子菜单、子目录标题
     def get_menu_dir_titles(self) -> list[WebElement]:
@@ -119,23 +122,34 @@ class ChatFilePage(ChatPage):
     # 业务方法
     # ====================  ====================
 
-    # 点击子菜单Item（最近、图片、视频、文档、下载）默认-图片
-    def click_sub_menu_item(self, item_name: str = "图片"):
+    # 点击子菜单/分类Item（最近、图片、视频、文档、下载、全部文件）默认-图片
+    def click_sub_menu_item(self, item_name: str = "图片") -> bool:
         """
-        点击子菜单Item（最近、图片、视频、文档、下载）默认-图片
+        点击子菜单/分类 Item（自适应 OPPO 卡片直达与 AOSP 抽屉子菜单）
         Args:
             item_name: 子菜单Item名称
         """
-        # 获取菜单子目录标题
+        # 1. 优先尝试直接在当前页面点击对应名称的卡片/Tab（OPPO ColorOS 模式）
+        target_locator = ChatFileLocator.get_recently_page_top_nav_bar(item_name)
+        if self.is_element_exist(target_locator, timeout=1, raise_exception=False):
+            self.click(target_locator)
+            logger.info(f"🚀 [Action] 成功直达点击分类卡片/Tab: {item_name}")
+            time.sleep(0.2)
+            return True
+
+        # 2. AOSP 抽屉展开后的目录列表查找
         dir_type_list = self.get_menu_dir_titles()
         if dir_type_list:
             for dir_type in dir_type_list:
                 if dir_type.text == item_name:
                     dir_type.click()
-                    logger.info(f"🚀 [Action] 点击子菜单Item: {item_name}")
-                    return
-            logger.error(f"❌ [Action] 未找到菜单子目录标题: {item_name}")
-            return
+                    logger.info(f"🚀 [Action] 抽屉菜单中点击子菜单Item: {item_name}")
+                    time.sleep(0.2)
+                    return True
+            logger.error(f"❌ [Action] 抽屉菜单中未找到子目录标题: {item_name}")
+            return False
+        logger.error(f"❌ [Action] 未找到分类入口: {item_name}")
+        return False
 
     # ==================== 私有通用方法 ====================
     # 在当前目录中查找文件，没有则返回上一级继续查找，默认目录：santiaoTalk
@@ -230,28 +244,25 @@ class ChatFilePage(ChatPage):
         elif mode == "last":
             target_elem = file_elems[-1]
         elif mode == "absolute_last":
-            logger.info("⏳ [Action] 模式 absolute_last: 开始滑动到底部获取最后一个文件...")
-            
-            self.swipe_page_quickly(slid_type='up', duration=500)
+            if len(file_elems) <= 6:
+                target_elem = file_elems[-1]
+                logger.info(f"✅ [Action] 当前文件数量较少({len(file_elems)}个)，无需额外滑动，直接选中最后一个: {target_elem.text}")
+            else:
+                logger.info("⏳ [Action] 模式 absolute_last: 文件数量较多，开始滑动到底部获取最后一个文件...")
+                self.swipe_page_quickly(slid_type='up', duration=300, item_locator=ChatFileLocator.DIR_NAME)
 
-            close_elem = self.get_action_mode_close_button()
-            if close_elem:
-                logger.info(f"✅ [Action] 点击关闭多选模式的按钮: {close_elem.text}")
-                close_elem.click()
+                close_elem = self.get_action_mode_close_button()
+                if close_elem:
+                    logger.info(f"✅ [Action] 点击关闭多选模式的按钮: {close_elem.text}")
+                    close_elem.click()
 
-            bottom_elems = self.find_elements(ChatFileLocator.DIR_NAME, timeout=2, expect_missing=True)
-            if bottom_elems:
-                logger.info(f"📂 [Action] bottom_elems: 过滤带有 '.' 的文本作为文件特征，避免选到纯文件夹")
-                candidate_files = [e for e in bottom_elems if "." in e.text]
-                if candidate_files:
-                    target_elem = candidate_files[-1]
+                bottom_elems = self.find_elements(ChatFileLocator.DIR_NAME, timeout=2, expect_missing=True)
+                if bottom_elems:
+                    candidate_files = [e for e in bottom_elems if "." in e.text]
+                    target_elem = candidate_files[-1] if candidate_files else bottom_elems[-1]
                     logger.info(f"✅ [Action] 成功选择文件 (模式: {mode}): {target_elem.text}")
                 else:
-                    logger.error(f"❌ [Action] 未找到带 '.' 的文件")
-                    return False
-            else:
-                logger.error(f"❌ [Action] 未找到文件")
-                return False
+                    target_elem = file_elems[-1]
         elif mode == "index":
             if 0 <= index < len(file_elems):
                 target_elem = file_elems[index]
@@ -346,26 +357,108 @@ class ChatFilePage(ChatPage):
                 break
         return False
 
-    # 在目录中查找并选择任意可用文件：优先进入 santiaoTalk 目录，未找到则回退搜索其他目录
-    def select_any_file_in_dir(self, file_type: str = 'image', primary_dir: str = "santiaoTalk", select_mode: str = "first", target_index: int = 0, loop_max: int = 10) -> bool:
-        """
-        [主入口] 在文件列表中查找并选择任意文件，支持优先目录探测与全量递归扫描。
-        业务流程:
-        1. 类型过滤：根据 file_type (image/video/audio/document/download) 自动匹配后缀集合。
-        2. 优先策略：首先尝试进入 primary_dir 目录，并递归查找其中的文件。
-        3. 回退扫描：若优先目录查找失败，则回退至根目录，对所有可见目录进行全局 DFS 探测。
-        4. 执行发送：找到文件后，根据 select_mode 策略进行点击，并处理可能的确认对话框。
 
-        :param file_type: 业务文件类型，决定匹配哪些后缀 (image, video, audio, document, download)
-        :param primary_dir: 优先查找的目录名称 (默认 "santiaoTalk"，不区分大小写)
-        :param select_mode: 文件选中模式 ('first', 'last', 'index', 'absolute_last')
-        :param target_index: 针对 'index' 模式的目标索引位置
-        :param loop_max: 每一个目录视图内的滑动探测上限
-        :return: 最终是否成功完成文件发送
+    # =========================================================================
+    # 跨厂商设备环境判定 (OEM Environment Detection)
+    # =========================================================================
+    def is_oppo_file_manager(self) -> bool:
         """
-        logger.info(f"🔍 [Action] 文件选择页 - 开始寻找文件，优先目录: [{primary_dir}]，模式: [{select_mode}]")
+        判断当前是否处于 OPPO (ColorOS) 系统文件管理器界面。
+        特征：页面存在【最近】/【文件】Tab，或【全部文件】卡片，或包名为 coloros/oplus
+        """
+        if self.is_element_exist(ChatFileLocator.TAB_FILE, timeout=1, raise_exception=False):
+            return True
+        if self.is_element_exist(ChatFileLocator.ALL_FILES_ENTRY, timeout=1, raise_exception=False):
+            return True
+        try:
+            current_pkg = getattr(self.driver, "current_package", "") or ""
+            if "coloros" in current_pkg or "oplus" in current_pkg:
+                return True
+        except Exception:
+            pass
+        return False
+
+    # =========================================================================
+    # 通用当前目录探测方法 (Opened Directory Explorer)
+    # =========================================================================
+    def _select_file_in_opened_dir(self, file_type: str = "image", primary_dir: str = "santiaoTalk", select_mode: str = "first", target_index: int = 0, loop_max: int = 10) -> bool:
+        """
+        在当前已打开的目录/分类视图中探测并选择文件：
+        1. 若当前视图有匹配后缀文件，直接选择；
+        2. 若当前视图是相册/子目录列表，优先尝试进入 primary_dir 目录查找；
+        3. 若优先目录未找到，回溯并对其他子目录进行 DFS 深度探测。
+        """
+        suffix_map = {
+            'image': ['.jpg', '.png', '.webp', '.gif', '.bmp', '.jpeg'],
+            'video': ['.mp4', '.mov', '.avi', '.wmv', '.flv', '.mkv'],
+            'audio': ['.mp3', '.wav', '.aac', '.flac', '.m4a', '.ogg'],
+            'document': ['.doc', '.docx', '.xls', '.xlsx', '.pdf', '.txt', '.xml', '.xmls', '.ppt', '.pptx'],
+            'download': ['.apk', '.dmg', '.exe', '.ipa', '.rar', '.zip']
+        }
+        common_suffixes = suffix_map.get(file_type.lower())
+        if not common_suffixes:
+            logger.error(f"❌ 文件类型 [{file_type}] 不支持")
+            return False
+
+        # 1. 尝试直接在当前平铺视图中找文件
+        file_elems = self.find_file_by_suffix(common_suffixes, loop_max=loop_max)
+        if file_elems and self._click_file_by_mode(file_elems, select_mode, target_index):
+            logger.info("✅ [Action] 在当前视图列表中成功按后缀选中文件")
+            return True
+
+        # 2. 优先进入 primary_dir 目录探测
+        if primary_dir and self._scroll_find_and_click(primary_dir, loop_max=loop_max, ignore_case=True):
+            logger.info(f"📂 [Action] 已进入优先目录/相册: {primary_dir}，查找文件...")
+            if self._search_file_recursively(common_suffixes, loop_max, select_mode, target_index, current_depth=1, max_depth=3):
+                return True
+            logger.warning(f"⚠️ [Action] 优先目录 [{primary_dir}] 内未找到可用文件，返回上一层")
+            self.back()
+
+        # 3. 回溯并在其他可见目录进行 DFS 递归扫描
+        logger.info("🔍 [Action] 开始在其他相册/目录中递归寻找文件...")
+        ignore_set = {primary_dir.lower()} if primary_dir else set()
+        return self._search_file_recursively(common_suffixes, loop_max, select_mode, target_index, current_depth=1, max_depth=4, ignore_dirs=ignore_set)
+
+    # =========================================================================
+    # OPPO / ColorOS 专属文件系统选择函数 (OPPO Dedicated Functions)
+    # =========================================================================
+    def select_file_oppo_by_category(self, sub_menu_item: str = "图片", file_type: str = "image", primary_dir: str = "santiaoTalk", select_mode: str = "first", target_index: int = 0, loop_max: int = 10) -> bool:
+        """
+        [OPPO 专属] 通过主界面分类卡片（图片、视频、音频、文档、下载等）或顶部 Tab 选中文件。
+        """
+        logger.info(f"📱 [OPPO ColorOS] 开始通过分类选择文件: 分类=[{sub_menu_item}], 类型=[{file_type}], 优先相册/目录=[{primary_dir}], 模式=[{select_mode}]")
         
-        # 1. 根据文件类型确定后缀
+        # 1. 针对【最近】分类特殊处理
+        if sub_menu_item == "最近":
+            return self.select_file_oppo_by_recent(file_type, select_mode, target_index, loop_max)
+            
+        file_tab = self.find_element(ChatFileLocator.TAB_FILE, timeout=1)
+        if file_tab:
+            logger.info("📱 [OPPO ColorOS] 确保处于顶部【文件】Tab")
+            file_tab.click()
+
+        # 2. 点击对应分类卡片（如 '图片'、'视频'、'音频'、'文档'、'下载'）
+        cat_locator = ChatFileLocator.get_recently_page_top_nav_bar(sub_menu_item)
+        cat_elem = self.find_element(cat_locator, timeout=2)
+        if not cat_elem:
+            logger.error(f"❌ [OPPO ColorOS] 未找到分类卡片: {sub_menu_item}")
+            return False
+        logger.info(f"📱 [OPPO ColorOS] 点击进入分类卡片: 【{sub_menu_item}】")
+        cat_elem.click()
+
+        # 3. 复用通用目录探测逻辑
+        return self._select_file_in_opened_dir(file_type=file_type, primary_dir=primary_dir, select_mode=select_mode, target_index=target_index, loop_max=loop_max)
+
+    def select_file_oppo_by_recent(self, file_type: str = "image", select_mode: str = "first", target_index: int = 0, loop_max: int = 10) -> bool:
+        """
+        [OPPO 专属] 切换至顶部【最近】Tab 并在最近列表中选择文件。
+        """
+        logger.info(f"📱 [OPPO ColorOS] 切换至【最近】Tab 选择文件，类型: [{file_type}], 模式: [{select_mode}]")
+        recent_tab = self.find_element(ChatFileLocator.TAB_RECENT, timeout=2)
+        if recent_tab:
+            recent_tab.click()
+            time.sleep(0.5)
+
         suffix_map = {
             'image': ['.jpg', '.png', '.webp', '.gif', '.bmp'],
             'video': ['.mp4', '.mov', '.avi', '.wmv', '.flv', '.mkv'],
@@ -373,33 +466,92 @@ class ChatFilePage(ChatPage):
             'document': ['.doc', '.docx', '.xls', '.xlsx', '.pdf', '.txt', '.xml', '.xmls', '.ppt', '.pptx'],
             'download': ['.apk', '.dmg', '.exe', '.ipa', '.rar', '.zip']
         }
-        common_suffixes = suffix_map.get(file_type.lower()) or None
-        if common_suffixes is None:
-            logger.error(f"❌ 文件类型 [{file_type}] 不支持")
-            return False
+        common_suffixes = suffix_map.get(file_type.lower(), ['.jpg', '.png'])
 
-        # -------- 阶段 1：优先进入 primary_dir 目录查找 --------
-        if self._scroll_find_and_click(primary_dir, loop_max=loop_max, ignore_case=True):
-            logger.info(f"📂 [Action] 已进入优先目录: {primary_dir}，开始查找文件...")
-            # 优先目录内也进行递归查找，防止里面套了层层文件夹
-            if self._search_file_recursively(common_suffixes, loop_max, select_mode, target_index, 
-                                            current_depth=1, max_depth=3):
-                return True
-
-            logger.warning(f"⚠️ [Action] 在 [{primary_dir}] 及其子目录中未找到任何文件，返回上级目录")
-            self.back()
-        else:
-            logger.warning(f"⚠️ [Action] 优先目录 [{primary_dir}] 不存在，跳过")
-
-        # -------- 阶段 2：遍历当前可见的其他目录递归查找 --------
-        logger.info("🔍 [Action] 开始在其他目录中进行深度递归寻找文件...")
-        # 传入 ignore_dirs={primary_dir.lower()} 以跳过已经找过的优先目录
-        if self._search_file_recursively(common_suffixes, loop_max, select_mode, target_index, 
-                                            current_depth=1, max_depth=4, ignore_dirs={primary_dir.lower()}):
+        file_elems = self.find_file_by_suffix(common_suffixes, loop_max=loop_max)
+        if file_elems and self._click_file_by_mode(file_elems, select_mode, target_index):
+            logger.info(f"✅ [OPPO ColorOS] 在【最近】Tab 下成功按后缀选中文件")
             return True
 
-        logger.error("❌ [Action] 文件选择页 - 遍历了所有可用目录均未找到可用文件")
+        logger.error(f"❌ [OPPO ColorOS] 在【最近】Tab 下未找到匹配后缀的文件: {common_suffixes}")
         return False
+
+    def select_file_oppo_from_storage(self, primary_dir: str = "santiaoTalk", file_type: str = "image", select_mode: str = "first", target_index: int = 0, loop_max: int = 10) -> bool:
+        """
+        [OPPO 专属] 点击【全部文件】进入内部存储树，并进入指定文件夹选择文件。
+        """
+        logger.info(f"📱 [OPPO ColorOS] 从【全部文件】存储目录寻找: [{primary_dir}]")
+        # 1. 确保在【文件】Tab
+        file_tab = self.find_element(ChatFileLocator.TAB_FILE, timeout=1)
+        if file_tab:
+            file_tab.click()
+            time.sleep(0.3)
+
+        # 2. 点击【全部文件】
+        all_files_btn = self.find_element(ChatFileLocator.ALL_FILES_ENTRY, timeout=2)
+        if not all_files_btn:
+            logger.error("❌ [OPPO ColorOS] 未找到【全部文件】入口")
+            return False
+        all_files_btn.click()
+        time.sleep(1)
+
+        # 3. 复用通用目录探测逻辑
+        return self._select_file_in_opened_dir(file_type=file_type, primary_dir=primary_dir, select_mode=select_mode, target_index=target_index, loop_max=loop_max)
+
+    # =========================================================================
+    # AOSP / 原生 Android 专属文件系统选择函数 (AOSP Dedicated Functions)
+    # =========================================================================
+    def select_file_aosp_by_category(self, sub_menu_item: str = "图片", file_type: str = "image", select_mode: str = "first", target_index: int = 0, 
+                                    type_flag: int = 1, loop_max: int = 10, timeout: int = 2) -> bool:
+        """
+        [AOSP 原生专属] 通过抽屉菜单或顶部 Chip 切换分类选择文件。
+        """
+        logger.info(f"🤖 [AOSP 原生] 开始通过抽屉/分类选择文件: 分类=[{sub_menu_item}], 类型=[{file_type}]")
+        type_nav_map = {
+            'image': '图片',
+            'video': '视频',
+            'audio': '音频',
+            'document': '文档',
+            'download': '下载',
+            'big_file': '大型文件',
+            'week': '本周'
+        }
+        nav_title = sub_menu_item or type_nav_map.get(file_type.lower(), '图片')
+        suffix_map = {
+            'image': ['.jpg', '.png', '.webp', '.gif', '.bmp'],
+            'video': ['.mp4', '.mov', '.avi', '.wmv', '.flv', '.mkv'],
+            'audio': ['.mp3', '.wav', '.aac', '.flac', '.m4a', '.ogg'],
+            'document': ['.doc', '.docx', '.xls', '.xlsx', '.pdf', '.txt', '.xml', '.xmls', '.ppt', '.pptx'],
+            'download': ['.apk', '.dmg', '.exe', '.ipa', '.rar', '.zip']
+        }
+        common_suffixes = suffix_map.get(file_type.lower(), ['.jpg', '.png'])
+
+        # 尝试点击抽屉或顶部 chip
+        self.click_recently_page_top_nav_bar(nav_title, timeout=timeout)
+        if type_flag == 1:
+            self.click_recently_page_top_nav_bar(sub_menu_item, timeout=timeout)
+        time.sleep(0.5)
+
+        file_elems = self.find_file_by_suffix(common_suffixes, loop_max=loop_max)
+        if file_elems and self._click_file_by_mode(file_elems, select_mode, target_index):
+            logger.info(f"✅ [AOSP 原生] 成功通过导航 [{nav_title}] 选中并发送文件")
+            return True
+        logger.error(f"❌ [AOSP 原生] 在导航 [{nav_title}] 下未找到匹配文件")
+        return False
+
+    # =========================================================================
+    # 统一自适应调度入口 (Adaptive Dispatchers)
+    # =========================================================================
+    def select_any_file_in_dir(self, file_type: str = 'image', primary_dir: str = "santiaoTalk", select_mode: str = "first", target_index: int = 0, loop_max: int = 10) -> bool:
+        """
+        [主入口] 在文件目录中查找并选择文件。自动适配 OPPO【全部文件】与 AOSP 抽屉【内部存储】。
+        """
+        if self.is_oppo_file_manager():
+            logger.info("🎯 [Dispatcher] OPPO 环境分发至 select_file_oppo_from_storage")
+            return self.select_file_oppo_from_storage(primary_dir=primary_dir, file_type=file_type, select_mode=select_mode, target_index=target_index, loop_max=loop_max)
+
+        logger.info(f"🔍 [AOSP 原生] 开始在目录寻找文件，优先目录: [{primary_dir}]，模式: [{select_mode}]")
+        return self._select_file_in_opened_dir(file_type=file_type, primary_dir=primary_dir, select_mode=select_mode, target_index=target_index, loop_max=loop_max)
 
     # 获取最新一条文件气泡的文件名
     def get_last_file_name_in_chat(self) -> str:
@@ -410,12 +562,6 @@ class ChatFilePage(ChatPage):
             logger.info(f"📋 [Action] 获取到最新发送的文件名: {name}")
             return name
         return ""
-
-
-
-    # ======================================
-    # 新增的业务方法
-    # ======================================
 
     # 点击最近页面顶部导航栏
     def click_recently_page_top_nav_bar(self, item_name: str = "图片", timeout: int = 2):
@@ -428,63 +574,22 @@ class ChatFilePage(ChatPage):
         nav_bar.click()
         logger.info(f"🚀 [Action] 点击最近页面顶部导航栏: {item_name}")
 
-    # 最近页面：通过顶部导航获取对应分类下的文件并选择发送
-    def get_recently_page_files(self, file_type: str = 'image', sub_menu_item: str = "图片", select_mode: str = "first", target_index: int = 0, loop_max: int = 10, timeout: int = 2) -> bool:
+    # 最近页面 / 分类入口：自适应分发
+    def get_recently_page_files(self, file_type: str = 'image', sub_menu_item: str = "图片", primary_dir: str = "santiaoTalk", select_mode: str = "first",
+                                target_index: int = 0, loop_max: int = 10, timeout: int = 2) -> bool:
         """
-        最近页面：通过顶部导航栏（图片、音频、视频、文档等）切换分类并选择匹配文件。
-
-        业务流程:
-        1. 类型过滤：根据 file_type 映射常见格式后缀（image/video/audio/document/download）。
-        2. 导航切换：点击顶部分类 Chip（如 '图片'、'音频'、'视频'、'文档'）。
-        3. 滑动匹配：在当前分类视图内滑动查找匹配后缀的文件列表。
-        4. 执行选择：根据 select_mode (first/last/index/absolute_last) 选中目标文件。
-
-        :param file_type: 业务文件类型 (image, video, audio, document, download)
-        :param sub_menu_item: 顶部导航栏显示名称 (默认 "图片")
-        :param select_mode: 文件选中模式 ('first', 'last', 'index', 'absolute_last')
-        :param target_index: 针对 'index' 模式的目标索引位置
-        :param loop_max: 当前视图内滑动探测最大次数
-        :param timeout: 元素查找超时时间
-        :return: 是否成功选中文件
+        [自适应分发入口] 自动识别当前环境是 OPPO (ColorOS) 还是 AOSP 原生，并调度对应厂商专用函数。
         """
-        # 1. 映射后缀与分类名
-        type_nav_map = {
-            'image': '图片',
-            'video': '视频',
-            'audio': '音频',
-            'document': '文档',
-            'download': '下载',
-            'big_file': '大型文件',
-            'week': '本周'
-        }
-        nav_title = sub_menu_item or type_nav_map.get(file_type.lower(), '图片')
-
-        suffix_map = {
-            'image': ['.jpg', '.png', '.webp', '.gif', '.bmp'],
-            'video': ['.mp4', '.mov', '.avi', '.wmv', '.flv', '.mkv'],
-            'audio': ['.mp3', '.wav', '.aac', '.flac', '.m4a', '.ogg'],
-            'document': ['.doc', '.docx', '.xls', '.xlsx', '.pdf', '.txt', '.xml', '.xmls', '.ppt', '.pptx'],
-            'download': ['.apk', '.dmg', '.exe', '.ipa', '.rar', '.zip']
-        }
-        common_suffixes = suffix_map.get(file_type.lower())
-        if not common_suffixes:
-            logger.error(f"❌ 文件类型 [{file_type}] 不支持")
-            return False
-
-        logger.info(f"🔍 [Action] 最近页面 - 开始通过顶部导航栏选择文件，类型: [{file_type}], 导航栏: [{nav_title}], 模式: [{select_mode}]")
-
-        # 2. 点击最近页面顶部导航栏切换分类
-        self.click_recently_page_top_nav_bar(nav_title, timeout=timeout)
-        time.sleep(0.5)
-
-        # 3. 在当前分类列表中查找匹配后缀的文件
-        file_elems = self.find_file_by_suffix(common_suffixes, loop_max=loop_max)
-        if file_elems and self._click_file_by_mode(file_elems, select_mode, target_index):
-            logger.info(f"✅ [Action] 最近页面 - 成功通过顶部导航 [{nav_title}] 选中并发送文件")
-            return True
-
-        logger.error(f"❌ [Action] 最近页面 - 在顶部导航 [{nav_title}] 下未找到匹配文件")
-        return False
+        if self.is_oppo_file_manager():
+            logger.info("🎯 [Dispatcher] 检测到当前为 OPPO (ColorOS) 文件管理器，调度 select_file_oppo_by_category")
+            file_is_selected = self.select_file_oppo_by_category(sub_menu_item=sub_menu_item, file_type=file_type, primary_dir=primary_dir, select_mode=select_mode, 
+                                                    target_index=target_index, type_flag=0, loop_max=loop_max, timeout=timeout)
+            return file_is_selected
+        else:
+            logger.info("🎯 [Dispatcher] 检测到当前为 AOSP / 原生文件管理器，调度 select_file_aosp_by_category")
+            file_is_selected = self.select_file_aosp_by_category(sub_menu_item=sub_menu_item, file_type=file_type, select_mode=select_mode, 
+                                                    target_index=target_index, type_flag=1, loop_max=loop_max, timeout=timeout)
+            return file_is_selected
 
     # 点击文件选择页搜索按钮
     def click_file_search_button(self, timeout: int = 2) -> bool:

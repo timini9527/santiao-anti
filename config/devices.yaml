@@ -13,7 +13,7 @@ app:
   "appium:appActivity": "com.vvchat.vcapp.activity.MainActivity"
   # --- 稳定性与超时控制（已修正单位和合理值） ---
   "appium:uiautomator2ServerLaunchTimeout": 30000   # 【毫秒】等待UIA2服务启动（原6000太短，改为30000防报错）
-  "appium:uiautomator2ServerReadTimeout": 15000     # Appium等待手机端UiAutomator2 Server响应的最长时间
+  "appium:uiautomator2ServerReadTimeout": 90000     # 【毫秒】Appium等待UiAutomator2 Server响应的最长时间（设为90s以支持最长60s长按语音）
   "appium:adbExecTimeout": 20000                    # 【毫秒】ADB执行超时时间（原6000极易导致adb卡死，改为20000）
   "appium:newCommandTimeout": 120                   # 【秒】新命令超时时间（原6000是100分钟，现改为120秒防资源死锁）
   "appium:ignoreHiddenApiPolicyError": true         # 【关键】忽略修改隐藏 API 策略时的权限错误 (解决 Security exception)
@@ -64,9 +64,9 @@ devices:
       # udid: "daccd58aaff4"
       # platformVersion: "12.0"
       # udid: "20a5fa17"
-      udid: "3B65BN02GU600000"
+      # udid: "3B65BN02GU600000"
       # udid: "192.168.1.29:5554"
-      # udid: "nzwcvo9ls87hws7t"
+      udid: "nzwcvo9ls87hws7t"
       # udid: "192.168.1.111:45845"
       # platformVersion: "16.0"
       # udid: "emulator-5554"   # 模拟器

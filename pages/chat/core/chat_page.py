@@ -71,6 +71,11 @@ class ChatPage(BasePage):
         """页面导航-点击顶部返回按钮"""
         self.click(ChatLocator.TOP_BACK_BUTTON)
         logger.info("🚀[Action-chat] - chat 点击返回按钮")
+        
+    def click_top_back_bnt(self):
+        """页面导航-点击顶部返回按钮"""
+        self.click(ChatLocator.TOP_BACK_BNT)
+        logger.info("🚀[Action-chat] - chat 点击返回按钮")
 
     # 聊天信息-获取顶部聊天对象昵称
     def get_top_name(self) -> str:
@@ -234,13 +239,13 @@ class ChatPage(BasePage):
         return True
     
     # 快捷功能-对快捷功能面板进行左右滑动
-    def swip_input_more_page(self, slide: str = 'left') -> bool:
+    def swip_input_more_page(self, slide: str = 'left', duration: int = 300) -> bool:
         """快捷功能-对快捷功能面板进行左右滑动"""
         input_more_pager = self.find_element(ChatLocator.INPUT_MORE_PAGER, timeout=2)
         if not input_more_pager:
             logger.error(f"❌ [Action-chat] - 未检测到加号面板滑动区域，请确保已点击加号按钮")
             return False
-        self.swipe_on_element(element=input_more_pager, slid_type=slide, duration=300)
+        self.swipe_on_element(element=input_more_pager, slid_type=slide, duration=duration)
         logger.info(f"🚀[Action-chat] - chat 加号面板向 {'左' if slide == 'left' else '右'} 滑动成功")
         return True
     
@@ -493,7 +498,6 @@ class ChatPage(BasePage):
         """消息状态-获取最后一条消息是否包含发送失败状态"""
         last_item = self.get_last_message_layout_item()
         fail_msgs = last_item.find_elements(*ChatLocator.FAIL_MSG)
-        
         status = len(fail_msgs) > 0
         logger.info(f"最后一条消息发送{'失败' if status else '成功'}")
         return status

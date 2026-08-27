@@ -109,6 +109,7 @@ class ChatLocator:
     TOP_SHORT_NUMBER = (AppiumBy.ID, f'{PACKAGE_ID}/tv_short_no')                       # 群聊ID
     GROUP_NUMBER_COUNT = (AppiumBy.ID, f'{PACKAGE_ID}/tv_group_number_count')           # 群聊人数
     TOP_MORE_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/more')                               # 更多按钮
+    TOP_BACK_BNT = (AppiumBy.ID, f'{PACKAGE_ID}/back_bnt')                              # 返回按钮
 
     # ==================================================================================================================
     # 聊天页面底部元素定位

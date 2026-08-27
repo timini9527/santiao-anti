@@ -89,13 +89,10 @@ class TestSmokeChatOptions(BaseSmokeChatOptions):
     def test_video_send_success(self):
         with allure.step('1. 进入会话并打开视频选择'):
             self.chatListPage.enter_chat(PRIVATE_USER1.name)
-            self.videoPage.click_add_button()
-            self.videoPage.click_image_button()
-            self.videoPage.wait_for_image_page_load()
+            self.videoPage.open_panel_to_album()
         with allure.step('2. 选择视频发送'):
             self.videoPage.select_single_video(mode=1)
-            self.videoPage.click_send_image()
-            time.sleep(1)
+            self.videoPage.click_send_button()
         with allure.step('3. 校验视频上屏'):
             video_duration = self.chatPage.get_chat_video_duration(index=-1)
             check.is_true(bool(video_duration), '未检测到上屏视频消息的时长特征')
@@ -121,6 +118,7 @@ class TestSmokeChatOptions(BaseSmokeChatOptions):
             self.chatPage.verify_location_enter_map_detail()
             result = self.positionPage.verify_map_location_info(poi_title, poi_detail)
             check.is_true(result, f'发送位置 {poi_title} {poi_detail} 地图显示位置信息不一致')
+            self.chatPage.click_top_back_bnt()
 
     @allure.story('发送文件消息')
     @allure.title('发送文件-正向流程-状态：已完成')
@@ -129,14 +127,13 @@ class TestSmokeChatOptions(BaseSmokeChatOptions):
             self.chatListPage.enter_chat(PRIVATE_USER1.name)
             self.filePage.open_panel_enter_file_page()
             self.filePage.wait_for_file_page_load()
-        with allure.step('2. 选择特定文件并发送'):
-            self.filePage.click_file_menu_button()
-            self.filePage.click_sub_menu_item('图片')
-            self.filePage.select_any_file_in_dir(file_type='image')
-            file_name = self.filePage.get_last_file_name_in_chat()
+        with allure.step('2. 搜索并选择固定文件发送'):
+            file_name = '测试-图片'
+            self.filePage.search_and_select_file_by_name(file_name)
         with allure.step('3. 校验文件发送成功且上屏'):
             chat_file_names = self.chatPage.get_chat_all_file_name()
-            check.is_true(file_name in chat_file_names, f'发送的文件名称 {file_name} 未在气泡中找到')
+            is_contained = any(file_name in name for name in chat_file_names)
+            check.is_true(is_contained, f'发送的文件名称 {file_name} 未在气泡中找到')
 
     @allure.story('发送基础小表情消息')
     @allure.title('发送基础小表情消息-正向流程-状态：已完成')

@@ -202,7 +202,7 @@ class DriverFactory:
             )
 
         # driver = webdriver.Remote(command_executor=appium_url, options=options)
-        appium_http_timeout = 20
+        appium_http_timeout = 95
 
         client_config = AppiumClientConfig(
             remote_server_addr=appium_url,

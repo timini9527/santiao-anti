@@ -1,0 +1,41 @@
+SOURCE: D:\data\cases\需求文档\禁发关键词添加流程优化.docx
+SIZE: 83534
+SECTIONS: 1
+INLINE_SHAPES: 1
+
+=== BODY IN DOCUMENT ORDER ===
+[P001][] 禁发关键词添加流程优化
+[P002][] 1. 背景与目标
+[P003][] 原有群助手禁止发送关键需求中“添加关键词”流程存在新增状态不清晰、操作反馈弱等问题。
+[P004][] 本次优化目标是：让用户能快速理解“在哪里添加、怎么添加”，并通过明确的反馈降低误操作。
+[P005][] 2. 适用范围
+[P006][] 仅覆盖“关键词设置 > 添加关键词”的配置流程，不涉及其他页面逻辑。
+[P007][] 3. 修改记录
+[TABLE 1] rows=2 cols=4
+  R01: 版本号 || 修订日期 || 修订人 || 修订说明
+  R02: 1.0 || 2026.6.12 || 巧巧 || 初稿创建
+[/TABLE 1]
+[P008][] 4. 详细需求
+[P009][] 流程图：https://modao.cc/proto/jIU6Uzlmt7ahyiuGiBs4q2/sharing?view_mode=read_only&screen=rbpVMJIcEDMnGxGDZ #群组优化-分享
+[TABLE 2] rows=2 cols=2
+  R01:  || 添加关键词页<BR>页面标题：添加关键词<BR>默认仅展示一个主操作按钮：“新增关键词”<BR>下方列表展示已添加关键词<BR>每个关键词右侧提供删除图标按钮
+  R02: <BR> || 新增关键词弹窗--支持批量添加多个<BR>触发方式：点击“新增关键词”<BR>弹窗内容：<BR>标题：新增关键词<BR>输入框占位文案：单个关键词最多10个字，批量添加请用空格分隔<BR>示例：红包 广告 刷单<BR>分隔符号：关键词中间连续输入多个空格时需要正常按分隔处理<BR>操作按钮：取消 / 确定<BR>数量限制：最多限制可添加50个关键词，超出时提示“当前最多可设置50个关键词”<BR>新增结果反馈<BR>新增成功后，关键词立即出现在列表中<BR>页面显示轻提示：“已添加”<BR>删除关键词<BR>点击关键词右侧删除图标后，弹出确认框<BR>确认框文案：删除关键词 XXX<BR>按钮：取消 / 确认<BR>删除成功后，列表中移除该关键词<BR>页面显示轻提示：“已删除”
+[/TABLE 2]
+
+=== OOXML STRUCTURE ===
+word/comments.xml: False
+word/footnotes.xml: False
+word/endnotes.xml: False
+word/numbering.xml: True
+word/header1.xml: True
+word/footer1.xml: True
+w:ins: 0
+w:del: 0
+w:moveFrom: 0
+w:moveTo: 0
+w:commentRangeStart: 0
+w:commentReference: 0
+MEDIA_COUNT: 1
+
+=== MEDIA ===
+01. word/media/image1.png -> image1.png bytes=91217 1887x733 RGB PNG

@@ -144,7 +144,7 @@ class ContactDetailPage(CommonPage):
         self.wait_for_detail_page_load()
 
         if msgType == 'friend':
-            nickName = self.get_contact_nickname()
+            nickName = self.get_raw_nickname()
             stId = self.get_st_id()
             if card_info['name'] in nickName and card_info['stId'] in stId:
                 logger.info("✅ [Action - ContactDetail] 资料详情页(好友) - 页面信息匹配成功")
