@@ -884,120 +884,153 @@ class ChatPage(BasePage):
     # =========================================================================================
     # 媒体消息-验证连续发送的多条媒体消息数量与描述文本
     def verify_batch_sent_messages(self, expected_count: int, msg_type: Literal['image', 'video'], expect_text: str = "", max_slide: int = 5) -> tuple[int, bool, int]:
-        """媒体消息-验证连续发送的多条媒体消息数量与描述文本"""
-        time.sleep(3)  
+        """
+        媒体消息-验证连续发送的多条媒体消息数量与描述文本（自适应沉浸式透明顶底栏安全视口）
+        :param expected_count: 预期成功发送的媒体数量
+        :param msg_type: 'image' 或 'video'
+        :param expect_text: 期待匹配的基准锚点文本（用于圈定本次批量发送的边界）
+        :param max_slide: 最大向上回溯滑动次数
+        :return: (实际找到的媒体消息数, 描述文本是否匹配成功, 失败红点消息数)
+        """
+        # 1. 智能等待最新一条消息发送完成
+        self.wait_for_last_message_send_status(timeout=10)
+        
         found_count = 0
         fail_count = 0
         text_matched = False
-        seen_container_ids = set()          # 存储 container.id，用于同屏或缓存元素的快速去重
-        seen_elements = []                  # 存储 (md5, absolute_y) 结合坐标防止同一屏幕的相同元素被错误去重
+        seen_absolute_positions = []        # 记录已扫描消息的绝对几何坐标 (用于毫秒级零截图去重)
         total_scroll = 0                    # 累计滑动距离
         global_index = 0                    # 全局消息序号（0 为最新一条）
 
-        chat_input_elem = self.get_chat_input_container()
-        cie = chat_input_elem.rect if chat_input_elem else None
+        # 2. 动态计算可视安全视口（避开顶部与底部透明栏的透光遮挡区）
+        window_size = self.driver.get_window_size()
+        win_w, win_h = window_size['width'], window_size['height']
 
-        logger.info(f"🔍 准备分页校验聊天区: 预期{msg_type} {expected_count} 张/条, 预期描述 '{expect_text}'")
+        top_user_name = self.find_element(ChatLocator.TOP_USER_NAME, timeout=1, raise_exception=False)
+        if top_user_name:
+            safe_top_y = top_user_name.rect['y'] + top_user_name.rect['height'] + 10
+        else:
+            safe_top_y = int(win_h * 0.12)
+
+        chat_input_elem = self.find_element(ChatLocator.CHAT_INPUT, timeout=1, raise_exception=False)
+        if chat_input_elem:
+            safe_bottom_y = chat_input_elem.rect['y'] - 10
+        else:
+            safe_bottom_y = int(win_h * 0.88)
+
+        safe_height = max(100, safe_bottom_y - safe_top_y)
+        logger.info(f"🔍 [Batch Verify] 安全可视视口锁定: Y∈[{safe_top_y}, {safe_bottom_y}], 高度={safe_height}px, 预期 {msg_type} × {expected_count}")
 
         for slide in range(max_slide):
             row_elems = self.get_message_layout_items(raise_exception=False) or []
             if not row_elems:
-                logger.warning(f"第 {slide} 次滑动后未获取到任何消息元素")
+                logger.warning(f"第 {slide + 1} 次滑动后未获取到任何消息布局")
                 break
 
             re_elems = list(reversed(row_elems))
             new_elements_in_slide = 0
+
             for container in re_elems:
                 try:
-                    container_id = container.id
-                    c_rect = CropRect.from_rect_dict(container.rect)
-                    msg_id = ScreenshotUtils.md5_auto(element=container, rect=c_rect)
+                    c_rect = container.rect
+                    elem_y = c_rect['y']
+                    elem_h = c_rect['height']
+                    elem_bottom = elem_y + elem_h
 
-                    current_y = container.rect['y']
-                    absolute_y = current_y - total_scroll
+                    # 🌟 核心过滤 1：过滤被顶部透明导航栏遮挡的不完整残影元素（露出高度不足 50%）
+                    if elem_bottom <= safe_top_y or (elem_y < safe_top_y and (elem_bottom - safe_top_y) < elem_h * 0.5):
+                        continue
 
-                    # MD5 + 坐标的严格去重判断，防止复用控件带来误伤。
-                    if container_id in seen_container_ids:
-                        is_duplicate = False
-                        for seen_md5, seen_abs_y in seen_elements:
-                            # 只要误差在一个消息体高度内，且 MD5 一致，就认为是重复元素。
-                            if seen_md5 == msg_id and abs(seen_abs_y - absolute_y) < 200:
-                                is_duplicate = True 
-                                break
-                        if is_duplicate:
-                            continue
-                    else:
-                        seen_container_ids.add(container_id)
-                    
-                    seen_elements.append((msg_id, absolute_y))
+                    # 🌟 核心过滤 2：过滤被底部透明输入栏遮挡的不完整残影元素（露出高度不足 50%）
+                    if elem_y >= safe_bottom_y or (elem_bottom > safe_bottom_y and (safe_bottom_y - elem_y) < elem_h * 0.5):
+                        continue
+
+                    absolute_y = elem_y - total_scroll
+
+                    # 基于空间几何绝对坐标去重（误差 < 25px 视为同一消息项）
+                    is_duplicate = any(abs(pos - absolute_y) < 25 for pos in seen_absolute_positions)
+                    if is_duplicate:
+                        continue
+
+                    seen_absolute_positions.append(absolute_y)
                     new_elements_in_slide += 1
 
+                    # 检查是否为发送失败的红点消息
                     fail_elems = container.find_elements(*ChatLocator.FAIL_MSG)
                     if fail_elems:
-                        logger.info(f"❌ [索引:{global_index}] 找到发送失败的消息(带红点)")
+                        logger.warning(f"❌ [索引:{global_index}] 找到发送失败的消息(带感叹号红点)")
                         fail_count += 1
                         continue
-                    
-                    is_valid_msg = False
+
+                    # 检查是否包含目标类型的媒体
                     is_media = False
                     if msg_type == 'image':
                         images = container.find_elements(*ChatLocator.IMAGE_ITEM)
-                        if images and len(images) > 0:
-                            is_valid_msg = is_media = True
-                            logger.info(f"📸 [索引:{global_index}] 找到第 {found_count + 1}/{expected_count} 张图片")
+                        if images:
+                            is_media = True
+                            logger.info(f"📸 [索引:{global_index}] 匹配到第 {found_count + 1}/{expected_count} 张图片")
                     elif msg_type == 'video':
                         play_btns = container.find_elements(*ChatLocator.VIDEO_PLAY_BUTTON_ITEM)
                         durations = container.find_elements(*ChatLocator.VIDEO_DURATION_ITEM)
                         if play_btns and durations:
-                            is_valid_msg = is_media = True
-                            logger.info(f"🎥 [索引:{global_index}] 找到第 {found_count + 1}/{expected_count} 条视频")
+                            is_media = True
+                            logger.info(f"🎥 [索引:{global_index}] 匹配到第 {found_count + 1}/{expected_count} 条视频")
 
-                        
                     global_index += 1
+
+                    # 检查基准锚点文本
                     if expect_text and not text_matched:
                         text_nodes = container.find_elements(*ChatLocator.MESSAGE_CONTENT_ITEM)
-                        if text_nodes:
-                            logger.debug(f'text_nodes-text: {text_nodes[0].text}')
-                            if expect_text in text_nodes[0].text:
-                                text_matched = True
-                                logger.info(f"💬 [索引:{global_index}] 匹配到描述文本 '{expect_text}'")
+                        if text_nodes and expect_text in text_nodes[0].text:
+                            text_matched = True
+                            logger.info(f"💬 [索引:{global_index}] 成功匹配到基准文本 '{expect_text}'")
 
-                    if is_valid_msg:
-                        if is_media:
-                            if found_count < expected_count:
-                                found_count += 1
-                                
+                    if is_media and found_count < expected_count:
+                        found_count += 1
+
+                    # 若数量已找齐且文本已命中，提前闭环退出
                     if found_count >= expected_count and (text_matched or not expect_text):
-                        logger.info(f"✅ 找齐了！共 {found_count} 条 {msg_type} 且文本已匹配。")
+                        logger.info(f"✅ 找齐全部 {found_count} 条 {msg_type} 消息，校验通过！")
                         return found_count, text_matched, fail_count
 
                 except Exception as e:
-                    logger.warning(f"⚠️ 遍历过程中元素引用失效(Stale)，尝试跳过当前项并刷新列表: {e}")
-                    break 
-                
-            # 触顶防抖检测
+                    logger.warning(f"⚠️ 遍历过程中元素引用失效(Stale)，跳过当前项: {e}")
+                    continue
+
+            # 触顶防抖检测：若滑动后没有新消息进入视野，说明已到达聊天流顶部
             if slide > 0 and new_elements_in_slide == 0:
-                logger.info("⚠️ 检测到本次滑动没有发现任何新元素，已触达聊天记录顶部！")
+                logger.info("⚠️ 检测到本次滑动无新有效消息载入，已触达聊天记录顶部")
                 break
-                
+
             if found_count >= expected_count and (text_matched or not expect_text):
-                logger.info(f"✅ 找齐了！共 {found_count} 条{msg_type}且文本已匹配。")
                 return found_count, text_matched, fail_count
-                
-            if found_count < expected_count and cie and re_elems:
-                logger.info(f"✅ 触达页尾且未找齐(实得:{found_count}/{expected_count})，执行滑动加载更多...")
+
+            # 3. 在可视安全区域内向下平滑拖拽滑动，拉出上方更早的历史消息
+            if found_count < expected_count:
+                logger.info(f"🔄 当前找到 {found_count}/{expected_count}，在安全区执行平滑下拉以加载更多...")
                 try:
-                    cr = container.rect
-                    offset_y = (cie['y'] - cr['y'])
-                    total_scroll += offset_y
-                    self.swipe_by_offset(rect=cr, start_x_offset=-cr['width']/2, 
-                                         start_y_offset=-cr['height']/2 + 5, 
-                                         x_offset=0, y_offset=offset_y, duration=2500)
-                    time.sleep(1) 
+                    safe_rect = {
+                        'x': 0,
+                        'y': safe_top_y,
+                        'width': win_w,
+                        'height': safe_height
+                    }
+                    scroll_offset = int(safe_height * 0.65)
+                    total_scroll += scroll_offset
+
+                    self.swipe_by_offset(
+                        rect=safe_rect,
+                        start_x_offset=0,
+                        start_y_offset=-int(safe_height * 0.25),
+                        x_offset=0,
+                        y_offset=scroll_offset,
+                        duration=800
+                    )
+                    time.sleep(0.8)
                 except Exception as e:
-                    logger.warning(f"滑动操作异常，可能控件失效: {e}")
-                    
-            logger.info(f"⚠️ 第 {slide+1} 次循环未找齐(实得:{found_count}/{expected_count})，尝试下滑...")
+                    logger.warning(f"滑动操作异常: {e}")
+
+        logger.info(f"📊 批量消息校验结束: 实际匹配 {found_count}/{expected_count} 条 {msg_type}, 文本匹配: {text_matched}, 失败红点: {fail_count}")
         return found_count, text_matched, fail_count
 
     # 页面导航-验证当前是否处于聊天页面

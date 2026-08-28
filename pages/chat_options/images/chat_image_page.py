@@ -57,57 +57,79 @@ class ChatImagePage(ChatPage):
     # 获取 PHOTO_CONTAINER 的容器
     def get_photo_container(self):
         """获取 PHOTO_CONTAINER 整个相册 的容器"""
-        return self.find_element(ChatImageLocator.PHOTO_CONTAINER, timeout=3)
-
+        container = self.find_element(ChatImageLocator.PHOTO_CONTAINER, timeout=3)
+        logger.info(" PHOTO_CONTAINER 整个相册 的容器")
+        return container
+        
     # 获取所有图片
     def get_all_image_items(self):
         """获取所有图片"""
-        return self.find_elements(ChatImageLocator.PHOTO_ITEM, timeout=3)
+        items = self.find_elements(ChatImageLocator.PHOTO_ITEM, timeout=3)
+        logger.info(f"获取所有图片，共{len(items)}张")
+        return items
     
     # 获取所有图片的勾选按钮
     def get_all_image_check_button(self):
         """获取所有图片的勾选按钮"""
-        return self.find_elements(ChatImageLocator.PHOTO_CHECK_BUTTON, timeout=3)
+        buttons = self.find_elements(ChatImageLocator.PHOTO_CHECK_BUTTON, timeout=3)
+        logger.info(f"获取所有图片的勾选按钮，共{len(buttons)}个")
+        return buttons
     
     # 获取 仅纯图片(png/jpg) 不包含其他格式图片
     def get_only_image_items(self):
         """获取仅纯图片(png/jpg) 不包含其他格式图片"""
-        return self.find_elements(ChatImageLocator.PHOTO_ONLY_IMAGE_ITEM, timeout=3)
+        items = self.find_elements(ChatImageLocator.PHOTO_ONLY_IMAGE_ITEM, timeout=3)
+        logger.info(f"获取仅纯图片(png/jpg) 不包含其他格式图片，共{len(items)}张")
+        return items
     
     # 获取仅不包含视频的元素
     def get_not_video_items(self):
         """获取仅不包含视频的元素"""
-        return self.find_elements(ChatImageLocator.PHOTO_NOT_VIDEO_ITEM, timeout=3)
+        items = self.find_elements(ChatImageLocator.PHOTO_NOT_VIDEO_ITEM, timeout=3)
+        logger.info(f"获取仅不包含视频的元素，共{len(items)}张")
+        return items
 
     # 获取仅不包含视频的勾选按钮
     def get_not_video_check_button(self):
         """获取仅不包含视频的勾选按钮"""
-        return self.find_elements(ChatImageLocator.PHOTO_CHECK_BUTTON_NOT_VIDEO, timeout=3)
+        buttons = self.find_elements(ChatImageLocator.PHOTO_CHECK_BUTTON_NOT_VIDEO, timeout=3)
+        logger.info(f"获取仅不包含视频的勾选按钮，共{len(buttons)}个")
+        return buttons
     
     # 获取不包含视频、长图、webp、gif等媒体文件的勾选按钮
     def get_not_media_check_button(self):
         """获取不包含视频、长图、webp、gif等媒体文件的勾选按钮"""
-        return self.find_elements(ChatImageLocator.PHOTO_CHECK_BUTTON_NOT_MEDIA, timeout=3)
+        buttons = self.find_elements(ChatImageLocator.PHOTO_CHECK_BUTTON_NOT_MEDIA, timeout=3)
+        logger.info(f"获取不包含视频、长图、webp、gif等媒体文件的勾选按钮，共{len(buttons)}个")
+        return buttons
 
     # 获取仅长图、webp、gif
     def get_only_long_image_items(self):
         """获取仅长图、webp、gif"""
-        return self.find_elements(ChatImageLocator.PHOTO_IMAGE_LONG_WEBP_GIF_ITEM, timeout=3)
+        items = self.find_elements(ChatImageLocator.PHOTO_IMAGE_LONG_WEBP_GIF_ITEM, timeout=3)
+        logger.info(f"获取仅长图、webp、gif，共{len(items)}张")
+        return items
 
     # 获取仅长图、webp、gif的勾选按钮
     def get_only_long_image_check_button(self):
         """获取仅长图的勾选按钮"""
-        return self.find_elements(ChatImageLocator.PHOTO_CHECK_BUTTON_LONG_WEBP_GIF, timeout=3)
+        buttons = self.find_elements(ChatImageLocator.PHOTO_CHECK_BUTTON_LONG_WEBP_GIF, timeout=3)
+        logger.info(f"获取仅长图、webp、gif的勾选按钮，共{len(buttons)}个")
+        return buttons
 
     # 获取 仅视频
     def get_only_video_items(self):
         """获取仅视频"""
-        return self.find_elements(ChatImageLocator.PHOTO_ONLY_VIDEO_ITEM, timeout=3)
+        items = self.find_elements(ChatImageLocator.PHOTO_ONLY_VIDEO_ITEM, timeout=3)
+        logger.info(f"获取仅视频，共{len(items)}张")
+        return items
 
     # 获取仅视频的勾选按钮
     def get_only_video_check_button(self, raise_exception=True):
         """获取仅视频的勾选按钮"""
-        return self.find_elements(ChatImageLocator.PHOTO_CHECK_BUTTON_VIDEO, timeout=3, raise_exception=raise_exception)
+        buttons = self.find_elements(ChatImageLocator.PHOTO_CHECK_BUTTON_VIDEO, timeout=3, raise_exception=raise_exception)
+        logger.info(f"获取仅视频的勾选按钮，共{len(buttons)}个")
+        return buttons
     
     # 点击预览按钮
     def click_preview_button(self):
@@ -125,7 +147,9 @@ class ChatImagePage(ChatPage):
     # 获取原图按钮状态
     def get_original_image_button_status(self):
         """获取原图按钮状态"""
-        return self.get_attribute(ChatImageLocator.PHOTO_ORIGINAL_TEXT, 'checked')
+        status = self.get_attribute(ChatImageLocator.PHOTO_ORIGINAL_TEXT, 'checked')
+        logger.info(f"原图按钮状态: {status}")
+        return status
     
     # 获取发送前所勾选的图片/视频数量
     def get_selected_image_count(self, raise_exception=True):
@@ -134,6 +158,7 @@ class ChatImagePage(ChatPage):
         if selected_text and str(selected_text).isdigit():
             logger.info(f"✅ 已勾选 {selected_text} 张图片")
             return int(selected_text)
+        logger.info(f"未获取到已勾选图片数量")
         return 0
     
     # 点击发送按钮
@@ -279,9 +304,9 @@ class ChatImagePage(ChatPage):
         """
         在相册网格中连续勾选多张纯图片进行发送。
         :param count: 计划勾选张数
-        :param max_limit: 单次最多可选张数
+        :param max_limit: 单次最多可选张数（默认 9 张）
         :param max_swipes: 可用于补齐数量的最大下滑次数
-        :return: 实际成功勾选（角标增加）的张数
+        :return: (实际成功勾选张数, 超限弹窗 Toast 内容)
         """
         target_count = count
         selected_count = self.get_selected_image_count(raise_exception=False)
@@ -292,39 +317,52 @@ class ChatImagePage(ChatPage):
             if selected_count >= target_count:
                 break
 
-            check_buttons = self.get_not_video_items()
+            check_buttons = self.get_not_video_check_button()
             if not check_buttons:
                 logger.warning("当前页未找到可勾选的图片按钮")
                 break
 
             for button in check_buttons:
                 if selected_count >= target_count:
+                    logger.info(f"已达到目标勾选数量: {target_count}")
                     break
+
                 before_count = self.get_selected_image_count(raise_exception=False)
                 button.click()
-                time.sleep(0.2)
-                
+                time.sleep(0.1)
+
+                # 处理超过上限的阻断弹窗（如第 10 张）
                 if before_count >= max_limit:
                     full_toast = self.get_toast_content()
                     self.click_ok_button()
                     target_count = max_limit
                     break
 
-                after_count = self.get_selected_image_count()
+                after_count = self.get_selected_image_count(raise_exception=False)
+                
+                # 滑动后若误点到了上一页已勾选的图片导致反选，立即重新点击恢复
+                if after_count < before_count:
+                    logger.warning("⚠️ 误点了已勾选图片导致取消，重新点击以恢复勾选")
+                    button.click()
+                    time.sleep(0.2)
+                    continue
+
                 if after_count > before_count:
                     selected_count = after_count
                     logger.info(f"已勾选图片 {selected_count}/{target_count}")
-            
+
             if selected_count >= target_count:
+                logger.info(f"已达到目标勾选数量: {target_count}")
                 break
 
             is_changed, last_source = self.is_element_source_changed(ChatImageLocator.PHOTO_CONTAINER, last_source)
             if not is_changed:
                 logger.warning("相册列表已无更多内容，停止补齐勾选")
                 break
+
             self.swipe_page(slid_type='up', duration=400)
             time.sleep(0.5)
-            logger.info(f"批量选图未满目标，第 {swipe_index + 1} 次下滑继续查找")
+            logger.info(f"批量选图未满目标({selected_count}/{target_count})，第 {swipe_index + 1} 次下滑继续查找")
 
         logger.info(f"✅ 批量勾选完成，目标 {target_count} 张，实际 {selected_count} 张")
         return selected_count, full_toast
@@ -340,17 +378,21 @@ class ChatImagePage(ChatPage):
     def get_preview_signature(self) -> str:
         """
         获取预览页图片抗噪指纹。
-        使用 dHash 自动处理中心区域，屏蔽系统噪音。
+        使用 dHash 自动提取中心 50% 纯净区域，精准避开顶部状态栏/页码与底部操作栏的系统噪音。
         """
-        # 定义中心安全区域，避开通知栏和页码
+        # 定义绝对居中对称的安全区域（水平居中 60%，垂直居中 50%）
         size = self.driver.get_window_size()
         w, h = size['width'], size['height']
-        rect = {'x': int(w*0.2), 'y': int(h*0.2), 'width': int(w*0.6), 'height': int(h*0.6)}
+        rect = {
+            'x': int(w * 0.2), 
+            'y': int(h * 0.25), 
+            'width': int(w * 0.6), 
+            'height': int(h * 0.5)
+        }
         safe_rect = CropRect.from_rect_dict(rect)
         
         # 直接一键获取 dHash 签名
         image_hash = ScreenshotUtils.dhash_auto(self.driver, rect=safe_rect)
-        
         logger.info(f"♏ 获取预览页指纹(dHash/Center): {image_hash}")
         return image_hash
 

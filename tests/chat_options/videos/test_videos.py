@@ -8,7 +8,7 @@ from pages.chat_options.videos.chat_video_page import ChatVideoPage
 from pages.main.main_page import MainPage
 from core.logger_utils import logger
 from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
-from pages.chat_options.videos.video_strategy import VIDEO_SELECT_MODES, VIDEO_SEND_OPTIONS, BATCH_VIDEO_SCENARIOS, VideoSelectMode, VideoSendOption, BatchVideoScenario
+from strategy.chat_options.video_strategy import VIDEO_SELECT_MODES, VIDEO_SEND_OPTIONS, BATCH_VIDEO_SCENARIOS, VideoSelectMode, VideoSendOption, BatchVideoScenario
 
 @allure.epic('IM核心功能测试')
 @allure.feature('聊天面板-视频')

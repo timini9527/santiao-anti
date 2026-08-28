@@ -1,10 +1,14 @@
 from dataclasses import dataclass
-from typing import List
+
 
 @dataclass
 class VideoSelectMode:
     mode: int
     desc: str
+
+    def __str__(self):
+        return self.desc
+
 
 @dataclass
 class VideoSendOption:
@@ -12,10 +16,18 @@ class VideoSendOption:
     use_original: bool
     desc: str
 
+    def __str__(self):
+        return self.desc
+
+
 @dataclass
 class BatchVideoScenario:
     count: int
     desc: str
+
+    def __str__(self):
+        return self.desc
+
 
 # 1. 单选模式
 VIDEO_SELECT_MODES = [

@@ -18,6 +18,11 @@ from pages.friend.profile.chat_contact_card_page import ChatContactCardPage
 from pages.common.contact_select_page import ContactSelectPage
 from pages.friend.profile.contact_detail_page import ContactDetailPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2
+from strategy.chat_options.file_strategy import EXACT_IMAGE
+from utils.cv_recognition.screenshot_utils import ScreenshotUtils
+
+
+
 
 class BaseSmokeChatOptions:
     """单聊多媒体与附件测试基类"""
@@ -69,20 +74,22 @@ class TestSmokeChatOptions(BaseSmokeChatOptions):
         with allure.step('1. 进入会话并打开相册'):
             self.chatListPage.enter_chat(PRIVATE_USER1.name)
             self.imagePage.open_panel_to_album()
-        with allure.step('2. 选择单张图片并预览'):
+        with allure.step('2. 选择单张图片并获取预览指纹'):
             result = self.imagePage.select_single_image(mode=1)
-            check.is_true(result, '勾选图片失败')
+            check.is_true(result, '❌ 勾选图片失败')
             self.imagePage.click_preview_button()
             preview_signature = self.imagePage.get_preview_signature()
-        with allure.step('3. 点击发送图片并校验'):
+        with allure.step('3. 点击发送图片并等待消息成功上屏'):
             self.imagePage.click_send_button()
+            is_sent = self.chatPage.wait_for_last_message_send_status()
+            check.is_true(is_sent, '❌ 图片消息未在规定时间内发送完成')
+        with allure.step('4. 点击已发送图片气泡并校验图像指纹一致性'):
             self.imagePage.click_last_sent_image()
-            time.sleep(0.5)
             sent_signature = self.imagePage.get_preview_signature()
-            from utils.cv_recognition.screenshot_utils import ScreenshotUtils
             distance = ScreenshotUtils.hamming_distance(preview_signature, sent_signature)
             logger.info(f'📊 [Image Hash Compare] 发送前 Hash: {preview_signature}, 发送后 Hash: {sent_signature}, 汉明距离: {distance}')
-            check.is_true(distance <= 5, f'大图预览与发送出去的图片不一致 (汉明距离 {distance} > 5)')
+            check.is_true(distance <= 5, f'❌ 大图预览与发送出去的图片不一致 (汉明距离 {distance} > 5)')
+            self.imagePage.back()
 
     @allure.story('发送视频消息')
     @allure.title('单条视频发送并校验-状态：已完成')
@@ -121,19 +128,23 @@ class TestSmokeChatOptions(BaseSmokeChatOptions):
             self.chatPage.click_top_back_bnt()
 
     @allure.story('发送文件消息')
-    @allure.title('发送文件-正向流程-状态：已完成')
+    @allure.title('发送文件-固定文件名搜索-状态：已完成')
     def test_file_send_success(self):
-        with allure.step('1. 进入会话并打开文件选择'):
+        target_file = EXACT_IMAGE.exact_file_name
+        with allure.step('1. 进入会话并打开文件选择页'):
             self.chatListPage.enter_chat(PRIVATE_USER1.name)
             self.filePage.open_panel_enter_file_page()
-            self.filePage.wait_for_file_page_load()
-        with allure.step('2. 搜索并选择固定文件发送'):
-            file_name = '测试-图片'
-            self.filePage.search_and_select_file_by_name(file_name)
-        with allure.step('3. 校验文件发送成功且上屏'):
-            chat_file_names = self.chatPage.get_chat_all_file_name()
-            is_contained = any(file_name in name for name in chat_file_names)
-            check.is_true(is_contained, f'发送的文件名称 {file_name} 未在气泡中找到')
+            check.is_true(self.filePage.wait_for_file_page_load(), '❌ 未能成功进入文件选择页')
+        with allure.step(f'2. 搜索并选择固定文件发送: {target_file}'):
+            file_is_selected = self.filePage.search_and_select_file_by_name(target_file)
+            check.is_true(file_is_selected, f'❌ 搜索并选择固定文件失败: {target_file}')
+            self.chatPage.click_add_button()
+        with allure.step('3. 校验气泡文件名 100% 精准匹配并确认发送成功'):
+            self.chatPage.wait_for_chat_page_load()
+            actual_file_name = self.filePage.get_last_file_name_in_chat()
+            check.equal(actual_file_name, target_file, f'❌ 发送的文件名不一致。预期: {target_file}, 实际: {actual_file_name}')
+            is_success = self.chatPage.wait_for_last_message_send_status()
+            check.is_true(is_success, '❌ 文件消息未在规定时间内发送完成')
 
     @allure.story('发送基础小表情消息')
     @allure.title('发送基础小表情消息-正向流程-状态：已完成')

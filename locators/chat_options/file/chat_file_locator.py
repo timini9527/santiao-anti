@@ -58,12 +58,15 @@ class ChatFileLocator:
     # 跨平台 OR 运算的 XPath 模板（兼容 .format 调用）
     DOC_OR_GOO = _build_doc_xpath('{0}')
 
-    # 顶部 Bar
-    TOP_BAR_XPATH = DOC_OR_GOO.format('toolbar')
+    # 顶部 Bar（兼容老版本 Toolbar 与新版本 CoordinatorLayout/DrawerLayout 容器）
+    TOP_BAR_XPATH = _build_doc_xpath('toolbar', 'action_bar', 'coordinator_layout')
     # 左上角抽屉菜单
     DRAWER_MENU_BTN = (AppiumBy.XPATH, '//android.widget.ImageButton[@content-desc = "显示根目录"]')
-    # 顶部 Toolbar 上的目录/面包屑文本 
-    TOOLBAR_DIR_NAME = (AppiumBy.XPATH, f'{TOP_BAR_XPATH}/android.widget.TextView')
+    # 顶部标题栏上的当前目录/面包屑文本（自适应：优先基于“显示根目录”紧邻兄弟节点，兼容 Toolbar 子级）
+    TOOLBAR_DIR_NAME = (
+        AppiumBy.XPATH,
+        '//android.widget.ImageButton[@content-desc="显示根目录"]/following-sibling::android.widget.TextView[1]'
+    )
     # 搜索按钮（自适应 AOSP / Google / OPPO ColorOS / OPlus / content-desc）
     SEARCH_BTN = (
         AppiumBy.XPATH,

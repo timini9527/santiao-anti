@@ -36,6 +36,7 @@ class ImageSendOption:
     def __str__(self):
         return self.desc
 
+
 # ==================== 发送选项实例 ====================
 SEND_DIRECT           = ImageSendOption(name="direct",           desc="直接发送",       use_preview=False, use_original=False)
 SEND_PREVIEW          = ImageSendOption(name="preview",          desc="预览后发送",     use_preview=True,  use_original=False)
@@ -56,6 +57,7 @@ class BatchImageScenario:
     def __str__(self):
         return self.desc
 
+
 BATCH_IMAGE_SCENARIOS = [
     BatchImageScenario("批量3张-直接发送", 3, False, False),
     BatchImageScenario("批量3张-原图发送", 3, False, True),
@@ -64,8 +66,3 @@ BATCH_IMAGE_SCENARIOS = [
     BatchImageScenario("批量9张-直接发送", 9, False, False),
     BatchImageScenario("批量9张-预览+原图发送", 9, True, True, True),
 ]
-
-
-
-
-
