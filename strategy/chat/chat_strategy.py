@@ -88,6 +88,7 @@ PRIVATE_USER8 = ChatSessionStrategy(
     phone="38100000229"
 )
 
+
 # 停用或注销用户
 PRIVATE_DISABLE1 = ChatSessionStrategy(
     desc="私聊模式",
@@ -126,13 +127,23 @@ GROUP_STRATEGY5 = ChatSessionStrategy(
     is_admin=True
 )
 
+
+TEST_PRIVATE_USERS = [
+    ChatSessionStrategy(
+        desc="私聊模式",
+        name=f"测试13{i}",
+        phone=f"1920000013{i}"
+    )
+    for i in range(0, 6)
+]
+
 TEST_GROUPS = [
     ChatSessionStrategy(
         desc="群聊模式",
-        name=f"测试{i:03d}",
+        name=f"测试群{i:03d}",
         is_admin=True
     )
-    for i in range(1, 6)
+    for i in range(0, 6)
 ]
 
 

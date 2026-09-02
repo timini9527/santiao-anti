@@ -226,7 +226,6 @@ class ChatPage(BasePage):
         """聊天输入-点击发送消息按钮"""
         self.click(ChatLocator.SEND_BUTTON, force_wait=True)
         logger.info("🚀[Action-chat] - chat 点击发送按钮")
-        time.sleep(0.5)
 
     # 快捷功能-检测快捷功能面板是否可左右滑动
     def has_input_more_scrollable_indicator(self) -> bool:
@@ -384,16 +383,48 @@ class ChatPage(BasePage):
         return ""
 
     # 消息发送-发送一条文本消息并等待
-    def send_message(self, message: str, fast: bool = False):
+    def send_message(self, message: str, fast: bool = False, wait_time: float = 0.5):
         """
         消息发送-发送一条文本消息并等待
         :param message: 文本内容
-        :param fast: 是否使用极速输入
+        :param fast: 是否使用极速内存注入
+        :param wait_time: 发送后等待时间（秒），默认 0.5s（满足 100条/分钟 限流要求）
         """
         self.input_text(message, fast=fast)
         self.click_send_button()
         logger.info(f"🚀[Action-chat] - chat {'极速' if fast else ''}发送消息: {message}")
-        time.sleep(0.5)
+        if wait_time > 0:
+            time.sleep(wait_time)
+
+    # 消息发送-批量极速发送文本消息集合（元素句柄复用 + 平滑恒速流控）
+    def send_messages_batch(self, message_list: list[str], interval: float = 0.65):
+        """
+        消息发送-批量极速发送文本消息集合（平滑恒速流控：单条间隔 ~0.65s，自然满足 100条/分钟 限制）
+        :param message_list: 待发送文本列表
+        :param interval: 单条发送间隔（秒），默认 0.65s（约 92 条/分钟，均匀顺畅且绝不超限）
+        """
+        input_elem = self.find_element(ChatLocator.TEXT_INPUT)
+        if not input_elem:
+            raise NoSuchElementException("未找到聊天输入框")
+
+        send_btn = None
+        total = len(message_list)
+        logger.info(f"🚀 [Batch Send] 启动平滑批量消息发送通道，共 {total} 条消息，每条间隔 {interval}s...")
+
+        for idx, msg in enumerate(message_list):
+            self.driver.execute_script("mobile: replaceElementValue", {"elementId": input_elem.id, "text": msg})
+            if not send_btn:
+                send_btn = self.find_element(ChatLocator.SEND_BUTTON, timeout=2)
+            if send_btn:
+                send_btn.click()
+            else:
+                self.click(ChatLocator.SEND_BUTTON, force_wait=True)
+
+            if interval > 0:
+                time.sleep(interval)
+
+            if (idx + 1) % 20 == 0 or idx + 1 == total:
+                logger.info(f"⚡ [Batch Send] 发送进度: {idx + 1}/{total}")
 
     # ========================================================================================
     # 逻辑相关

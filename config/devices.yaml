@@ -135,8 +135,8 @@ devices:
 
     device9:
       platformName: "Android"
-      # udid: "emulator-5570"     # 模拟器9
-      udid: "192.168.1.16:5555"     # 模拟器9
+      udid: "emulator-5572"     # 模拟器9
+      # udid: "192.168.1.16:5555"     # 模拟器9
       deviceName: "Device9Phone"
       systemPort: 8208
       appiumServerUrl: "http://127.0.0.1:4731"
