@@ -211,21 +211,34 @@ class TestChat:
         import threading
         exceptions = []
 
-        def worker_send(chatListPage, chatPage, dev_name, session_list):
+        def worker_send(chatListPage, chatPage, dev_name, sessions):
             try:
-                for s_idx, target in enumerate(session_list):
+                # 兼容单一策略对象或列表；群聊取首个指定群，私聊按序轮询多会话
+                session_list = sessions if isinstance(sessions, list) else [sessions]
+                targets = [session_list[0]] if session_type == "群聊" else session_list
+                total = len(targets)
+                is_group = (session_type == "群聊")
+
+                for s_idx, target in enumerate(targets):
+                    desc = "指定群聊" if is_group else f"第 {s_idx + 1}/{total} 个单聊"
+                    prefix = "" if is_group else f"U{s_idx + 1}_"
+
                     chatListPage.enter_chat(target.name)
-                    logger.info(f'🚀 设备 [{dev_name}] 进入第 {s_idx + 1}/{len(session_list)} 个{session_type}【{target.name}】，开始连续循环发送 {loop_count} 轮...')
+                    logger.info(f'🚀 设备 [{dev_name}] 进入{desc}【{target.name}】，开始连续批量发送 {loop_count} 轮...')
+
                     for loop in range(loop_count):
                         payloads = [
-                            f'[{dev_name}] S{s_idx + 1}_L{loop + 1}_M{idx + 1}: {msg_data.get("context", "")}'
+                            f'[{dev_name}] {prefix}L{loop + 1}_M{idx + 1}: {msg_data.get("context", "")}'
                             for idx, msg_data in enumerate(CHAT_CSV_DATA)
                         ]
                         chatPage.send_messages_batch(payloads, interval=interval)
-                        logger.debug(f'✅ 设备 [{dev_name}] 在【{target.name}】中完成第 {loop + 1}/{loop_count} 轮发送')
-                    logger.info(f'✅ 设备 [{dev_name}] 已发完【{target.name}】的全部 {loop_count} 轮消息，退回主页并进入下一个会话...')
+                        logger.debug(f'✅ 设备 [{dev_name}] 在{session_type}【{target.name}】中完成第 {loop + 1}/{loop_count} 轮发送')
+
+                    action_tip = "退回主页..." if is_group or (s_idx + 1 == total) else "退回主页并轮询下一个会话..."
+                    logger.info(f'✅ 设备 [{dev_name}] 已发完{desc}【{target.name}】的全部 {loop_count} 轮消息，{action_tip}')
                     chatPage.click_back_button()
                     time.sleep(0.5)
+
             except Exception as e:
                 logger.error(f'❌ 设备 [{dev_name}] {session_type}异步发送时发生异常: {e}')
                 exceptions.append((dev_name, e))
@@ -326,10 +339,59 @@ class TestChat:
         }
         self._run_async_multi_device_send(
             device_sessions_map=device_users_map,
-            loop_count=1,
+            loop_count=5,
             interval=0.5,
             session_type="单聊"
         )
+
+
+    @allure.story('发送 Text 消息')
+    @allure.title('多设备群聊与单聊合并异步并行发送 Text 消息-状态：已完成')
+    def test_send_text_message_async_multi_device_combined(self, setup_test):
+        """
+        用例名称：多设备群聊与单聊合并异步并行发送消息测试
+        业务流程：
+        1. 阶段一：各就绪设备异步并发进入目标群聊窗口，批量发送 CSV 文本消息集，全部发完后退回主列表；
+        2. 阶段二：各就绪设备按序进入目标私聊会话，批量发送 CSV 文本消息集，全部发完后退回主列表；
+        3. 等待各阶段所有线程执行结束并做异常校验断言
+        """
+        dev5_groups = [TEST_GROUPS[0]]
+        dev6_groups = [TEST_GROUPS[1]]
+        dev7_groups = [TEST_GROUPS[2]]
+        dev8_groups = [TEST_GROUPS[3]]
+        dev9_groups = [TEST_GROUPS[4]]
+        device_groups_map = {
+            5: ('Device_5', dev5_groups),
+            6: ('Device_6', dev6_groups),
+            7: ('Device_7', dev7_groups),
+            8: ('Device_8', dev8_groups),
+            9: ('Device_9', dev9_groups)
+        }
+        device_users_map = {
+            5: ('Device_5', TEST_PRIVATE_USERS),
+            6: ('Device_6', TEST_PRIVATE_USERS),
+            7: ('Device_7', TEST_PRIVATE_USERS),
+            8: ('Device_8', TEST_PRIVATE_USERS),
+            9: ('Device_9', TEST_PRIVATE_USERS)
+        }
+
+        with allure.step("1. 阶段一：多设备群聊异步并发发送"):
+            logger.info("🚀 [Combined Test] 启动阶段一：多设备群聊并发发送...")
+            self._run_async_multi_device_send(
+                device_sessions_map=device_groups_map,
+                loop_count=1,
+                interval=0.5,
+                session_type="群聊"
+            )
+
+        with allure.step("2. 阶段二：多设备单聊异步并发发送"):
+            logger.info("🚀 [Combined Test] 启动阶段二：多设备单聊并发发送...")
+            self._run_async_multi_device_send(
+                device_sessions_map=device_users_map,
+                loop_count=1,
+                interval=0.5,
+                session_type="单聊"
+            )
 
 
 

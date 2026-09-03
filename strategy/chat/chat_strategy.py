@@ -129,12 +129,18 @@ GROUP_STRATEGY5 = ChatSessionStrategy(
 
 
 TEST_PRIVATE_USERS = [
+    # ChatSessionStrategy(
+    #     desc="私聊模式",
+    #     name=f"测试13{i}",
+    #     phone=f"1920000013{i}"
+    # )
+    # for i in range(0, 6)
     ChatSessionStrategy(
         desc="私聊模式",
-        name=f"测试13{i}",
-        phone=f"1920000013{i}"
+        # name="测试0225",
+        name="3T_im7i3EO",
+        phone=""
     )
-    for i in range(0, 6)
 ]
 
 TEST_GROUPS = [
@@ -143,7 +149,7 @@ TEST_GROUPS = [
         name=f"测试群{i:03d}",
         is_admin=True
     )
-    for i in range(0, 6)
+    for i in range(1, 6)
 ]
 
 
