@@ -329,7 +329,6 @@ class ChatImagePage(ChatPage):
 
                 before_count = self.get_selected_image_count(raise_exception=False)
                 button.click()
-                time.sleep(0.1)
 
                 # 处理超过上限的阻断弹窗（如第 10 张）
                 if before_count >= max_limit:
@@ -344,7 +343,6 @@ class ChatImagePage(ChatPage):
                 if after_count < before_count:
                     logger.warning("⚠️ 误点了已勾选图片导致取消，重新点击以恢复勾选")
                     button.click()
-                    time.sleep(0.2)
                     continue
 
                 if after_count > before_count:

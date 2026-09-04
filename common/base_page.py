@@ -481,7 +481,7 @@ class BasePage:
         return int(rect['x'] + rect['width'] / 2), int(rect['y'] + rect['height'] / 2)
     
     @allure.step("通过坐标进行点击: {x}, {y}")
-    def click_by_coordinate(self, x, y):
+    def click_by_coordinate(self, x: int | float, y: int | float):
         """ 点击固定坐标 """
         self.driver.tap([(x, y)])
         logger.info(f"[Action] 通过坐标进行点击，点击坐标: {x}, {y}")
@@ -736,21 +736,22 @@ class BasePage:
 
 
     @allure.step("执行滑动操作")
-    def swipe(self, start_x: int, start_y: int, end_x: int, end_y: int, duration: int = 500):
+    def swipe(self, start_x: int, start_y: int, end_x: int, end_y: int, duration: int = 500, toptime: int = 50):
         """
         核心滑动执行器 (W3C 标准)
-        :param duration: 滑动持续时间，默认1000毫秒
+        :param duration: 滑动持续时间，默认500毫秒
+        :param toptime: 按下起点后的短暂贴合停顿时间(ms)，默认50毫秒（严防触发 Android 500ms 长按阈值）
         """
         try:
-            logger.info(f"滑动轨迹: ({start_x}, {start_y}) -> ({end_x}, {end_y}) | 时长: {duration}ms")
+            logger.info(f"滑动轨迹: ({start_x}, {start_y}) -> ({end_x}, {end_y}) | 时长: {duration}ms | 贴合: {toptime}ms")
             actions, touch_input = self.init_w3c_actions()
 
             # 动作序列: 移动至起点 -> 按下 -> 短暂停顿贴合 -> 平滑移动至终点 -> 终点停顿120ms(初速度归零杀死Fling惯性) -> 抬起手指
             touch_input.create_pointer_move(x=start_x, y=start_y, duration=0, origin="viewport")
             touch_input.create_pointer_down(button=0)
-            touch_input.create_pause(duration/1000) 
+            touch_input.create_pause(toptime / 1000) 
             touch_input.create_pointer_move(x=end_x, y=end_y, duration=duration, origin="viewport")
-            touch_input.create_pause(0.12)  # 强制将抬手瞬间加速度归零，彻底杀死列表抛滑(Fling)惯性
+            touch_input.create_pause(0.2)  # 强制将抬手瞬间加速度归零，彻底杀死列表抛滑(Fling)惯性
             touch_input.create_pointer_up(button=0)
             actions.perform()
             time.sleep(0.1)
@@ -759,12 +760,13 @@ class BasePage:
             raise RuntimeError(f"执行手指手势操作失败: {str(e)}")
 
     @allure.step("在指定的坐标边界内容固定按预定距离滑动")
-    def swipe_to_distance(self, slid_type: str = "up", rect: dict = None, duration: int = 300, times: int = 1, x_ratio: float = 0.5, y_ratio: float = 0.5) -> None:
+    def swipe_to_distance(self, slid_type: str = "up", rect: dict = None, duration: int = 300, times: int = 1, x_ratio: float = 0.5, y_ratio: float = 0.5, toptime: int = 50) -> None:
         """
         在指定字典区域的边界内计算滑动（预留 20% 安全区防误触）
         :param slid_type: 'up'(手指上滑) / 'down'(手指下滑) / 'left'(手指左滑) / 'right'(手指右滑)
         :param x_ratio: 纵向滑动时，X轴位置占区域宽度的比例，默认 0.5
         :param y_ratio: 横向滑动时，Y轴位置占区域高度的比例，默认 0.5
+        :param toptime: 按下贴合停顿时间(ms)，默认50ms
         """
         if not rect:
             return
@@ -792,25 +794,25 @@ class BasePage:
             else:
                 raise ValueError(f"不支持的滑动方向: {slid_type}")
 
-            self.swipe(start_x, start_y, end_x, end_y, duration)
+            self.swipe(start_x, start_y, end_x, end_y, duration, toptime=toptime)
     
     @allure.step("屏幕全局滑动")
-    def swipe_page(self, slid_type: str = 'up', duration: int = 500, times: int = 1, x_ratio: float = 0.5, y_ratio: float = 0.5):
+    def swipe_page(self, slid_type: str = 'up', duration: int = 500, times: int = 1, x_ratio: float = 0.5, y_ratio: float = 0.5, toptime: int = 50):
         """ 全屏滑动：封装成全屏尺寸后转交 swipe_to_distance 处理 """
         size = self.driver.get_window_size()
         rect = {'x': 0, 'y': 0, 'width': size['width'], 'height': size['height']}
-        self.swipe_to_distance(slid_type=slid_type, rect=rect, duration=duration, times=times, x_ratio=x_ratio, y_ratio=y_ratio)
+        self.swipe_to_distance(slid_type=slid_type, rect=rect, duration=duration, times=times, x_ratio=x_ratio, y_ratio=y_ratio, toptime=toptime)
 
     @allure.step("元素内局域滑动")
-    def swipe_on_element(self, element, slid_type: str = "left", duration: int = 600):
+    def swipe_on_element(self, element, slid_type: str = "left", duration: int = 600, toptime: int = 50):
         """ 元素内滑动：提取元素物理 rect 后转交 swipe_to_distance 处理 """
         if element is None:
             raise ValueError("必须提供有效的元素对象")
-        self.swipe_to_distance(slid_type=slid_type, rect=element.rect, duration=duration, times=1)
+        self.swipe_to_distance(slid_type=slid_type, rect=element.rect, duration=duration, times=1, toptime=toptime)
 
     @allure.step("以指定固定区域(rect)的偏移中心点为起滑基准，按给定的 X/Y 偏移量进行精确滑动")
     def swipe_by_offset(self, rect: dict, start_x_offset: int = 0, start_y_offset: int = 0, 
-                        x_offset: int = 0, y_offset: int = 0, duration: int = 500):
+                        x_offset: int = 0, y_offset: int = 0, duration: int = 500, toptime: int = 50):
         """
         以指定固定区域(rect)的中心点（叠加起始偏移）为起滑基准，按给定的 X/Y 偏移量进行精确滑动。
         :param rect: 固定的安全容器边界字典 {'x':., 'y':., 'width':., 'height':.}
@@ -819,6 +821,7 @@ class BasePage:
         :param x_offset: X轴手指偏移量（负数=手指左移/页面右偏，正数=手指右移/页面左偏）
         :param y_offset: Y轴手指偏移量（负数=手指上移/页面下偏，正数=手指下移/页面上偏）
         :param duration: 滑动动作耗时(ms)
+        :param toptime: 按下贴合停顿时间(ms)，默认50ms
         """
         if not rect:
             raise ValueError("必须提供有效的安全区域 rect (如容器元素的 rect)")
@@ -845,12 +848,15 @@ class BasePage:
         end_x = max(5, min(end_x, max_x - 5))
         end_y = max(5, min(end_y, max_y - 5))
 
-        self.swipe(start_x, start_y, end_x, end_y, duration)
+        self.swipe(start_x, start_y, end_x, end_y, duration, toptime=toptime)
         time.sleep(0.08)
 
     @allure.step("极速滑动与状态检测(刷底/刷顶)")
-    def swipe_page_quickly(self, element=None, slid_type: str = "down", duration: int = 100, max_swipes: int = 10, item_locator: tuple | None = None):
+    def swipe_page_quickly(self, element=None, slid_type: str = "down", duration: int = 100, max_swipes: int = 10, item_locator: tuple | None = None, toptime: int = 50):
         """ 智能边界嗅探：不停滑动直到 DOM (page_source) 或列表条目停止变化 """
+        if isinstance(element, str):
+            slid_type = element
+            element = None
         logger.info(f"极速滑动自动探测边界启动 (Max:{max_swipes}次)")
         previous_source = ""
         previous_items_text = []
@@ -869,12 +875,50 @@ class BasePage:
                 if not is_changed:
                     break
             if element:
-                self.swipe_on_element(element=element, slid_type=slid_type, duration=duration)
+                self.swipe_on_element(element=element, slid_type=slid_type, duration=duration, toptime=toptime)
             else:
-                self.swipe_page(slid_type=slid_type, duration=duration, times=1)
+                self.swipe_page(slid_type=slid_type, duration=duration, times=1, toptime=toptime)
             time.sleep(0.2)
         else:
             logger.warning(f"⚠️ 滑满上限({max_swipes}次)仍见变化，强制挂起停止")
+
+    @allure.step("智能滚动查找指定元素")
+    def scroll_to_element(
+        self,
+        locator: tuple,
+        container: WebElement = None,
+        max_swipes: int = 5,
+        slid_type: str = "up",
+        duration: int = 400,
+        toptime: int = 50
+    ) -> WebElement | None:
+        """
+        [通用动作] 智能滚动查找元素：先探测当前视口，未找到则沿指定方向平滑滑动查找
+        :param locator: 元素定位符元组 (By, value)
+        :param container: 可选的局域滑动容器 WebElement 对象（若为 None 则默认全屏滑动）
+        :param max_swipes: 最大滑动查找次数，默认 5 次
+        :param slid_type: 滑动方向 ('up': 手指上滑/页面下移, 'down': 手指下滑/页面上移)
+        :param duration: 每次滑动动作耗时(ms)，默认 400ms
+        :param toptime: 按下起点贴合停顿时间(ms)，默认 50ms
+        :return: 找到的 WebElement 对象，若未找到返回 None
+        """
+        element = self.find_element(locator, timeout=1, raise_exception=False, expect_missing=True)
+        if element:
+            return element
+
+        for i in range(max_swipes):
+            if container:
+                self.swipe_on_element(container, slid_type=slid_type, duration=duration, toptime=toptime)
+            else:
+                self.swipe_page(slid_type=slid_type, duration=duration, times=1, toptime=toptime)
+            time.sleep(0.3)
+            element = self.find_element(locator, timeout=1, raise_exception=False, expect_missing=True)
+            if element:
+                logger.info(f"🔍 [Scroll] 滑动第 {i + 1} 次成功找到元素: {locator}")
+                return element
+
+        logger.warning(f"⚠️ [Scroll] 滑动 {max_swipes} 次后仍未找到目标元素: {locator}")
+        return None
 
     @allure.step("按键操作: 触发物理/软键盘按键")
     def press_keycode(self, keycode: int = 66, input_locator=None) -> bool:
