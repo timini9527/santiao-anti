@@ -388,7 +388,7 @@ class ChatPage(BasePage):
     # 消息状态-智能等待批量多媒体消息挂载并完成发送
     def wait_for_batch_media_send_completed(
         self, 
-        expected_count: int, 
+        expected_count: int,
         msg_type: Literal['image', 'video'], 
         timeout: int = 30
     ) -> bool:
