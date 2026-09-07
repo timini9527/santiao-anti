@@ -187,41 +187,41 @@ class TestChatImages:
 
         with allure.step(f"1. 进入与【{strategy.name}】的聊天并打开相册"):
             self._enter_chat(strategy.name)
-            # self.chatPage.send_message(f"批量多选发图测试: {scenario.desc}")
-        #     self.imagePage.open_panel_to_album()
+            self.chatPage.send_message(f"批量多选发图测试: {scenario.desc}")
+            self.imagePage.open_panel_to_album()
 
-        # with allure.step(f"2. 连续勾选 {scenario.count} 张图片并校验已选数量"):
-        #     actual_count, _ = self.imagePage.select_multiple_images(count=scenario.count)
-        #     check.equal(actual_count, scenario.count, f"批量勾选数量不正确: actual={actual_count}, expected={scenario.count}")
-        #     check.is_true(self.imagePage.verify_selected_count(scenario.count), f"底部已选数量显示错误: expected={scenario.count}")
-        #     check.is_true(actual_count <= 9, f"单次选择张数不应超过9张, actual={actual_count}")
+        with allure.step(f"2. 连续勾选 {scenario.count} 张图片并校验已选数量"):
+            actual_count, _ = self.imagePage.select_multiple_images(count=scenario.count)
+            check.equal(actual_count, scenario.count, f"批量勾选数量不正确: actual={actual_count}, expected={scenario.count}")
+            check.is_true(self.imagePage.verify_selected_count(scenario.count), f"底部已选数量显示错误: expected={scenario.count}")
+            check.is_true(actual_count <= 9, f"单次选择张数不应超过9张, actual={actual_count}")
             
-        # with allure.step("3. 处理原图选项"):
-        #     if scenario.use_original:
-        #         self.imagePage.click_original_image_button()
-        #         check.equal(self.imagePage.get_original_image_button_status(), 'true', "原图选项未勾选成功")
+        with allure.step("3. 处理原图选项"):
+            if scenario.use_original:
+                self.imagePage.click_original_image_button()
+                check.equal(self.imagePage.get_original_image_button_status(), 'true', "原图选项未勾选成功")
             
-        # with allure.step("4. 处理预览能力"):
-        #     if scenario.use_preview:    
-        #         self.imagePage.click_preview_button()
-        #         result = self.imagePage.is_in_preview_mode()
-        #         check.is_true(result, "未成功进入预览页")
+        with allure.step("4. 处理预览能力"):
+            if scenario.use_preview:    
+                self.imagePage.click_preview_button()
+                result = self.imagePage.is_in_preview_mode()
+                check.is_true(result, "未成功进入预览页")
 
-        #         check.is_true(self.imagePage.verify_selected_count(scenario.count), f"预览页已选数量错误: expected={scenario.count}")
+                check.is_true(self.imagePage.verify_selected_count(scenario.count), f"预览页已选数量错误: expected={scenario.count}")
 
-        #         if scenario.verify_preview_swipe and scenario.count >= 2:
-        #             preview_before = self.imagePage.get_preview_signature()
-        #             self.imagePage.swipe_preview_left()
-        #             preview_after = self.imagePage.get_preview_signature()
-        #             check.not_equal(preview_after, preview_before, "预览页左滑后图片未发生变化")
+                if scenario.verify_preview_swipe and scenario.count >= 2:
+                    preview_before = self.imagePage.get_preview_signature()
+                    self.imagePage.swipe_preview_left()
+                    preview_after = self.imagePage.get_preview_signature()
+                    check.not_equal(preview_after, preview_before, "预览页左滑后图片未发生变化")
 
-        #             self.imagePage.swipe_preview_right()
-        #             preview_back = self.imagePage.get_preview_signature()
-        #             distance = ScreenshotUtils.hamming_distance(preview_back, preview_before)
-        #             check.is_true(distance <= 3, f"预览页右滑返回后未恢复到原图 (汉明距离 {distance} > 3)")
+                    self.imagePage.swipe_preview_right()
+                    preview_back = self.imagePage.get_preview_signature()
+                    distance = ScreenshotUtils.hamming_distance(preview_back, preview_before)
+                    check.is_true(distance <= 3, f"预览页右滑返回后未恢复到原图 (汉明距离 {distance} > 3)")
             
-        # with allure.step("5. 发送图片"):
-        #     self.imagePage.click_send_button()
+        with allure.step("5. 发送图片"):
+            self.imagePage.click_send_button()
             
         with allure.step("6. 校验聊天区图片消息已新增"):
             success_count, result, fail_count = self.chatPage.verify_batch_sent_messages(scenario.count, 'image', scenario.desc)

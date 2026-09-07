@@ -385,6 +385,83 @@ class ChatPage(BasePage):
         logger.error(f"❌ [Status] 监控超时({timeout}s)，状态图标仍未消失(转为失败红点)，判定发送失败。")
         return False
 
+    # 消息状态-智能等待批量多媒体消息挂载并完成发送
+    def wait_for_batch_media_send_completed(
+        self, 
+        expected_count: int, 
+        msg_type: Literal['image', 'video'], 
+        timeout: int = 30
+    ) -> bool:
+        """
+        消息状态-智能等待批量多媒体消息挂载并完成发送（工业级四重闭环保障）
+        1. 页面守卫：确保回到聊天主页（输入框可见）
+        2. 挂载守卫：轮询等待屏幕内目标媒体开始挂载，最新消息变为目标媒体
+        3. 传输守卫：全局监控当前屏幕内所有发送中转圈(delivery_status)全部消失
+        4. 防抖确认：持续 0.5s 无状态翻转，确保后端 ACK 完全持久化
+        :param expected_count: 预期批量发送的消息数量
+        :param msg_type: 'image' 或 'video'
+        :param timeout: 最大超时时间(秒)
+        :return: 是否全部就绪并发送成功
+        """
+        logger.info(f"⏳ [Media-Wait] 启动批量 {msg_type} × {expected_count} 消息就绪监控 (Max: {timeout}s)...")
+        start_time = time.time()
+
+        # 1. 页面守卫：确保已彻底从相册退回聊天主页
+        self.wait_for_chat_page_load(timeout=5, raise_exception=False)
+
+        target_locator = ChatLocator.IMAGE_ITEM if msg_type == 'image' else ChatLocator.VIDEO_PLAY_BUTTON_ITEM
+        mounted = False
+
+        # 2. 挂载守卫：等待最新消息确认为目标媒体，且至少有消息开始挂载
+        mount_start = time.time()
+        while time.time() - mount_start < min(12, timeout):
+            last_item = self.get_last_message_layout_item()
+            if last_item:
+                media_elems = last_item.find_elements(*target_locator)
+                if media_elems:
+                    mounted = True
+                    logger.info(f"✅ [Media-Wait] 最新消息已成功挂载为 {msg_type} (耗时: {round(time.time() - mount_start, 2)}s)")
+                    break
+            time.sleep(0.3)
+
+        if not mounted:
+            logger.warning(f"⚠️ [Media-Wait] 超时未检测到最新的 {msg_type} 消息挂载至列表底部")
+            return False
+
+        logger.info(f"✅ [Media-Wait] 检测到首批 {msg_type} 消息已挂载上屏，开始监控整批上传状态...")
+
+        # 3. 传输守卫 + 防抖确认：监控当前聊天流内所有发送中转圈彻底清零
+        quiescent_count = 0  # 连续静默采样计数
+        last_log_time = time.time()
+
+        while time.time() - start_time < timeout:
+            try:
+                # 获取当前屏幕上所有可能正在发送的图标
+                status_icons = self.find_elements(ChatLocator.FAIL_MSG, timeout=1, expect_missing=True) or []
+                
+                # 检查是否有处于展示态的发送中图标
+                in_flight = any(icon.is_displayed() for icon in status_icons)
+
+                if not in_flight:
+                    quiescent_count += 1
+                    # 连续 2 次采样（跨越 0.6s）均无转圈中图标，确认状态彻底稳定
+                    if quiescent_count >= 2:
+                        logger.info(f"🎉 [Media-Wait] 全部 {msg_type} 消息发送状态闭环就绪！(耗时: {round(time.time() - start_time, 2)}s)")
+                        return True
+                else:
+                    quiescent_count = 0
+                    if time.time() - last_log_time >= 3:
+                        logger.info(f"⏳ [Media-Wait] 检测到多媒体正在后台并发上传中... 已等待 {int(time.time() - start_time)}s")
+                        last_log_time = time.time()
+
+            except Exception as e:
+                logger.debug(f"状态轮询异常，继续重试: {e}")
+
+            time.sleep(0.3)
+
+        logger.warning(f"⚠️ [Media-Wait] 达到最大等待上限({timeout}s)，进入后续校验")
+        return False
+
     # 消息状态-获取最后一条消息是否包含发送失败状态
     def get_last_message_send_fail_status(self) -> bool:
         """消息状态-获取最后一条消息是否包含发送失败状态"""
@@ -599,8 +676,8 @@ class ChatPage(BasePage):
         :param max_slide: 最大向上回溯滑动次数
         :return: (实际找到的媒体消息数, 描述文本是否匹配成功, 失败红点消息数)
         """
-        # 1. 智能等待最新一条消息发送完成
-        self.wait_for_last_message_send_status(timeout=10)
+        # 1. 智能等待最新一条媒体消息挂载并完成发送
+        self.wait_for_batch_media_send_completed(expected_count=expected_count, msg_type=msg_type, timeout=30)
         
         found_count = 0
         fail_count = 0
@@ -649,6 +726,15 @@ class ChatPage(BasePage):
                     elem_h = c_rect['height']
                     elem_bottom = elem_y + elem_h
 
+                    # 🌟 优先检测基准锚点文本（前置检测：无论是否被顶部导航栏或群公告遮挡，只要DOM中存在即可标记命中）
+                    if expect_text and not text_matched:
+                        text_nodes = container.find_elements(*ChatLocator.MESSAGE_CONTENT_ITEM)
+                        if text_nodes:
+                            content = text_nodes[0].text or text_nodes[0].get_attribute('text') or ""
+                            if expect_text in content:
+                                text_matched = True
+                                logger.info(f"💬 [索引:{global_index}] 成功在DOM中匹配到基准锚点文本 '{expect_text}' (Y={elem_y})")
+
                     # 🌟 核心过滤 1：过滤被顶部透明导航栏遮挡的元素（元素底部在导航栏底边之上）
                     if elem_y < safe_top_ye:
                         logger.warning(f"⚠️ 元素Y坐标 {elem_y} 位于顶部导航栏区域({safe_top_ys} - {safe_top_ye})之上, 跳过")
@@ -688,13 +774,6 @@ class ChatPage(BasePage):
                             logger.info(f"🎥 [索引:{global_index}] 匹配到第 {found_count + 1}/{expected_count} 条视频")
 
                     global_index += 1
-
-                    # 检查基准锚点文本
-                    if expect_text and not text_matched:
-                        text_nodes = container.find_elements(*ChatLocator.MESSAGE_CONTENT_ITEM)
-                        if text_nodes and expect_text in text_nodes[0].text:
-                            text_matched = True
-                            logger.info(f"💬 [索引:{global_index}] 成功匹配到基准文本 '{expect_text}'")
 
                     if is_media and found_count < expected_count:
                         found_count += 1
