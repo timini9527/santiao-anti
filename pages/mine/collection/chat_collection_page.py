@@ -231,7 +231,21 @@ class ChatCollectionPage(ChatPage):
         """ 聊天收藏-点击面板发送按钮 """
         self.click(CollectionLocator.CONTENT_SEND, force_wait=True) 
         logger.info("✅ [Action] - 聊天收藏-点击面板发送按钮")
- 
+
+    # 聊天收藏-点击面板关闭按钮
+    def click_send_collection_panel_close(self, force_wait: bool = True):
+        """ 聊天收藏-点击发送面板关闭/取消按钮 """
+        self.click(CollectionLocator.IV_CLOSE, force_wait=force_wait)
+        logger.info("🔙 [Action] - 聊天收藏-点击发送面板关闭按钮")
+    
+    # 聊天收藏-获取面板标题
+    def get_send_collection_panel_title(self) -> str:
+        """ 聊天收藏-获取面板标题 """
+        title = self.get_attribute(CollectionLocator.TV_TITLE, 'text')
+        logger.info(f"📋 [Action] - 聊天收藏-获取面板标题: {title}")
+        return title
+
+
  
     # 我的收藏-获取收藏页面空状态
     def get_empty_layout(self) -> WebElement:

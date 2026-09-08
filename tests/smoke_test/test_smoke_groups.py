@@ -459,7 +459,7 @@ class TestSmokeGroupBot(BaseSmokeGroupSingle):
             test_msg = '机器人发言总开关关闭测试'
             self.chatPageR.send_message(test_msg)
             time.sleep(1)
-            last_text = self.chatPageR.get_last_message_text()
+            last_text = self.chatPageR.get_text_message_content_by_index(index=-1, side='sent')
             check.equal(last_text, test_msg, '❌ 发言管理关闭后，消息未能发送成功或内容不符')
 
     @allure.story('禁发关键词检测')

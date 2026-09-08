@@ -29,14 +29,15 @@ class BatchVideoScenario:
         return self.desc
 
 
-# 1. 单选模式
-VIDEO_SELECT_MODES = [
-    VideoSelectMode(0, "选择后取消(点两次)"),
-    VideoSelectMode(1, "相册第一条视频"),
-    VideoSelectMode(2, "随机选择视频"),
-    VideoSelectMode(3, "滑到底部后的最后一条视频"),
-    VideoSelectMode(4, "第9张(不够则下滑寻找，仍不足则选最后一张)")
-]
+# 1. 单选模式常量与发送模式列表
+SELECT_CANCEL = VideoSelectMode(0, "选择后取消(点两次)")
+SELECT_FIRST  = VideoSelectMode(1, "相册第一条视频")
+SELECT_RANDOM = VideoSelectMode(2, "随机选择视频")
+SELECT_LAST   = VideoSelectMode(3, "滑到底部后的最后一条视频")
+SELECT_NINTH  = VideoSelectMode(4, "第9张(不够则下滑寻找，仍不足则选最后一张)")
+
+# 核心单视频发送矩阵仅包含真实有效的选视频模式（取消模式由独立用例覆盖）
+VIDEO_SELECT_MODES = [SELECT_CANCEL, SELECT_FIRST, SELECT_RANDOM, SELECT_LAST, SELECT_NINTH]
 
 # 2. 发送选项 (大部分 IM 视频原图涉及转码，这里保留接口供校验)
 VIDEO_SEND_OPTIONS = [

@@ -81,7 +81,7 @@ class TestSmokeChatOptions(BaseSmokeChatOptions):
             preview_signature = self.imagePage.get_preview_signature()
         with allure.step('3. 点击发送图片并等待消息成功上屏'):
             self.imagePage.click_send_button()
-            is_sent = self.chatPage.wait_for_last_message_send_status()
+            is_sent = self.chatPage.wait_for_batch_media_send_completed(expected_count=1, msg_type='image', timeout=20)
             check.is_true(is_sent, '❌ 图片消息未在规定时间内发送完成')
         with allure.step('4. 点击已发送图片气泡并校验图像指纹一致性'):
             self.imagePage.click_last_sent_image()
@@ -94,15 +94,24 @@ class TestSmokeChatOptions(BaseSmokeChatOptions):
     @allure.story('发送视频消息')
     @allure.title('单条视频发送并校验-状态：已完成')
     def test_video_send_success(self):
-        with allure.step('1. 进入会话并打开视频选择'):
+        with allure.step('1. 进入会话并发送前置锚点消息'):
             self.chatListPage.enter_chat(PRIVATE_USER1.name)
+            self.chatPage.send_message('冒烟测试: 单条视频发送')
+        with allure.step('2. 进入相册并选择视频'):
             self.videoPage.open_panel_to_album()
-        with allure.step('2. 选择视频发送'):
-            self.videoPage.select_single_video(mode=1)
+            result = self.videoPage.select_single_video(mode=1)
+            check.is_true(result, '❌ 勾选视频失败，相册中未检测到可用视频')
+            check.equal(self.videoPage.get_selected_image_count(raise_exception=False), 1, '❌ 勾选后角标数量显示不为 1')
             self.videoPage.click_send_button()
-        with allure.step('3. 校验视频上屏'):
+        with allure.step('3. 智能等待发送完成并多维度校验上屏'):
+            is_sent = self.chatPage.wait_for_batch_media_send_completed(expected_count=1, msg_type='video', timeout=30)
+            check.is_true(is_sent, '❌ 视频消息未在规定时间内发送完成')
+            video_count, text_matched, fail_count = self.chatPage.verify_batch_sent_messages(1, 'video', '冒烟测试: 单条视频发送')
+            check.equal(video_count, 1, f'❌ 聊天区视频数量不匹配: actual={video_count}, expected=1')
+            check.is_true(text_matched, '❌ 前置锚点消息未匹配')
+            check.equal(fail_count, 0, '❌ 视频发送后检测到失败红点')
             video_duration = self.chatPage.get_chat_video_duration(index=-1)
-            check.is_true(bool(video_duration), '未检测到上屏视频消息的时长特征')
+            check.is_true(bool(video_duration), '❌ 未检测到上屏视频消息的时长特征')
 
     @allure.story('发送位置消息')
     @allure.title('发送定位消息-状态：已完成')
@@ -208,7 +217,7 @@ class TestSmokeChatOptions(BaseSmokeChatOptions):
             is_selected = self.contactSelectPage.click_contact_by_name(name=PRIVATE_USER2.name)
             check.is_true(is_selected, f'❌ 未能成功选择好友名片 {PRIVATE_USER2.name}')
             self.contactSelectPage.click_confirm()
-            self.chatPage.click_add_button()
+            self.chatPage.wait_for_chat_page_load()
         with allure.step('3. 验证聊天气泡内容显示'):
             result, card_info = self.chatPage.verify_card_in_chat(PRIVATE_USER2.name)
             check.is_true(result, f'❌ 聊天气泡中未发现好友 {PRIVATE_USER2.name} 的名片')

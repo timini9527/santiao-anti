@@ -13,7 +13,7 @@ class SessionSelectPage(CommonPage):
         :param msg_type: 消息类型 0: 文本/群聊/文件/视频/语音等 1: 图片
         """
         if msg_type == 1:
-            res = self.is_element_exist(SessionSelectLocator.RV_FRIENDS, timeout=timeout)
+            res = self.is_element_exist(SessionSelectLocator.FRIEND_RV, timeout=timeout)
         else:
             res = self.is_element_exist(SessionSelectLocator.SHARE_RV, timeout=timeout)
         logger.info(f"⏳ [Action] 会话选择页 - 页面加载 {'成功' if res else '超时'} in {timeout}s")
@@ -83,7 +83,7 @@ class SessionSelectPage(CommonPage):
             if elements:
                 elements[0].click()
                 logger.info(f"✅ [Action] 会话选择页 - 成功点击目标会话: {name}")
-                time.sleep(1)
+                time.sleep(0.5)
                 return True
 
             is_changed, last_source = self.is_page_source_changed(last_source)
@@ -98,13 +98,52 @@ class SessionSelectPage(CommonPage):
         logger.error(f"❌ [Action] 会话选择页 - 遍历结束或已到底部，未找到目标会话: {name}")
         return False
 
+    # ==================== 分享/转发确认弹层相关操作 ====================
 
-    
+    def wait_for_share_dialog_load(self, timeout: int = 5) -> bool:
+        """等待分享/转发确认弹层出现"""
+        res = self.is_element_exist(SessionSelectLocator.SEND_BUTTON, timeout=timeout)
+        logger.info(f"⏳ [Action] 会话选择页 - 分享确认弹层加载 {'成功' if res else '超时'} in {timeout}s")
+        return res
 
+    def click_share_dialog_send(self, force_wait: bool = True):
+        """点击分享确认弹层的【发送】按钮"""
+        self.click(SessionSelectLocator.SEND_BUTTON, force_wait=force_wait)
+        logger.info("✅ [Action] 会话选择页 - 点击分享弹层发送按钮")
 
+    def send_share_and_verify_toast(self, expected_toast: str = "转发成功", timeout: float = 3.0) -> bool:
+        """点击分享确认弹层的发送按钮，并立即捕获校验 Toast 提示"""
+        self.click_share_dialog_send()
+        return self.verify_toast_exist(expected_toast=expected_toast, timeout=timeout)
 
+    def click_share_dialog_close(self, force_wait: bool = True):
+        """点击分享确认弹层的【取消/关闭】按钮"""
+        self.click(SessionSelectLocator.CLOSE, force_wait=force_wait)
+        logger.info("🔙 [Action] 会话选择页 - 点击分享弹层取消按钮")
 
+    def input_share_dialog_comment(self, comment: str):
+        """在分享确认弹层的输入框中输入留言内容"""
+        self.send_keys(SessionSelectLocator.COMMENT_INPUT, comment)
+        logger.info(f"✏️ [Action] 会话选择页 - 分享弹层输入留言: {comment}")
 
+    def click_share_dialog_emoji(self, force_wait: bool = True):
+        """点击分享确认弹层的表情按钮"""
+        self.click(SessionSelectLocator.EMOJI_BUTTON, force_wait=force_wait)
+        logger.info("😄 [Action] 会话选择页 - 点击分享弹层表情按钮")
 
-
-
+    def confirm_share(self, comment: str = None, timeout: int = 5) -> bool:
+        """
+        高级业务组合方法：等待确认弹窗出现，可选输入留言，点击发送并完成分享
+        :param comment: 可选的附带留言文本
+        :param timeout: 最长等待超时时间
+        :return: 是否成功完成确认分享
+        """
+        if not self.wait_for_share_dialog_load(timeout=timeout):
+            logger.error("❌ [Action] 会话选择页 - 未检测到分享确认弹层，无法确认发送")
+            return False
+        if comment:
+            self.input_share_dialog_comment(comment)
+        self.click_share_dialog_send()
+        time.sleep(0.5)
+        logger.info("🎉 [Action] 会话选择页 - 成功确认并发送分享内容")
+        return True

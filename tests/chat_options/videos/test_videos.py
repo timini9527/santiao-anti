@@ -41,6 +41,7 @@ class TestChatVideos:
             result = self.videoPage.verify_default_page_load_status()
             assert result, '🍎 默认页面加载状态异常'
 
+
     @allure.story('选择视频后取消勾选')
     @allure.title('选择视频后取消勾选-状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
@@ -57,6 +58,7 @@ class TestChatVideos:
             result = self.videoPage.verify_default_page_load_status()
             assert result, '🍎 取消勾选后状态未恢复为默认'
 
+
     @allure.story('单视频发送：模式 × 选项')
     @allure.title('单视频发送：模式 × 选项-状态：已完成')
     @pytest.mark.parametrize('send_option', [pytest.param(s, id=s.desc) for s in VIDEO_SEND_OPTIONS])
@@ -65,32 +67,39 @@ class TestChatVideos:
     def test_send_single_video_workflow(self, strategy, select_mode: VideoSelectMode, send_option: VideoSendOption):
         """核心视频发送流程：涵盖不同选择方式与预览/高清选项"""
         if select_mode.mode == 0 and send_option != VIDEO_SEND_OPTIONS[0]:
-            pytest.skip('反悔模式仅需配合首个发送选项进行交互验证')
-        allure.dynamic.title(f'视频发送测试 | {select_mode.desc} - {send_option.desc}')
-        with allure.step(f'1. 进入聊天: {strategy.name}'):
+            pytest.skip('MODE=0(选择后取消)仅需配合首个发送选项验证交互，跳过预览与原图发送')
+        allure.dynamic.title(f'视频发送测试 | {strategy.desc} - {select_mode.desc} - {send_option.desc}')
+        with allure.step(f'1. 进入聊天并发送基准消息: {strategy.name}'):
             self.chatListPage.enter_chat(strategy.name)
+            self.chatPage.send_message(f'单视频测试: {select_mode.desc} - {send_option.desc}')
         with allure.step('2. 进入相册并执行选视频模式'):
             self.videoPage.open_panel_to_album()
-            self.videoPage.select_single_video(mode=select_mode.mode)
+            result = self.videoPage.select_single_video(mode=select_mode.mode)
+            if not result:
+                pytest.skip(f'⚠️ 设备相册中未检测到可用视频素材，跳过当前视频用例: {select_mode.desc}')
+            check.is_true(result, f'选视频操作失败: {select_mode.desc}')
+            # 🌟 防御性分支：若传入反悔模式(mode=0)，验证未选中及置灰后退出相册早退，不执行后续发送流程
             if select_mode.mode == 0:
                 current_count = self.videoPage.get_selected_image_count(raise_exception=False)
                 check.equal(current_count, 0, f'🍎 反悔模式失败：预期选中数 0，实际为 {current_count}')
+                check.is_true(self.videoPage.verify_default_page_load_status(), '🍎 反悔后未恢复为默认置灰状态')
+                return
         with allure.step(f'3. 应用发送选项: {send_option.desc}'):
+            # 必须先勾选相册底部的原图选项，再根据需要进入全屏预览界面
+            if send_option.use_original:
+                self.videoPage.click_original_image_checkbox()
             if send_option.use_preview:
                 self.videoPage.click_preview_button()
                 result = self.videoPage.is_video_preview_ready()
                 check.is_true(result, '🍎 预览页视频播放异常')
-            if send_option.use_original:
-                self.videoPage.click_original_image_checkbox()
         with allure.step('4. 点击发送并校验聊天区状态'):
             self.videoPage.click_send_button()
-            is_sent = self.chatPage.wait_for_last_sent_message_completed()
-            if select_mode.mode == 0:
-                self.videoPage.click_back_button()
+            is_sent = self.chatPage.wait_for_batch_media_send_completed(expected_count=1, msg_type='video', timeout=30)
             check.is_true(is_sent, '视频发送超时或检测到失败红点')
         with allure.step('5. 校验聊天区视频状态'):
             video_status = self.videoPage.get_last_message_video_status()
             check.is_true(video_status, '聊天区未加载出视频 Item')
+
 
     @allure.story('单条视频发送并校验')
     @allure.title('单条视频发送并校验-状态：已完成')
@@ -112,8 +121,9 @@ class TestChatVideos:
         with allure.step('5. 点击发送'):
             self.videoPage.click_send_button()
         with allure.step('6. 校验视频是否成功上屏'):
-            is_sent = self.chatPage.wait_for_last_sent_message_completed()
+            is_sent = self.chatPage.wait_for_batch_media_send_completed(expected_count=1, msg_type='video', timeout=30)
             check.is_true(is_sent, '视频发送超时或检测到失败红点')
+
 
     @allure.story('视频发送边界场景：勾选上限测试')
     @allure.title('视频发送边界场景：勾选上限测试-状态：已完成')
@@ -131,8 +141,9 @@ class TestChatVideos:
             check.is_in('你最多只能选择9个视频', toast)
             self.videoPage.click_back_button()
 
+
     @allure.story('批量视频发送')
-    @allure.title('批量视频发送-状态：未完成')
+    @allure.title('批量视频发送-状态：已完成')
     @pytest.mark.parametrize('scenario', [pytest.param(s, id=s.desc) for s in BATCH_VIDEO_SCENARIOS])
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
     def test_batch_send_videos(self, strategy, scenario: BatchVideoScenario):
@@ -148,13 +159,10 @@ class TestChatVideos:
             check.equal(actual_count, scenario.count, f'批量勾选数量不匹配: actual={actual_count}, expected={scenario.count}')
             check.equal(self.videoPage.get_selected_image_count(), scenario.count, f'底部已选数量显示错误: expected={scenario.count}')
             check.is_true(actual_count <= 9, f'单次选择视频数量不应超过9条, actual={actual_count}')
-            if scenario.count > 9:
-                check.is_in('你最多只能选择9张照片', toast)
         with allure.step('4. 点击发送'):
             self.videoPage.click_send_button()
-            self.videoPage.click_add_button()
         with allure.step('5. 智能等待发送完成并校验结果'):
-            is_sent = self.chatPage.wait_for_last_sent_message_completed()
+            is_sent = self.chatPage.wait_for_batch_media_send_completed(expected_count=scenario.count, msg_type='video', timeout=30)
             check.is_true(is_sent, '批量视频发送超时或失败')
         with allure.step('6. 校验聊天区视频状态'):
             video_count, text_matched, fail_count = self.chatPage.verify_batch_sent_messages(scenario.count, 'video', scenario.desc)

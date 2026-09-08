@@ -38,8 +38,9 @@ class GroupSettingLocator(ChatSettingLocator):
     # =========================================================================
     # 4. 快捷操作区域 (Quick Actions)
     # =========================================================================
-    GROUP_QUICK_SEARCH = (AppiumBy.ID, f"{PACKAGE_ID}/quick_search")                                    # 查找聊天记录
+    GROUP_QUICK_SEARCH = (AppiumBy.ID, f"{PACKAGE_ID}/quick_search")                                    # 查找聊天记录 / 搜索记录
     GROUP_QUICK_PIN = (AppiumBy.ID, f"{PACKAGE_ID}/quick_pin")                                          # 置顶聊天
+    GROUP_QUICK_PIN_TEXT = (AppiumBy.ID, f"{PACKAGE_ID}/quick_pin_text")                                # 置顶聊天状态文本（未置顶："置顶聊天"，已置顶："取消置顶"）
     GROUP_QUICK_MANAGE = (AppiumBy.ID, f"{PACKAGE_ID}/quick_manage")                                    # 群管理
     GROUP_QUICK_MORE = (AppiumBy.ID, f"{PACKAGE_ID}/quick_more")                                        # 更多操作菜单
 

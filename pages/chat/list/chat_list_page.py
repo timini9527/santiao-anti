@@ -29,11 +29,11 @@ class ChatListPage(ChatPage):
 
     # 快速下滑避免页面不是原始页面
     def _quick_slide_to_top(self):
-        self.swipe_page_quickly(slid_type='down', duration=200)
+        self.swipe_page_quickly(slid_type='down', duration=100)
 
     # 快速下滑一直到底部
     def _quick_slide_to_bottom(self):
-        self.swipe_page_quickly(slid_type='up', duration=200)
+        self.swipe_page_quickly(slid_type='up', duration=100)
 
     def _find_session_element_in_list(self, target_name: str, match_type: str = "exact", timeout: int = 3):
         """
@@ -190,9 +190,7 @@ class ChatListPage(ChatPage):
         session_row = self._get_row_element_by_name(session_name)
         if not session_row:
             raise ValueError(f"❌ 在列表中未找到会话: {session_name}，无法执行侧滑操作")
-
-        self.swipe_on_element(session_row, slid_type='left', duration=300)
-        # time.sleep(0.8)
+        self.swipe_on_element(session_row, slid_type='left', duration=300, toptime=500)
 
         # 2. 获取侧滑按钮文案并点击
         menu_text = self.get_attribute(menu_locator, 'text')
@@ -207,7 +205,6 @@ class ChatListPage(ChatPage):
                 time.sleep(0.5)
             else:
                 logger.info(f"🚫 当前按钮为[{menu_text}]，不需要执行[{slide_action}]，取消点击。")
-                # self.swipe_on_element(session_row, slider_type='right', duration=300)
                 session_row.click()
         else:
             # 盲点模式（不传 slide_action 时，无脑点）

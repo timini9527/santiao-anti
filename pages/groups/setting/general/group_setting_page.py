@@ -174,6 +174,19 @@ class GroupSettingPage(BasePage):
         self.click(GroupSettingLocator.GROUP_QUICK_PIN)
         logger.info("✅ [Action-groupSettingPage] 点击快捷【置顶】")
 
+    def get_switch_top_status(self) -> str:
+        """获取群聊快捷置顶状态：'取消置顶' 返回 'true'，'置顶聊天' 返回 'false'"""
+        text = self.get_attribute(GroupSettingLocator.GROUP_QUICK_PIN_TEXT, 'text', raise_exception=False)
+        if text == "取消置顶":
+            logger.info("🚀[Action-groupSettingPage] 群聊快捷置顶当前为【取消置顶】，状态为: true")
+            return 'true'
+        elif text == "置顶聊天":
+            logger.info("🚀[Action-groupSettingPage] 群聊快捷置顶当前为【置顶聊天】，状态为: false")
+            return 'false'
+        logger.warning(f"⚠️ [Action-groupSettingPage] 未知群聊置顶文本: {text}")
+        return text or ""
+
+
     def click_group_manager(self):
         """点击快捷【群管理】"""
         self.click(GroupSettingLocator.GROUP_QUICK_MANAGE)

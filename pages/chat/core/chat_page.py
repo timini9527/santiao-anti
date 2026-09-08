@@ -694,7 +694,6 @@ class ChatPage(BasePage):
             safe_top_ys = more_button.rect['y']
             safe_top_ye = more_button.rect['y'] + more_button.rect['height'] + 5
         else:
-            # 顶部基准边界 [915, 118][1036, 239]
             safe_top_ys = 118
             safe_top_ye = 239 + 5
 
@@ -703,7 +702,6 @@ class ChatPage(BasePage):
             safe_bottom_ys = chat_input_container.rect['y']
             safe_bottom_ye = chat_input_container.rect['y'] + chat_input_container.rect['height']
         else:
-            # 底部基准边界 [157, 2213][923, 2326]
             safe_bottom_ys = 2213
             safe_bottom_ye = 2326
 

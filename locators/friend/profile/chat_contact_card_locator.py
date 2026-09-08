@@ -5,11 +5,11 @@ class ChatContactCardLocator(CommonLocator):
     """名片模块特有定位器 (仅保留名片入口及消息气泡相关)"""
     PACKAGE_ID = CommonLocator.PACKAGE_ID
 
+
     # ==================== 名片入口（加号面板内）====================
     CONTACT_CARD_BTN_ID = f'{PACKAGE_ID}/imCardIcon'
     CONTACT_CARD_BTN = (AppiumBy.ID, CONTACT_CARD_BTN_ID)
 
-    
     CONTACT_CARD_ROOT_ID = f'{PACKAGE_ID}/more_action_root'
     CONTACT_CARD_CONTENT_ID = f'{PACKAGE_ID}/more_action_content'
     CONTACT_CARD_ROOT = (AppiumBy.XPATH, f'//*[@resource-id="{CONTACT_CARD_ROOT_ID}" and .//*[@text="名片"]]')

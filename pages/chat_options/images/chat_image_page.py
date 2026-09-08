@@ -154,7 +154,7 @@ class ChatImagePage(ChatPage):
     # 获取发送前所勾选的图片/视频数量
     def get_selected_image_count(self, raise_exception=True):
         """获取发送前所勾选的图片数量"""
-        selected_text = self.get_attribute(ChatImageLocator.PHOTO_SELECTED_COUNT_TEXT, 'text', timeout=2, raise_exception=raise_exception)
+        selected_text = self.get_attribute(ChatImageLocator.PHOTO_SELECTED_COUNT_TEXT, 'text', timeout=1, raise_exception=raise_exception)
         if selected_text and str(selected_text).isdigit():
             logger.info(f"✅ 已勾选 {selected_text} 张图片")
             return int(selected_text)
@@ -302,19 +302,21 @@ class ChatImagePage(ChatPage):
     # 在相册网格中连续勾选多张纯图片进行发送。
     def select_multiple_images(self, count: int = 3, max_limit: int = 9, max_swipes: int = 10) -> tuple[int, str]:
         """
-        在相册网格中连续勾选多张纯图片进行发送。
+        在相册网格中连续勾选多张纯图片（极速流水线版，内建零开销物理触底探测）
         :param count: 计划勾选张数
         :param max_limit: 单次最多可选张数（默认 9 张）
-        :param max_swipes: 可用于补齐数量的最大下滑次数
+        :param max_swipes: 可用于补齐数量的最大下滑次数（默认 10 次）
         :return: (实际成功勾选张数, 超限弹窗 Toast 内容)
         """
+        logger.info(f"⚡ [Fast-Select] 启动极速流水线选图: 计划勾选 {count} 张 (上限 {max_limit} 张)")
         target_count = count
         selected_count = self.get_selected_image_count(raise_exception=False)
-        last_source = ""
         full_toast = ""
+        last_bottom_fingerprint = None  # 记录末项物理指纹用于触底判定
 
         for swipe_index in range(max_swipes + 1):
             if selected_count >= target_count:
+                logger.info(f"已达到目标勾选数量: {target_count}")
                 break
 
             check_buttons = self.get_not_video_check_button()
@@ -322,47 +324,70 @@ class ChatImagePage(ChatPage):
                 logger.warning("当前页未找到可勾选的图片按钮")
                 break
 
-            for button in check_buttons:
-                if selected_count >= target_count:
-                    logger.info(f"已达到目标勾选数量: {target_count}")
-                    break
+            # 🌟 零开销触底探测：比对末尾元素物理坐标，若滑动前后未发生任何位移，说明已达相册最底部
+            try:
+                current_bottom_fingerprint = (check_buttons[-1].rect['x'], check_buttons[-1].rect['y'])
+            except Exception:
+                current_bottom_fingerprint = None
 
-                before_count = self.get_selected_image_count(raise_exception=False)
-                button.click()
+            if swipe_index > 0 and current_bottom_fingerprint and current_bottom_fingerprint == last_bottom_fingerprint:
+                logger.warning(f"⚠️ [Fast-Select] 探测到相册列表物理触底（无更多新图片），已选 {selected_count} 张，提前终止")
+                break
+            last_bottom_fingerprint = current_bottom_fingerprint
 
-                # 处理超过上限的阻断弹窗（如第 10 张）
-                if before_count >= max_limit:
-                    full_toast = self.get_toast_content()
-                    self.click_ok_button()
-                    target_count = max_limit
-                    break
+            need = target_count - selected_count
+            # 过滤掉当前已经选中的按钮（带有选中数字文本）
+            unselected_buttons = []
+            for btn in check_buttons:
+                try:
+                    btn_text = btn.text or btn.get_attribute('text') or ""
+                    if not btn_text.isdigit():
+                        unselected_buttons.append(btn)
+                except Exception:
+                    unselected_buttons.append(btn)
 
-                after_count = self.get_selected_image_count(raise_exception=False)
-                
-                # 滑动后若误点到了上一页已勾选的图片导致反选，立即重新点击恢复
-                if after_count < before_count:
-                    logger.warning("⚠️ 误点了已勾选图片导致取消，重新点击以恢复勾选")
-                    button.click()
-                    continue
+            if not unselected_buttons:
+                logger.info("当前屏可见图片已全部被勾选，需翻页寻找更多未选图片")
+            else:
+                batch_to_click = unselected_buttons[:need]
+                logger.info(f"⚡ [Fast-Select] 第 {swipe_index} 轮: 尚缺 {need} 张，流水线批量点击当前屏 {len(batch_to_click)} 个按钮...")
 
-                if after_count > before_count:
-                    selected_count = after_count
-                    logger.info(f"已勾选图片 {selected_count}/{target_count}")
+                for btn in batch_to_click:
+                    try:
+                        # 处理超过上限的阻断弹窗（如勾选第 10 张）
+                        if selected_count >= max_limit and target_count > max_limit:
+                            logger.info(f"⚠️ 尝试点击第 {selected_count + 1} 张图片以触发上限弹窗")
+                            btn.click()
+                            time.sleep(0.3)
+                            full_toast = self.get_toast_content()
+                            self.click_ok_button()
+                            selected_count = max_limit
+                            target_count = max_limit
+                            break
+
+                        btn.click()
+                        time.sleep(0.05)
+                        selected_count += 1
+                    except Exception as e:
+                        logger.warning(f"点击图片勾选按钮异常: {e}")
+
+                # 批处理点击完成后，单次从底部读取实际已选数量进行同步校准
+                actual_count = self.get_selected_image_count(raise_exception=False)
+                if actual_count > 0:
+                    selected_count = actual_count
+                logger.info(f"⚡ [Fast-Select] 当前已选进度校准: {selected_count}/{target_count}")
 
             if selected_count >= target_count:
                 logger.info(f"已达到目标勾选数量: {target_count}")
                 break
 
-            is_changed, last_source = self.is_element_source_changed(ChatImageLocator.PHOTO_CONTAINER, last_source)
-            if not is_changed:
-                logger.warning("相册列表已无更多内容，停止补齐勾选")
-                break
+            # 仍未满足且未达最大滑动次数，平滑下滑一屏继续寻找
+            if swipe_index < max_swipes:
+                logger.info(f"⚡ [Fast-Select] 当前数量未达标({selected_count}/{target_count})，下滑相册翻页...")
+                self.swipe_page(slid_type='up', duration=300)
+                time.sleep(0.3)
 
-            self.swipe_page(slid_type='up', duration=400)
-            time.sleep(0.5)
-            logger.info(f"批量选图未满目标({selected_count}/{target_count})，第 {swipe_index + 1} 次下滑继续查找")
-
-        logger.info(f"✅ 批量勾选完成，目标 {target_count} 张，实际 {selected_count} 张")
+        logger.info(f"✅ [Fast-Select] 批量选图完成: 目标 {count} 张，实际选中 {selected_count} 张")
         return selected_count, full_toast
 
     # 判断当前是否已进入预览页

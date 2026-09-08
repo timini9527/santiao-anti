@@ -55,7 +55,14 @@ class CollectionLocator(CommonLocator):
     # 空状态页面文字
     EMPTY_LAYOUT_TEXT = (AppiumBy.XPATH, f'//*[@resource-id="{PACKAGE_ID}/layout_empty"]//android.widget.TextView')
 
-
+    # 聊天页面收藏-弹层
+    TV_TITLE = CommonLocator.TOP_TV_TITLE                                           # 标题
+    IV_CLOSE = (AppiumBy.ID, f'{PACKAGE_ID}/iv_close')                              # 关闭按钮
+    TV_MSG_BUBBLE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_msg_bubble')                    # 选择的收藏内容
+    TV_INPUT = (AppiumBy.ID, f'{PACKAGE_ID}/tv_input')                              # 留言输入框(带句话~)
+    IV_EMOJI = (AppiumBy.ID, f'{PACKAGE_ID}/input_expression_bnt')                  # 表情按钮
+    IV_SEND = (AppiumBy.ID, f'{PACKAGE_ID}/send_bnt')                               # 发送按钮
+    
 
 
     # 通过text/image元素，相对向上定位其所在的卡片容器

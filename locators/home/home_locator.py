@@ -120,9 +120,9 @@ class HomeLocator:
     CONVERSATION_FOLD_ENTRY = (AppiumBy.ID, f"{PACKAGE_ID}/iv_fold")
     # 置顶折叠数量文本
     CONVERSATION_FOLD_COUNT_TEXT = (AppiumBy.ID, f"{PACKAGE_ID}/tv_fold_count")
-    # 置顶折叠入口整个元素 ViewGroup
+    # 置顶折叠入口整个元素 ViewGroup (直接父级，防止 ancestor 遍历命中外层大容器)
     CONVERSATION_FOLD_VIEWGROUP = (AppiumBy.XPATH,
-                                   f"//*[@resource-id='{PACKAGE_ID}/tv_fold_count']/ancestor::android.view.ViewGroup")
+                                   f"//*[@resource-id='{PACKAGE_ID}/tv_fold_count']/parent::android.view.ViewGroup")
 
     # 会话草稿状态
     CONVERSATION_DRAFT = (AppiumBy.ID, f"{PACKAGE_ID}/tv_msg_status")

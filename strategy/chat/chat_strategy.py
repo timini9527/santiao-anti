@@ -169,6 +169,9 @@ class SlideSettingAction:
     expected_status: str            # 操作后预期的状态值 ("true" 或 "false")
     action_desc: str                # 动作简述 (用于测试用例命名或日志)
 
+    def __str__(self):
+        return self.action_desc
+
 # 配置侧滑各项具体操作的参数，将这些实例推入测试用例中
 SETTING_ACTIONS = [
     SlideSettingAction("侧滑设置(静音)", "notice_locator", ["静音", "取消静音", "免打扰"], "get_switch_remind_status", "true", "打开静音"),
@@ -185,58 +188,84 @@ class SlideDeleteAction:
     expected_session_exists: Optional[bool]  # 操作后预期会话是否存在于列表中。为空则表示需要特殊处理（如进入会话校验条数）
     action_desc: str
 
+    def __str__(self):
+        return self.action_desc
+
+
 DELETE_ACTIONS = [
     SlideDeleteAction("侧滑删除会话(取消删除)", "click_conversation_delete_dialog_cancel", True, "取消删除"),
     SlideDeleteAction("侧滑删除会话(清空聊天记录)", "click_conversation_delete_dialog_clear_chat_record", None, "清空聊天记录"),
     SlideDeleteAction("侧滑删除会话(确认删除)", "click_conversation_delete_dialog_confirm", False, "确认删除"),
 ]
 
-# 5. 置顶会话折叠验证策略
+# 5. 置顶会话折叠验证策略 (连贯状态机流水线设计)
 @dataclass
 class TopFoldScenario:
     """
-    置顶折叠验证场景：驱动 test_top_fold 的参数化数据
-    所有验证行为由字段控制，测试方法体内无需 if/elif 分支
+    置顶折叠验证场景：驱动 test_top_fold 的连贯流水线参数化数据
+    用例 1~4 业务流程连贯，消除重复上下滑与无谓清理：
+      1. 置顶 4 个 -> 校验无折叠
+      2. 增量置顶 1 个 (达 5 个) -> 校验显示折叠条及展开/收起
+      3. 增量取消 1 个 (回落至 4 个) -> 校验折叠条消失
+      4. 增量置顶 4 个 (达到 8 个) -> 校验显示折叠条及数量 8，测试结束时清理现场
     """
     desc: str                       # 场景描述 (用于 Allure 报告和 pytest ids)
     story: str                      # Allure story
-    pin_count: int                  # 需要置顶的会话数量
+    action_type: str                # 本次执行动作: '置顶' 或 '取消置顶'
+    action_count: int               # 本次增量操作数量 (4, 1, 1, 4)
+    expected_total: int             # 操作后预期的置顶总数 (4, 5, 4, 8)
     expect_fold_visible: bool       # 最终校验时折叠入口是否可见
-    unpin_one: bool = False         # 置顶后是否取消一个再校验
-    check_fold_count: bool = False  # 是否校验折叠数量 == pin_count
-    check_fold_click: bool = False  # 是否校验点击折叠后会话被隐藏或展开
+    check_fold_count: bool = False  # 是否校验折叠数量 == expected_total
+    check_fold_click: bool = False  # 是否校验点击折叠后展开与收起
+    is_first: bool = False          # 是否为首个场景 (执行前置环境清空)
+    is_last: bool = False           # 是否为最后一个场景 (执行现场彻底清理)
+
+    # 兼容历史属性
+    @property
+    def pin_count(self) -> int:
+        return self.expected_total
 
     def __str__(self):
         return self.desc
 
+
 TOP_FOLD_SCENARIOS = [
     TopFoldScenario(
-        desc="置顶<5个_无折叠",
+        desc="1.置顶4个_无折叠",
         story="置顶会话数量<5，不显示折叠状态",
-        pin_count=4,
+        action_type="置顶",
+        action_count=4,
+        expected_total=4,
         expect_fold_visible=False,
+        is_first=True,
     ),
     TopFoldScenario(
-        desc="置顶>=5个_有折叠",
+        desc="2.置顶+1(达5个)_显示折叠",
         story="置顶会话数量>=5，显示折叠状态，并且折叠数量与置顶数量一致，点击折叠置顶会话被折叠",
-        pin_count=5,
+        action_type="置顶",
+        action_count=1,
+        expected_total=5,
         expect_fold_visible=True,
         check_fold_count=True,
         check_fold_click=True,
     ),
     TopFoldScenario(
-        desc="置顶5->4个_折叠消失",
+        desc="3.取消1个(降为4个)_折叠消失",
         story="置顶会话数量5->4，折叠会话状态消失",
-        pin_count=5,
+        action_type="取消置顶",
+        action_count=1,
+        expected_total=4,
         expect_fold_visible=False,
-        unpin_one=True,
     ),
     TopFoldScenario(
-        desc="置顶 8 个_折叠显示",
+        desc="4.再置顶4个(达8个)_折叠显示",
         story="置顶会话数量 8，折叠会话状态显示",
-        pin_count=8,
+        action_type="置顶",
+        action_count=4,
+        expected_total=8,
         expect_fold_visible=True,
         check_fold_count=True,
+        is_last=True,
     ),
 ]
 

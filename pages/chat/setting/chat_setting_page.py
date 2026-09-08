@@ -54,9 +54,13 @@ class ChatSettingPage(ChatPage):
     # ==========================
     # 点击查找聊天记录
     def click_search_chat_record(self):
-        """点击查找聊天记录"""
-        self.click(ChatSettingLocator.SEARCH_CHAT_RECORD)
-        logger.info("🔍 [Action] ChatSettingPage - 点击【查找聊天记录】")
+        """点击查找聊天记录（自适应：群聊快捷【搜索记录】与私聊【查找聊天记录】）"""
+        if self.is_element_exist(ChatSettingLocator.GROUP_QUICK_SEARCH, timeout=1, raise_exception=False):
+            self.click(ChatSettingLocator.GROUP_QUICK_SEARCH)
+            logger.info("🔍 [Action] ChatSettingPage - 点击群聊快捷【搜索记录】")
+        else:
+            self.click(ChatSettingLocator.SEARCH_CHAT_RECORD)
+            logger.info("🔍 [Action] ChatSettingPage - 点击私聊【查找聊天记录】")
 
     # 点击清空聊天记录
     def click_clear_chat_record(self):
@@ -70,22 +74,51 @@ class ChatSettingPage(ChatPage):
     # ==========================
     # 点击置顶聊天
     def click_switch_top(self):
-        """点击置顶聊天"""
-        self.click(ChatSettingLocator.SETTING_TOP_CHAT_BTN)
-        logger.info("🎚️ [Action] ChatSettingPage - 切换【置顶聊天】")
+        """点击置顶聊天（自适应：群聊快捷置顶块 quick_pin 与私聊 CheckBox）"""
+        if self.is_element_exist(ChatSettingLocator.GROUP_QUICK_PIN, timeout=1, raise_exception=False):
+            self.click(ChatSettingLocator.GROUP_QUICK_PIN)
+            logger.info("🎚️ [Action] ChatSettingPage - 点击群聊快捷【置顶聊天/取消置顶】")
+        else:
+            self.click(ChatSettingLocator.SETTING_TOP_CHAT_BTN, timeout=1)
+            logger.info("🎚️ [Action] ChatSettingPage - 切换私聊【置顶聊天】")
 
     # 获取置顶聊天状态
-    def get_switch_top_status(self, max_retry: int = 5):
-        """获取置顶聊天状态"""
+    def get_switch_top_status(self, max_retry: int = 5) -> str:
+        """
+        获取置顶聊天状态：
+        - 群聊快捷置顶块（quick_pin_text）：
+          - 文本为 "取消置顶" 时表示已置顶，返回 'true'
+          - 文本为 "置顶聊天" 时表示未置顶，返回 'false'
+        - 私聊 CheckBox 开关：
+          - checked 为 'true' 表示已置顶，'false' 表示未置顶
+        """
+        status = ''
         while max_retry > 0:
-            status = self.get_attribute(ChatSettingLocator.SETTING_TOP_CHAT_BTN, 'checked')
-            max_retry -= 1
-            if status == '':
-                self.swipe_page('up', duration=400)
-                logger.warning("没有找到 置顶聊天 状态， 尝试下滑操作")
-            else:
+            # 1. 优先检测是否处于群聊设置页快捷置顶区域
+            pin_text_elem = self.find_element(ChatSettingLocator.GROUP_QUICK_PIN_TEXT, timeout=1, raise_exception=False)
+            if pin_text_elem:
+                text = pin_text_elem.text.strip()
+                if text == "取消置顶":
+                    status = 'true'
+                    logger.info(f"🚀[Action] ChatSettingPage - 群聊置顶文本为【{text}】，状态为: true")
+                    break
+                elif text == "置顶聊天":
+                    status = 'false'
+                    logger.info(f"🚀[Action] ChatSettingPage - 群聊置顶文本为【{text}】，状态为: false")
+                    break
+
+            # 2. 私聊设置页 CheckBox 状态检测
+            status = self.get_attribute(ChatSettingLocator.SETTING_TOP_CHAT_BTN, 'checked', raise_exception=False)
+            if status in ('true', 'false'):
+                logger.info(f"🚀[Action] ChatSettingPage - 私聊获取置顶聊天状态: {status}")
                 break
-        logger.info(f"🚀[Action] ChatSettingPage - 获取置顶聊天状态: {status}")
+
+            max_retry -= 1
+            if max_retry > 0:
+                self.swipe_page('up', duration=400)
+                logger.warning("没有找到 置顶聊天 状态，尝试下滑操作")
+
+        logger.info(f"🚀[Action] ChatSettingPage - 最终获取置顶聊天状态: {status}")
         return status
 
     # 点击消息免打扰

@@ -3,6 +3,7 @@ import pytest
 import pytest_check as check
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_page import ChatPage
+from pages.chat.core.chat_long_press_page import ChatLongPressPage
 from pages.main.main_page import MainPage
 from pages.chat_options.location.chat_position_page import ChatPositionPage
 from core.logger_utils import logger
@@ -31,6 +32,7 @@ class TestChatPosition:
     def setup(self, driver_sender):
         self.chatPage = ChatPage(driver_sender)
         self.chatListPage = ChatListPage(driver_sender)
+        self.chatLongPressPage = ChatLongPressPage(driver_sender)
         self.mainPage = MainPage(driver_sender)
         self.chatPositionPage = ChatPositionPage(driver_sender)
 
@@ -151,8 +153,8 @@ class TestChatPosition:
             self.chatPositionPage.click_send_button()
             count_pre = self.chatPage.get_total_message_count()
         with allure.step('2. 长按消息并删除'):
-            self.chatPage.long_press_last_location_message()
-            self.chatPage.click_delete()
+            self.chatLongPressPage.long_press_last_message()
+            self.chatLongPressPage._execute_and_verify_menu_item('删除')
         with allure.step('3. 验证消息已消失'):
             count_aft = self.chatPage.get_total_message_count()
             check.equal(count_pre - 1, count_aft, '消息数量未减少，删除可能失败')
@@ -170,8 +172,8 @@ class TestChatPosition:
             self.chatPositionPage.click_send_button()
             title_pre, _ = self.chatPage.verify_location_sent_status().values()
         with allure.step('2. 长按消息并转发'):
-            self.chatPage.long_press_last_location_message()
-            self.chatPage.click_forward()
+            self.chatLongPressPage.long_press_last_message()
+            self.chatLongPressPage._execute_and_verify_menu_item('转发')
             self.chatListPage.enter_session(strategy.name)
         with allure.step('3. 验证转发成功'):
             actual_bubble = self.chatPage.verify_location_sent_status()
@@ -189,11 +191,14 @@ class TestChatPosition:
             self.chatPositionPage.open_panel_enter_location_page()
             self.chatPositionPage.click_send_button()
         with allure.step('2. 长按消息并点击撤回'):
-            self.chatPage.long_press_last_location_message()
-            self.chatPage.click_revoke()
+            self.chatLongPressPage.long_press_last_message()
+            self.chatLongPressPage._execute_and_verify_menu_item('撤回')
         with allure.step('3. 验证撤回提示'):
-            notice_text = self.chatPage.get_revoke_notice_text()
-            check.is_in('撤回', notice_text, '未能捕获到预期的撤回提示文字')
+            notice_result = self.chatPage.get_withdraw_message()
+            check.is_not_none(notice_result, '未能捕获到预期的撤回提示')
+            if notice_result:
+                notice_text, _ = notice_result
+                check.is_in('撤回', notice_text, '未能捕获到预期的撤回提示文字')
 
 
     @allure.story('位置消息-长按收藏')

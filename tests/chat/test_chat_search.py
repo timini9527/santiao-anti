@@ -231,11 +231,12 @@ class TestChatSearch:
         with allure.step(f"前置准备：进入目标好友的{('群' if strategy.is_admin else '单')}聊会话"):
             self.chatListPage.enter_chat(strategy.name)
         with allure.step('1、发送一段视频作为测试数据'):
-            self.videoPage.click_add_button()
-            self.videoPage.click_image_button()
-            self.videoPage.wait_for_image_page_load()
-            self.videoPage.select_single_video()
-            self.videoPage.click_send_image()
+            self.videoPage.open_panel_to_album()
+            result = self.videoPage.select_single_video(mode=1)
+            check.is_true(result, '❌ 前置准备：勾选视频失败')
+            self.videoPage.click_send_button()
+            is_sent = self.chatPage.wait_for_batch_media_send_completed(expected_count=1, msg_type='video', timeout=25)
+            check.is_true(is_sent, '❌ 前置准备：视频发送超时')
             video_duration = self.chatPage.get_chat_video_duration(index=-1)
         with allure.step(f'2、进入设置页面并进入‘查找聊天记录’'):
             self._enter_search_page(strategy)

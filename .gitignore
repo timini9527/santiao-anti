@@ -44,3 +44,4 @@ build/
 dist/
 *.spec
 santiao-anti.zip
+tmp/

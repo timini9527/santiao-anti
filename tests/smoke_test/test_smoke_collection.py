@@ -72,6 +72,8 @@ class BaseSmokeCollectionSingle:
         result = self.imagePage.select_single_image(mode=1)
         check.is_true(result, '选图失败')
         self.imagePage.click_send_button()
+        is_sent = self.chatPage.wait_for_batch_media_send_completed(expected_count=1, msg_type='image', timeout=20)
+        check.is_true(is_sent, '❌ 图片消息发送超时或失败')
         self.mainPage.go_to_main_page()
         self.chatListPage.enter_chat(PRIVATE_USER1.name)
         self.longPressPage.long_press_last_message()

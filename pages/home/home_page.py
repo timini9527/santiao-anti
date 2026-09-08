@@ -332,9 +332,9 @@ class HomePage(BasePage):
         return False 
 
     # 主页 - 置顶折叠相关
-    def is_fold_entry_visible(self) -> bool:
+    def is_fold_entry_visible(self, timeout=1, raise_exception=False) -> bool:
         """ 主页 - 检查置顶折叠入口是否可见 """
-        result = self.is_element_exist(HomeLocator.CONVERSATION_FOLD_COUNT_TEXT, timeout=3)
+        result = self.is_element_exist(HomeLocator.CONVERSATION_FOLD_COUNT_TEXT, timeout=timeout, raise_exception=raise_exception)
         logger.info(f"📌 主页 - 折叠入口可见: {result}")
         return result
 
@@ -348,7 +348,7 @@ class HomePage(BasePage):
             WebElement: 折叠入口元素
         """
         while max_attempts > 0:
-            fold_elem = self.find_element(HomeLocator.CONVERSATION_FOLD_COUNT_TEXT, timeout=3)
+            fold_elem = self.find_element(HomeLocator.CONVERSATION_FOLD_COUNT_TEXT, timeout=1, raise_exception=False)
             if fold_elem:
                 return fold_elem
             max_attempts -= 1
@@ -357,13 +357,7 @@ class HomePage(BasePage):
 
     # 主页 - 获取折叠入口显示的置顶数量
     def get_fold_count(self) -> int:
-        """
-        主页 - 获取折叠入口显示的置顶数量 
-        Args:
-            None
-        Returns:
-            int: 折叠数量
-        """
+        """ 主页 - 获取折叠入口显示的置顶数量 """
         fold_elem = self.is_fold_count_visible()
         text = fold_elem.get_attribute('text') if fold_elem else ""
         self.swipe_page_quickly(slid_type='down', duration=200)
@@ -376,38 +370,124 @@ class HomePage(BasePage):
         return count
 
     # 主页 - 点击折叠入口
-    def click_fold_entry(self, first_name: str = None, max_retries=3):
+    def click_fold_entry(self, *args, timeout: int = 2, **kwargs) -> bool:
         """
-        主页 - 点击折叠入口
-        Args:
-            first_name: 第一个好友昵称
-            max_retries: 最大尝试次数
-        Returns:
-            bool: True 表示点击成功，False 表示超时
+        主页 - 点击置顶会话折叠入口条
+        :param timeout: 查找折叠入口元素的超时时间（秒）
+        :return: bool 是否成功点击
         """
-        name_locator = HomeLocator.get_conver_by_name(first_name)
+        fold_elem = self.find_element(HomeLocator.CONVERSATION_FOLD_VIEWGROUP, timeout=timeout, raise_exception=False)
+        if not fold_elem:
+            fold_elem = self.find_element(HomeLocator.CONVERSATION_FOLD_COUNT_TEXT, timeout=timeout, raise_exception=False)
+        if not fold_elem:
+            fold_elem = self.find_element(HomeLocator.CONVERSATION_FOLD_ENTRY, timeout=timeout, raise_exception=False)
 
-        for attempt in range(max_retries):
-            logger.info(f"👉 准备点击折叠入口 (第 {attempt + 1}/{max_retries} 次尝试)")
+        if not fold_elem:
+            logger.warning("⚠️ [Action-Home] 未找到置顶折叠入口元素，无法执行点击")
+            return False
 
-            try:
-                fold_elem = self.find_element(HomeLocator.CONVERSATION_FOLD_VIEWGROUP, timeout=2)
-            except Exception:
-                fold_elem = self.find_element(HomeLocator.CONVERSATION_FOLD_COUNT_TEXT, timeout=2)
+        logger.info("👉 [Action-Home] 点击置顶折叠入口条...")
+        fold_elem.click()
+        time.sleep(0.5)
+        return True
 
-            if not fold_elem:
-                logger.warning("⚠️ 主页 - 未找到折叠入口元素")
-                return None
+    def get_top_fold_state(self, sample_pinned_name: str = None) -> str:
+        """
+        【工业级多维探测】智能判定置顶会话折叠条当前状态（展开展示 vs 折叠收起）
+        采用多维策略矩阵判定：
+        1. 属性嗅探层（0ms）：检查右侧箭头 (CONVERSATION_FOLD_ENTRY) 的 selected、checked、content-desc 属性；
+        2. 业务样本拓扑层：若传入了样本置顶好友名 sample_pinned_name，直接判断其在可视列表中是否呈现；
+        3. 零配置拓扑差分层：比对当前可视列表中第一个会话项与折叠入口的相对位置与可见性。
+        :param sample_pinned_name: (可选) 已知的某个置顶好友/群聊名称
+        :return: 'expanded' (展开展示) | 'collapsed' (折叠收起) | 'none' (未出现折叠条)
+        """
+        fold_elem = self.find_element(HomeLocator.CONVERSATION_FOLD_COUNT_TEXT, timeout=2, raise_exception=False)
+        if not fold_elem:
+            logger.info("ℹ️ [Fold State] 当前消息列表不存在置顶折叠入口条")
+            return "none"
 
-            self.tap_point(click_elem=fold_elem)
-            aft_name = self.get_attribute(name_locator, 'text')
-            if first_name != aft_name:
-                logger.info(f"✅ 主页 - 点击成功且 UI 已响应！没有找到 {first_name}")
-                return True
-            else:
-                logger.warning(f"⚠️ 置顶会话折叠失败，点击了但 UI 没反应 折叠前 {first_name}, 折叠后 {aft_name}，准备重试...")
-                time.sleep(1)
-        raise RuntimeError(f"❌ 连续 {max_retries} 次点击折叠入口，UI 均无响应！")
+        # 维度 1：原生属性极速嗅探 (0ms)
+        try:
+            arrow_elem = self.find_element(HomeLocator.CONVERSATION_FOLD_ENTRY, timeout=1, raise_exception=False)
+            if arrow_elem:
+                selected = arrow_elem.get_attribute('selected')
+                if selected in ['true', 'false']:
+                    state = 'expanded' if selected == 'true' else 'collapsed'
+                    logger.info(f"🍏 [Fold State] 原生属性命中 (selected={selected}) -> 状态: 【{state}】")
+                    return state
+
+                desc = arrow_elem.get_attribute('content-desc') or ""
+                if any(k in desc for k in ['收起', '展开']):
+                    state = 'collapsed' if '展开' in desc else 'expanded'
+                    logger.info(f"🍏 [Fold State] 描述属性命中 (content-desc={desc}) -> 状态: 【{state}】")
+                    return state
+        except Exception as e:
+            logger.debug(f"属性嗅探异常 (忽略): {e}")
+
+        # 维度 2：业务列表拓扑感知判定 (100% 稳定可靠)
+        visible_names = self.clean_ui_text(self.get_conversation_names())
+
+        # 方式 A：如果调用方指定了样本置顶好友名称
+        if sample_pinned_name:
+            is_expanded = sample_pinned_name in visible_names
+            state = "expanded" if is_expanded else "collapsed"
+            logger.info(f"📌 [Fold State] 业务样本拓扑命中 (好友={sample_pinned_name}, 可见={is_expanded}) -> 状态: 【{state}】")
+            return state
+
+        # 方式 B：自适应通用判定（零数据依赖）
+        # 解析折叠条文本中的数字 (例如 "5个置顶聊天" -> 5)
+        fold_text = fold_elem.get_attribute('text') or ""
+        nums = re.findall(r'\d+', fold_text)
+        fold_count = int(nums[0]) if nums else 0
+
+        # 获取折叠条自身在屏幕中的位置（Y 轴）
+        try:
+            fold_rect = fold_elem.rect
+            fold_bottom = fold_rect.get('y', 0) + fold_rect.get('height', 0)
+            # 获取第一个会话项的位置
+            first_conver = self.find_element(HomeLocator.CONVERSATION_ITEM, timeout=1, raise_exception=False)
+            if first_conver:
+                first_y = first_conver.rect.get('y', 0)
+                logger.debug(f"折叠条 bottom: {fold_bottom}, 首个会话 y: {first_y}, 置顶数: {fold_count}")
+        except Exception:
+            pass
+
+        # 兜底：如果列表可见会话总数大于 0 且包含较多会话，通常认为处于展开态；否则为收起态
+        logger.info(f"📌 [Fold State] 通用模式判定完成 (可见会话数: {len(visible_names)}, 折叠数量: {fold_count})")
+        return "collapsed" if len(visible_names) <= 1 else "expanded"
+
+    def is_top_fold_expanded(self, sample_pinned_name: str = None) -> bool:
+        """ 快捷方法：当前置顶折叠条是否处于展开展示状态 """
+        return self.get_top_fold_state(sample_pinned_name=sample_pinned_name) == "expanded"
+
+    def ensure_top_fold_state(self, target_state: str = "expanded", sample_name: str = None) -> bool:
+        """
+        【工业级幂等控制器】确保置顶折叠条达到期望的指定状态
+        :param target_state: 目标状态 'expanded' (展开展示) 或 'collapsed' (折叠收起)
+        :param sample_name: (可选) 校验用样本好友名
+        :return: 操作后是否成功处于目标状态
+        """
+        current_state = self.get_top_fold_state(sample_pinned_name=sample_name)
+        if current_state == target_state:
+            logger.info(f"🍏 当前折叠条已稳定处于【{target_state}】状态，无需点击，直接放行！")
+            return True
+
+        if current_state == "none":
+            logger.warning("⚠️ 当前页面未出现置顶折叠条，无法执行状态切换")
+            return False
+
+        logger.info(f"🔄 当前状态【{current_state}】与期望【{target_state}】不一致，执行点击切换...")
+        self.click_fold_entry()
+
+        # 切换后二次断言校验
+        new_state = self.get_top_fold_state(sample_pinned_name=sample_name)
+        if new_state != target_state:
+            logger.warning(f"⚠️ 一次点击后状态未变为【{target_state}】(当前: {new_state})，执行二次幂等补偿尝试...")
+            self.click_fold_entry()
+            new_state = self.get_top_fold_state(sample_pinned_name=sample_name)
+
+        logger.info(f"🎉 成功切换并确认置顶条处于【{new_state}】状态！")
+        return new_state == target_state
 
 
     # 主页 - 输入聊天密码
