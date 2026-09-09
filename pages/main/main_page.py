@@ -10,26 +10,42 @@ from selenium.common.exceptions import WebDriverException
 #   主页面
 class MainPage(BasePage):
 
+    def is_in_search_page(self, timeout: int = 1) -> bool:
+        """检测当前是否正处于搜索覆盖层页面（通过搜索结果特有文本或取消按钮判断）"""
+        search_indicators = [
+            HomeLocator.SEARCH_CLEAR
+        ]
+        for locator in search_indicators:
+            try:
+                if self.is_element_exist(locator, timeout=timeout, raise_exception=False):
+                    return True
+            except Exception:
+                continue
+        return False
+
     def is_in_main_page(self, timeout: int = 1, raise_exception: bool = False) -> bool:
-        """ 判断当前是否已处于主页面（结合主页特有导航图标、底部导航栏与标题综合判定） """
-        if (
-            self.is_element_exist(HomeLocator.LEFT_MENU, timeout=timeout, raise_exception=raise_exception)
-            or self.is_element_exist(HomeLocator.RIGHT_MENU, timeout=timeout, raise_exception=raise_exception)
-            or self.is_element_exist(HomeLocator.BOTTOM, timeout=timeout, raise_exception=raise_exception)
-        ):
-            logger.info("🍏 当前已成功处于主页面 (检测到 Home 专属导航组件)")
-            return True
+        """ 判断当前是否已处于主页面（增加搜索覆盖层排他防御与标题强校验） """
+        if self.is_in_search_page(timeout=timeout):
+            logger.warning("⚠️ 检测到当前处于搜索结果覆盖层，非真正主页面")
+            return False
 
         title = self.get_attribute(HomeLocator.MIDDLE_TITLE, 'text', timeout=timeout, raise_exception=raise_exception)
         if title and '三条' in title:
             logger.info(f"🍏 当前已成功处于主页面 (Title: {title})")
             return True
-        
+
+        if (
+            self.is_element_exist(HomeLocator.LEFT_MENU, timeout=timeout, raise_exception=raise_exception)
+            and self.is_element_exist(HomeLocator.RIGHT_MENU, timeout=timeout, raise_exception=raise_exception)
+        ):
+            logger.info("🍏 当前已成功处于主页面 (检测到 Home 专属导航图标)")
+            return True
+
         logger.warning("⚠️ 当前未处于主页面")
         return False
 
     def go_to_main_page(self, timeout: int = 1, raise_exception: bool = False, max_retries: int = 10):
-        """进入主页面消息列表页面；若当前已在主页则直接返回，避免误按返回键退至后台"""
+        """进入主页面消息列表页面；若处于搜索层等中间覆盖态，优先退回并关闭搜索层"""
         try:
             self.driver.hide_keyboard()
         except Exception:
@@ -39,6 +55,13 @@ class MainPage(BasePage):
             if self.is_in_main_page(timeout=timeout, raise_exception=raise_exception):
                 logger.info("🍏 当前已成功处于主页面，无需退回")
                 return
+
+            if self.is_in_search_page(timeout=1):
+                logger.info("🔎 检测到当前卡在搜索覆盖层，尝试点击取消/清除以退出搜索...")
+                if self.is_element_exist(HomeLocator.SEARCH_CANCEL, timeout=1, raise_exception=False):
+                    self.click(HomeLocator.SEARCH_CANCEL, force_wait=True)
+                    continue
+
             try:
                 logger.warning(f"⚠️ 当前未处于主页面，执行多级安全退回... 剩余尝试次数：{max_retries}")
                 self.back()

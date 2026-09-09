@@ -28,6 +28,7 @@ class HomeLocator:
     SEARCH_INPUT = (AppiumBy.CLASS_NAME, "android.widget.EditText")           # 搜索输入框
     # SEARCH_INPUT = (AppiumBy.XPATH, "//android.widget.EditText[.//android.widget.TextView[@text='搜索']]")
     SEARCH_CLEAR = (AppiumBy.CLASS_NAME, 'android.widget.Button')             # 搜索清除按钮
+    SEARCH_CANCEL = (AppiumBy.XPATH, "//android.widget.EditText/parent::android.view.View/following-sibling::android.view.View/android.view.View")
 
 
     # 底部展开聊天类型菜单
@@ -109,8 +110,10 @@ class HomeLocator:
     CONVERSATION_DELETE_ICON = (AppiumBy.ID, f"{PACKAGE_ID}/iv_swipe_delete")
     # 会话删除文本
     CONVERSATION_DELETE_TEXT = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("删除")')
-    # 会话删除弹窗 清空聊天记录
-    CONVERSATION_DELETE_DIALOG_CLEAR_CHAT_RECORD = (AppiumBy.ID, f"{PACKAGE_ID}/tv_clear_history")
+    # 会话隐藏
+    CONVERSATION_HIDE = (AppiumBy.ID, f"{PACKAGE_ID}/tv_hide_conversation")
+    # 会话删除弹窗 清空聊天记录并隐藏
+    CONVERSATION_DELETE_DIALOG_CLEAR_CHAT_RECORD = (AppiumBy.ID, f"{PACKAGE_ID}/tv_clear_history_and_hide")
     # 会话删除弹窗 确认删除
     CONVERSATION_DELETE_DIALOG_CONFIRM = (AppiumBy.ID, f"{PACKAGE_ID}/tv_delete")
     # 会话删除弹窗 取消

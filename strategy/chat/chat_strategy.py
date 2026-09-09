@@ -195,7 +195,7 @@ class SlideDeleteAction:
 DELETE_ACTIONS = [
     SlideDeleteAction("侧滑删除会话(取消删除)", "click_conversation_delete_dialog_cancel", True, "取消删除"),
     SlideDeleteAction("侧滑删除会话(清空聊天记录)", "click_conversation_delete_dialog_clear_chat_record", None, "清空聊天记录"),
-    SlideDeleteAction("侧滑删除会话(确认删除)", "click_conversation_delete_dialog_confirm", False, "确认删除"),
+    SlideDeleteAction("侧滑删除会话(隐藏会话)", "click_conversation_delete_dialog_hide", False, "隐藏会话"),
 ]
 
 # 5. 置顶会话折叠验证策略 (连贯状态机流水线设计)

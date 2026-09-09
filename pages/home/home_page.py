@@ -206,7 +206,7 @@ class HomePage(BasePage):
     # 主页 - 通过好友昵称获取他的会话下面有没有消息内容
     def get_message_by_name(self, name: str):
         """ 主页 - 通过好友昵称获取他的会话下面有没有消息内容 """
-        content = self.get_attribute(HomeLocator.get_message_by_name(name), 'text')
+        content = self.get_attribute(HomeLocator.get_message_by_name(name), 'text', timeout=1, raise_exception=False)
         logger.info(f"[Action-Home] 主页 - 通过好友昵称[{name}]获取他的消息内容: {content}")
         return content
 
@@ -233,6 +233,12 @@ class HomePage(BasePage):
         """ 主页 - 会话删除弹窗 清空聊天记录 """
         self.click(HomeLocator.CONVERSATION_DELETE_DIALOG_CLEAR_CHAT_RECORD, force_wait=True)
         logger.info("[Action-Home] 主页 - 在删除会话弹窗勾选 清空聊天记录")
+    
+    # 主页 - 会话删除弹窗 隐藏
+    def click_conversation_delete_dialog_hide(self):
+        """ 主页 - 会话删除弹窗 隐藏 """
+        self.click(HomeLocator.CONVERSATION_HIDE, force_wait=True)
+        logger.info("[Action-Home] 主页 - 在删除会话弹窗勾选 隐藏")
 
     # 主页 - 会话删除弹窗 确认删除
     def click_conversation_delete_dialog_confirm(self):

@@ -45,14 +45,10 @@ class ChatListPage(ChatPage):
         """
         end_time = time.time() + timeout
         while time.time() <= end_time:
-            # 获取当前屏幕可见的所有会话名称元素 (设短超时，避免找不到时卡住)
             session_elems = self.find_elements(HL.CONVERSATION_NAME, timeout=1, raise_exception=True)
-            
             if session_elems:
-                # 遍历匹配文本
                 for elem in session_elems:
                     try:
-                        # 增加 clean_ui_text 过滤不可见零宽字符，确保匹配准确
                         elem_text = self.clean_ui_text(elem.text.strip())
                         target_name_clean = self.clean_ui_text(target_name.strip())
                         if match_type == "exact" and target_name_clean == elem_text:
@@ -61,11 +57,19 @@ class ChatListPage(ChatPage):
                             return elem
                     except Exception:
                         pass
-            
-            time.sleep(0.5)  # 等待 0.5s 后重新获取元素列表进行判断
-
+            time.sleep(0.5)
         logger.debug(f"超时 {timeout}s 后，仍未在当前列表找到会话: {target_name}")
         return None
+
+    def is_session_exist_in_list(self, target_name: str, match_type: str = "exact", timeout: int = 3) -> bool:
+        """
+        判断指定会话是否存在于当前列表中
+        :param target_name: 目标会话名称
+        :param match_type: 匹配模式，"exact" (完全匹配) 或 "partial" (部分匹配/包含)
+        :param timeout: 超时时间
+        :return: bool (True: 存在, False: 不存在)
+        """
+        return self._find_session_element_in_list(target_name, match_type=match_type, timeout=timeout) is not None
 
     # 会话左滑设置
     def _get_row_element_by_name(self, target_name: str, match_type: str = "exact"):
@@ -88,7 +92,7 @@ class ChatListPage(ChatPage):
         return None
 
     # 进入指定会话
-    def enter_session(self, session_name: str, match_type: str = "exact", timeout: int = 3) -> bool:
+    def enter_session(self, session_name: str, match_type: str = "exact", timeout: int = 2) -> bool:
         """进入指定的会话
         :param match_type: "exact" (精确匹配) 或 "partial" (部分匹配)
         :param timeout: 超时时间
