@@ -1,8 +1,15 @@
 import time
+from enum import StrEnum
 from common.base_page import BasePage
 from locators.chat.core.chat_panel_locator import ChatPanelLocator
 from core.logger_utils import logger
 from appium.webdriver.webelement import WebElement
+
+
+class CallType(StrEnum):
+    """音视频通话类型枚举"""
+    VOICE_CALL = "voice_call"      # 语音通话
+    VIDEO_CALL = "video_call"      # 视频通话
 
 
 class ChatPanelPage(BasePage):
@@ -77,7 +84,33 @@ class ChatPanelPage(BasePage):
         """点击‘通话’按钮"""
         logger.info("🖱️ [Action-Panel] 点击扩展面板中的【通话】")
         self.click(ChatPanelLocator.BTN_VIDEO_CALL)
-        time.sleep(0.5)
+
+    # 点击弹窗中的‘语音通话’按钮
+    def click_pop_voice_call(self):
+        """点击底部通话选择弹窗中的【语音通话】按钮"""
+        logger.info("📞 [Action-Panel] 点击弹窗中的【语音通话】")
+        self.click(ChatPanelLocator.BTN_POP_DIALOG_MORE_ONE2)
+
+    # 点击弹窗中的‘视频通话’按钮
+    def click_pop_video_call(self):
+        """点击底部通话选择弹窗中的【视频通话】按钮"""
+        logger.info("📞 [Action-Panel] 点击弹窗中的【视频通话】")
+        self.click(ChatPanelLocator.BTN_POP_DIALOG_MORE_ONE1)
+
+    # 动态发起音视频通话
+    def initiate_call_by_type(self, call_type: CallType | str = CallType.VIDEO_CALL):
+        """
+        点击面板【通话】并基于枚举值匹配通话类型发起呼叫
+        :param call_type: CallType 枚举值（CallType.VOICE_CALL / CallType.VIDEO_CALL）或对应的字符串
+        """
+        self.click_video_call()
+        if call_type == CallType.VOICE_CALL:
+            self.click_pop_voice_call()
+        elif call_type == CallType.VIDEO_CALL:
+            self.click_pop_video_call()
+        else:
+            logger.warning(f"⚠️ [Action-Panel] 未知通话类型枚举值: {call_type}，默认发起视频通话")
+            self.click_pop_video_call()
 
     # 点击‘图片’按钮
     def click_album(self):

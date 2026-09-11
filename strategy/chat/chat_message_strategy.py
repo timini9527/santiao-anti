@@ -26,8 +26,11 @@ class MessageTypeStrategy:
     VIDEO = MessageStrategy("video", ["转发", "多选", "撤回/删除"], "_prepare_video_msg")
     POSITION = MessageStrategy("position", ["转发", "多选", "撤回/删除"], "_prepare_position_msg")
     CARD = MessageStrategy("card", ["转发", "多选", "撤回/删除"], "_prepare_card_msg")
+    GROUP_CARD = MessageStrategy("group_card", ["转发", "多选", "撤回/删除"], "_prepare_group_card_msg")
     FILE = MessageStrategy("file", ["转发", "多选", "回复", "撤回/删除"], "_prepare_file_msg")
     PACKAGE = MessageStrategy("package", ["转发", "多选", "撤回/删除", "添加表情"], "_prepare_package_msg")
+    LINK = MessageStrategy("link", ["复制", "收藏", "转发", "多选", "回复", "撤回/删除"], "_prepare_link_msg")
+
 
     @classmethod
     def get_strategy(cls, msg_type: str) -> MessageStrategy:
@@ -47,13 +50,10 @@ class ChatMessageBuilder(ChatPage):
     
     def build_message(self, strategy_name: str, **kwargs):
         strategy = MessageTypeStrategy.get_strategy(strategy_name)
-        
         logger.info(f"🧪 [Setup] - DataBuilder 正在准备测试数据，类型: {strategy.type_name}")
-        
         handler = getattr(self, strategy.prepare_action_name, None)
         if not handler:
             raise NotImplementedError(f"❌ 未找到对应的构造方法: {strategy.prepare_action_name}")
-        
         handler(**kwargs)
         time.sleep(0.5)
 
@@ -129,7 +129,6 @@ class ChatMessageBuilder(ChatPage):
         video.open_panel_to_album()
         video.select_single_video(mode=1)
         video.click_send_button()
-        self.click_add_button()
 
     def _prepare_position_msg(self, **kwargs):
         """发送/准备地理位置消息"""
@@ -159,6 +158,42 @@ class ChatMessageBuilder(ChatPage):
         file_name = kwargs.get("file_name", "测试-图片")
         file_page.search_and_select_file_by_name(file_name)
         # self.click_add_button()
+
+    def _prepare_group_card_msg(self, **kwargs):
+        from pages.groups.setting.general.group_setting_page import GroupSettingPage
+        from pages.common.session_select_page import SessionSelectPage
+        from pages.chat.list.chat_list_page import ChatListPage
+        from pages.main.main_page import MainPage
+        target_name = self.get_group_name()
+        default_group = kwargs.get("group_name", "测试群aaaaa")
+        backup_group = kwargs.get("backup_group_name", "测试群bbbbb")
+        source_group = backup_group if target_name == default_group else default_group
+        logger.info(f"🎴 [GroupCard] 准备从群【{source_group}】分享群名片至目标会话【{target_name}】")
+        main_page = MainPage(self.driver)
+        chat_list = ChatListPage(self.driver)
+        group_setting = GroupSettingPage(self.driver)
+        session_select = SessionSelectPage(self.driver)
+        main_page.go_to_main_page()
+        chat_list.enter_chat(source_group)
+        self.wait_for_chat_page_load()
+        self.click_more_button()
+        group_setting.wait_for_setting_page_load()
+        group_setting.click_group_share()
+        session_select.wait_for_session_page_load(msg_type=1)
+        is_selected = session_select.select_session_by_name(target_name)
+        if not is_selected:
+            raise RuntimeError(f"❌ [GroupCard] 会话选择页未找到目标会话: 【{target_name}】")
+        session_select.send_share_and_verify_toast('转发成功')
+        main_page.go_to_main_page()
+        chat_list.enter_chat(target_name)
+        self.wait_for_chat_page_load()
+        logger.info(f"✅ [GroupCard] 成功将群【{source_group}】名片分享至【{target_name}】并恢复至聊天界面")
+
+    def _prepare_link_msg(self, **kwargs):
+        """发送/准备链接消息"""
+        url = kwargs.get("url", "https://www.baidu.com")
+        self.send_message(url)
+
 
     # 统一消息特征值提取方法，将分散的提取逻辑集中起来，方便维护和扩展
     def get_message_feature(self, msg_type: str, expect_missing: bool = False, index: int = -1) -> dict:

@@ -193,4 +193,13 @@ class HomeLocator:
         return (AppiumBy.XPATH, 
                 f'//*[@resource-id="{cls.CHAT_PASSWORD_VIEW_INPUT_CODE_ID}"]/android.widget.EditText[{index+1}]')
 
-                
+    # 会话强提醒前缀标签 ID (@人的消息、进群验证消息，如 [有人@我], [@所有人], [进群申请])
+    CONVERSATION_USER_NAME_ID = f"{PACKAGE_ID}/tv_user_name"
+    CONVERSATION_USER_NAME = (AppiumBy.ID, CONVERSATION_USER_NAME_ID)
+
+    # 精确获取某一个会话的状态提醒标签 (@人的消息、进群验证消息，如 [有人@我], [@所有人], [进群申请])
+    @classmethod
+    def get_remind_status_by_name(cls, name: str):
+        return (AppiumBy.XPATH, 
+                f'//*[@resource-id="{cls.CONVERSATION_ID}" and .//*[@resource-id="{cls.CONVERSATION_NAME_ID}" and contains(@text, "{name}")]]'
+                f'//*[@resource-id="{cls.CONVERSATION_USER_NAME_ID}"]')

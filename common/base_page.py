@@ -126,7 +126,7 @@ class BasePage:
         """
         try:
             logger.info(f"⏳ [Wait] 等待元素消失: {locator}")
-            WebDriverWait(self.driver, timeout).until(
+            WebDriverWait(self.driver, timeout, poll_frequency=0.5).until(
                 EC.invisibility_of_element_located(locator)
             )
             return True
@@ -979,6 +979,27 @@ class BasePage:
             logger.info(f"✅ 成功设置网络状态为: {network_status} ({val})")
         except Exception as e:
             logger.error(f"❌ 设置网络状态失败: {e}")
+
+    @allure.step("设置弱网状态 (网络不好)")
+    def set_weak_network(self, enable: bool = True):
+        """
+        设置弱网状态模拟（网络不好状态）
+        :param enable: True 启用弱网模式 (GPRS/限速)，False 恢复正常网络
+        """
+        if enable:
+            logger.info("⚡ [Network] 启用弱网环境 (网络不好)")
+            try:
+                self.driver.set_network_speed("gprs")
+            except Exception as e:
+                logger.warning(f"底层环境不支持 set_network_speed，降级为切断网络流模拟: {e}")
+                self.set_network_connection("none")
+        else:
+            logger.info("⚡ [Network] 恢复正常全网连接")
+            try:
+                self.driver.set_network_speed("full")
+            except Exception:
+                pass
+            self.set_network_connection("all")
 
     @allure.step("清理从 UI 获取的文本")
     def clean_ui_text(self, data: Union[str, List[str]]) -> Union[str, List[str]]:

@@ -28,9 +28,13 @@ class ChatPage(BasePage):
         'history':       ChatLocator.MERGE_CARD_MSG,
         'historyPreview':ChatLocator.MERGE_CARD_PREVIEW,
         'cardBubble':   ChatLocator.PROFILE_CARD_ITEM,
+        'call':          ChatLocator.CALL_CARD_ITEM,
+        'callBubble':    ChatLocator.CALL_CARD_ITEM,
         # 细粒度子组件 (用于物理贴边过滤与精细文本断言)
         'card':          ChatLocator.CARD_NICKNAME_ITEM,
         'cardDetail':    ChatLocator.CARD_ST_ITEM,
+        'callTitle':     ChatLocator.CALL_TITLE_ITEM,
+        'callSubtitle':  ChatLocator.CALL_SUBTITLE_ITEM,
         'locTitle':      ChatLocator.LOCATION_MESSAGE_TITLE,
         'locSubTitle':   ChatLocator.LOCATION_MESSAGE_SUBTITLE,
         'fileName':      ChatLocator.FILE_NAME_ITEM,
@@ -39,6 +43,7 @@ class ChatPage(BasePage):
         'videoDuration': ChatLocator.VIDEO_DURATION_ITEM,
         'videoPlay':     ChatLocator.VIDEO_PLAY_BUTTON_ITEM,
     }
+
 
 
     # ==============================================================================
@@ -464,11 +469,13 @@ class ChatPage(BasePage):
 
     # 消息状态-获取最后一条消息是否包含发送失败状态
     def get_last_message_send_fail_status(self) -> bool:
-        """消息状态-获取最后一条消息是否包含发送失败状态"""
+        """ 消息状态-获取最后一条消息是否包含发送失败状态 (显示红色失败感叹号) """
         last_item = self.get_last_message_layout_item()
-        fail_msgs = last_item.find_elements(*ChatLocator.FAIL_MSG)
+        if not last_item:
+            return False
+        fail_msgs = [icon for icon in last_item.find_elements(*ChatLocator.FAIL_MSG) if icon.is_displayed()]
         status = len(fail_msgs) > 0
-        logger.info(f"最后一条消息发送{'失败' if status else '成功'}")
+        logger.info(f"最后一条消息发送{'失败 (存在感叹号)' if status else '未见失败感叹号'}")
         return status
 
     # 消息状态-获取页面所有发送失败的消息红点列表
@@ -632,12 +639,13 @@ class ChatPage(BasePage):
         self,
         msg_type: Literal[
             'text', 'emoji', 'image', 'package', 'video', 'voice', 'file',
-            'position', 'location', 'history', 'cardBubble',
-            'card', 'cardDetail', 'locTitle', 'locSubTitle',
+            'position', 'location', 'history', 'cardBubble', 'call', 'callBubble',
+            'card', 'cardDetail', 'callTitle', 'callSubtitle', 'locTitle', 'locSubTitle',
             'fileName', 'fileSize', 'fileStatus', 'videoDuration', 'videoPlay'
         ] = 'text',
         side: Literal['sent', 'received', 'all'] = 'all'
     ) -> int:
+
         """消息接收-统计聊天页面中指定类型与方向的消息数量"""
         items = self.get_message_elements(msg_type, side)
         count = len(items)
@@ -1223,6 +1231,48 @@ class ChatPage(BasePage):
             raise Exception("未找到名片消息")
         elem_card.click()
         logger.info("🚀 [Action-chat] 点击名片消息进入名片详情页")
+
+
+    # --------------------------------------------------------------------------
+    # 7. 音视频通话记录卡片消息相关 (Call Card Messages)
+    # --------------------------------------------------------------------------
+    # 通话卡片消息-获取指定索引的通话卡片标题 (如 "未接来电" / "已取消" / "已拒绝" / "通话时长 00:03")
+    def get_chat_call_title(self, index: int = -1, side: Literal['sent', 'received', 'all'] = 'all', expect_missing: bool = False) -> str:
+        """通话卡片消息-获取指定索引的通话卡片标题"""
+        title_elems = self.get_message_elements(msg_type="callTitle", side=side, expect_missing=expect_missing)
+        if not title_elems:
+            logger.error("❌ [Action-chat] 未找到任何通话卡片的标题")
+            return ""
+        if index >= len(title_elems):
+            logger.error(f"❌ [Action-chat] 未找到索引为 {index} 的通话卡片标题")
+            return ""
+        title = title_elems[index].text
+        logger.info(f"📞 [Content] 第 {index} 条通话卡片标题: {title}")
+        return title
+
+    # 通话卡片消息-获取指定索引的通话卡片副标题 (如 "轻触回拨")
+    def get_chat_call_subtitle(self, index: int = -1, side: Literal['sent', 'received', 'all'] = 'all', expect_missing: bool = False) -> str:
+        """通话卡片消息-获取指定索引的通话卡片副标题"""
+        sub_elems = self.get_message_elements(msg_type="callSubtitle", side=side, expect_missing=expect_missing)
+        if not sub_elems:
+            logger.error("❌ [Action-chat] 未找到任何通话卡片的副标题")
+            return ""
+        if index >= len(sub_elems):
+            logger.error(f"❌ [Action-chat] 未找到索引为 {index} 的通话卡片副标题")
+            return ""
+        subtitle = sub_elems[index].text
+        logger.info(f"📞 [Content] 第 {index} 条通话卡片副标题: {subtitle}")
+        return subtitle
+
+    # 通话卡片消息-点击最后一条通话卡片 (触发回拨呼叫)
+    def click_last_call_message(self, side: Literal['sent', 'received', 'all'] = 'all'):
+        """通话卡片消息-点击最后一条通话卡片触发回拨呼叫"""
+        cards = self.get_message_elements(msg_type="call", side=side)
+        if not cards:
+            logger.error("❌ 未找到通话卡片消息，无法点击")
+            raise NoSuchElementException("通话卡片消息未上屏")
+        logger.info("📞 [Action-chat] 点击最后一条通话卡片触发回拨")
+        cards[-1].click()
 
 
     # ==============================================================================

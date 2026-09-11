@@ -204,11 +204,24 @@ class HomePage(BasePage):
         return count
 
     # 主页 - 通过好友昵称获取他的会话下面有没有消息内容
-    def get_message_by_name(self, name: str):
-        """ 主页 - 通过好友昵称获取他的会话下面有没有消息内容 """
-        content = self.get_attribute(HomeLocator.get_message_by_name(name), 'text', timeout=1, raise_exception=False)
-        logger.info(f"[Action-Home] 主页 - 通过好友昵称[{name}]获取他的消息内容: {content}")
-        return content
+    def get_message_by_name(self, name: str, expected_text: str = None, timeout: int = 1) -> str:
+        """
+        主页 - 通过好友昵称获取他的会话下面有没有消息内容
+        :param name: 好友或群聊名称
+        :param expected_text: 可选预期包含文本，若传入则在 timeout 时间内轮询等待刷新
+        :param timeout: 超时时间（秒）
+        :return: 会话消息内容文本
+        """
+        end_time = time.time() + timeout
+        content = ""
+        while time.time() <= end_time:
+            content = self.get_attribute(HomeLocator.get_message_by_name(name), 'text', timeout=timeout, raise_exception=False)
+            if content:
+                if expected_text is None or expected_text in content:
+                    logger.info(f"[Action-Home] 主页 - 通过会话名称[{name}]获取到消息内容: {content}")
+                    return content
+        logger.info(f"[Action-Home] 主页 - 通过会话名称[{name}]获取到消息内容(最终): {content}")
+        return content or ""
 
     # 主页 - 会话静音
     def click_conversation_mute(self):
@@ -253,10 +266,29 @@ class HomePage(BasePage):
         logger.info("[Action-Home] 主页 - 在删除会话弹窗点击 取消")
 
     # 主页 - 会话获取草稿状态
-    def get_remind_status(self):
+    def get_remind_status(self, timeout: int = 1, raise_exception: bool = True):
         """ 主页 - 会话获取草稿状态 """
-        status = self.get_attribute(HomeLocator.CONVERSATION_DRAFT, 'text')
+        status = self.get_attribute(HomeLocator.CONVERSATION_DRAFT, 'text', timeout=timeout, raise_exception=raise_exception)
         logger.info(f"[Action-Home] 主页 - 获取会话草稿状态: {status}")
+        return status
+
+    # 主页 - 精确获取某一个会话的状态提醒标签 (@人的消息、进群验证消息: tv_user_name)
+    def get_remind_status_by_name(self, name: str, timeout: int = 2) -> str:
+        """
+        主页 - 获取指定会话的前缀提醒状态（如 [有人@我]、[@所有人]、[进群申请]）
+        基于实际界面元素 tv_user_name 定位，当标签消失时安全返回空字符串
+        :param name: 会话名称
+        :param timeout: 超时时间（秒）
+        :return: 提醒状态文本
+        """
+        elem = self.find_element(
+            HomeLocator.get_remind_status_by_name(name), 
+            timeout=timeout, 
+            raise_exception=False, 
+            expect_missing=True
+        )
+        status = elem.text.strip() if elem else ""
+        logger.info(f"[Action-Home] 获取指定会话 [{name}] 强提醒状态 (tv_user_name): '{status}'")
         return status
 
     # 主页 - 会话获取未读/已读状态
@@ -270,6 +302,25 @@ class HomePage(BasePage):
         status = elem.text if elem else ""
         logger.info(f"[Action-Home] 获取指定会话 [{name}] 阅读状态: {status}")
         return status
+
+    # 主页 - 显式等待指定会话的阅读状态流转
+    def wait_for_read_status(self, name: str, expected_status: str, timeout: int = 10) -> bool:
+        """
+        显式轮询等待指定会话的阅读状态达到预期 (支持未读->已读的长连接推送自愈)
+        :param name: 会话名称
+        :param expected_status: 预期包含的状态文本，如 "未读" 或 "已读"
+        :param timeout: 超时时间（秒）
+        :return: 达到预期返回 True，超时返回 False
+        """
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            current_status = self.get_unread_status(name)
+            if expected_status in current_status:
+                logger.info(f"[Action-Home] 会话 [{name}] 成功匹配目标阅读状态: 【{expected_status}】")
+                return True
+            time.sleep(0.5)
+        logger.warning(f"[Action-Home] 等待会话 [{name}] 状态为 【{expected_status}】 超时({timeout}s)")
+        return False
     
     # 主页 - 会话获取停用状态
     def get_disable_status(self, name: str) -> bool:

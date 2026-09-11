@@ -131,10 +131,32 @@ GROUP_STRATEGY5 = ChatSessionStrategy(
 TEST_PRIVATE_USERS = [
     ChatSessionStrategy(
         desc="私聊模式",
-        name=f"测试13{i}",
-        phone=f"1920000013{i}"
-    )
-    for i in range(0, 6)
+        name="19200000027",
+        phone="19200000027"
+    ),
+    # ChatSessionStrategy(
+    #     desc="私聊模式",
+    #     name="19200000064",
+    #     phone="19200000064"
+    # ),
+    # ChatSessionStrategy(
+    #     desc="私聊模式",
+    #     name="19200000611",
+    #     phone="19200000611"
+    # ),
+    # ChatSessionStrategy(
+    #     desc="私聊模式",
+    #     name="19200000612",
+    #     phone="19200000612"
+    # ),
+    # *(
+    #     ChatSessionStrategy(
+    #         desc="私聊模式",
+    #         name=f"测试13{i}",
+    #         phone=f"1920000013{i}"
+    #     )
+    #     for i in range(0, 6)
+    # ),
     # ChatSessionStrategy(
     #     desc="私聊模式",
     #     # name="测试0225",
@@ -142,6 +164,7 @@ TEST_PRIVATE_USERS = [
     #     phone=""
     # )
 ]
+
 
 TEST_GROUPS = [
     ChatSessionStrategy(
@@ -321,23 +344,157 @@ class ChatContentStrategy:
     """
     desc: str                # 测试报告显示的描述，如 "图片消息展示"
     expected_text: str       # 列表页预期的展示文本，如 "[图片]"
-    send_action: str         # 发送方法名，如 "send_image_message"
-    send_args: tuple = ()    # 发送参数
+    msg_type: str            # 消息类型，对应 ChatMessageBuilder 的 strategy_name（如 "image", "package"）
+    build_args: dict = None  # 构造参数字典
+
+    def __post_init__(self):
+        # 若未传参则兜底为空字典，防止用例中 ** 解包时抛出 TypeError
+        if self.build_args is None:
+            self.build_args = {}
+
+    def __str__(self):
+        # 返回场景描述，供测试报告和日志直接展示清晰名称，避免显示内存地址
+        return self.desc
+
+
+# 单端自闭环展示场景（严格对应用户用例顺序：表情包、图片、视频、语音、位置、文件、个人名片、群名片、链接分享）
+CHAT_CONTENT_SCENARIOS = [
+    ChatContentStrategy("表情包消息展示", "[动态表情]", "package"),
+    ChatContentStrategy("图片消息展示", "[图片]", "image"),
+    ChatContentStrategy("视频消息展示", "[视频]", "video"),
+    ChatContentStrategy("语音消息展示", "[语音]", "voice"),
+    ChatContentStrategy("位置消息展示", "[位置]", "position"),
+    ChatContentStrategy("文件消息展示", "[文件]", "file"),
+    ChatContentStrategy("个人名片展示", "[个人名片]", "card"),
+    ChatContentStrategy("群名片展示", "[群名片]", "group_card"),
+    # ChatContentStrategy("链接分享展示", "[链接分享]", "link"),
+]
+
+# 双端协同展示场景（音视频通话、进群邀请等依赖双端信令交互与对端动作）
+CHAT_CONTENT_DOUBLE_SCENARIOS = [
+    ChatContentStrategy("视频聊天展示", "[视频通话]", "video_call"),
+    ChatContentStrategy("语音聊天展示", "[语音通话]", "voice_call"),
+    ChatContentStrategy("进群邀请展示", "[进群邀请]", "group_invite"),
+]
+
+
+@dataclass
+class ChatCallStrategy:
+    """音视频通话双端协同场景策略"""
+    desc: str                           # 用例标题描述 (如 "视频通话-主叫挂断")
+    call_type: str                      # 通话类型 ("video_call" / "voice_call")
+    action: str                         # 交互行为 ("cancel" / "reject" / "accept" / "timeout" / "interrupt")
+    expected_text_s: str                # 主叫端会话预期展示文本
+    expected_text_r: str                # 被叫端会话预期展示文本
 
     def __str__(self):
         return self.desc
 
-CHAT_CONTENT_SCENARIOS = [
-    ChatContentStrategy("语音消息展示", "[语音]", "send_voice_message"),
-    ChatContentStrategy("图片消息展示", "[图片]", "send_image_message"),
-    ChatContentStrategy("视频消息展示", "[视频]", "send_video_message"),
-    ChatContentStrategy("位置消息展示", "[位置]", "send_location_message"),
-    ChatContentStrategy("文件消息展示", "[文件]", "send_file_message"),
-    ChatContentStrategy("视频聊天展示", "[视频通话]", "send_video_chat"),
-    ChatContentStrategy("语音聊天展示", "[语音通话]", "send_voice_chat"),
-    ChatContentStrategy("个人名片展示", "[个人名片]", "send_personal_card"),
-    ChatContentStrategy("群名片展示", "[群名片]", "send_group_card"),
-    ChatContentStrategy("进群邀请展示", "[进群邀请]", "send_group_invite"),
-    ChatContentStrategy("表情消息展示", "[动画表情]", "send_emoji_message"),
-    ChatContentStrategy("链接分享展示", "[链接分享]", "send_link_message"),
+
+# 音视频通话双端协同场景集（涵盖 5 大生命周期状态机终态）
+CHAT_CALL_DOUBLE_SCENARIOS = [
+    # 1. 主叫挂断 -> 主叫会话显示【已取消】，被叫会话显示【对方已取消】
+    ChatCallStrategy("视频通话-主叫挂断", "video_call", "cancel", expected_text_s="已取消", expected_text_r="对方已取消"),
+    ChatCallStrategy("语音通话-主叫挂断", "voice_call", "cancel", expected_text_s="已取消", expected_text_r="对方已取消"),
+
+    # 2. 被叫拒绝 -> 主叫会话显示【对方已拒绝】，被叫会话显示【已拒绝】
+    ChatCallStrategy("视频通话-被叫拒绝", "video_call", "reject", expected_text_s="对方已拒绝", expected_text_r="已拒绝"),
+    ChatCallStrategy("语音通话-被叫拒绝", "voice_call", "reject", expected_text_s="对方已拒绝", expected_text_r="已拒绝"),
+
+    # 3. 通话接通 -> 主叫会话显示【通话时长】，被叫会话显示【通话结束】
+    ChatCallStrategy("视频通话-通话接通", "video_call", "accept", expected_text_s="通话时长", expected_text_r="通话时长"),
+    ChatCallStrategy("语音通话-通话接通", "voice_call", "accept", expected_text_s="通话时长", expected_text_r="通话时长"),
+
+    # 4. 主被超时 -> 主叫会话显示【对方无应答】，被叫会话显示【未接来电】
+    ChatCallStrategy("视频通话-主被超时", "video_call", "timeout", expected_text_s="对方无应答", expected_text_r="对方已取消"),
+    ChatCallStrategy("语音通话-主被超时", "voice_call", "timeout", expected_text_s="对方无应答", expected_text_r="对方已取消"),
+
+    # 5. 通话中断 -> 双方断网，双方会话显示【通话中断】
+    ChatCallStrategy("视频通话-通话中断", "video_call", "interrupt", expected_text_s="通话中断", expected_text_r="通话时长"),
+    ChatCallStrategy("语音通话-通话中断", "voice_call", "interrupt", expected_text_s="通话中断", expected_text_r="通话时长"),
+
 ]
+
+
+
+
+
+# 9. 群聊特有会话内容与强提醒状态策略
+@dataclass
+class ChatGroupRemindStrategy:
+    """
+    群聊特有会话内容状态策略（进群申请、加入群聊系统通知、有人@我、@所有人、复合提醒）
+    """
+    desc: str                           # 场景测试标题描述
+    expected_tag: str                   # 预期提醒标签（tv_user_name，如 "[进群申请]"、"[有人@我]"、"[@所有人]"）
+    expected_content: str               # 预期会话消息内容（tv_message，如 "加入了群聊"）
+    remind_type: str                    # 场景分类类型 ("apply", "join_notify", "at_me", "at_all", "both_apply_and_at")
+    required_role: str = "member"       # 权限约束："member"(全员可见)、"admin_or_owner"(仅群主或具备进群审批权限的管理员可见)
+    check_disappear_after_enter: bool = False  # 是否验证进入会话查看后强提醒标签消失
+
+    def __str__(self):
+        return self.desc
+
+
+# 群聊特有会话状态场景集（包含：群主/管理员进群申请可见、普通成员无权限不可见、某某某加入群聊、有人@我、查看@人消息消失、@所有人消失、申请与@并存）
+CHAT_GROUP_CONTENT_SCENARIOS = [
+    ChatGroupRemindStrategy(
+        desc="进群申请（群主/有权限管理员可见）",
+        expected_tag="[进群申请]",
+        expected_content="",
+        remind_type="apply",
+        required_role="admin_or_owner",
+        check_disappear_after_enter=False
+    ),
+    ChatGroupRemindStrategy(
+        desc="进群申请（普通成员无权限不可见）",
+        expected_tag="",
+        expected_content="",
+        remind_type="apply",
+        required_role="member",
+        check_disappear_after_enter=False
+    ),
+    ChatGroupRemindStrategy(
+        desc="进群后显示某某某加入群聊",
+        expected_tag="",
+        expected_content="加入了群聊",
+        remind_type="join_notify",
+        required_role="member",
+        check_disappear_after_enter=False
+    ),
+    ChatGroupRemindStrategy(
+        desc="有人@我",
+        expected_tag="[有人@我]",
+        expected_content="",
+        remind_type="at_me",
+        required_role="member",
+        check_disappear_after_enter=False
+    ),
+    ChatGroupRemindStrategy(
+        desc="查看@人消息消失",
+        expected_tag="[有人@我]",
+        expected_content="",
+        remind_type="at_me",
+        required_role="member",
+        check_disappear_after_enter=True
+    ),
+    ChatGroupRemindStrategy(
+        desc="@所有人，查看@所有人消息消失",
+        expected_tag="[@所有人]",
+        expected_content="",
+        remind_type="at_all",
+        required_role="member",
+        check_disappear_after_enter=True
+    ),
+    ChatGroupRemindStrategy(
+        desc="群主/管理员进群申请和@消息同时存在",
+        expected_tag="[进群申请]",
+        expected_content="",
+        remind_type="both_apply_and_at",
+        required_role="admin_or_owner",
+        check_disappear_after_enter=False
+    ),
+]
+
+
+

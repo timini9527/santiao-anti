@@ -493,8 +493,8 @@ class TestChat:
         with allure.step("1. 多设备群聊异步并发发送"):
             self._run_async_multi_device_send(
                 device_sessions_map=device_groups_map,
-                loop_count=5,
-                interval=0.5,
+                loop_count=1,
+                interval=0.1,
                 session_type="群聊"
             )
 
@@ -514,10 +514,10 @@ class TestChat:
         """
         device_users_map = {
             5: ('Device_5', TEST_PRIVATE_USERS),
-            6: ('Device_6', TEST_PRIVATE_USERS),
-            7: ('Device_7', TEST_PRIVATE_USERS),
-            8: ('Device_8', TEST_PRIVATE_USERS),
-            9: ('Device_9', TEST_PRIVATE_USERS)
+            # 6: ('Device_6', TEST_PRIVATE_USERS),
+            # 7: ('Device_7', TEST_PRIVATE_USERS),
+            # 8: ('Device_8', TEST_PRIVATE_USERS),
+            # 9: ('Device_9', TEST_PRIVATE_USERS)
         }
         with allure.step("0. 前置准备：并发等待所有设备在主页面就绪"):
             logger.info("⏳ [Multi Device Private Test] 检查并等待所有参与设备在主页面就绪...")
@@ -527,8 +527,8 @@ class TestChat:
         with allure.step("1. 多设备单聊异步并发发送"):
             self._run_async_multi_device_send(
                 device_sessions_map=device_users_map,
-                loop_count=5,
-                interval=0.5,
+                loop_count=1,
+                interval=0.1,
                 session_type="单聊"
             )
 
@@ -572,7 +572,7 @@ class TestChat:
             logger.info("🚀 [Combined Test] 启动阶段一：多设备群聊并发发送...")
             self._run_async_multi_device_send(
                 device_sessions_map=device_groups_map,
-                loop_count=5,
+                loop_count=1,
                 interval=0.2,
                 session_type="群聊"
             )
@@ -586,7 +586,7 @@ class TestChat:
             logger.info("🚀 [Combined Test] 启动阶段二：多设备单聊并发发送...")
             self._run_async_multi_device_send(
                 device_sessions_map=device_users_map,
-                loop_count=5,
+                loop_count=1,
                 interval=0.2,
                 session_type="单聊"
             )

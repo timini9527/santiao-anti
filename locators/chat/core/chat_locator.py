@@ -95,7 +95,16 @@ class ChatLocator:
     MERGE_CARD_KIND = (AppiumBy.ID, f'{PACKAGE_ID}/merge_kind')                         # 合并转发类型标签
 
     # 9. 停用账号/封禁提示
-    DISABLE_MESSAGE_TIP = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("对方账号已无法使用 详情")')
+    DISABLE_MESSAGE_TIP = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("对方账号无法使用 详情")')
+
+    # 10. 音视频通话记录卡片消息 (Call Card)
+    CALL_CARD_ID = f'{PACKAGE_ID}/call_card'
+    CALL_CARD_ITEM = (AppiumBy.ID, CALL_CARD_ID)                                        # 通话卡片容器
+    CALL_TITLE_ID = f'{PACKAGE_ID}/call_title'
+    CALL_TITLE_ITEM = (AppiumBy.ID, CALL_TITLE_ID)                                      # 通话卡片主标题 (如 "未接来电" / "已取消" / "已拒绝" / "通话时长 00:03")
+    CALL_SUBTITLE_ID = f'{PACKAGE_ID}/call_subtitle'
+    CALL_SUBTITLE_ITEM = (AppiumBy.ID, CALL_SUBTITLE_ID)                                # 通话卡片副标题 (如 "轻触回拨")
+
 
     # ==================================================================================================================
     # 聊天页面顶部元素定位
