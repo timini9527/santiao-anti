@@ -15,8 +15,9 @@ class ChatEmojiPage(ChatEmojiPanelBase):
     """
 
     # [内部方法] 获取当前面板中可见的所有表情列表
-    def _get_all_emoji(self):
+    def _get_all_emoji(self) -> list[WebElement]:
         """ 获取所有表情中表情 """
+        logger.info("🔍 获取所有表情中可见的表情列表...")
         all_emoji_list = self.find_elements(ChatEmojiLocator.EMOJI_ALL_ITEM_IN, 'visibility', timeout=3)
         if not all_emoji_list:
             raise RuntimeError("当前页面未找到任何表情元素")
@@ -24,8 +25,9 @@ class ChatEmojiPage(ChatEmojiPanelBase):
         return all_emoji_list
 
     # 最近表情 - 获取表情面板中可见的最近使用表情元素
-    def _get_late_emoji(self):
+    def _get_late_emoji(self) -> list[WebElement]:
         """  查找最近使用的表情   """
+        logger.info("🔍 查找最近使用的表情...")
         late_emoji_list = self.find_elements(ChatEmojiLocator.EMOJI_RECENT_ITEM_IN, 'visibility', timeout=3)
         if not late_emoji_list:
             raise RuntimeError("当前页面未找到最近使用的表情元素")
@@ -33,8 +35,9 @@ class ChatEmojiPage(ChatEmojiPanelBase):
         return late_emoji_list
 
     # 所有表情 - 发送表情面板中所有表情
-    def _send_all_emojis_by_paging(self, max_slide: int = 20, duration: int = 500):
+    def _send_all_emojis_by_paging(self, max_slide: int = 20, duration: int = 500) -> int:
         """ 发送所有表情 (一行一行地发送与滑动), 分页全量发送表情 """
+        logger.info("🚀 准备按行分页发送表情...")
         # 1. 获取表情面板布局度量数据
         metrics = self.get_grid_layout_metrics(
             ChatEmojiLocator.EMOJI_ALL, 
@@ -119,6 +122,7 @@ class ChatEmojiPage(ChatEmojiPanelBase):
 
             for i, elem in enumerate(click_items, start=1):
                 try:
+                    logger.info(f"准备点击第 {i} 个表情...")
                     elem.click()
                     total_clicked += 1
                     time.sleep(watime)
@@ -142,13 +146,14 @@ class ChatEmojiPage(ChatEmojiPanelBase):
         return total_clicked
 
     # 发送表情 - 发送第一排基础表情
-    def sent_first_row_emoji(self, count: int = 8):
+    def sent_first_row_emoji(self, count: int = 8) -> None:
         """发送第一排基础表情（快速发送第一排指定数量表情，避免全量滑动耗时）"""
         logger.info(f"🚀 [Action] 快速发送第一排表情 (数量: {count})")
         self.sent_emoji(emoji_type="sequential", count=count)
 
     # 发送表情 - 发送并全量验证当前面板全部表情功能
-    def sent_all_emoji(self):
+    def sent_all_emoji(self) -> None:
+        """发送并全量验证当前面板全部表情功能"""
         logger.info("[Action] 准备全量发送面板内所有的展示表情")
         panel_elem, _ = self._find_panel()
         # 1. 自动对齐到顶部
@@ -179,7 +184,7 @@ class ChatEmojiPage(ChatEmojiPanelBase):
         return self.find_elements(ChatEmojiLocator.EMOJI_ALL_ITEM_IN)
 
     # 表情 - 根据策略获取目标表情元素列表
-    def _get_target_elements(self, emoji_type: str, count: int, emoji_list: list, panel_elem: WebElement) -> List:
+    def _get_target_elements(self, emoji_type: str, count: int, emoji_list: list[WebElement], panel_elem: WebElement) -> list[WebElement]:
         """ 根据策略获取目标表情元素列表,返回: List[WebElement] (无论多少个，统统返回列表) """
         if not emoji_list:
             raise RuntimeError("当前页面未找到可用的表情元素")
@@ -279,10 +284,9 @@ class ChatEmojiPage(ChatEmojiPanelBase):
 
         return clicked_count
 
-
     # 反转表情数据
     @staticmethod
-    def str_to_emoji_list(input_text: str):
+    def str_to_emoji_list(input_text: str) -> list[str]:
         """
         A = "[呵呵][嘻嘻][大笑][爱你][晕][泪][馋嘴]"
         B = "[馋嘴][泪][晕][爱你][大笑][嘻嘻][呵呵]"

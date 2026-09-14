@@ -18,6 +18,7 @@ class RemarkSettingPage(BasePage):
     def wait_friend_detail_page(self, timeout: int = 10, expected_title: str = "") -> bool:
         """ 好友详情页面 - 在一定时间内轮询获取标题，直到获取成功 """
         titles = [expected_title] if expected_title else ["好友资料"]
+        logger.info(f"🧐 [Action - ContactDetail] 等待好友详情页面加载 (预期标题: {titles}, 超时: {timeout}s)")
         wait_finish = self.wait_for_element_text(ContactDetailLocator.TV_TITLE, expected_text=titles, timeout=timeout)
         if wait_finish:
             logger.info(f" 🧐 [Action - ContactDetail] 好友详情页面 - 加载完成")
@@ -27,58 +28,60 @@ class RemarkSettingPage(BasePage):
 
     
     # 资料页 - 点击取消按钮
-    def click_tv_cancel(self):
+    def click_tv_cancel(self) -> None:
         """ 资料页 - 点击取消按钮 """
-        self.click(ContactDetailLocator.TV_CANCEL)
         logger.info("⚙️ [Action - ContactDetail] 资料详情页 - 点击取消按钮")
+        self.click(ContactDetailLocator.TV_CANCEL)
 
     # 好友资料页- 点击备注名
-    def click_remark_name(self):
+    def click_remark_name(self) -> None:
         """ 好友资料页 - 点击备注名 """
-        self.click(ContactDetailLocator.REMARK_NAME_ITEM)
         logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 点击备注名")
+        self.click(ContactDetailLocator.REMARK_NAME_ITEM)
 
     # 好友资料页- 输入备注名
-    def input_remark_name(self, remark_name: str):
+    def input_remark_name(self, remark_name: str) -> None:
         """ 好友资料页 - 输入备注名 """
-        self.send_keys(ContactDetailLocator.ET_REMARK, remark_name)
         logger.info(f"⚙️ [Action - RemarkSetting] 好友资料页 - 输入备注名: {remark_name}")
+        self.send_keys(ContactDetailLocator.ET_REMARK, remark_name)
 
     # 好友资料页 - 清空备注名
-    def clear_remark_name(self):
+    def clear_remark_name(self) -> None:
         """ 好友资料页 - 清空备注名 """
+        logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 清空备注名")
         try:
             self.click(ContactDetailLocator.IV_REMARK_CLEAR)
         except Exception:
             self.clear(ContactDetailLocator.ET_REMARK)
-        logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 清空备注名")
 
     # 好友资料页- 获取备注名
     def get_remark_name(self) -> str:
         """ 好友资料页 - 获取备注名 """
+        logger.info("🧐 [Action - RemarkSetting] 获取备注名")
         txt = self.get_attribute(ContactDetailLocator.ET_REMARK, "text")
         logger.info(f"🧐 [Action - RemarkSetting] 好友资料页 - 获取备注名: {txt}")
-        return txt
+        return txt or ""
         
     # 好友资料页 - 点击保存
-    def click_save(self):
+    def click_save(self) -> None:
         """ 好友资料页 - 点击保存 """
-        self.click(ContactDetailLocator.FB_DONE)
         logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 点击保存")
+        self.click(ContactDetailLocator.FB_DONE)
         time.sleep(0.5)
     
     # =========================================================================
     # 电话相关操作
     # =========================================================================
     # 好友资料页 - 点击电话
-    def click_phone_item(self):
+    def click_phone_item(self) -> None:
         """ 好友资料页 - 点击电话 """
-        self.click(ContactDetailLocator.ITEM_PHONE)
         logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 点击电话")
+        self.click(ContactDetailLocator.ITEM_PHONE)
 
     # 好友资料页 - 获取已添加的手机号码列表
-    def get_phone_numbers(self) -> list:
+    def get_phone_numbers(self) -> list[str]:
         """ 好友资料页 - 获取已添加的手机号码列表 """
+        logger.info("🧐 [Action - RemarkSetting] 获取已添加的手机号码列表")
         str_phone_numbers = self.get_attribute(ContactDetailLocator.TV_PHONE_VALUE, "text")
         if str_phone_numbers:
             phone_numbers = str_phone_numbers.split("，")
@@ -89,22 +92,23 @@ class RemarkSettingPage(BasePage):
     # 好友资料页 - 点击添加电话
     def click_add_phone(self) -> bool:
         """ 好友资料页 - 点击添加电话 """
+        logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 点击添加电话")
         try:
             self.click(ContactDetailLocator.IV_ADD_PHONE)
-            logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 点击添加电话")
             return True
         except Exception as e:
             logger.error(f"❌ [Action - RemarkSetting] 好友资料页 - 点击添加电话失败: {e}")
             return False
 
     # 好友资料页 - 输入电话号码
-    def input_phone(self, phone: str, index: int = 0, by_action: bool = False):
+    def input_phone(self, phone: str, index: int = 0, by_action: bool = False) -> bool:
         """ 
         好友资料页 - 在指定索引的电话框中输入号码 
         :param phone: 电话号码文本
         :param index: 输入框索引
         :param by_action: 是否使用底层 W3C ActionChains 模拟真实键盘按键流输入
         """
+        logger.info(f"⚙️ [Action - RemarkSetting] 好友资料页 - 输入电话[{index}]: {phone}")
         try:
             elems = self.find_elements(ContactDetailLocator.ET_PHONE_VALUE)
             if index < len(elems):
@@ -115,7 +119,6 @@ class RemarkSettingPage(BasePage):
                     self.send_keys_by_actions(elem, phone)
                 else:
                     elem.send_keys(phone)
-                logger.info(f"⚙️ [Action - RemarkSetting] 好友资料页 - 输入电话[{index}]: {phone}")
                 return True
             logger.error(f"❌ [Action - RemarkSetting] 好友资料页 - 电话输入框索引溢出: {index} >= {len(elems)}")
             return False
@@ -124,8 +127,9 @@ class RemarkSettingPage(BasePage):
             return False
 
     # 好友资料页 - 获取电话号码列表
-    def get_phones(self, raise_exception: bool = False) -> list:
+    def get_phones(self, raise_exception: bool = False) -> list[str]:
         """ 好友资料页 - 获取已输入的所有纯数字电话号码（兼容 ET_PHONE_VALUE 与 TV_PHONE_VALUE） """
+        logger.info("🧐 [Action - RemarkSetting] 获取已输入的所有电话号码列表")
         phones = []
         try:
             elems = self.find_elements(ContactDetailLocator.ET_PHONE_VALUE, timeout=2, raise_exception=raise_exception)
@@ -145,6 +149,7 @@ class RemarkSettingPage(BasePage):
     # 好友资料页 - 清除电话号码
     def clear_phone(self, index: int = 0) -> bool:
         """ 好友资料页 - 清除指定索引的电话号码 """
+        logger.info(f"⚙️ [Action - RemarkSetting] 准备清除第 {index} 个电话号码")
         try:
             icons = self.find_elements(ContactDetailLocator.IV_PHONE_LEFT, raise_exception=False)
             if index < len(icons):
@@ -163,6 +168,7 @@ class RemarkSettingPage(BasePage):
     # 好友资料页 - 删除已添加的所有电话号码
     def delete_all_phones(self) -> bool:
         """ 好友资料页 - 删除已添加的所有电话号码 """
+        logger.info("⚙️ [Action - RemarkSetting] 准备删除所有电话号码")
         try:
             icons = self.find_elements(ContactDetailLocator.IV_PHONE_LEFT, raise_exception=False)
             count = len(icons)
@@ -180,6 +186,7 @@ class RemarkSettingPage(BasePage):
     # 好友资料页 - 检查添加电话按钮是否可见
     def is_add_phone_visible(self, raise_exception: bool = True) -> bool:
         """ 好友资料页 - 检查添加电话按钮是否可见 """
+        logger.info("🔍 [Action - RemarkSetting] 检查添加电话按钮是否可见")
         try:
             elem = self.find_element(ContactDetailLocator.IV_ADD_PHONE, timeout=2, raise_exception=raise_exception)
             return elem.is_displayed()
@@ -189,16 +196,16 @@ class RemarkSettingPage(BasePage):
     # =========================================================================
     # 标签相关操作
     # =========================================================================
-
     # 好友资料页 - 点击标签容器
-    def click_tag_container(self):
+    def click_tag_container(self) -> None:
         """ 好友资料页 - 点击标签容器 """
-        self.click(ContactDetailLocator.ITEM_TAG, timeout=2)
         logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 点击标签容器")
+        self.click(ContactDetailLocator.ITEM_TAG, timeout=2)
 
     # 好友资料页 - 获取标签的值
     def get_tag_values(self) -> list[str]:
         """ 好友资料页 - 获取标签的值 """
+        logger.info("🧐 [Action - RemarkSetting] 获取好友资料页标签值")
         tag_values = self.get_attribute(ContactDetailLocator.TV_TAG_VALUE, "text")
         if tag_values:
             tag_list = tag_values.split('，')
@@ -209,14 +216,15 @@ class RemarkSettingPage(BasePage):
             return []
 
     # 好友资料页 - 点击标签入口
-    def click_tags(self):
+    def click_tags(self) -> None:
         """ 好友资料页 - 点击标签入口 """
-        self.click(ContactDetailLocator.ITEM_TAG)
         logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 点击标签入口")
+        self.click(ContactDetailLocator.ITEM_TAG)
     
     # 标签 - 等待标签页加载完成
     def wait_for_tag_page_load(self, timeout: int = 10) -> bool:
         """ 标签 - 等待标签选择页加载完成 """
+        logger.info(f"⏳ [Wait - RemarkSetting] 等待标签选择页加载 (超时: {timeout}s)")
         is_exist = self.is_element_exist(ContactDetailLocator.CHIP_GROUP, timeout=timeout)
         if is_exist:
             logger.info("✅ [Wait - RemarkSetting] 标签选择页加载完成")
@@ -225,8 +233,9 @@ class RemarkSettingPage(BasePage):
         return is_exist
 
     # 标签 - 获取标签页面的标签值
-    def get_tag_page_values(self, tag_type: int = 0, split_type: int = 0) -> str:
+    def get_tag_page_values(self, tag_type: int = 0, split_type: int = 0) -> list[str]:
         """ 标签 - 获取标签页面的标签值 """
+        logger.info(f"🧐 [Action - RemarkSetting] 获取标签页面的标签值 (tag_type: {tag_type}, split_type: {split_type})")
         if tag_type == 0:
             locator = ContactDetailLocator.TV_TAG_VALUE
         elif tag_type == 1:
@@ -251,6 +260,7 @@ class RemarkSettingPage(BasePage):
         tag_type = 0: 返回所有的 TextView 标签元素列表
         tag_type = 1: 返回指定 tag_name 的单个 WebElement 元素
         """
+        logger.info(f"🔍 [Action - RemarkSetting] 获取标签元素 (tag_type: {tag_type}, tag_name: '{tag_name}')")
         if tag_type == 0:
             elems = self.find_elements(
                 ContactDetailLocator.CHIP_GROUP_TAG_TEXTVIEWS,
@@ -304,13 +314,14 @@ class RemarkSettingPage(BasePage):
         :param target: tag_type=0(数量X), tag_type=1(名称str), tag_type=2(索引int)
         :return: 是否执行成功
         """
+        logger.info(f"⚙️ [Action - RemarkSetting] 标签 - 准备点击标签, 模式: {tag_type}, 目标: {target}")
         # 1-按标签名称点击单个元素
         if tag_type == 1:
             elem = self.get_tag_elem(tag_type=1, tag_name=str(target))
             if not elem:
                 return False
-            elem.click()
             logger.info(f"⚙️ [Action - RemarkSetting] 标签 - 按名称点击标签: {target}")
+            elem.click()
             return True
 
         # 0 或 2 - 获取列表元素并切片提取待点击的目标列表
@@ -326,8 +337,8 @@ class RemarkSettingPage(BasePage):
             for name in tag_names:
                 elem = self.get_tag_elem(tag_type=1, tag_name=name)
                 if elem:
-                    elem.click()
                     logger.info(f"⚙️ [Action - RemarkSetting] 标签 - 连续点击标签: {name}")
+                    elem.click()
             return True
 
         elif tag_type == 2:
@@ -335,8 +346,8 @@ class RemarkSettingPage(BasePage):
             if idx < len(elems):
                 elem = elems[idx]
                 tag_text = elem.text
-                elem.click()
                 logger.info(f"⚙️ [Action - RemarkSetting] 标签 - 按索引 [{idx}] 点击标签: {tag_text}")
+                elem.click()
                 return True
             else:
                 logger.error(f"❌ [Action - RemarkSetting] 标签 - 索引 [{idx}] 超出范围(共 {len(elems)} 个)")
@@ -350,6 +361,7 @@ class RemarkSettingPage(BasePage):
         :param tag_type: 0-清空所有已选择的标签, 1-清空某一个标签
         :return: 是否执行成功
         """
+        logger.info(f"⚙️ [Action - RemarkSetting] 标签 - 准备清空标签, 模式: {tag_type}, 指定名称: {tag_name}")
         if list_tags is None:
             logger.info("✅ [Action - RemarkSetting] 标签 - 列表为空，无需清空")
             return True
@@ -371,73 +383,74 @@ class RemarkSettingPage(BasePage):
                     self.input_search_tag(name)
                     elem = self.get_tag_elem(tag_type=1, tag_name=name, timeout=2)
                     if elem:
-                        elem.click()
                         logger.info(f"✅ [Action - RemarkSetting] 标签 - 通过搜索清空标签: {name}")
+                        elem.click()
                     else:
                         logger.warning(f"⚠️ [Action - RemarkSetting] 标签 - 搜索后依然未找到指定标签: {name}")
                     self.click_tv_cancel()
                 else:
-                    elem.click()
                     logger.info(f"✅ [Action - RemarkSetting] 标签 - 清空标签: {name}")
+                    elem.click()
             time.sleep(0.3)
             self.click_save()
             return True
                     
     # 标签 - 点击标签资料卡
-    def click_card_tag(self):
+    def click_card_tag(self) -> None:
         """ 标签 - 点击标签资料卡 """
-        self.click(ContactDetailLocator.CARD_TAG)
         logger.info("⚙️ [Action - RemarkSetting] 标签 - 点击标签资料卡")
+        self.click(ContactDetailLocator.CARD_TAG)
                 
     # 标签 - 搜索框输入标签
-    def input_search_tag(self, keyword: str):
+    def input_search_tag(self, keyword: str) -> None:
         """ 标签 - 搜索框输入标签 """
-        self.send_keys(ContactDetailLocator.ET_SEARCH, keyword)
         logger.info(f"⚙️ [Action - RemarkSetting] 标签 - 搜索框输入标签: {keyword}")
+        self.send_keys(ContactDetailLocator.ET_SEARCH, keyword)
 
     # 标签 - 点击新建标签
-    def click_add_new_tag(self):
+    def click_add_new_tag(self) -> None:
         """ 标签 - 点击新建标签 """
-        self.click(ContactDetailLocator.LL_CREATE_TAG)
         logger.info("⚙️ [Action - RemarkSetting] 标签 - 点击新建标签")
+        self.click(ContactDetailLocator.LL_CREATE_TAG)
 
     # 标签 - 输入标签名称
-    def input_tag_name(self, keyword: str):
+    def input_tag_name(self, keyword: str) -> None:
         """ 标签 - 输入标签名称 """
-        self.send_keys(ContactDetailLocator.ET_TAG_NAME, keyword)
         logger.info(f"⚙️ [Action - RemarkSetting] 标签 - 输入标签名称: {keyword}")
+        self.send_keys(ContactDetailLocator.ET_TAG_NAME, keyword)
 
     # 标签 - 确认创建标签
-    def click_create_done(self):
+    def click_create_done(self) -> None:
         """ 标签 - 确认创建标签 """
-        self.click(ContactDetailLocator.FB_CREATE_DONE)
         logger.info("⚙️ [Action - RemarkSetting] 标签 - 确认创建标签")
+        self.click(ContactDetailLocator.FB_CREATE_DONE)
 
     
     # =========================================================================
     # 备忘相关操作
     # =========================================================================
     # 好友资料页 - 点击备忘入口
-    def click_memo(self):
+    def click_memo(self) -> None:
         """ 好友资料页 - 点击备忘入口 """
-        self.click(ContactDetailLocator.ITEM_MEMO)
         logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 点击备忘入口")
+        self.click(ContactDetailLocator.ITEM_MEMO)
     
     # 好友资料页 - 输入备忘描述
-    def input_note(self, note: str):
+    def input_note(self, note: str) -> None:
         """ 好友资料页 - 输入备忘描述 """
-        self.send_keys(ContactDetailLocator.ET_MEMO, note)
         logger.info(f"⚙️ [Action - RemarkSetting] 好友资料页 - 输入备忘描述: {note}")
+        self.send_keys(ContactDetailLocator.ET_MEMO, note)
 
     # 好友资料页 - 清空备忘描述
-    def clear_note(self):
+    def clear_note(self) -> None:
         """ 好友资料页 - 清空备忘描述 """
-        self.click(ContactDetailLocator.IV_MEMO_CLEAR)
         logger.info("⚙️ [Action - RemarkSetting] 好友资料页 - 清空备忘描述")
+        self.click(ContactDetailLocator.IV_MEMO_CLEAR)
 
     # 好友资料页/设置备注页 - 获取备忘描述内容
-    def get_note(self,raise_exception: bool = False) -> str:
+    def get_note(self, raise_exception: bool = False) -> str:
         """ 设置备注页 - 获取备忘描述内容 """
+        logger.info("🧐 [Action - RemarkSetting] 获取备忘描述内容")
         txt = self.get_attribute(ContactDetailLocator.TV_MEMO_VALUE, "text", raise_exception=raise_exception)
         if not txt:
             txt = self.get_attribute(ContactDetailLocator.ET_MEMO, "text", raise_exception=raise_exception)
@@ -448,8 +461,9 @@ class RemarkSettingPage(BasePage):
         return txt
 
     # 好友资料卡 - 获取资料卡页面展示的备忘描述文本
-    def get_profile_memo_value(self,raise_exception: bool = False) -> str:
+    def get_profile_memo_value(self, raise_exception: bool = False) -> str:
         """ 好友资料卡 - 获取资料卡页面展示的备忘描述文本 """
+        logger.info("🧐 [Action - RemarkSetting] 获取资料卡页面展示的备忘描述文本")
         txt = self.get_attribute(ContactDetailLocator.TV_PROFILE_MEMO_VALUE, "text", raise_exception=raise_exception)
         if not txt:
             logger.warning("⚠️ [Action - RemarkSetting] 资料卡 - 未展示备忘描述")
@@ -457,35 +471,33 @@ class RemarkSettingPage(BasePage):
         logger.info(f"🧐 [Action - RemarkSetting] 资料卡 - 获取展示的备忘描述: {txt}")
         return txt
 
-
-
-
     # =========================================================================
     # 共同群聊页操作
     # =========================================================================
-
     # 共同群聊 - 获取共同群聊展示的数量
     def get_common_groups_count(self) -> int:
         """ 共同群聊 - 获取共同群聊展示的数量 """
+        logger.info("🧐 [Action - RemarkSetting] 获取共同群聊展示的数量")
         try:
             txt = self.get_attribute(ContactDetailLocator.TV_COMMON_GROUPS_VALUE, "text")
             logger.info(f"🧐 [Action - RemarkSetting] 共同群聊数量文本: {txt}")
             import re
-            nums = re.findall(r'\d+', txt)
+            nums = re.findall(r'\d+', txt or "")
             return int(nums[0]) if nums else 0
         except Exception as e:
             logger.warning(f"⚠️ [Action - RemarkSetting] 获取共同群聊数量失败: {e}")
             return 0
 
     # 共同群聊 - 点击共同群聊入口
-    def click_common_groups(self):
+    def click_common_groups(self) -> None:
         """ 共同群聊 - 点击共同群聊入口 """
-        self.click(ContactDetailLocator.ITEM_COMMON_GROUPS)
         logger.info("⚙️ [Action - RemarkSetting] 共同群聊 - 点击共同群聊入口")
+        self.click(ContactDetailLocator.ITEM_COMMON_GROUPS)
 
     # 共同群聊 - 等待共同群聊详情页加载完成
     def wait_for_common_groups_page_load(self, timeout: int = 10) -> bool:
         """ 共同群聊 - 等待共同群聊详情页加载完成 """
+        logger.info(f"⏳ [Wait - RemarkSetting] 等待共同群聊详情页加载 (超时: {timeout}s)")
         res = self.wait_for_element_text(ContactDetailLocator.TV_TITLE, "我们的共同群聊", timeout=timeout)
         if res:
             logger.info("✅ [Wait - RemarkSetting] 共同群聊页加载完成")
@@ -494,18 +506,19 @@ class RemarkSettingPage(BasePage):
         return res
 
     # 共同群聊 - 输入关键字过滤共同群聊
-    def search_common_group(self, keyword: str):
+    def search_common_group(self, keyword: str) -> None:
         """ 共同群聊 - 输入关键字过滤共同群聊 """
-        self.send_keys(ContactDetailLocator.ET_SEARCH, keyword)
         logger.info(f"⚙️ [Action - RemarkSetting] 搜索共同群聊: '{keyword}'")
+        self.send_keys(ContactDetailLocator.ET_SEARCH, keyword)
 
     # 共同群聊 - 点击指定名称的共同群聊
     def click_common_group_by_name(self, group_name: str) -> bool:
         """ 共同群聊 - 点击指定名称的共同群聊 """
+        logger.info(f"⚙️ [Action - RemarkSetting] 准备点击共同群聊: '{group_name}'")
         locator = ContactDetailLocator.get_common_group_by_name(group_name)
         if self.is_element_exist(locator, timeout=2):
             self.click(locator)
-            logger.info(f"⚙️ [Action - RemarkSetting] 共同群聊 - 点击共同群聊: '{group_name}'")
+            logger.info(f"⚙️ [Action - RemarkSetting] 共同群聊 - 成功点击共同群聊: '{group_name}'")
             return True
         logger.error(f"❌ [Action - RemarkSetting] 未找到共同群聊: '{group_name}'")
         return False
@@ -513,6 +526,7 @@ class RemarkSettingPage(BasePage):
     # 共同群聊 - 获取共同群聊群聊列表Item
     def get_common_group_items(self) -> list[WebElement]:
         """ 共同群聊 - 获取共同群聊群聊列表Item """
+        logger.info("🧐 [Action - RemarkSetting] 获取共同群聊列表Item")
         elems = self.find_elements(ContactDetailLocator.TV_NAME, timeout=3, raise_exception=False)
         if not elems:
             logger.warning("⚠️ [Action - RemarkSetting] 共同群聊列表为空")
@@ -528,8 +542,9 @@ class RemarkSettingPage(BasePage):
         return count
 
     # 共同群聊 - 获取当前共同群聊列表所有的群聊名称
-    def get_common_group_names(self) -> List[str]:
+    def get_common_group_names(self) -> list[str]:
         """ 共同群聊 - 获取当前共同群聊列表所有的群聊名称 """
+        logger.info("🧐 [Action - RemarkSetting] 获取共同群聊列表所有群聊名称")
         names = [e.text for e in self.get_common_group_items() if e.text]
         if not names:
             logger.warning("⚠️ [Action - RemarkSetting] 共同群聊列表为空")

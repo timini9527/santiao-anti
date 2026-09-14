@@ -28,14 +28,11 @@ class GroupManagerLocator(CommonLocator):
 
 
     # 具有 Switch 开关的配置项及其对应的开关按钮
-    GROUP_ID_SEARCH_SWITCH = (AppiumBy.XPATH, 
-        "//*[contains(@resource-id, 'group_id_search')]//*[contains(@resource-id, 'switch_btn')]")                   # 群ID搜索开关
-    JOIN_TO_GROUP_VERIFY_SWITCH = (AppiumBy.XPATH, 
-        "//*[contains(@resource-id, 'join_to_group_verify')]//*[contains(@resource-id, 'switch_btn')]")              # 进群验证开关
-    ALL_MEMBER_MUTE_SWITCH = (AppiumBy.XPATH, 
-        "//*[contains(@resource-id, 'all_member_mute')]//*[contains(@resource-id, 'switch_btn')]")                   # 全员禁言开关
-    UN_ADD_FRIEND_EACH_OTHER_SWITCH = (AppiumBy.XPATH, 
-        "//*[contains(@resource-id, 'all_member_unAddFriend_eachOther')]//*[contains(@resource-id, 'switch_btn')]")  # 禁止群成员互相加好友开关
+    GROUP_ID_SEARCH_SWITCH = (AppiumBy.ID,  f"{PACKAGE_ID}/group_id_search_btn")                    # 群ID搜索开关
+    JOIN_TO_GROUP_VERIFY_SWITCH = (AppiumBy.ID, f"{PACKAGE_ID}/join_to_group_verify_btn")           # 进群验证开关
+    ALL_MEMBER_MUTE_SWITCH = (AppiumBy.ID, f"{PACKAGE_ID}/all_member_mute_btn")                     # 全员禁言开关
+    NEW_MEMBER_AUTO_MUTE_SWITCH = (AppiumBy.ID, f"{PACKAGE_ID}/new_member_auto_mute_btn")           # 新成员进群自动禁言
+    UN_ADD_FRIEND_EACH_OTHER_SWITCH = (AppiumBy.ID, f"{PACKAGE_ID}/all_member_un_add_friend_btn")   # 禁止群成员互相加好友开关
 
 
 

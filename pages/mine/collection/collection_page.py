@@ -19,19 +19,25 @@ class CollectionPage(ChatCollectionPage):
     IMG_PRE = "data/images/collection_pre/collect_pre_"
     IMG_AFT = "data/images/collection_aft/"
 
-    # 将字符串转换成时间戳
+    # 收藏页面-将字符串转换成时间戳
     def str_to_dtime(self, dt_str: str, index: int = 0) -> datetime:
+        """ 将字符串转换成时间戳 """
         dt_coll = parser.parse(dt_str)
-        logger.info(f" ✅ 将字符串转换成时间戳: {dt_coll}")
+        logger.info(f"✅ 将字符串转换成时间戳: {dt_coll}")
         return dt_coll
 
-    # 进入我的收藏页面
-    def enter_my_collection(self):
+    # 收藏页面-进入我的收藏页面
+    def enter_my_collection(self) -> None:
+        """ 进入我的收藏页面 """
+        logger.info("⚙️ [Action - Collection] 准备进入我的收藏页面")
+        logger.info("⚙️ [Action - Collection] 点击【我的】入口")
         self.click(MinePage.MENU_MINE)
+        logger.info("⚙️ [Action - Collection] 点击【我的收藏】选项")
         self.click(CollectionLocator.MINE_COLLECTION_ENTRANCE, force_wait=True)
 
-    # 获取收藏页面最新 collect_details() 数据
+    # 收藏页面-获取收藏页面最新 collect_details() 数据
     def get_collection_details_data(self, item_type: str = 'text', index: int = 0, max_scrolls: int = 10) -> list[dict] | dict | None:
+        """ 获取收藏页面最新 collect_details() 数据 """
         locator_map = {
             'text': CollectionLocator.COLL_CONTENT_TEXT,
             'image': CollectionLocator.COLL_CONTENT_IMAGE,
@@ -99,15 +105,17 @@ class CollectionPage(ChatCollectionPage):
             return None
         return details_results
 
-    # 获取当前页面时间及被收藏人 重构排序
-    def get_sort_time(self, detail_list: list[dict[str, str]]):
+    # 收藏页面-获取当前页面时间及被收藏人重构排序
+    def get_sort_time(self, detail_list: list[dict[str, str]]) -> list[str]:
+        """ 获取当前页面时间及被收藏人 重构排序 """
         pastimes = [detail["collected_time"] for detail in detail_list]
         pastimes = sorted(pastimes, reverse=True)
         logger.info(f"[Action] 获取当前页面时间及被收藏人 重构排序: {pastimes}")
         return pastimes
 
-    # 获取收藏当前页面所有 text 数据
+    # 收藏页面-获取收藏当前页面所有 text 数据
     def get_collection_text_data(self, index: int = 0) -> list[str]:
+        """ 获取收藏当前页面所有 text 数据 """
         elems = self.get_collection_texts()
         texts = [elem.text for elem in elems]
         if index == 0:
@@ -121,6 +129,7 @@ class CollectionPage(ChatCollectionPage):
             logger.info(f" 💬 获取收藏页面的数据: {texts[0:index:1]}")
             return texts[0:index:1]
 
+    # 收藏页面-计算两个列表尾部与头部的重叠长度
     @staticmethod
     def calculate_overlap(list_a: list, list_b: list) -> int:
         """
@@ -137,8 +146,9 @@ class CollectionPage(ChatCollectionPage):
                 return size
         return 0
 
-    # 获取我的收藏页面所有 text 数据
+    # 收藏页面-获取我的收藏页面所有 text 数据
     def get_all_my_collection_text_data(self, index: int = 0, max_scrolls: int = 10) -> list[str]:
+        """ 获取我的收藏页面所有 text 数据 """
         all_data_texts = []
         prev_page_texts = []
 
@@ -249,6 +259,7 @@ class CollectionPage(ChatCollectionPage):
         else:
             raise ValueError(f"不支持的类型: {item_type}")
 
+    # 辅助函数 - 将特定的收藏卡片项向左侧滑
     def _swipe_item_left(self, elem: WebElement) -> bool:
         """ 辅助函数：将特定的收藏卡片项向左侧滑 """
         try:
@@ -263,8 +274,10 @@ class CollectionPage(ChatCollectionPage):
             logger.error(f"❌ 卡片向左侧滑执行失败: {e}")
             return False
 
+    # 分享收藏 - 分享收藏页面指定索引的条目
     def share_collection_item(self, share_type: str = 'text', index: int = 0) -> bool:
         """ 分享收藏页面指定索引的条目 """
+        logger.info(f"⚙️ [Action - Collection] 准备分享第 {index} 条 {share_type} 收藏")
         elem = self._get_element_by_type(share_type, index)
         if not elem:
             logger.warning(f"⚠️ 未找到第 {index} 条 {share_type} 类型收藏，无法执行分享")
@@ -273,6 +286,7 @@ class CollectionPage(ChatCollectionPage):
         try:
             if not self._swipe_item_left(elem):
                 return False
+            logger.info(f"⚙️ [Action - Collection] 点击右滑分享按钮")
             self.click(CollectionLocator.SWIPE_RIGHT_SHARE_ITEM)
             logger.info(f"✅ 第 {index} 条 {share_type} 收藏数据分享按钮点击成功")
             return True
@@ -285,7 +299,8 @@ class CollectionPage(ChatCollectionPage):
 
     # 删除收藏-删除指定索引的文本/图片条目
     def del_collection_item(self, del_type: str = "text", index: int = 0) -> bool:
-        """删除收藏页面中指定索引的条目"""
+        """ 删除收藏页面中指定索引的条目 """
+        logger.info(f"⚙️ [Action - Collection] 准备删除第 {index} 条 {del_type} 收藏")
         elem = self._get_element_by_type(del_type, index)
         if not elem:
             logger.warning(f"⚠️ 未找到第 {index} 条 {del_type} 类型收藏，无法执行删除")
@@ -294,6 +309,7 @@ class CollectionPage(ChatCollectionPage):
         try:
             if not self._swipe_item_left(elem):
                 return False
+            logger.info(f"⚙️ [Action - Collection] 点击右滑删除按钮")
             self.click(CollectionLocator.SWIPE_RIGHT_DELETE_ITEM)
             logger.info(f"✅ 第 {index} 条 {del_type} 收藏删除成功")
             return True

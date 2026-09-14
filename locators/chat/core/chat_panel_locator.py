@@ -1,6 +1,6 @@
 from appium.webdriver.common.appiumby import AppiumBy
 from locators.common.common_locator import CommonLocator
-from locators.chat.core.call_locator import CallLocator
+from locators.chat.call.call_locator import CallLocator
 
 class ChatPanelLocator(CommonLocator):
     """聊天页面“+”号扩展面板的元素定位器"""

@@ -1,5 +1,7 @@
 import time
+from typing import Optional, Literal
 from appium.webdriver.common.appiumby import AppiumBy
+from appium.webdriver.webelement import WebElement
 from selenium.webdriver.common.by import By
 from common.base_page import BasePage 
 from pages.home.home_page import HomePage
@@ -15,8 +17,9 @@ from core.logger_utils import logger
 class ChatListPage(ChatPage):
 
     # 等待聊天会话列表页加载
-    def wait_chat_list_page_load(self, timeout=10) -> bool:
+    def wait_chat_list_page_load(self, timeout: int = 10) -> bool:
         """等待聊天会话列表页加载"""
+        logger.info("⏳ 正在等待聊天会话列表页加载...")
         end_time = time.time() + timeout
         while time.time() <= end_time:
             home_title = self.get_attribute(HL.MIDDLE_TITLE, 'text')
@@ -28,14 +31,19 @@ class ChatListPage(ChatPage):
         return False
 
     # 快速下滑避免页面不是原始页面
-    def _quick_slide_to_top(self):
+    def _quick_slide_to_top(self) -> None:
+        """快速向下滑动回顶部"""
+        logger.info("执行快速下滑回顶部...")
         self.swipe_page_quickly(slid_type='down', duration=100)
 
     # 快速下滑一直到底部
-    def _quick_slide_to_bottom(self):
+    def _quick_slide_to_bottom(self) -> None:
+        """快速向上滑动到底部"""
+        logger.info("执行快速滑动到底部...")
         self.swipe_page_quickly(slid_type='up', duration=100)
 
-    def _find_session_element_in_list(self, target_name: str, match_type: str = "exact", timeout: int = 3):
+    # 在当前列表视图中查找特定名称的会话元素
+    def _find_session_element_in_list(self, target_name: str, match_type: str = "exact", timeout: int = 3) -> Optional[WebElement]:
         """
         [内部辅助方法] 在当前列表视图中查找特定名称的会话元素
         :param target_name: 目标会话名称
@@ -43,6 +51,7 @@ class ChatListPage(ChatPage):
         :param timeout: 超时时间
         :return: 找到的 WebElement 对象 或 None
         """
+        logger.info(f"🔍 正在当前列表中检索会话元素: 【{target_name}】(模式: {match_type})...")
         end_time = time.time() + timeout
         while time.time() <= end_time:
             session_elems = self.find_elements(HL.CONVERSATION_NAME, timeout=1, raise_exception=True)
@@ -61,6 +70,7 @@ class ChatListPage(ChatPage):
         logger.debug(f"超时 {timeout}s 后，仍未在当前列表找到会话: {target_name}")
         return None
 
+    # 判断指定会话是否存在于当前列表中
     def is_session_exist_in_list(self, target_name: str, match_type: str = "exact", timeout: int = 3) -> bool:
         """
         判断指定会话是否存在于当前列表中
@@ -72,12 +82,13 @@ class ChatListPage(ChatPage):
         return self._find_session_element_in_list(target_name, match_type=match_type, timeout=timeout) is not None
 
     # 会话左滑设置
-    def _get_row_element_by_name(self, target_name: str, match_type: str = "exact"):
+    def _get_row_element_by_name(self, target_name: str, match_type: str = "exact") -> Optional[WebElement]:
         """
         [内部辅助方法] 获取包含该名字的整行容器元素（用于侧滑）
         :param target_name: 目标会话名称
         :param match_type: 匹配模式，"exact" (完全匹配) 或 "partial" (部分匹配/包含)
         """
+        logger.info(f"🔍 正在获取会话整行容器元素: 【{target_name}】...")
         chat_rows = self.find_elements(HL.CONVERSATION_ITEM, timeout=3)
         for row in chat_rows:
             try:
@@ -87,7 +98,7 @@ class ChatListPage(ChatPage):
                     return row
                 elif match_type == "partial" and target_name in elem_text:
                     return row
-            except Exception as e:
+            except Exception:
                 continue
         return None
 
@@ -97,17 +108,19 @@ class ChatListPage(ChatPage):
         :param match_type: "exact" (精确匹配) 或 "partial" (部分匹配)
         :param timeout: 超时时间
         """
+        logger.info(f"👉 准备检索并进入会话: 【{session_name}】(匹配模式: {match_type})...")
         content_elem = self._find_session_element_in_list(session_name, match_type, timeout)
         if content_elem:
+            logger.info(f"👉 点击会话元素: 【{session_name}】...")
             content_elem.click()
             self.wait_for_chat_page_load()
-            logger.info(f"✅ 进入会话: {session_name} (匹配模式: {match_type})")
+            logger.info(f"✅ 进入会话完成: {session_name} (匹配模式: {match_type})")
             return True
         logger.warning(f"❌ 未找到会话: {session_name}")
         return False
 
     # 进入私聊或群聊通用 方法
-    def common_enter_chat(self, chat_name, result_locator=None, match_type: str = "exact", timeout: int = 3):
+    def common_enter_chat(self, chat_name: str, result_locator: Optional[tuple] = None, match_type: str = "exact", timeout: int = 3) -> None:
         """
         [通用逻辑] 进入会话：优先列表查找 -> 失败则走搜索栏搜索
         :param chat_name: 目标名称 (私聊名 或 群聊名)
@@ -122,13 +135,16 @@ class ChatListPage(ChatPage):
             return
 
         logger.info(f"列表未找到 {chat_name}，执行搜索...")
+        logger.info("点击搜索框并输入关键词...")
         self.click(HL.SEARCH_INPUT)
+        logger.info(f"向搜索框输入会话名: 【{chat_name}】...")
         self.send_keys(HL.SEARCH_INPUT, chat_name)
         time.sleep(0.5)
 
         # 场景 A：如果你传了特定的搜索结果定位器
         if result_locator:
             try:
+                logger.info(f"准备点击指定的搜索结果定位符: {result_locator}...")
                 self.click(result_locator, force_wait=True)
                 logger.info(f"✅ 通过指定的 {result_locator} 成功进入: {chat_name}")
                 time.sleep(1)
@@ -146,6 +162,7 @@ class ChatListPage(ChatPage):
             try:
                 text_locator = HL.get_conver_by_name(chat_name)
                 if self.is_element_exist(text_locator, timeout=timeout):
+                    logger.info(f"点击文本定位匹配的会话: 【{chat_name}】...")
                     self.click(text_locator, force_wait=True)
                     self.wait_for_chat_page_load()
                     logger.info(f"✅ [备用兜底] 通过文本直接定位并成功进入: {chat_name}")
@@ -160,30 +177,32 @@ class ChatListPage(ChatPage):
 
     # 获取聊天页面好友名称
     def get_friend_name(self, friend_name: str) -> bool:
+        """校验顶部标题是否包含好友名称"""
+        logger.info(f"校验顶部标题是否包含好友名称: 【{friend_name}】...")
         return True if friend_name in self.get_top_name() else False
 
     # 进入会话
-    def enter_chat(self, session_name: str = None, match_type: str = "exact", timeout: int = 3):
+    def enter_chat(self, session_name: Optional[str] = None, match_type: str = "exact", timeout: int = 3) -> None:
         """
         统一的进入会话方法
-        :param session_name: 策略对象，包含 chat_type 和 name
+        :param session_name: 目标会话名称
         :param match_type: 匹配模式，"exact" (精确匹配) 或 "partial" (部分匹配)
         :param timeout: 超时时间
         """
         self.common_enter_chat(chat_name=session_name, match_type=match_type, timeout=timeout)
 
     # 进入私聊会话
-    def enter_private_chat(self, session_name: str = None, match_type: str = "exact", timeout: int = 3):
+    def enter_private_chat(self, session_name: Optional[str] = None, match_type: str = "exact", timeout: int = 3) -> None:
         """进入私聊 (使用类属性中的默认名称) 从列表进入特定好友的聊天窗 """
         self.common_enter_chat(chat_name=session_name, match_type=match_type, timeout=timeout)
 
     # 进入群聊会话
-    def enter_group_chat(self, session_name: str = None, match_type: str = "exact", timeout: int = 3):
+    def enter_group_chat(self, session_name: Optional[str] = None, match_type: str = "exact", timeout: int = 3) -> None:
         """进入群聊 (使用类属性中的默认名称)"""
         self.common_enter_chat(chat_name=session_name, match_type=match_type, timeout=timeout)
 
     # 通用逻辑，侧滑会话并点击指定菜单
-    def common_set_left_menu(self, session_name: str, menu_locator: tuple, slide_action: str = None) -> str:
+    def common_set_left_menu(self, session_name: str, menu_locator: tuple, slide_action: Optional[str] = None) -> str:
         """
         侧滑会话并点击指定菜单 (支持智能校验与盲点)
         :param session_name: 目标会话名称
@@ -191,6 +210,7 @@ class ChatListPage(ChatPage):
         :param slide_action: (可选) 如果传入此值，则只有 menu_text == slide_action 时才点击；否则收起菜单。
         :return: 返回侧滑菜单上实际显示的按钮文案
         """
+        logger.info(f"👉 准备对会话【{session_name}】执行左滑操作...")
         session_row = self._get_row_element_by_name(session_name)
         if not session_row:
             raise ValueError(f"❌ 在列表中未找到会话: {session_name}，无法执行侧滑操作")
@@ -204,32 +224,29 @@ class ChatListPage(ChatPage):
 
         if slide_action:
             if menu_text == slide_action:
+                logger.info(f"👉 准备执行点击动作: 【{slide_action}】...")
                 self.click(menu_locator, force_wait=True)
-                logger.info(f"✅ 执行点击动作: 【{slide_action}】")
+                logger.info(f"✅ 执行点击动作完成: 【{slide_action}】")
                 time.sleep(0.5)
             else:
-                logger.info(f"🚫 当前按钮为[{menu_text}]，不需要执行[{slide_action}]，取消点击。")
+                logger.info(f"🚫 当前按钮为[{menu_text}]，不需要执行[{slide_action}]，点击行取消侧滑。")
                 session_row.click()
         else:
             # 盲点模式（不传 slide_action 时，无脑点）
+            logger.info(f"👉 准备执行侧滑菜单点击: [{menu_text}] (盲点模式)...")
             self.click(menu_locator, force_wait=True)
-            logger.info(f"✅ (盲点模式) 对 {session_name} 点击了侧滑菜单: [{menu_text}]")
+            logger.info(f"✅ (盲点模式) 对 {session_name} 点击了侧滑菜单完成: [{menu_text}]")
             time.sleep(0.8)
         return menu_text
 
     # 设置通知
-    def set_notice(self, session_name: str = None, slider_locator: tuple = None, slider_action: str = None):
+    def set_notice(self, session_name: Optional[str] = None, slider_locator: Optional[tuple] = None, slider_action: Optional[str] = None) -> str:
+        """设置会话免打扰通知状态"""
+        logger.info(f"⚙️ 设置会话通知状态: 【{session_name}】...")
         return self.common_set_left_menu(session_name, slider_locator, slider_action)
 
     # 设置置顶
-    def set_top(self, session_name: str = None, slider_locator: tuple = None):
+    def set_top(self, session_name: Optional[str] = None, slider_locator: Optional[tuple] = None) -> str:
+        """设置会话置顶状态"""
+        logger.info(f"⚙️ 设置会话置顶状态: 【{session_name}】...")
         return self.common_set_left_menu(session_name, slider_locator)
-
-
-
-
-
-
-
-
-

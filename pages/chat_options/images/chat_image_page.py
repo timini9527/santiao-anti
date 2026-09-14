@@ -1,20 +1,24 @@
 import time
 import random
+from typing import Optional, Literal
 from selenium.common import NoSuchElementException
 from common.base_page import BasePage
 from core.logger_utils import logger
 from appium.webdriver.common.appiumby import AppiumBy
+from appium.webdriver.webelement import WebElement
 from locators.chat.core.chat_locator import ChatLocator
 from locators.chat_options.images.chat_image_locator import ChatImageLocator
 from pages.chat.core.chat_page import ChatPage
 from utils.cv_recognition.screenshot_utils import ScreenshotUtils, CropRect
 
+
 class ChatImagePage(ChatPage):
     """聊天面板-相册内部相关操作：从相册选图、预览大图、勾选原图、确认发送等"""
 
     # 等待图片选择页面加载
-    def wait_for_image_page_load(self, timeout: int = 10):
+    def wait_for_image_page_load(self, timeout: int = 10) -> bool:
         """等待图片选择页面加载"""
+        logger.info("⏳ 正在等待图片选择页面加载...")
         container = self.find_elements(ChatImageLocator.PHOTO_CONTAINER, timeout=timeout)
         if not container:
             logger.warning("❌ 图片选择页面加载失败")
@@ -23,31 +27,36 @@ class ChatImagePage(ChatPage):
         return True
 
     # 点击图片图标进入相册
-    def click_image_button(self):
+    def click_image_button(self) -> None:
         """点击图片按钮进入图片选择页面"""
+        logger.info("🚀 准备点击图片按钮进入图片选择页面...")
         self.click(ChatImageLocator.IMAGE_SELECT_ROOT)
-        logger.info("🚀 点击图片按钮进入图片选择页面")
+        logger.info("🚀 点击图片按钮已完成")
     
     # 返回按钮
-    def click_back_button(self):
+    def click_back_button(self) -> None:
         """点击返回按钮"""
+        logger.info("🚀 准备点击返回按钮...")
         self.click(ChatImageLocator.TOP_BACK_BUTTON)
-        logger.info("🚀 点击返回按钮")
+        logger.info("🚀 点击返回按钮已完成")
     
     # 标题文本
-    def get_title_text(self):
+    def get_title_text(self) -> str:
         """获取标题文本"""
+        logger.info("🔍 获取相册标题文本...")
         return self.get_attribute(ChatImageLocator.TOP_TITLE_TEXT, 'text')
     
     # 点击标题切换相册分类
-    def click_title_to_switch_category(self):
+    def click_title_to_switch_category(self) -> None:
         """点击标题切换相册分类"""
+        logger.info("🚀 准备点击标题切换相册分类...")
         self.click(ChatImageLocator.TOP_TITLE_TEXT)
-        logger.info("🚀 点击标题切换相册分类")
+        logger.info("🚀 点击标题切换相册分类已完成")
     
     # 展开后的相册分类展示
-    def open_category_list(self):
+    def open_category_list(self) -> list[WebElement]:
         """展开相册分类列表"""
+        logger.info("🔍 检索展开后的相册分类列表...")
         category_list = self.find_elements(ChatImageLocator.TOP_CATEGORY_TEXT)
         if not category_list or len(category_list) == 0:
             logger.error("没有找到相册分类列表")
@@ -55,134 +64,152 @@ class ChatImagePage(ChatPage):
         return category_list
     
     # 获取 PHOTO_CONTAINER 的容器
-    def get_photo_container(self):
+    def get_photo_container(self) -> WebElement:
         """获取 PHOTO_CONTAINER 整个相册 的容器"""
+        logger.info("🔍 获取 PHOTO_CONTAINER 整个相册容器...")
         container = self.find_element(ChatImageLocator.PHOTO_CONTAINER, timeout=3)
-        logger.info(" PHOTO_CONTAINER 整个相册 的容器")
         return container
         
     # 获取所有图片
-    def get_all_image_items(self):
+    def get_all_image_items(self) -> list[WebElement]:
         """获取所有图片"""
+        logger.info("🔍 获取相册中所有图片元素...")
         items = self.find_elements(ChatImageLocator.PHOTO_ITEM, timeout=3)
         logger.info(f"获取所有图片，共{len(items)}张")
         return items
     
     # 获取所有图片的勾选按钮
-    def get_all_image_check_button(self):
+    def get_all_image_check_button(self) -> list[WebElement]:
         """获取所有图片的勾选按钮"""
+        logger.info("🔍 获取所有图片的勾选按钮...")
         buttons = self.find_elements(ChatImageLocator.PHOTO_CHECK_BUTTON, timeout=3)
         logger.info(f"获取所有图片的勾选按钮，共{len(buttons)}个")
         return buttons
     
     # 获取 仅纯图片(png/jpg) 不包含其他格式图片
-    def get_only_image_items(self):
+    def get_only_image_items(self) -> list[WebElement]:
         """获取仅纯图片(png/jpg) 不包含其他格式图片"""
+        logger.info("🔍 获取仅纯图片(png/jpg)列表...")
         items = self.find_elements(ChatImageLocator.PHOTO_ONLY_IMAGE_ITEM, timeout=3)
         logger.info(f"获取仅纯图片(png/jpg) 不包含其他格式图片，共{len(items)}张")
         return items
     
     # 获取仅不包含视频的元素
-    def get_not_video_items(self):
+    def get_not_video_items(self) -> list[WebElement]:
         """获取仅不包含视频的元素"""
+        logger.info("🔍 获取仅不包含视频的元素列表...")
         items = self.find_elements(ChatImageLocator.PHOTO_NOT_VIDEO_ITEM, timeout=3)
         logger.info(f"获取仅不包含视频的元素，共{len(items)}张")
         return items
 
     # 获取仅不包含视频的勾选按钮
-    def get_not_video_check_button(self):
+    def get_not_video_check_button(self) -> list[WebElement]:
         """获取仅不包含视频的勾选按钮"""
+        logger.info("🔍 获取仅不包含视频的勾选按钮...")
         buttons = self.find_elements(ChatImageLocator.PHOTO_CHECK_BUTTON_NOT_VIDEO, timeout=3)
         logger.info(f"获取仅不包含视频的勾选按钮，共{len(buttons)}个")
         return buttons
     
     # 获取不包含视频、长图、webp、gif等媒体文件的勾选按钮
-    def get_not_media_check_button(self):
+    def get_not_media_check_button(self) -> list[WebElement]:
         """获取不包含视频、长图、webp、gif等媒体文件的勾选按钮"""
+        logger.info("🔍 获取不包含特殊媒体文件的纯图片勾选按钮...")
         buttons = self.find_elements(ChatImageLocator.PHOTO_CHECK_BUTTON_NOT_MEDIA, timeout=3)
         logger.info(f"获取不包含视频、长图、webp、gif等媒体文件的勾选按钮，共{len(buttons)}个")
         return buttons
 
     # 获取仅长图、webp、gif
-    def get_only_long_image_items(self):
+    def get_only_long_image_items(self) -> list[WebElement]:
         """获取仅长图、webp、gif"""
+        logger.info("🔍 获取仅长图、webp、gif元素列表...")
         items = self.find_elements(ChatImageLocator.PHOTO_IMAGE_LONG_WEBP_GIF_ITEM, timeout=3)
         logger.info(f"获取仅长图、webp、gif，共{len(items)}张")
         return items
 
     # 获取仅长图、webp、gif的勾选按钮
-    def get_only_long_image_check_button(self):
+    def get_only_long_image_check_button(self) -> list[WebElement]:
         """获取仅长图的勾选按钮"""
+        logger.info("🔍 获取仅长图/动图的勾选按钮...")
         buttons = self.find_elements(ChatImageLocator.PHOTO_CHECK_BUTTON_LONG_WEBP_GIF, timeout=3)
         logger.info(f"获取仅长图、webp、gif的勾选按钮，共{len(buttons)}个")
         return buttons
 
     # 获取 仅视频
-    def get_only_video_items(self):
+    def get_only_video_items(self) -> list[WebElement]:
         """获取仅视频"""
+        logger.info("🔍 获取仅视频元素列表...")
         items = self.find_elements(ChatImageLocator.PHOTO_ONLY_VIDEO_ITEM, timeout=3)
         logger.info(f"获取仅视频，共{len(items)}张")
         return items
 
     # 获取仅视频的勾选按钮
-    def get_only_video_check_button(self, raise_exception=True):
+    def get_only_video_check_button(self, raise_exception: bool = True) -> list[WebElement]:
         """获取仅视频的勾选按钮"""
+        logger.info("🔍 获取仅视频的勾选按钮...")
         buttons = self.find_elements(ChatImageLocator.PHOTO_CHECK_BUTTON_VIDEO, timeout=3, raise_exception=raise_exception)
         logger.info(f"获取仅视频的勾选按钮，共{len(buttons)}个")
         return buttons
     
     # 点击预览按钮
-    def click_preview_button(self):
+    def click_preview_button(self) -> None:
         """点击预览按钮"""
+        logger.info("🚀 准备点击左下角【预览】按钮...")
         self.click(ChatImageLocator.PHOTO_PREVIEW_TEXT)
-        logger.info("🚀 点击左下角【预览】按钮，跳转至大图预览全屏页")
+        logger.info("🚀 已点击左下角【预览】按钮，跳转至大图预览全屏页")
         time.sleep(0.5)
     
     # 点击原图按钮
-    def click_original_image_button(self):
+    def click_original_image_button(self) -> None:
         """点击原图按钮"""
+        logger.info("🚀 准备点击相片底部的【原图】按钮...")
         self.click(ChatImageLocator.PHOTO_ORIGINAL_TEXT)
-        logger.info("🚀 点击相片底部的【原图】字样，勾选无损发送选项")
+        logger.info("🚀 点击相片底部的【原图】字样完成")
     
     # 获取原图按钮状态
-    def get_original_image_button_status(self):
+    def get_original_image_button_status(self) -> str:
         """获取原图按钮状态"""
+        logger.info("🔍 获取原图按钮状态...")
         status = self.get_attribute(ChatImageLocator.PHOTO_ORIGINAL_TEXT, 'checked')
         logger.info(f"原图按钮状态: {status}")
         return status
     
     # 获取发送前所勾选的图片/视频数量
-    def get_selected_image_count(self, raise_exception=True):
+    def get_selected_image_count(self, raise_exception: bool = True) -> int:
         """获取发送前所勾选的图片数量"""
+        logger.info("🔍 获取已勾选图片数量...")
         selected_text = self.get_attribute(ChatImageLocator.PHOTO_SELECTED_COUNT_TEXT, 'text', timeout=1, raise_exception=raise_exception)
         if selected_text and str(selected_text).isdigit():
             logger.info(f"✅ 已勾选 {selected_text} 张图片")
             return int(selected_text)
-        logger.info(f"未获取到已勾选图片数量")
+        logger.info("未获取到已勾选图片数量")
         return 0
     
     # 点击发送按钮
-    def click_send_button(self):
+    def click_send_button(self) -> None:
         """点击发送按钮"""
+        logger.info("✅ 准备点击【确定发送】按钮...")
         self.click(ChatImageLocator.PHOTO_SEND_TEXT)
-        logger.info("✅ 敲击了【确定发送】按钮，正在将位图切片推入聊天流...")
+        logger.info("✅ 已点击【确定发送】按钮，正在将位图切片推入聊天流...")
         time.sleep(0.5)
         
     # 预览界面 点击勾选大图按钮
-    def click_preview_check_button(self):
+    def click_preview_check_button(self) -> None:
         """点击预览界面勾选大图按钮"""
+        logger.info("✅ 准备点击预览界面勾选大图按钮...")
         self.click(ChatImageLocator.PHOTO_PREVIEW_CHECK_BOX)
-        logger.info("✅ 点击预览界面勾选大图按钮")
+        logger.info("✅ 点击预览界面勾选大图按钮完成")
     
     # 点击底部原图复选框
-    def click_original_image_checkbox(self):
+    def click_original_image_checkbox(self) -> None:
         """点击底部原图复选框，确保照片原画质高精度传输"""
+        logger.info("✅ 准备点击相片底部的【原图】字样...")
         self.click(ChatImageLocator.PHOTO_ORIGINAL_TEXT)
-        logger.info("✅ 点击相片底部的【原图】字样，勾选无损发送选项")
+        logger.info("✅ 点击相片底部的【原图】字样完成，勾选无损发送选项")
 
     # 点击发送按钮（有角标）
-    def click_send_image(self):
+    def click_send_image(self) -> None:
         """点击相册界面或预览界面最右下角的『发送』大按钮"""
+        logger.info("🔍 检查发送按钮前置角标状态...")
         # 发送前防御性校验：只有勾选了图片，右上角有角标时发送按钮才有效亮起
         check_boxs = self.find_elements(ChatImageLocator.PHOTO_SELECTED_COUNT_TEXT, timeout=2)
         if not check_boxs:
@@ -193,25 +220,29 @@ class ChatImagePage(ChatPage):
         time.sleep(0.5)
 
     # 选中超过10张的弹窗 - 获取 Toast
-    def get_toast_content(self):
+    def get_toast_content(self) -> str:
         """获取Toast内容"""
+        logger.info("🔍 获取弹窗Toast内容...")
         return self.get_attribute(ChatImageLocator.TV_CONTENT, 'text')
 
     # 选中超过10张的弹窗 - 点击确认按钮
-    def click_ok_button(self):
+    def click_ok_button(self) -> None:
         """点击确认按钮"""
+        logger.info("✅ 准备点击确认按钮...")
         self.click(ChatImageLocator.BTN_OK, force_wait=True)
-        logger.info("✅ 选中超过10张的弹窗 - 点击确认按钮")
+        logger.info("✅ 选中超过10张的弹窗 - 点击确认按钮完成")
 
     # 打开面板-进入相册
-    def open_panel_to_album(self):
+    def open_panel_to_album(self) -> None:
         """点击图片按钮进入图片选择页面"""
+        logger.info("🚀 准备从面板进入相册...")
         self.click_add_button()
         self.click_image_button()
     
     # 校验默认页面加载状态
-    def verify_default_page_load_status(self):
+    def verify_default_page_load_status(self) -> bool:
         """校验默认页面加载状态"""
+        logger.info("🔍 校验默认相册页面加载状态...")
         original_status = self.get_original_image_button_status()
         selected_count = self.get_selected_image_count(raise_exception=False)
         if original_status == 'false' and selected_count == 0:
@@ -225,6 +256,7 @@ class ChatImagePage(ChatPage):
     # 校验底部已选数量是否符合预期
     def verify_selected_count(self, expected_count: int) -> bool:
         """校验底部已选数量是否符合预期"""
+        logger.info(f"🔍 校验底部已选数量，预期: {expected_count}...")
         current_count = self.get_selected_image_count()
         is_match = current_count == expected_count
         logger.info(f"已选数量校验: current={current_count}, expected={expected_count}, result={is_match}")
@@ -237,6 +269,7 @@ class ChatImagePage(ChatPage):
         :param mode: 0-选择后取消(点两次), 1-第一张, 2-随机一张, 3-滑到底部最后一张, 4-第9张(不够则下滑寻找，仍不足则选最后一张)
         :return: 成功选中返回 True；mode=0 时选后取消也返回 True
         """
+        logger.info(f"🔍 准备选择单张图片，模式: {mode}...")
         only_image_check_buttons = self.get_not_media_check_button()
         if not only_image_check_buttons or len(only_image_check_buttons) == 0:
             logger.error("✖️ 当前相册没有找到任何纯图片的勾选按钮")
@@ -244,29 +277,35 @@ class ChatImagePage(ChatPage):
 
         if mode == 0:
             # 选择第一张后再点击取消，模拟"反悔"场景
+            logger.info("✔️ 准备选中第一张图片...")
             only_image_check_buttons[0].click()
-            logger.info("✔️ 选中第一张图片")
+            logger.info("✔️ 选中第一张图片完成")
             time.sleep(0.3)
+            logger.info("✔️ 准备再次点击取消勾选，模拟选后反悔...")
             only_image_check_buttons[0].click()
-            logger.info("✔️ 再次点击取消勾选，模拟选后反悔")
+            logger.info("✔️ 再次点击取消勾选完成")
             return True
         elif mode == 1:
+            logger.info("✔️ 准备选中相册中的第一张纯图片...")
             only_image_check_buttons[0].click()
             logger.info("✔️ 成功选中相册中的第一张纯图片")
             return True
         elif mode == 2:
             idx = random.randint(0, len(only_image_check_buttons) - 1)
+            logger.info(f"✔️ 准备随机选中当前视图中的第 {idx + 1} 张纯图片...")
             only_image_check_buttons[idx].click()
             logger.info(f"✔️ 成功随机选中当前视图中的第 {idx + 1} 张纯图片")
             return True
         elif mode == 3:
             # 快速滑到底部，重新获取元素列表后选中末尾那张
+            logger.info("执行快速滑动到底部...")
             self.swipe_page_quickly(slid_type='up', duration=300)
             time.sleep(0.5)
             only_image_check_buttons = self.get_not_media_check_button()
             if not only_image_check_buttons or len(only_image_check_buttons) == 0:
                 logger.error("✖️ 滑到底部后仍未找到可选图片")
                 raise NoSuchElementException("滑到底部后相册为空")
+            logger.info("✔️ 准备选中末尾纯图片...")
             only_image_check_buttons[-1].click()
             logger.info("✔️ 成功滑到底部并选中最后一张纯图片")
             return True
@@ -289,10 +328,12 @@ class ChatImagePage(ChatPage):
                 raise NoSuchElementException("下滑多次后仍未找到任何可选纯图片")
 
             if len(only_image_check_buttons) > target_index:
+                logger.info(f"✔️ 准备选中第 {target_index + 1} 张纯图片...")
                 only_image_check_buttons[target_index].click()
                 logger.info(f"✔️ 成功选中第 {target_index + 1} 张纯图片")
             else:
                 # 图片总数不足 9 张，回退选最后一张
+                logger.warning(f"⚠️ 纯图片总数仅 {len(only_image_check_buttons)} 张，不足 9 张，准备选中最后一张...")
                 only_image_check_buttons[-1].click()
                 logger.warning(f"⚠️ 纯图片总数仅 {len(only_image_check_buttons)} 张，不足 9 张，已回退选中最后一张")
             return True
@@ -365,6 +406,7 @@ class ChatImagePage(ChatPage):
                             target_count = max_limit
                             break
 
+                        logger.info("准备点击图片勾选框...")
                         btn.click()
                         time.sleep(0.05)
                         selected_count += 1
@@ -393,6 +435,7 @@ class ChatImagePage(ChatPage):
     # 判断当前是否已进入预览页
     def is_in_preview_mode(self) -> bool:
         """判断当前是否已进入预览页"""
+        logger.info("🔍 判断当前是否已进入预览页...")
         is_preview = self.find_element(ChatImageLocator.PHOTO_PREVIEW_CHECK_BOX, timeout=2, raise_exception=False) is not None
         logger.info(f"✅ 判断预览页状态: {'进入成功' if is_preview else '未进入'}")
         return is_preview
@@ -403,6 +446,7 @@ class ChatImagePage(ChatPage):
         获取预览页图片抗噪指纹。
         使用 dHash 自动提取中心 50% 纯净区域，精准避开顶部状态栏/页码与底部操作栏的系统噪音。
         """
+        logger.info("🔍 正在计算预览页抗噪指纹...")
         # 定义绝对居中对称的安全区域（水平居中 60%，垂直居中 50%）
         size = self.driver.get_window_size()
         w, h = size['width'], size['height']
@@ -420,31 +464,29 @@ class ChatImagePage(ChatPage):
         return image_hash
 
     # 预览页左滑查看下一张图片
-    def swipe_preview_left(self):
+    def swipe_preview_left(self) -> None:
         """预览页左滑查看下一张图片"""
+        logger.info("执行预览页左滑查看下一张图片...")
         self.swipe_page(slid_type='left', duration=400)
         time.sleep(0.5)
 
     # 预览页右滑返回上一张图片
-    def swipe_preview_right(self):
+    def swipe_preview_right(self) -> None:
         """预览页右滑返回上一张图片"""
+        logger.info("执行预览页右滑返回上一张图片...")
         self.swipe_page(slid_type='right', duration=400)
         time.sleep(0.5)
     
     # 点击最后一张发送的图片
-    def click_last_sent_image(self):
+    def click_last_sent_image(self) -> None:
         """
         点击最后一张发送的图片
         """
+        logger.info("🔍 检索最后一张发送的图片...")
         image_elems = self.get_message_elements('image', side='sent')
         if not image_elems:
             raise NoSuchElementException("未找到发送的图片")
+        logger.info("🚀 准备点击最后一张发送的图片, 进行预览验证...")
         image_elems[-1].click()
-        logger.info(f"🚀 点击最后一张发送的图片, 进行预览验证")
+        logger.info("🚀 点击最后一张发送的图片完成")
         time.sleep(0.5)
-
-
-
-
-
-

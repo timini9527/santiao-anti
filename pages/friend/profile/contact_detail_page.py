@@ -1,5 +1,5 @@
 import time
-from typing import Literal
+from typing import Literal, Optional, List, Tuple, Union
 from pages.common.common_page import CommonPage
 from pages.friend.profile.chat_contact_card_page import ChatContactCardPage
 from locators.friend.profile.contact_detail_locator import ContactDetailLocator
@@ -7,13 +7,13 @@ from utils.cv_recognition.ocr_utils import OcrUtils
 from core.logger_utils import logger
 
 
-
-
 class ContactDetailPage(CommonPage):
     """好友资料详情页面对象"""
 
     # 资料页 - 等待加载资料详情页
     def wait_for_detail_page_load(self, timeout: int = 10, raise_exception: bool = True) -> bool:
+        """ 资料页 - 等待加载资料详情页 """
+        logger.info(f"⏳ [Wait - ContactDetail] 资料详情页 - 等待加载 (超时: {timeout}s)")
         is_exist = self.is_element_exist(ContactDetailLocator.TV_NAME, timeout=timeout, raise_exception=raise_exception)
         if is_exist:
             logger.info("✅ [Wait - ContactDetail] 资料详情页加载完成")
@@ -23,6 +23,8 @@ class ContactDetailPage(CommonPage):
     
     # 资料页 - 等待资料卡加载成功
     def wait_for_profile_card_load(self, timeout: int = 10, raise_exception: bool = True) -> bool:
+        """ 资料页 - 等待资料卡加载成功 """
+        logger.info(f"⏳ [Wait - ContactDetail] 资料卡 - 等待加载 (超时: {timeout}s)")
         is_exist = self.is_element_exist(ContactDetailLocator.ADD_FRIEND_TV_PROFILE_CARD_TITLE, timeout=timeout, raise_exception=raise_exception)
         if is_exist:
             logger.info("✅ [Wait - ContactDetail] 资料详情页加载成功")
@@ -31,16 +33,16 @@ class ContactDetailPage(CommonPage):
         return False
 
     # 资料页 - 点击更多图标
-    def click_iv_right(self):
+    def click_iv_right(self) -> None:
         """ 资料页 - 点击更多图标 """
-        self.click(ContactDetailLocator.IV_RIGHT)
         logger.info("⚙️ [Action - ContactDetail] 资料详情页 - 点击更多图标")
+        self.click(ContactDetailLocator.IV_RIGHT)
 
     # 资料页 - 点击返回按钮
-    def click_iv_back(self):
+    def click_iv_back(self) -> None:
         """ 资料页 - 点击返回按钮 """
-        self.click(ContactDetailLocator.IV_BACK)
         logger.info("⚙️ [Action - ContactDetail] 资料详情页 - 点击返回按钮")
+        self.click(ContactDetailLocator.IV_BACK)
 
     # 资料页 - 获取资料页原始昵称
     def get_raw_nickname(self) -> str:
@@ -72,38 +74,38 @@ class ContactDetailPage(CommonPage):
         return location
 
     # 资料页 - 点击设置备注
-    def click_remark(self):
+    def click_remark(self) -> None:
         """ 资料页 - 点击 [设置备注] 选项 """
-        self.click(ContactDetailLocator.SET_REMARK_ITEM)
         logger.info("⚙️ [Action - ContactDetail] 资料详情页 - 点击 [设置备注]")
+        self.click(ContactDetailLocator.SET_REMARK_ITEM)
 
     # 资料页 - 点击推荐给朋友
-    def click_recommend(self):
+    def click_recommend(self) -> None:
         """ 资料页 - 点击 [推荐给朋友] 选项 """
-        self.click(ContactDetailLocator.RECOMMEND_ITEM)
         logger.info("⚙️ [Action - ContactDetail] 资料详情页 - 点击 [推荐给朋友]")
+        self.click(ContactDetailLocator.RECOMMEND_ITEM)
 
     # 资料页 - 点击动态
-    def click_moments(self):
+    def click_moments(self) -> None:
         """ 资料页 - 点击 [动态] 选项 """
-        self.click(ContactDetailLocator.MOMENTS_ITEM)
         logger.info("⚙️ [Action - ContactDetail] 资料详情页 - 点击 [动态]")
+        self.click(ContactDetailLocator.MOMENTS_ITEM)
 
     # 资料页 - 点击更多设置
-    def click_more_settings(self):
+    def click_more_settings(self) -> None:
         """ 资料页 - 点击 [更多] 选项 """
-        self.click(ContactDetailLocator.MORE_ITEM)
         logger.info("⚙️ [Action - ContactDetail] 资料详情页 - 点击 [更多] 设置")
+        self.click(ContactDetailLocator.MORE_ITEM)
     
     # 资料页 - 点击发送消息
-    def click_send_message(self):
+    def click_send_message(self) -> None:
         """ 资料页 - 点击 [发送消息] 按钮，通常会跳转回聊天页 """
-        self.click(ContactDetailLocator.SEND_MSG_BTN)
         logger.info("🚀 [Action - ContactDetail] 资料详情页 - 点击 [发送消息]")
-        # time.sleep(1)
+        self.click(ContactDetailLocator.SEND_MSG_BTN)
 
+    # 资料页 - 判断是否显示发送消息按钮
     def has_send_message_button(self, timeout: int = 2) -> bool:
-        """资料页 - 判断是否显示 [发送消息] 按钮"""
+        """ 资料页 - 判断是否显示 [发送消息] 按钮 """
         visible = self.is_element_exist(ContactDetailLocator.SEND_MSG_BTN, timeout=timeout, raise_exception=False)
         if visible:
             logger.info("✅ [Action - ContactDetail] 资料详情页 - [发送消息] 按钮存在")
@@ -112,35 +114,33 @@ class ContactDetailPage(CommonPage):
         return visible
 
     # 资料页 - 点击音视频通话
-    def click_voice_video_call(self):
+    def click_voice_video_call(self) -> None:
         """ 资料页 - 点击 [音视频通话] 按钮 """
-        self.click(ContactDetailLocator.CALL_BTN)
         logger.info("📞 [Action - ContactDetail] 资料详情页 - 点击 [音视频通话]")
+        self.click(ContactDetailLocator.CALL_BTN)
 
-    # 非好友-点击申请加好友
-    def click_add_friend(self):
-        """ 非好友-点击 [申请加好友] 按钮 """
-        self.click(ContactDetailLocator.WHITE_UNFRIEND)
+    # 非好友 - 点击申请加好友
+    def click_add_friend(self) -> None:
+        """ 非好友 - 点击 [申请加好友] 按钮 """
         logger.info("🚀 [Action - ContactDetail] 资料详情页 - 点击 [申请加好友]")
+        self.click(ContactDetailLocator.WHITE_UNFRIEND)
 
-    # 非好友-验证当前页面是否存在申请按钮
+    # 非好友 - 验证当前页面是否存在申请按钮
     def has_add_friend_button(self) -> bool:
-        """非好友-验证当前页面是否存在申请按钮"""
+        """ 非好友 - 验证当前页面是否存在申请按钮 """
         res = self.is_element_exist(ContactDetailLocator.WHITE_UNFRIEND, timeout=1)
         if res:
             logger.info("✅ [Action - ContactDetail] 资料详情页 - 申请加好友按钮存在")
         else:
             logger.warning("⚠️ [Action - ContactDetail] 资料详情页 - 申请加好友按钮不存在")
         return res
-    
 
-    
     # ======================================================================
     # 逻辑相关
     # ======================================================================
-    # 验证当前是否在资料详情页
+    # 资料详情页 - 验证当前是否在资料详情页
     def verify_is_on_detail_page(self, card_info: dict, msgType: Literal['friend', 'group'] = 'friend') -> bool:
-        """验证当前是否在资料详情页"""
+        """ 验证当前是否在资料详情页 """
         self.wait_for_detail_page_load()
 
         if msgType == 'friend':
@@ -170,9 +170,9 @@ class ContactDetailPage(CommonPage):
         """ 获取添加好友详情页的昵称 """
         name = self.get_attribute(ContactDetailLocator.ADD_FRIEND_TV_NAME_XPATH, "text")
         if name:
-            logger.info(f" 🧐 [Action - ContactDetail] 获取添加好友页面昵称: {name}")
+            logger.info(f"🧐 [Action - ContactDetail] 获取添加好友页面昵称: {name}")
         else:
-            logger.error(f" ❌ [Action - ContactDetail] 未找到添加好友页面昵称")
+            logger.error(f"❌ [Action - ContactDetail] 未找到添加好友页面昵称")
         return name
 
     # 添加好友详情 - 获取添加好友详情页的所在地
@@ -180,25 +180,25 @@ class ContactDetailPage(CommonPage):
         """ 添加好友详情 - 获取添加好友详情页的所在地 """
         location = self.get_attribute(ContactDetailLocator.ADD_FRIEND_TV_LOCATION, "text")
         if location:
-            logger.info(f" 🧐 [Action - ContactDetail] 获取添加好友页面所在地: {location}")
+            logger.info(f"🧐 [Action - ContactDetail] 获取添加好友页面所在地: {location}")
         else:
-            logger.error(f" ❌ [Action - ContactDetail] 未找到添加好友页面所在地")
+            logger.error(f"❌ [Action - ContactDetail] 未找到添加好友页面所在地")
         return location
 
     # 添加好友详情 - 点击好友动态
-    def click_add_friend_moments(self):
+    def click_add_friend_moments(self) -> None:
         """ 添加好友详情 - 点击好友动态 """
-        self.click(ContactDetailLocator.ADD_FRIEND_TITLE_MOMENTS)
         logger.info("⚙️ [Action - ContactDetail] 点击添加好友详情页的好友动态")
+        self.click(ContactDetailLocator.ADD_FRIEND_TITLE_MOMENTS)
 
     # 添加好友详情 - 获取资料卡标题
     def get_add_friend_profile_card_title(self) -> str:
         """ 添加好友详情 - 获取资料卡标题 """
         title = self.get_attribute(ContactDetailLocator.ADD_FRIEND_TV_PROFILE_CARD_TITLE, "text")
         if title:
-            logger.info(f" 🧐 [Action - ContactDetail] 获取添加好友页面资料卡标题: {title}")
+            logger.info(f"🧐 [Action - ContactDetail] 获取添加好友页面资料卡标题: {title}")
         else:
-            logger.error(f" ❌ [Action - ContactDetail] 未找到添加好友页面资料卡标题")
+            logger.error(f"❌ [Action - ContactDetail] 未找到添加好友页面资料卡标题")
         return title
 
     # 添加好友详情 - 获取资料卡描述
@@ -206,9 +206,9 @@ class ContactDetailPage(CommonPage):
         """ 添加好友详情 - 获取资料卡描述 """
         desc = self.get_attribute(ContactDetailLocator.ADD_FRIEND_TV_PROFILE_CARD_DESC, "text")
         if desc:
-            logger.info(f" 🧐 [Action - ContactDetail] 获取添加好友页面资料卡描述: {desc}")
+            logger.info(f"🧐 [Action - ContactDetail] 获取添加好友页面资料卡描述: {desc}")
         else:
-            logger.error(f" ❌ [Action - ContactDetail] 未找到添加好友页面资料卡描述")
+            logger.error(f"❌ [Action - ContactDetail] 未找到添加好友页面资料卡描述")
         return desc
 
     # 添加好友详情 - 检查是否显示为未添加好友
@@ -222,43 +222,45 @@ class ContactDetailPage(CommonPage):
         return res
 
     # 添加好友详情 - 点击添加好友按钮
-    def click_add_friend_button(self):
+    def click_add_friend_button(self) -> None:
         """ 添加好友详情 - 点击添加好友按钮 """
+        logger.info("⚙️ [Action - ContactDetail] 添加好友详情页 - 准备点击添加好友按钮")
         if not self.is_add_friend_unfriend_visible():
-            logger.error(f" ❌ [Action - ContactDetail] 添加好友页面 - 未显示未添加好友")
+            logger.error(f"❌ [Action - ContactDetail] 添加好友页面 - 未显示未添加好友")
             return
+        logger.info("⚙️ [Action - ContactDetail] 添加好友详情页 - 执行点击添加好友按钮")
         self.click(ContactDetailLocator.ADD_FRIEND_TV_ADD_FRIEND_XPATH)
-        logger.info("⚙️ [Action - ContactDetail] 添加好友详情页 - 点击添加好友按钮")
 
-    
     # ==============================================================
     # 好友详情页面
     # ==============================================================
         
     # 好友详情页面 - 点击解除好友关系
-    def click_unfriend_tv_unfriend(self):
-        """好友详情页面 - 点击解除好友关系"""
-        self.click(ContactDetailLocator.UNFRIEND_TV_UNFRIEND)
+    def click_unfriend_tv_unfriend(self) -> None:
+        """ 好友详情页面 - 点击解除好友关系 """
         logger.info("⚙️ [Action - ContactDetail] 好友详情页 - 点击解除好友关系")
+        self.click(ContactDetailLocator.UNFRIEND_TV_UNFRIEND)
 
     # 好友资料 - 确认操作
-    def confirm_two_btn_comment(self):
+    def confirm_two_btn_comment(self) -> None:
         """ 好友资料 - 确认操作 """
+        logger.info("⚙️ [Action - ContactDetail] 好友资料 - 点击确认操作按钮")
         self.click(ContactDetailLocator.CONFIRM_TWO_BTN)
-        logger.info("⚙️ [Action - ContactDetail] 好友资料 - 确认操作")
     
-    # 取消操作
-    def cancel_two_btn_comment(self):
+    # 好友资料 - 取消操作
+    def cancel_two_btn_comment(self) -> None:
         """ 好友资料 - 取消操作 """
+        logger.info("⚙️ [Action - ContactDetail] 好友资料 - 尝试执行取消操作")
         if self.is_element_exist(ContactDetailLocator.CANCEL_TWO_BTN, timeout=1, expect_missing=True):
+            logger.info("⚙️ [Action - ContactDetail] 好友资料 - 点击取消操作按钮")
             self.click(ContactDetailLocator.CANCEL_TWO_BTN)
-            logger.info("⚙️ [Action - ContactDetail] 好友资料 - 取消操作")
         else:
             logger.info("⚙️ [Action - ContactDetail] 好友资料 - 无需取消操作")
 
     # 好友资料 - 点击右上角更多并删除好友
     def delete_contact(self) -> bool:
         """ 好友资料 - 在好友详情页中，点击更多并删除好友 """
+        logger.info("⚙️ [Action - ContactDetail] 好友资料 - 准备删除好友")
         try:
             self.click_iv_right()
             self.click_unfriend_tv_unfriend()
@@ -284,10 +286,10 @@ class ContactDetailPage(CommonPage):
         return formatted_name
         
     # 好友资料 - 点击好友资料标题行
-    def click_friend_detail_title_remark(self):
+    def click_friend_detail_title_remark(self) -> None:
         """ 好友资料 - 点击好友资料标题行 """
-        self.click(ContactDetailLocator.ADD_FRIEND_TITLE_REMARK)
         logger.info("⚙️ [Action - ContactDetail] 好友资料 - 点击好友资料标题行")
+        self.click(ContactDetailLocator.ADD_FRIEND_TITLE_REMARK)
 
     # 好友资料 - 设置好友备注名
     def set_contact_remark(self, remark_name: str) -> bool:
@@ -297,8 +299,8 @@ class ContactDetailPage(CommonPage):
             bool: 是否操作成功
         """
         from appium.webdriver.common.appiumby import AppiumBy
+        logger.info(f"⚙️ [Action - ContactDetail] 准备设置备注为: {remark_name}")
         try:
-            logger.info(f"⚙️ [Action - ContactDetail] 准备设置备注为: {remark_name}")
             # 1. 点击设置备注项
             self.click_remark()
             time.sleep(1)
@@ -308,6 +310,7 @@ class ContactDetailPage(CommonPage):
                 AppiumBy.XPATH,
                 '//android.widget.EditText'
             )
+            logger.info(f"⚙️ [Action - ContactDetail] 输入新备注名: {remark_name}")
             self.send_keys(remark_input_locator, remark_name)
             
             # 3. 点击完成/保存按钮
@@ -315,6 +318,7 @@ class ContactDetailPage(CommonPage):
                 AppiumBy.XPATH,
                 '//*[@text="完成" or @text="保存" or @text="确定"]'
             )
+            logger.info("⚙️ [Action - ContactDetail] 点击保存备注按钮")
             self.click(save_btn_locator)
             logger.info("✅ [Action - ContactDetail] 设置好友备注成功")
             time.sleep(1)
@@ -327,8 +331,9 @@ class ContactDetailPage(CommonPage):
     # 资料卡电话与呼叫弹窗功能
     # ==============================================================
     # 好友详情 - 点击 全部 获取号码
-    def click_all_phone_numbers(self):
+    def click_all_phone_numbers(self) -> bool:
         """ 好友详情 - 点击 全部 获取号码 """
+        logger.info("⚙️ [Action - ContactDetail] 好友详情页 - 准备点击 [全部] 识别号码")
         result = OcrUtils(self.driver).click_text_by_ocr("全部", exact_match=False)
         if result:
             logger.info("⚙️ [Action - ContactDetail] 好友详情页 - 点击 全部 获取号码成功")
@@ -337,8 +342,9 @@ class ContactDetailPage(CommonPage):
         return result
     
     # 好友详情 - 等待电话资料卡加载出来
-    def wait_for_phone_sheet_load(self, timeout=10):
+    def wait_for_phone_sheet_load(self, timeout: int = 10) -> bool:
         """ 好友详情 - 等待电话资料卡加载出来 """
+        logger.info(f"⏳ [Wait - ContactDetail] 好友详情页 - 等待电话资料卡加载 (超时: {timeout}s)")
         result = self.is_element_exist(ContactDetailLocator.DESIGN_BOTTOM_SHEET, timeout=timeout)
         if result:
             logger.info("⚙️ [Action - ContactDetail] 好友详情页 - 等待电话资料卡加载成功")
@@ -347,10 +353,10 @@ class ContactDetailPage(CommonPage):
         return result
 
     # 好友详情 - 点击资料卡电话行
-    def click_row_profile_phone(self):
+    def click_row_profile_phone(self) -> None:
         """ 好友详情 - 点击资料卡电话行 """
-        self.click(ContactDetailLocator.ROW_PROFILE_PHONE)
         logger.info("⚙️ [Action - ContactDetail] 好友详情页 - 点击资料卡电话行")
+        self.click(ContactDetailLocator.ROW_PROFILE_PHONE)
     
     # 好友详情 - 资料卡电话行是否存在
     def is_row_profile_phone(self) -> bool:
@@ -370,7 +376,7 @@ class ContactDetailPage(CommonPage):
         return label
 
     # 好友详情 - 获取资料卡电话号码文本
-    def get_profile_phone_value(self) -> list:
+    def get_profile_phone_value(self) -> list[str]:
         """ 好友详情 - 获取资料卡电话号码文本 """
         val = self.get_attribute(ContactDetailLocator.TV_PROFILE_PHONE_VALUE, "text")
         val_list = val.split("、")
@@ -378,13 +384,13 @@ class ContactDetailPage(CommonPage):
         return val_list
 
     # 电话资料卡 - 点击关闭按钮
-    def click_phone_sheet_close(self):
+    def click_phone_sheet_close(self) -> None:
         """ 电话资料卡 - 点击关闭按钮 """
-        self.click(ContactDetailLocator.IV_CLOSE)
         logger.info("⚙️ [Action - ContactDetail] 电话资料卡弹窗 - 点击关闭按钮")
+        self.click(ContactDetailLocator.IV_CLOSE)
 
     # 电话资料卡 - 获取电话列表中的全部号码
-    def get_sheet_phone_list(self) -> list:
+    def get_sheet_phone_list(self) -> list[str]:
         """ 电话资料卡 - 获取电话列表中的全部号码 """
         phones = []
         elems = self.find_elements(ContactDetailLocator.TV_PHONE)
@@ -395,20 +401,22 @@ class ContactDetailPage(CommonPage):
         return phones
 
     # 电话资料卡 - 点击指定索引的复制按钮
-    def click_sheet_copy(self, index: int = 0):
+    def click_sheet_copy(self, index: int = 0) -> None:
         """ 电话资料卡 - 点击指定索引的复制按钮 """
+        logger.info(f"⚙️ [Action - ContactDetail] 电话资料卡弹窗 - 准备点击第 {index} 个复制按钮")
         icons = self.find_elements(ContactDetailLocator.IV_COPY)
         if index < len(icons):
+            logger.info(f"⚙️ [Action - ContactDetail] 电话资料卡弹窗 - 执行点击第 {index} 个复制按钮")
             icons[index].click()
-            logger.info(f"⚙️ [Action - ContactDetail] 电话资料卡弹窗 - 点击第 {index} 个复制按钮")
 
     # 电话资料卡 - 点击指定索引的拨号按钮
-    def click_sheet_call(self, index: int = 0):
+    def click_sheet_call(self, index: int = 0) -> None:
         """ 电话资料卡 - 点击指定索引的拨号按钮 """
+        logger.info(f"⚙️ [Action - ContactDetail] 电话资料卡弹窗 - 准备点击第 {index} 个拨号按钮")
         icons = self.find_elements(ContactDetailLocator.IV_CALL)
         if index < len(icons):
+            logger.info(f"⚙️ [Action - ContactDetail] 电话资料卡弹窗 - 执行点击第 {index} 个拨号按钮")
             icons[index].click()
-            logger.info(f"⚙️ [Action - ContactDetail] 电话资料卡弹窗 - 点击第 {index} 个拨号按钮")
 
     # 呼叫弹窗1 - 获取显示的电话号码
     def get_call_popup1_number(self) -> str:
@@ -418,55 +426,54 @@ class ContactDetailPage(CommonPage):
         return num
 
     # 呼叫弹窗1 - 点击拨号
-    def click_call_popup1_call(self):
+    def click_call_popup1_call(self) -> None:
         """ 呼叫弹窗1 - 点击拨号 """
-        self.click(ContactDetailLocator.TV_CALL)
         logger.info("⚙️ [Action - ContactDetail] 呼叫弹窗1 - 点击拨号")
+        self.click(ContactDetailLocator.TV_CALL)
 
     # 呼叫弹窗1 - 点击复制
-    def click_call_popup1_copy(self):
+    def click_call_popup1_copy(self) -> None:
         """ 呼叫弹窗1 - 点击复制 """
-        self.click(ContactDetailLocator.TV_COPY)
         logger.info("⚙️ [Action - ContactDetail] 呼叫弹窗1 - 点击复制")
+        self.click(ContactDetailLocator.TV_COPY)
 
     # 呼叫弹窗1 - 点击取消
-    def click_call_popup1_cancel(self):
+    def click_call_popup1_cancel(self) -> None:
         """ 呼叫弹窗1 - 点击取消 """
-        self.click(ContactDetailLocator.TV_CANCEL)
         logger.info("⚙️ [Action - ContactDetail] 呼叫弹窗1 - 点击取消")
+        self.click(ContactDetailLocator.TV_CANCEL)
 
     # 呼叫弹窗2 - 点击呼叫
-    def click_call_popup2_call(self):
+    def click_call_popup2_call(self) -> None:
         """ 呼叫弹窗2 - 点击呼叫 """
-        self.click(ContactDetailLocator.CALL_TEXT)
         logger.info("⚙️ [Action - ContactDetail] 呼叫弹窗2 - 点击呼叫")
+        self.click(ContactDetailLocator.CALL_TEXT)
 
     # 呼叫弹窗2 - 点击取消
-    def click_call_popup2_cancel(self):
+    def click_call_popup2_cancel(self) -> None:
         """ 呼叫弹窗2 - 点击取消 """
-        self.click(ContactDetailLocator.CANCEL_TEXT)
         logger.info("⚙️ [Action - ContactDetail] 呼叫弹窗2 - 点击取消")
-
+        self.click(ContactDetailLocator.CANCEL_TEXT)
 
     # ==============================================================
     # 更多页面
     # ==============================================================
     
     # 更多页面 - 点击推荐给朋友
-    def click_recommend_to_friend(self):
+    def click_recommend_to_friend(self) -> None:
         """ 更多页面 - 点击推荐给朋友 """
-        self.click(ContactDetailLocator.ROW_RECOMMEND)
         logger.info("⚙️ [Action - ContactDetail] 更多页面 - 点击推荐给朋友")
+        self.click(ContactDetailLocator.ROW_RECOMMEND)
 
     # 更多页面 - 点击黑名单
-    def click_blacklist(self):
+    def click_blacklist(self) -> None:
         """ 更多页面 - 点击黑名单 """
-        self.click(ContactDetailLocator.ROW_BLACKLIST)
         logger.info("⚙️ [Action - ContactDetail] 更多页面 - 点击黑名单")
+        self.click(ContactDetailLocator.ROW_BLACKLIST)
     
     # 更多页面 - 获取黑名单开关状态
     def is_block_switch_checked(self) -> bool:
-        """好友资料 - 获取黑名单开关状态"""
+        """ 好友资料 - 获取黑名单开关状态 """
         checked_str = self.get_attribute(ContactDetailLocator.SWITCH_BLACKLIST, 'checked')
         return str(checked_str).lower() == 'true'
 
@@ -474,10 +481,12 @@ class ContactDetailPage(CommonPage):
     def set_contact_blocked(self, enable: bool = True) -> bool:
         """ 好友资料 - 设置当前好友的黑名单状态 (enable=True 为加入黑名单，enable=False 为移出黑名单) """
         action_name = "加入" if enable else "移出"
+        logger.info(f"⚙️ [Action - ContactDetail] 好友资料 - 准备将好友{action_name}黑名单")
         try:
             self.click_iv_right()
             is_checked = self.is_block_switch_checked()
             if is_checked != enable:
+                logger.info(f"⚙️ [Action - ContactDetail] 好友资料 - 切换黑名单开关为 {enable}")
                 self.click(ContactDetailLocator.SWITCH_BLACKLIST)
                 if self.is_element_exist(ContactDetailLocator.CONFIRM_TWO_BTN, timeout=1, expect_missing=True):
                     self.confirm_two_btn_comment()
@@ -491,40 +500,33 @@ class ContactDetailPage(CommonPage):
     # 好友资料 - 从好友资料页面移出黑名单
     def remove_contact_from_blacklist(self) -> bool:
         """ 好友资料 - 从好友资料页面移出黑名单 """
+        logger.info("⚙️ [Action - ContactDetail] 好友资料 - 准备从资料页移出黑名单")
         flag, text = self.is_black_cancel_layout_text()
         if not flag:
             logger.warning(f"⚠️ [Action - ContactDetail] 好友资料 - 移出黑名单失败: {text}")
             return False
+        logger.info("⚙️ [Action - ContactDetail] 好友资料 - 点击移出黑名单区域")
         self.click(ContactDetailLocator.BLACK_CANCEL_LAYOUT)
         if self.is_element_exist(ContactDetailLocator.CONFIRM_TWO_BTN, timeout=1, expect_missing=True):
             self.confirm_two_btn_comment()
-            logger.info(f"⚙️ [Action - ContactDetail] 好友资料 - 成功将好友移出黑名单")
+            logger.info("⚙️ [Action - ContactDetail] 好友资料 - 成功将好友移出黑名单")
             return True
         else:
-            logger.error(f"❌ [Action - ContactDetail] 好友资料 - 将好友移出黑名单失败: 缺少确认弹窗")
+            logger.error("❌ [Action - ContactDetail] 好友资料 - 将好友移出黑名单失败: 缺少确认弹窗")
             return False
 
     # 好友资料 - 获取拉黑的标识
-    def is_black_cancel_layout_text(self) -> bool | str:
+    def is_black_cancel_layout_text(self) -> tuple[bool, str]:
         """ 好友资料 - 获取拉黑的标识 """
         text = self.get_attribute(ContactDetailLocator.BLACK_CANCEL_LAYOUT_XPATH, "text")
         if not text:
-            logger.warning(f"⚠️ [Action - ContactDetail] 好友资料 - 拉黑的标识为空，好友可能没有被拉黑")
+            logger.warning("⚠️ [Action - ContactDetail] 好友资料 - 拉黑的标识为空，好友可能没有被拉黑")
             return False, text
         logger.info(f"🧐 [Action - ContactDetail] 好友资料 - 获取拉黑的标识: {text}")
         return True, text
 
     # 更多页面 - 点击举报
-    def click_report(self):
+    def click_report(self) -> None:
         """ 更多页面 - 点击举报 """
-        self.click(ContactDetailLocator.CARD_REPORT)
         logger.info("⚙️ [Action - ContactDetail] 更多页面 - 点击举报")
-
-
-
-
-
-
-
-
-
+        self.click(ContactDetailLocator.CARD_REPORT)

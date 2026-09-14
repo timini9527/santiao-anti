@@ -256,7 +256,8 @@ class ChatEmojiStorePage(ChatEmojiPanelBase):
         logger.info("✅ 表情包倒序验证全部通过！")
         return True
 
-    def verify_add_emoji_packages(self, target_names: list, final_unadded_names: list) -> bool:
+    # 验证表情包是否成功从商店列表中移除（即已被添加）
+    def verify_add_emoji_packages(self, target_names: list[str], final_unadded_names: list[str]) -> bool:
         """
         验证表情包列表操作（通过未添加列表检测其是否已经消失）
         """

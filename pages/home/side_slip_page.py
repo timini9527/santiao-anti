@@ -18,75 +18,75 @@ class SideSlipPage(HomePage):
         return status
 
     # 通过头像 进入个人信息页面
-    def click_INFO(self):
-        """点击头像"""
-        self.click(SideSlipLocator.IV_NAV_AVATAR, force_wait=True)
+    def click_INFO(self) -> None:
+        """点击头像进入个人信息页面"""
         logger.info("[Action] 点击头像")
+        self.click(SideSlipLocator.IV_NAV_AVATAR, force_wait=True)
         self.driver.implicitly_wait(1)
 
     # 通过昵称进入个人信息页面
-    def click_nickname(self):
-        """点击昵称"""
-        self.click(SideSlipLocator.NICK_LAYOUT, force_wait=True)
+    def click_nickname(self) -> None:
+        """点击昵称进入个人信息页面"""
         logger.info("[Action] 点击昵称")
+        self.click(SideSlipLocator.NICK_LAYOUT, force_wait=True)
 
     # 点击二维码
-    def click_qrcode(self):
+    def click_qrcode(self) -> None:
         """点击二维码"""
-        self.click(SideSlipLocator.IV_QR_CODE)
         logger.info("[Action] 点击二维码")
+        self.click(SideSlipLocator.IV_QR_CODE)
 
     # 点击动态
-    def click_dynamic(self):
+    def click_dynamic(self) -> None:
         """点击动态"""
-        self.click(SideSlipLocator.NAV_ITEM_DYNAMIC)
         logger.info("[Action] 点击动态")
+        self.click(SideSlipLocator.NAV_ITEM_DYNAMIC)
 
     # 点击我的收藏
-    def click_my_collection(self):
+    def click_my_collection(self) -> None:
         """点击我的收藏"""
-        self.click(SideSlipLocator.NAV_ITEM_COLLECT)
         logger.info("[Action] 点击我的收藏")
+        self.click(SideSlipLocator.NAV_ITEM_COLLECT)
 
     # 点击我的动态
-    def click_my_dynamic(self):
+    def click_my_dynamic(self) -> None:
         """点击我的动态"""
-        self.click(SideSlipLocator.NAV_ITEM_DYNAMIC)
         logger.info("[Action] 点击我的动态")
+        self.click(SideSlipLocator.NAV_ITEM_DYNAMIC)
 
     # 点击消息通知
-    def click_notification(self):
+    def click_notification(self) -> None:
         """点击消息通知（新版已收归至系统设置内）"""
-        self.click(SideSlipLocator.NAV_ITEM_SETTINGS)
         logger.info("[Action] 点击系统设置进入消息通知")
+        self.click(SideSlipLocator.NAV_ITEM_SETTINGS)
 
     # 点击隐私防护
-    def click_privacy(self):
+    def click_privacy(self) -> None:
         """点击隐私防护（新版已收归至系统设置内）"""
-        self.click(SideSlipLocator.NAV_ITEM_SETTINGS)
         logger.info("[Action] 点击系统设置进入隐私防护")
+        self.click(SideSlipLocator.NAV_ITEM_SETTINGS)
 
     # 点击账号安全
-    def click_security(self):
+    def click_security(self) -> None:
         """点击账号安全（新版已收归至系统设置内）"""
-        self.click(SideSlipLocator.NAV_ITEM_SETTINGS)
         logger.info("[Action] 点击系统设置进入账号安全")
+        self.click(SideSlipLocator.NAV_ITEM_SETTINGS)
 
     # 点击通用设置
-    def click_setting(self):
+    def click_setting(self) -> None:
         """点击【设置】/【通用设置】"""
-        self.click(SideSlipLocator.NAV_ITEM_SETTINGS)
         logger.info("[Action] 点击通用设置")
+        self.click(SideSlipLocator.NAV_ITEM_SETTINGS)
 
     # 点击VIP会员
-    def click_vip(self):
+    def click_vip(self) -> None:
         """点击【VIP会员】"""
-        self.click(SideSlipLocator.NAV_ITEM_VIP)
         logger.info("[Action] 点击VIP会员")
+        self.click(SideSlipLocator.NAV_ITEM_VIP)
 
     # 点击靓号商城
-    def click_nice_no(self):
+    def click_nice_no(self) -> None:
         """点击【靓号商城】/【靓号】"""
-        self.click(SideSlipLocator.NAV_ITEM_NICE_NO)
         logger.info("[Action] 点击靓号商城")
+        self.click(SideSlipLocator.NAV_ITEM_NICE_NO)
 

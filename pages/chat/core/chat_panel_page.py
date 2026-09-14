@@ -37,7 +37,7 @@ class ChatPanelPage(BasePage):
         return func_panel
 
     # 根据名称点击扩展面板中的子功能按钮
-    def click_panel_item(self, item_name: str):
+    def click_panel_item(self, item_name: str) -> None:
         """根据名称点击扩展面板中的子功能按钮"""
         logger.info(f"🖱️ [Action-Panel] 尝试点击扩展面板按钮: 【{item_name}】")
         locator = ChatPanelLocator.get_panel_item_by_text(item_name)
@@ -45,64 +45,65 @@ class ChatPanelPage(BasePage):
         time.sleep(0.5)
 
     # 点击‘文件’按钮
-    def click_file(self):
+    def click_file(self) -> None:
         """点击‘文件’按钮"""
         logger.info("🖱️ [Action-Panel] 点击扩展面板中的【文件】")
         self.click(ChatPanelLocator.BTN_FILE)
         time.sleep(0.5)
 
     # 点击‘投票’按钮
-    def click_vote(self):
+    def click_vote(self) -> None:
         """点击‘投票’按钮"""
         logger.info("🖱️ [Action-Panel] 点击扩展面板中的【投票】")
         self.click(ChatPanelLocator.BTN_VOTE)
         time.sleep(0.5)
 
     # 点击‘接龙’按钮
-    def click_solitaire(self):
+    def click_solitaire(self) -> None:
         """点击‘接龙’按钮"""
         logger.info("🖱️ [Action-Panel] 点击扩展面板中的【接龙】")
         self.click(ChatPanelLocator.BTN_SOLITAIRE)
         time.sleep(0.5)
 
     # 点击‘名片’按钮
-    def click_card(self):
+    def click_card(self) -> None:
         """点击‘名片’按钮"""
         logger.info("🖱️ [Action-Panel] 点击扩展面板中的【名片】")
         self.click(ChatPanelLocator.BTN_CARD)
         time.sleep(0.5)
 
     # 点击‘位置’按钮
-    def click_location(self):
+    def click_location(self) -> None:
         """点击‘位置’按钮"""
         logger.info("🖱️ [Action-Panel] 点击扩展面板中的【位置】")
         self.click(ChatPanelLocator.BTN_LOCATION)
         time.sleep(0.5)
 
     # 点击‘通话’按钮
-    def click_video_call(self):
+    def click_video_call(self) -> None:
         """点击‘通话’按钮"""
         logger.info("🖱️ [Action-Panel] 点击扩展面板中的【通话】")
         self.click(ChatPanelLocator.BTN_VIDEO_CALL)
 
     # 点击弹窗中的‘语音通话’按钮
-    def click_pop_voice_call(self):
+    def click_pop_voice_call(self) -> None:
         """点击底部通话选择弹窗中的【语音通话】按钮"""
         logger.info("📞 [Action-Panel] 点击弹窗中的【语音通话】")
         self.click(ChatPanelLocator.BTN_POP_DIALOG_MORE_ONE2)
 
     # 点击弹窗中的‘视频通话’按钮
-    def click_pop_video_call(self):
+    def click_pop_video_call(self) -> None:
         """点击底部通话选择弹窗中的【视频通话】按钮"""
         logger.info("📞 [Action-Panel] 点击弹窗中的【视频通话】")
         self.click(ChatPanelLocator.BTN_POP_DIALOG_MORE_ONE1)
 
     # 动态发起音视频通话
-    def initiate_call_by_type(self, call_type: CallType | str = CallType.VIDEO_CALL):
+    def initiate_call_by_type(self, call_type: CallType | str = CallType.VIDEO_CALL) -> None:
         """
         点击面板【通话】并基于枚举值匹配通话类型发起呼叫
         :param call_type: CallType 枚举值（CallType.VOICE_CALL / CallType.VIDEO_CALL）或对应的字符串
         """
+        logger.info(f"📞 [Action-Panel] 准备发起音视频呼叫，通话类型: {call_type}")
         self.click_video_call()
         if call_type == CallType.VOICE_CALL:
             self.click_pop_voice_call()
@@ -113,14 +114,14 @@ class ChatPanelPage(BasePage):
             self.click_pop_video_call()
 
     # 点击‘图片’按钮
-    def click_album(self):
+    def click_album(self) -> None:
         """点击‘图片’（相册）按钮"""
         logger.info("🖱️ [Action-Panel] 点击扩展面板中的【图片】")
         self.click(ChatPanelLocator.BTN_ALBUM)
         time.sleep(0.5)
 
     # 点击‘拍摄’按钮
-    def click_camera(self):
+    def click_camera(self) -> None:
         """点击‘拍摄’（相机）按钮"""
         logger.info("🖱️ [Action-Panel] 点击扩展面板中的【拍摄】")
         self.click(ChatPanelLocator.BTN_CAMERA)
@@ -132,7 +133,7 @@ class ChatPanelPage(BasePage):
     # 扩展面板功能区相关
     # =========================================================================================
     # 动态获取并点击扩展面板功能区选项卡
-    def click_panel_function_tab(self, tab_name: str):
+    def click_panel_function_tab(self, tab_name: str) -> None:
         """动态获取并点击扩展面板功能区选项卡"""
         logger.info(f"🖱️ [Action-Panel] 尝试点击扩展面板功能区选项卡: 【{tab_name}】")
         if tab_name == "文件":

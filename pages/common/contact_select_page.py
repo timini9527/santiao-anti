@@ -1,4 +1,5 @@
 import time
+from typing import Optional, List
 import allure
 from appium.webdriver.webelement import WebElement
 from appium.webdriver.common.appiumby import AppiumBy
@@ -6,14 +7,19 @@ from pages.common.common_page import CommonPage
 from locators.common.contact_select_locator import ContactSelectLocator
 from core.logger_utils import logger
 
+
 class ContactSelectPage(CommonPage):
     """通用好友/群聊选择组件页面对象"""
     
-    # 等待转发页面加载
-    def wait_for_forward_page_load(self, msg_type: int = 0, timeout=10):
-        """等待转发页面加载完成（以创建群聊按钮出现为准）
-        :param msg_type: 消息类型 0: 文本/群聊/文件/视频/语音等 1: 图片
+    # 转发选择页 - 等待转发页面加载
+    def wait_for_forward_page_load(self, msg_type: int = 0, timeout: int = 10) -> bool:
         """
+        等待转发页面加载完成（以创建群聊按钮出现为准）
+        :param msg_type: 消息类型 0: 文本/群聊/文件/视频/语音等 1: 图片
+        :param timeout: 超时时间
+        :return: 是否加载成功
+        """
+        logger.info(f"⏳ [Wait - ContactSelect] 转发选择页 - 等待页面加载 (类型: {msg_type}, 超时: {timeout}s)")
         if msg_type == 1:
             locator = ContactSelectLocator.RECYCLER_VIEW
         else:
@@ -21,179 +27,181 @@ class ContactSelectPage(CommonPage):
         
         res = self.is_element_exist(locator, timeout=timeout)
         if not res:
-            logger.error(f"⏳ [Action] 【好友和转发】选择页 - 页面加载超时")
+            logger.error("⏳ [Action - ContactSelect] 【好友和转发】选择页 - 页面加载超时")
             return False
-        logger.info(f"✅ [Action] 【好友和转发】选择页 - 页面加载成功")
+        logger.info("✅ [Action - ContactSelect] 【好友和转发】选择页 - 页面加载成功")
         return True
     
-    # 等待好友/群组 选择页加载
-    def wait_for_contact_and_group_select_page_load(self, timeout=10):
+    # 好友与群组选择页 - 等待选择页加载
+    def wait_for_contact_and_group_select_page_load(self, timeout: int = 10) -> bool:
         """
-        等待好友/群组 选择页加载完成（以创建群聊按钮出现为准）
-        :param msg_type: 消息类型 0: 文本/群聊/文件/视频/语音等 1: 图片
+        等待好友/群组 选择页加载完成（以列表容器出现为准）
+        :param timeout: 超时时间
+        :return: 是否加载成功
         """
+        logger.info(f"⏳ [Wait - ContactSelect] 好友/群组选择页 - 等待列表加载 (超时: {timeout}s)")
         res = self.is_element_exist(ContactSelectLocator.RV_FRIENDS, timeout=timeout)
         if not res:
-            logger.error(f"⏳ [Action] 【好友和转发】选择页 - 页面加载超时")
+            logger.error("⏳ [Action - ContactSelect] 【好友和转发】选择页 - 页面加载超时")
             return False
-        logger.info(f"✅ [Action] 【好友和转发】选择页 - 页面加载成功")
+        logger.info("✅ [Action - ContactSelect] 【好友和转发】选择页 - 页面加载成功")
         return True
     
-    # 点击确定按钮
-    def click_fb_action(self):
-        """点击确定按钮"""
+    # 好友选择页 - 点击确定按钮
+    def click_fb_action(self) -> None:
+        """ 点击确定按钮 """
+        logger.info("✅ [Action - ContactSelect] 好友选择页 - 点击确认")
         self.click(ContactSelectLocator.FB_ACTION)
-        logger.info("✅ [Action] 好友选择页 - 点击确认")
 
-    # 获取页面标题
+    # 好友选择页 - 获取页面标题
     def get_page_title(self) -> str:
-        """获取页面标题"""
+        """ 获取页面标题 """
         title = self.get_attribute(ContactSelectLocator.TITLE_TEXT, "text")
-        logger.info(f"🏷️ [Action] 好友选择页 - 当前标题: {title}")
+        logger.info(f"🏷️ [Action - ContactSelect] 好友选择页 - 当前标题: {title}")
         return title
 
-    # 点击返回按钮
-    def click_back(self):
-        """点击返回按钮"""
+    # 好友选择页 - 点击返回按钮
+    def click_back(self) -> None:
+        """ 点击返回按钮 """
+        logger.info("🔙 [Action - ContactSelect] 好友选择页 - 点击返回")
         self.click(ContactSelectLocator.BACK_BUTTON)
-        logger.info("🔙 [Action] 好友选择页 - 点击返回")
     
-    # 等待好友选择页面加载
-    def wait_for_contact_select_page_load(self, timeout=10):
-        """等待好友选择页面加载完成（以列表容器出现为准）"""
+    # 好友选择页 - 等待好友选择页面加载
+    def wait_for_contact_select_page_load(self, timeout: int = 10) -> bool:
+        """ 等待好友选择页面加载完成（以列表容器出现为准） """
+        logger.info(f"⏳ [Wait - ContactSelect] 好友选择页 - 等待列表容器加载 (超时: {timeout}s)")
         res = self.is_element_exist(ContactSelectLocator.CONTACT_LIST_RV, timeout=timeout)
-        logger.info(f"⏳ [Action] 好友选择页 - 页面加载{'成功' if res else '超时'}")
+        logger.info(f"⏳ [Action - ContactSelect] 好友选择页 - 页面加载{'成功' if res else '超时'}")
         return res
     
-    # 输入搜索关键字
-    def input_search_keyword(self, keyword: str):
-        """输入搜索关键字"""
+    # 好友选择页 - 输入搜索关键字
+    def input_search_keyword(self, keyword: str) -> None:
+        """ 输入搜索关键字 """
+        logger.info(f"🔎 [Action - ContactSelect] 好友选择页 - 输入关键字: {keyword}")
         self.send_keys(ContactSelectLocator.SEARCH_EDIT, keyword)
-        logger.info(f"🔎 [Action] 好友选择页 - 输入关键字: {keyword}")
         time.sleep(1)
     
-    # 清除搜索内容
-    def click_clear_search(self):
-        """点击清除搜索内容"""
+    # 好友选择页 - 清除搜索内容
+    def click_clear_search(self) -> None:
+        """ 点击清除搜索内容 """
+        logger.info("🧹 [Action - ContactSelect] 好友选择页 - 点击清除搜索内容")
         self.click(ContactSelectLocator.SEARCH_CLEAR)
-        logger.info("🧹 [Action] 好友选择页 - 清除搜索内容")
 
+    # 好友选择页 - 获取当前搜索框内容
     def get_search_keyword(self) -> str:
-        """获取当前搜索框内容"""
+        """ 获取当前搜索框内容 """
         keyword = self.get_attribute(ContactSelectLocator.SEARCH_EDIT, "text")
-        logger.info(f"🔍 [Action] 好友选择页 - 当前搜索内容: {keyword!r}")
+        logger.info(f"🔍 [Action - ContactSelect] 好友选择页 - 当前搜索内容: {keyword!r}")
         return keyword
 
-    # 获取当前页面可见的所有好友名称
+    # 好友选择页 - 获取当前页面可见的所有好友名称
     def get_contact_names(self, timeout: int = 3, raise_exception: bool = True) -> list[str]:
-        """获取当前页面可见的所有好友名称"""
+        """ 获取当前页面可见的所有好友名称 """
         elements = self.find_elements(ContactSelectLocator.CONTACT_NAME, timeout=timeout, raise_exception=raise_exception)
         if not elements:
-            logger.warning("⚠️ [Action] 好友选择页 - 未找到好友名称")
+            logger.warning("⚠️ [Action - ContactSelect] 好友选择页 - 未找到好友名称")
             return []
-        texts = [element.get_attribute("text").strip() for element in elements]
-        logger.info(f"📋 [Action] 好友选择页 - 获取到 {len(texts)} 个好友名称")
+        texts = [element.get_attribute("text").strip() for element in elements if element.text]
+        logger.info(f"📋 [Action - ContactSelect] 好友选择页 - 获取到 {len(texts)} 个好友名称")
         return texts
 
-    # 获取转发页面可见的好友列表
-    def get_forward_contact_names(self) -> list:
-        """获取转发页面可见的好友列表"""
+    # 转发选择页 - 获取转发页面可见的好友列表
+    def get_forward_contact_names(self) -> list[str]:
+        """ 获取转发页面可见的好友列表 """
         if not self.wait_for_forward_page_load(timeout=5):
-            logger.warning("⚠️ [Action] 转发选择页 - 页面未加载完成，无法获取好友列表")
+            logger.warning("⚠️ [Action - ContactSelect] 转发选择页 - 页面未加载完成，无法获取好友列表")
             return []
         
         elements = self.find_elements(ContactSelectLocator.FRIEND_NAME, timeout=2)
-        names = [elem.text for elem in elements]
-        logger.info(f"📋 [Action] 转发选择页 - 获取到 {len(names)} 个好友名称")
+        names = [elem.text for elem in elements if elem.text]
+        logger.info(f"📋 [Action - ContactSelect] 转发选择页 - 获取到 {len(names)} 个好友名称")
         return names
 
-    # 获取二次弹窗的标题
+    # 好友选择页 - 获取二次弹窗的标题
     def get_second_dialog_title(self) -> str:
-        """获取二次弹窗的标题"""
+        """ 获取二次弹窗的标题 """
         title = self.get_attribute(ContactSelectLocator.SECOND_DIALOG_TITLE, "text")
-        logger.info(f"🏷️ [Action] 好友选择页 - 二次弹窗标题: {title}")
+        logger.info(f"🏷️ [Action - ContactSelect] 好友选择页 - 二次弹窗标题: {title}")
         return title
 
-    # 点击确认按钮
-    def click_confirm(self):
-        """点击确认"""
+    # 好友选择页 - 点击确认按钮
+    def click_confirm(self) -> None:
+        """ 点击确认 """
+        logger.info("✅ [Action - ContactSelect] 好友选择页 - 点击确认")
         self.click(ContactSelectLocator.SECOND_DIALOG_CONFIRM_BUTTON, force_wait=True)
-        logger.info("✅ [Action] 好友选择页 - 点击确认")
         time.sleep(1)
 
-    # 点击取消按钮
-    def click_cancel(self):
-        """点击取消"""
+    # 好友选择页 - 点击取消按钮
+    def click_cancel(self) -> None:
+        """ 点击取消 """
+        logger.info("❌ [Action - ContactSelect] 好友选择页 - 点击取消")
         self.click(ContactSelectLocator.SECOND_DIALOG_CANCEL_BUTTON, force_wait=True)
-        logger.info("❌ [Action] 好友选择页 - 点击取消")
         
-    # 获取好友页面未勾选的按钮
-    def get_unselected_contacts(self) -> list:
-        """获取好友页面未勾选的按钮"""
+    # 好友选择页 - 获取好友页面未勾选的按钮
+    def get_unselected_contacts(self) -> list[WebElement]:
+        """ 获取好友页面未勾选的按钮 """
         elements = self.find_elements(ContactSelectLocator.CB_SELECT_NO_CHECK, timeout=2)
-        logger.info(f"📋 [Action] 好友选择页 - 获取到 {len(elements)} 个未勾选的按钮")
+        logger.info(f"📋 [Action - ContactSelect] 好友选择页 - 获取到 {len(elements)} 个未勾选的按钮")
         return elements
     
-    # 获取好友页面已勾选的按钮
-    def get_selected_contacts(self) -> list:
-        """获取好友页面已勾选的按钮"""
+    # 好友选择页 - 获取好友页面已勾选的按钮
+    def get_selected_contacts(self) -> list[WebElement]:
+        """ 获取好友页面已勾选的按钮 """
         elements = self.find_elements(ContactSelectLocator.CB_SELECT_CHECKED, timeout=2)
-        logger.info(f"📋 [Action] 好友选择页 - 获取到 {len(elements)} 个已勾选的按钮")
+        logger.info(f"📋 [Action - ContactSelect] 好友选择页 - 获取到 {len(elements)} 个已勾选的按钮")
         return elements
-
 
     # =======================================================
     # 逻辑层
     # =======================================================
     
-    # 分享/转发页面通过名称查找好友
-    def select_contact_by_name(self, name: str, select_type: str = "share", raise_exception: bool = True) -> WebElement | None:
-        """通过名称查找好友"""
+    # 好友选择页 - 分享/转发页面通过名称查找好友元素
+    def select_contact_by_name(self, name: str, select_type: str = "share", raise_exception: bool = True) -> Optional[WebElement]:
+        """ 通过名称查找好友 """
         if select_type == "share":
             elem_name = self.find_element(ContactSelectLocator.get_contact_by_name(name), timeout=2, raise_exception=raise_exception)
         elif select_type == "forward":
             elem_name = self.find_element(ContactSelectLocator.get_forward_contact_by_name(name), timeout=2, raise_exception=raise_exception)
         else:
-            logger.warning(f"⚠️ [Action] 未知的选择类型: {select_type}")
+            logger.warning(f"⚠️ [Action - ContactSelect] 未知的选择类型: {select_type}")
             return None
         
         if not elem_name:
-            logger.warning(f"❌ [Action] 当前选择好友页 - 未找到好友，尝试进行搜索寻找该好友: {name}")
+            logger.warning(f"❌ [Action - ContactSelect] 当前选择好友页 - 未找到好友，尝试进行搜索寻找该好友: {name}")
             return None
-        logger.info(f"✅ [Action] 当前选择好友页 - 找到好友可尝试点击选中: {name}")
+        logger.info(f"✅ [Action - ContactSelect] 当前选择好友页 - 找到好友可尝试点击选中: {name}")
         return elem_name
 
-
-    # 通过名称点击选中好友（包含搜索）
+    # 好友选择页 - 通过名称点击选中好友（包含搜索）
     def click_contact_by_name(self, name: str, select_type: str = "share", raise_exception: bool = True, search: bool = True) -> bool:
-        """通过名称选择好友"""
+        """ 通过名称选择好友 """
+        logger.info(f"⚙️ [Action - ContactSelect] 好友选择页 - 准备选择好友: {name} (类型: {select_type})")
         elem_name = self.select_contact_by_name(name=name, select_type=select_type, raise_exception=raise_exception)
         if not elem_name:
             if search:
                 self.input_search_keyword(name)
                 search_elem_name = self.select_contact_by_name(name, select_type=select_type, raise_exception=raise_exception)
                 if not search_elem_name:
-                    logger.warning(f"❌ [Action] 好友选择页 - 未找到好友: {name}")
+                    logger.warning(f"❌ [Action - ContactSelect] 好友选择页 - 未找到好友: {name}")
                     return False
                 elem_name = search_elem_name
             else:
-                logger.warning(f"❌ [Action] 好友选择页 - 未找到好友且不进行搜索: {name}")
+                logger.warning(f"❌ [Action - ContactSelect] 好友选择页 - 未找到好友且不进行搜索: {name}")
                 return False
         
         try:
+            logger.info(f"✅ [Action - ContactSelect] 好友选择页 - 找到好友并点击选中: {name}")
             elem_name.click()
-            logger.info(f"✅ [Action] 好友选择页 - 找到好友并点击选中: {name}")
             return True
         except Exception as e:
-            logger.error(f"❌ [Action] 好友选择页 - 点击好友项失败: {name}, {e}")
+            logger.error(f"❌ [Action - ContactSelect] 好友选择页 - 点击好友项失败: {name}, {e}")
             if raise_exception:
                 raise e
             return False
 
-
-    # 检查搜索结果是否为空
+    # 好友选择页 - 检查搜索结果是否为空
     def is_empty_result(self) -> bool:
-        """检查搜索结果是否为空"""
+        """ 检查搜索结果是否为空 """
         count = len(
             self.find_elements(
                 ContactSelectLocator.CONTACT_ITEM_ROW,
@@ -203,15 +211,19 @@ class ContactSelectPage(CommonPage):
             )
         )
         status = count == 0
-        logger.info(f"❓ [Action] 好友选择页 - 搜索结果是否为空: {status}")
+        logger.info(f"❓ [Action - ContactSelect] 好友选择页 - 搜索结果是否为空: {status}")
         return status
 
-
-    # 转发-选择好友页面
+    # 转发选择页 - 转发选择好友页面
     def forward_select_contact_by_name(self, name: str, msg_type: int = 0, raise_exception: bool = True) -> bool:
-        """转发-选择好友
-        :param msg_type: 消息类型 0: 文本/群聊/文件/视频/语音等 1: 图片
         """
+        转发-选择好友
+        :param name: 目标好友名称
+        :param msg_type: 消息类型 0: 文本/群聊/文件/视频/语音等 1: 图片
+        :param raise_exception: 是否抛出异常
+        :return: 是否选择成功
+        """
+        logger.info(f"⚙️ [Action - ContactSelect] 转发选择页 - 准备选择目标好友: {name} (消息类型: {msg_type})")
         if msg_type == 1:
             elem_name = self.select_contact_by_name(name=name, select_type="share", raise_exception=raise_exception)
         else:
@@ -222,22 +234,22 @@ class ContactSelectPage(CommonPage):
             scroll_count = 0     
 
             while scroll_count < max_scroll_times:
+                logger.info(f"⚙️ [Action - ContactSelect] 转发选择页 - 第 {scroll_count + 1} 次向上滑动寻找好友: {name}")
                 self.swipe_page(slid_type='up', duration=800, times=1)
                 scroll_count += 1
                 elem_name = self.select_contact_by_name(name=name, select_type="forward", raise_exception=False)
                 if elem_name:
-                    logger.info(f"✅ [Action] 转发选择页 - 滚动后找到好友: {name}")
+                    logger.info(f"✅ [Action - ContactSelect] 转发选择页 - 滚动后找到好友: {name}")
                     break
             if not elem_name:
-                logger.warning(f"❌ [Action] 转发选择页 - 滚动 {max_scroll_times} 次后仍未找到好友: {name}")
+                logger.warning(f"❌ [Action - ContactSelect] 转发选择页 - 滚动 {max_scroll_times} 次后仍未找到好友: {name}")
                 return False
         
+        logger.info(f"✅ [Action - ContactSelect] 转发选择页 - 找到好友并点击选中: {name}")
         elem_name.click()
-        logger.info(f"✅ [Action] 转发选择页 - 找到好友并点击选中: {name}")
         return True
 
-
-    # 随机选择 x 个好友，排除群聊
+    # 好友选择页 - 随机选择 x 个好友，排除群聊
     def select_x_random_friends(self, x: int = 0, batch_type: int = 0, loop_max: int = 100) -> int:
         """
         在会话列表中随机选择 x 个好友，排除群聊。
@@ -246,7 +258,7 @@ class ContactSelectPage(CommonPage):
         :param loop_max: 最大滑动次数
         :return: 成功选择的好友数量
         """
-        logger.info(f"🔍 [Action] 好友选择页 - 开始寻找会话: [{x} 个好友] | 分组：{batch_type}")
+        logger.info(f"🔍 [Action - ContactSelect] 好友选择页 - 开始寻找会话: [{x} 个好友] | 分组：{batch_type}")
         
         last_source = ""
         selected_contacts = 0
@@ -255,42 +267,42 @@ class ContactSelectPage(CommonPage):
         for i in range(loop_max):
             elements = self.get_unselected_contacts()
             if len(elements) == 0:
-                logger.warning(f"🛑 [Action] 好友选择页 - 无法找到未勾选的按钮")
+                logger.warning("🛑 [Action - ContactSelect] 好友选择页 - 无法找到未勾选的按钮")
                 break
 
             for elem in elements:
                 if elem:
+                    logger.info(f"✅ [Action - ContactSelect] 好友选择页 - 准备点击目标会话，当前已选: {selected_contacts}")
                     elem.click()
                     time.sleep(0.1)
                     selected_contacts += 1
                     
-                    logger.info(f"✅ [Action] 好友选择页 - 成功点击目标会话，已选择 {selected_contacts} 个好友")
+                    logger.info(f"✅ [Action - ContactSelect] 好友选择页 - 成功点击目标会话，已选择 {selected_contacts} 个好友")
                     if batch_type == 1:
                         BATCH_SIZE += 1
                         if BATCH_SIZE == 49:
-                            logger.info(f"✅ [Action] 好友选择页 - 成功选择 {x} 个好友")
+                            logger.info(f"✅ [Action - ContactSelect] 好友选择页 - 成功选择 {x} 个好友")
                             return selected_contacts
                     else:
                         if selected_contacts == x:
-                            logger.info(f"✅ [Action] 好友选择页 - 成功选择 {x} 个好友")
+                            logger.info(f"✅ [Action - ContactSelect] 好友选择页 - 成功选择 {x} 个好友")
                             return selected_contacts
 
             is_changed, last_source = self.is_page_source_changed(last_source)
             if not is_changed:
-                logger.warning(f"🛑 [Action] 好友选择页 - 已滑动到底部，仍未找到目标")
+                logger.warning("🛑 [Action - ContactSelect] 好友选择页 - 已滑动到底部，仍未找到目标")
                 break
 
-            logger.info(f"⏳ [Action] 好友选择页 - 第 {i + 1} 次向下滑动寻找...")
+            logger.info(f"⏳ [Action - ContactSelect] 好友选择页 - 第 {i + 1} 次向下滑动寻找...")
             self.swipe_page(slid_type='up', duration=800)
             time.sleep(0.5)
 
-        logger.warning(f"⚠️ [Action] 好友选择页 - 遍历结束，期望选择 {x} 个，实际只选择了 {selected_contacts} 个")
+        logger.warning(f"⚠️ [Action - ContactSelect] 好友选择页 - 遍历结束，期望选择 {x} 个，实际只选择了 {selected_contacts} 个")
         return selected_contacts
     
-
-    # 通过首个好友名称获取它的首字母
+    # 好友选择页 - 通过首个好友名称获取它的首字母
     def get_first_contact_initial(self) -> str:
-        """通过首个好友名称获取它的首字母（A-Z 或 #）"""
+        """ 通过首个好友名称获取它的首字母（A-Z 或 #） """
         import pypinyin
 
         names = self.get_contact_names()
@@ -311,6 +323,3 @@ class ContactSelectPage(CommonPage):
                 
         # 3. 其他非字母、特殊符号、数字均归为 #
         return "#"
-
-
-

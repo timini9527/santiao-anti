@@ -4,13 +4,13 @@ from typing import Optional, Tuple
 from selenium.common import NoSuchElementException
 from locators.chat_options.videos.chat_video_locator import ChatVideoLocator
 from pages.chat_options.images.chat_image_page import ChatImagePage
-
 from core.logger_utils import logger
-import time
+
 
 class ChatVideoPage(ChatImagePage):
     """ 视频选择页面：支持多种模式的单选与多选，复用相册基础组件逻辑 """
     
+    # 在当前的相册网格页面选择单张视频
     def select_single_video(self, mode: int = 1, max_swipes: int = 5) -> bool:
         """
         在当前的相册网格页面选择单张视频
@@ -18,10 +18,12 @@ class ChatVideoPage(ChatImagePage):
         :param max_swipes: 滑动探测与回溯的最大次数（默认 5 次）
         :return: 成功选中返回 True；mode=0 时选后取消也返回 True
         """
+        logger.info(f"🔍 准备选择单张视频，模式: {mode}...")
         only_video_check_buttons = self.get_only_video_check_button(raise_exception=False) or []
         if not only_video_check_buttons:
             logger.warning("⚠️ 当前相册首屏没有立即检测到纯视频勾选按钮")
 
+        # 统一处理向上回溯探测
         def _recover_upward(swipes_limit: int) -> bool:
             """统一处理：触底当前屏全为照片时的自适应向上回溯探测与首屏保底"""
             logger.warning(f"⚠️ 触底当前屏全为照片，启动自适应向上回溯探测 (最大回溯 {swipes_limit} 次)...")
@@ -30,6 +32,7 @@ class ChatVideoPage(ChatImagePage):
                 time.sleep(0.4)
                 rec_buttons = self.get_only_video_check_button(raise_exception=False) or []
                 if rec_buttons:
+                    logger.info("准备点击离底部最近的纯视频...")
                     rec_buttons[-1].click()
                     logger.info(f"✔️ 向上回溯第 {back_swipe + 1}/{swipes_limit} 次成功选中离底部最近的纯视频")
                     return True
@@ -39,6 +42,7 @@ class ChatVideoPage(ChatImagePage):
                 self.swipe_page_quickly(slid_type='down', duration=400)
                 time.sleep(0.5)
                 cur_buttons = self.get_only_video_check_button(raise_exception=False) or only_video_check_buttons
+                logger.info("准备点击首屏保底视频...")
                 cur_buttons[0].click()
                 return True
             logger.error("✖️ 相册中未检测到任何可用纯视频")
@@ -53,10 +57,12 @@ class ChatVideoPage(ChatImagePage):
             if not buttons:
                 logger.error("✖️ 相册中无可用视频，无法模拟反悔操作")
                 return False
+            logger.info("准备点击选中第一张视频...")
             buttons[0].click()
-            logger.info("✔️ 选中第一张视频")
+            logger.info("✔️ 选中第一张视频完成")
+            logger.info("准备再次点击取消勾选，模拟选后反悔...")
             buttons[0].click()
-            logger.info("✔️ 再次点击取消勾选，模拟选后反悔")
+            logger.info("✔️ 再次点击取消勾选完成，模拟选后反悔")
             return True
         elif mode == 1:
             buttons = only_video_check_buttons
@@ -71,6 +77,7 @@ class ChatVideoPage(ChatImagePage):
             if not buttons:
                 logger.error("✖️ 深度探索后相册中仍未检测到任何可用纯视频")
                 return False
+            logger.info("准备点击选中第一张纯视频...")
             buttons[0].click()
             logger.info("✔️ 成功选中相册中的第一张纯视频")
             return True
@@ -84,14 +91,17 @@ class ChatVideoPage(ChatImagePage):
                 logger.error("✖️ 相册中未检测到可用纯视频，无法随机选中")
                 return False
             idx = random.randint(0, len(buttons) - 1)
+            logger.info(f"准备随机选中当前视图中的第 {idx + 1} 张纯视频...")
             buttons[idx].click()
             logger.info(f"✔️ 成功随机选中当前视图中的第 {idx + 1} 张纯视频")
             return True
         elif mode == 3:
+            logger.info("执行快速滑动到底部...")
             self.swipe_page_quickly(slid_type='up', duration=300)
             time.sleep(0.5)
             bottom_buttons = self.get_only_video_check_button(raise_exception=False) or []
             if bottom_buttons:
+                logger.info("准备选中最后一张纯视频...")
                 bottom_buttons[-1].click()
                 logger.info("✔️ 成功滑到底部并选中最后一张纯视频")
                 return True
@@ -105,6 +115,7 @@ class ChatVideoPage(ChatImagePage):
             for swipe_index in range(max_swipes):
                 cur_buttons = self.get_only_video_check_button(raise_exception=False) or []
                 if len(cur_buttons) > target_index:
+                    logger.info(f"准备选中第 {target_index + 1} 张纯视频...")
                     cur_buttons[target_index].click()
                     logger.info(f"✔️ 成功选中当前屏第 {target_index + 1} 张纯视频")
                     return True
@@ -124,6 +135,7 @@ class ChatVideoPage(ChatImagePage):
 
             final_buttons = self.get_only_video_check_button(raise_exception=False) or []
             if final_buttons:
+                logger.info("准备选中最末尾可见纯视频...")
                 final_buttons[-1].click()
                 logger.info(f"✔️ 纯视频总数不足 9 张，已兜底选中最末尾可见纯视频 (当前屏共 {len(final_buttons)} 条)")
                 return True
@@ -131,6 +143,7 @@ class ChatVideoPage(ChatImagePage):
         else:
             raise ValueError(f"✖️ 不支持的单选模式: {mode}，可选值为 0/1/2/3/4")
 
+    # 在相册网格中连续勾选多张纯视频
     def select_multiple_videos(self, count: int = 3, max_limit: int = 9, max_swipes: int = 10) -> Tuple[int, str]:
         """
         在相册网格中连续勾选多张纯视频（极速流水线版，内建零开销物理触底探测）
@@ -194,6 +207,7 @@ class ChatVideoPage(ChatImagePage):
                             selected_count = max_limit
                             break
 
+                        logger.info("准备点击视频勾选框...")
                         btn.click()
                         time.sleep(0.05)
                         selected_count += 1
@@ -219,6 +233,7 @@ class ChatVideoPage(ChatImagePage):
         logger.info(f"✅ [Fast-Select-Video] 批量选视频完成，目标 {target_count} 张，实际 {selected_count} 张")
         return selected_count, full_toast
 
+    # 校验视频预览页是否成功加载就绪
     def is_video_preview_ready(self, timeout: int = 8) -> bool:
         """
         校验预览页是否成功加载就绪（显式等待转场动画与播放器图层初始化完成）
@@ -246,19 +261,3 @@ class ChatVideoPage(ChatImagePage):
             time.sleep(0.3)
         logger.warning(f"⚠️ [Video-Preview] 视频预览页在 {timeout}s 内未成功就绪")
         return False
-    
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-

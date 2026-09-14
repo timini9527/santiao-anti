@@ -1,17 +1,18 @@
 import time
-
 from selenium.webdriver.common.by import By
 from common.base_page import BasePage
 from core.logger_utils import logger
 
 
-#   注册页面
+# 注册页面
 class RegistPage(BasePage):
+    """注册页面对象"""
+
     LOGIN_ENTRY = (By.ID, 'tv_login')
     REGIST_ENTRY = (By.ID, 'tv_register')
     BACK_MAIN_PAGE = (By.ID, 'bt_back')
     RE_CHECK = (By.ID, 're_check_btn')
-    SMS_REGIST = (By.ID, 'tv_tips') # 短信注册
+    SMS_REGIST = (By.ID, 'tv_tips')  # 短信注册
 
     ACCOUNT_FIELD = (By.ID, 'account_edit')
     PWD_FIELD = (By.ID, 'pwd_edit')
@@ -25,47 +26,63 @@ class RegistPage(BasePage):
     SEEKBAR = (By.ID, 'seekbar')
     SLIDE_VERIFY = (By.ID, 'slide_verify')
 
-
+    # 注册页 - 点击注册入口
     def click_regist_entry_if_exists(self) -> bool:
         """
         点击注册入口，没有找到注册按钮，从登录页面进去
-        :return:
+        :return: 是否成功点击注册入口
         """
+        logger.info("⚙️ [Action - Register] 尝试点击注册入口按钮")
         try:
-            entry_points = self.click(self.LOGIN_ENTRY)
-            print("已进入注册页面", entry_points)
-            return  True
+            self.click(self.LOGIN_ENTRY)
+            logger.info("✅ [Action - Register] 已成功进入注册页面")
+            return True
         except Exception as e:
-            logger.error(f"没有找到注册入口: {str(e)}")
-            return  False
+            logger.error(f"❌ [Action - Register] 没有找到注册入口: {str(e)}")
+            return False
 
-    def entry_register_page(self):
-        # 获取注册按钮
+    # 注册页 - 获取并点击短信注册按钮进入注册页
+    def entry_register_page(self) -> None:
+        """ 获取并点击短信注册按钮进入注册页 """
+        logger.info("⚙️ [Action - Register] 点击短信注册按钮")
         self.click(self.SMS_REGIST)
 
-    def is_show_pwd(self):
-        # 显示密码，true-显示
+    # 注册页 - 切换显示密码
+    def is_show_pwd(self) -> None:
+        """ 显示密码，true-显示 """
+        logger.info("⚙️ [Action - Register] 检查并切换密码显示明文状态")
         if self.get_attribute(self.PWD_FIELD, 'password'):
+            logger.info("⚙️ [Action - Register] 点击显示密码明文")
             self.click(self.IS_SHOW_PWD)
         if self.get_attribute(self.RE_PWD_FIELD, 'password'):
+            logger.info("⚙️ [Action - Register] 点击显示确认密码明文")
             self.click(self.IS_SHOW_RE_PWD)
 
-    def agree_protocol(self):
-        # 获取勾选状态，如果是 'false' 则点击
+    # 注册页 - 勾选用户协议
+    def agree_protocol(self) -> None:
+        """ 获取勾选状态，如果是 'false' 则点击 """
+        logger.info("⚙️ [Action - Register] 检查协议勾选状态")
         if self.get_attribute(self.CHECKBOX, 'checked') == 'false':
+            logger.info("⚙️ [Action - Register] 点击勾选用户协议")
             self.click(self.CHECKBOX)
 
-    def sms_regist(self, username, password, re_password):
-        # 注册
+    # 注册页 - 短信注册提交
+    def sms_regist(self, username: str, password: str, re_password: str) -> None:
+        """ 短信注册流程 """
+        logger.info(f"⚙️ [Action - Register] 开始注册流程，账号: {username}")
+        logger.info("⚙️ [Action - Register] 输入账号")
         self.send_keys(self.ACCOUNT_FIELD, username)
+        logger.info("⚙️ [Action - Register] 输入密码")
         self.send_keys(self.PWD_FIELD, password)
+        logger.info("⚙️ [Action - Register] 输入确认密码")
         self.send_keys(self.RE_PWD_FIELD, re_password)
         self.is_show_pwd()
         self.agree_protocol()
+        logger.info("⚙️ [Action - Register] 点击注册按钮")
         self.click(self.REGIST_BTN)
-        time.sleep(100)
 
-
-    def slide_verify(self):
-        # 滑块验证
+    # 注册页 - 滑块验证
+    def slide_verify(self) -> None:
+        """ 滑块验证 """
+        logger.info("⚙️ [Action - Register] 执行滑块验证")
         pass

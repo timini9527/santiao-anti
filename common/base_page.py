@@ -203,12 +203,29 @@ class BasePage:
             raise NoSuchElementException(f"无法点击，元素未找到: {locator}")
 
     @allure.step("input -> 输入文本: {text}")
-    def send_keys(self, locator, text):
+    def send_keys(self, locator, text: str, clear: bool = True, append: bool = False) -> None:
+        """
+        向指定元素输入文本。
+        :param locator: 元素定位器元组
+        :param text: 输入文本内容
+        :param clear: 是否在输入前清空已有内容（默认 True）
+        :param append: 是否在末尾以无损模式追加（默认 False，为 True 时采用系统剪贴板注入，杜绝 UiAutomator2 底层自动清空）
+        """
+        if append:
+            logger.info(f"✍️ [Action-Base] 以无损追加模式输入文本: '{text}'")
+            self.driver.set_clipboard_text(text)
+            self.press_keycode(123)  # KEYCODE_MOVE_END (光标移到末尾)
+            self.press_keycode(279)  # KEYCODE_PASTE (系统级粘贴)
+            time.sleep(0.3)
+            logger.info(f"[Action] 追加输入文本成功: {text}")
+            return
+
         ele = self.find_element(locator)
         if not ele:
             logger.warning(f"未找到元素: {locator}")
             raise NoSuchElementException(f"未找到元素: {locator}")
-        ele.clear()
+        if clear:
+            ele.clear()
         ele.send_keys(text)
         logger.info(f"[Action] 输入消息: {text}")
 

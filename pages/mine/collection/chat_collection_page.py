@@ -31,7 +31,7 @@ class ChatCollectionPage(ChatPage):
             return False
  
     # 我的收藏-打开面板进入收藏页面
-    def open_panel_enter_collection_page(self):
+    def open_panel_enter_collection_page(self) -> None:
         """ 我的收藏-打开面板进入收藏页面 """
         logger.info("🚀 [Action] - 打开面板进入收藏页面")
         self.click_add_button()
@@ -91,14 +91,15 @@ class ChatCollectionPage(ChatPage):
         return text_elem.get_attribute('text')
     
     # 我的收藏-点击收藏的第 {index} 条文本
-    def get_collection_text_and_click(self, index: int = 0):
+    def get_collection_text_and_click(self, index: int = 0) -> None:
         """ 我的收藏-点击收藏的第 {index} 条文本 """
+        logger.info(f"⚙️ [Action] - 准备点击收藏的第 {index} 条文本")
         text_elem = self.get_collection_text_element(index)
         if not text_elem:
             logger.warning(f"⚠️ [Action] - 无法点击第 {index} 条文本，Element 为 None")
             return
-        text_elem.click()
         logger.info(f"✅ [Action] - 点击了收藏的第 {index} 条文本")
+        text_elem.click()
  
     # 我的收藏-获取收藏图片列表
     def get_collection_images(self, timeout: int = 2, expect_missing: bool = False) -> list[WebElement]:
@@ -124,14 +125,15 @@ class ChatCollectionPage(ChatPage):
         return image
     
     # 我的收藏-点击收藏的第 {index} 张图片
-    def get_collection_image_and_click(self, index: int = 0):
+    def get_collection_image_and_click(self, index: int = 0) -> None:
         """ 我的收藏-点击收藏的第 {index} 张图片 """
+        logger.info(f"⚙️ [Action] - 准备点击收藏的第 {index} 张图片")
         image = self.get_collection_image_element(index)
         if not image:
             logger.warning(f"⚠️ [Action] - 无法点击第 {index} 张图片，Element 为 None")
             return
-        image.click()
         logger.info(f"✅ [Action] - 点击了收藏的第 {index} 张图片")
+        image.click()
  
     
     # 聊天收藏-获取收藏的用户昵称
@@ -215,28 +217,28 @@ class ChatCollectionPage(ChatPage):
         return content_bubble 
  
     # 聊天收藏-获取面板输入框并输入内容
-    def send_collection_panel_input(self, text: str):
+    def send_collection_panel_input(self, text: str) -> None:
         """ 聊天收藏-获取面板输入框并输入内容 """
+        logger.info(f"✅ [Action] - collection_page 输入内容: {text}")
         self.send_keys(CollectionLocator.CONTENT_INPUT, text)
-        logger.info(f"✅ [Action] - collection_page 输入内容: {text}") 
     
     # 聊天收藏-点击面板表情按钮
-    def click_send_collection_panel_emoji(self):
+    def click_send_collection_panel_emoji(self) -> None:
         """ 聊天收藏-点击面板表情按钮 """
-        self.click(CollectionLocator.CONTENT_EMOJI, force_wait=True) 
         logger.info("✅ [Action] - 聊天收藏-点击面板表情按钮")
+        self.click(CollectionLocator.CONTENT_EMOJI, force_wait=True)
     
     # 聊天收藏-点击面板发送按钮
-    def click_send_collection_panel_send(self):
+    def click_send_collection_panel_send(self) -> None:
         """ 聊天收藏-点击面板发送按钮 """
-        self.click(CollectionLocator.CONTENT_SEND, force_wait=True) 
         logger.info("✅ [Action] - 聊天收藏-点击面板发送按钮")
+        self.click(CollectionLocator.CONTENT_SEND, force_wait=True)
 
     # 聊天收藏-点击面板关闭按钮
-    def click_send_collection_panel_close(self, force_wait: bool = True):
+    def click_send_collection_panel_close(self, force_wait: bool = True) -> None:
         """ 聊天收藏-点击发送面板关闭/取消按钮 """
-        self.click(CollectionLocator.IV_CLOSE, force_wait=force_wait)
         logger.info("🔙 [Action] - 聊天收藏-点击发送面板关闭按钮")
+        self.click(CollectionLocator.IV_CLOSE, force_wait=force_wait)
     
     # 聊天收藏-获取面板标题
     def get_send_collection_panel_title(self) -> str:
@@ -417,6 +419,7 @@ class ChatCollectionPage(ChatPage):
             logger.warning(f"⚠️ [Action] - 列表中没有索引为 {index} 的条目")
             return False
         
+        logger.info(f"⚙️ [Action] - 准备点击第 {index + 1} 个收藏项")
         items[index].click()
         
         if comment:

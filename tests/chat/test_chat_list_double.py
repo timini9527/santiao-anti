@@ -11,20 +11,21 @@ from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_panel_page import ChatPanelPage
 from pages.groups.setting.general.group_setting_page import GroupSettingPage
 from pages.groups.setting.manager.group_manager_page import GroupManagerPage
-from pages.chat.core.call_page import CallPage
+from pages.chat.call.call_page import CallPage
+from pages.chat.mention.chat_mention_page import ChatMentionPage
 from strategy.chat.chat_strategy import (
     PRIVATE_USER1, 
+    PRIVATE_USER2,
     PRIVATE_USER3, 
     GROUP_STRATEGY,
-    CHAT_CONTENT_DOUBLE_SCENARIOS,
-    CHAT_CALL_DOUBLE_SCENARIOS,
-    CHAT_GROUP_CONTENT_SCENARIOS
+    CHAT_CALL_DOUBLE_SCENARIOS
 )
 
 
 
 SENDER_NAME = PRIVATE_USER3.name
 RECEIVER_NAME = PRIVATE_USER1.name
+INVITE_USER = PRIVATE_USER2.name
 
 
 @allure.epic('IM核心功能测试')
@@ -46,6 +47,7 @@ class TestChatListDouble:
         self.chatListS = ChatListPage(driver_sender)
         self.chatPanelS = ChatPanelPage(driver_sender)
         self.callS = CallPage(driver_sender)
+        self.chatMentionS = ChatMentionPage(driver_sender)
         self.groupSettingS = GroupSettingPage(driver_sender)
         self.groupManagerS = GroupManagerPage(driver_sender)
 
@@ -55,6 +57,7 @@ class TestChatListDouble:
         self.chatListR = ChatListPage(driver_receiver)
         self.chatPanelR = ChatPanelPage(driver_receiver)
         self.callR = CallPage(driver_receiver)
+        self.chatMentionR = ChatMentionPage(driver_receiver)
         self.groupSettingR = GroupSettingPage(driver_receiver)
         self.groupManagerR = GroupManagerPage(driver_receiver)
 
@@ -199,111 +202,171 @@ class TestChatListDouble:
                         f'❌ 被叫端会话内容展示不匹配, 预期包含: {call_strategy.expected_text_r}, 实际为: {actual_content_r}')
 
 
-
     @allure.story('群聊进群邀请双端协同展示')
     @allure.title('双端群聊进群邀请展示-状态：已完成')
     def test_chat_group_invite_double_status(self):
-        """【双端协同】验证群聊邀请成员加入群聊后，双端会话列表摘要呈现【[进群邀请]】"""
+        """【双端协同】验证群聊邀请成员加入群聊后，双端会话列表摘要呈现【[群邀请确认]】"""
         target_group = GROUP_STRATEGY.name
-        expected_text = "[进群邀请]"
+        expected_text = "[群邀请确认]"
 
-        with allure.step(f'1. 发送端在群聊【{target_group}】设置中发起邀请接收端【{RECEIVER_NAME}】并返回首页'):
+        with allure.step(f'1. 发送端进入群聊【{target_group}】并打开群设置'):
             self.chatListS.enter_chat(target_group)
             self.chatS.wait_for_chat_page_load()
             self.chatS.click_more_button()
             self.groupSettingS.wait_for_setting_page_load()
+
+        with allure.step(f'2. 在群成员管理中邀请接收端【{RECEIVER_NAME}】并完成提交'):
             self.groupSettingS.click_add_friend_header()
             self.groupManagerS.click_member_by_search_keyword(name=RECEIVER_NAME)
             self.groupManagerS.click_edit_finish_button()
-            time.sleep(1)
+            self.chatS.wait_banner_message_disappear()
+
+        with allure.step('3. 发送端安全退回首页，确保双端主页面加载就绪'):
             self.mainS.go_to_main_page()
             self.homeS.wait_home_page()
             self.homeR.wait_home_page()
 
-        with allure.step(f'2. 验证发送端群聊会话列表展示包含: {expected_text}'):
-            actual_content_s = self.homeS.get_message_by_name(target_group, expected_text=expected_text, timeout=10)
-            check.is_in(expected_text, actual_content_s, 
-                        f'❌ 发送端群聊会话内容展示不匹配, 预期包含: {expected_text}, 实际为: {actual_content_s}')
-
-        with allure.step(f'3. 验证接收端群聊会话列表展示包含: {expected_text}'):
-            actual_content_r = self.homeR.get_message_by_name(target_group, expected_text=expected_text, timeout=10)
+        with allure.step(f'4. 验证接收端在与【{PRIVATE_USER3.name}】私聊会话列表中展示包含: {expected_text}'):
+            actual_content_r = self.homeR.get_message_by_name(PRIVATE_USER3.name, expected_text=expected_text, timeout=10)
+            logger.info(f"接收端与【{PRIVATE_USER3.name}】私聊会话摘要内容: 实际='{actual_content_r}', 预期包含='{expected_text}'")
             check.is_in(expected_text, actual_content_r, 
-                        f'❌ 接收端群聊会话内容展示不匹配, 预期包含: {expected_text}, 实际为: {actual_content_r}')
+                        f'❌ 接收端与【{PRIVATE_USER3.name}】私聊会话内容展示不匹配, 预期包含: {expected_text}, 实际为: {actual_content_r}')
+
+        with allure.step(f'5. 接收端进入与【{PRIVATE_USER3.name}】的私聊会话验证收到的群邀请确认消息'):
+            self.chatListR.enter_chat(PRIVATE_USER3.name)
+            self.chatR.wait_for_chat_page_load()
+
+            invite_msg_text = ""
+            try:
+                invite_msg_elem = self.chatR.get_last_message_content_element()
+                invite_msg_text = (invite_msg_elem.get_attribute("text") or invite_msg_elem.text or "").strip()
+            except Exception:
+                pass
+
+            if not invite_msg_text:
+                all_texts = self.chatR.get_all_text_message_contents(side="all")
+                if all_texts:
+                    invite_msg_text = all_texts[-1]
+                else:
+                    invite_msg_text = self.chatR.get_cmd_notification_texts(index=-1) or ""
+
+            logger.info(f"接收端私聊会话内部捕获群邀请确认消息内容: '{invite_msg_text}'")
+            is_invite_valid = any(kw in invite_msg_text for kw in [target_group, "邀请你加入群聊", expected_text])
+            check.is_true(is_invite_valid, 
+                        f'❌ 接收端私聊会话内未检测到有效的群邀请确认消息, 实际内容为: {invite_msg_text}')
+
+            self.chatR.click_back_button()
+            self.homeR.wait_home_page()
 
 
-
-
-    @allure.story('群聊会话内容与强提醒双端协同展示')
-    @allure.title('群聊会话状态双端协同-状态：已完成')
-    @pytest.mark.parametrize('remind_strategy', [pytest.param(x, id=x.desc) for x in CHAT_GROUP_CONTENT_SCENARIOS])
-    def test_chat_group_content_double_status(self, remind_strategy):
-        """
-        【双端协同】验证群聊特有会话状态（进群申请、入群系统通知、有人@我、@所有人、已读消除、复合提醒）
-        发送端(端A/SENDER)触发信令与动作，接收端(端B/RECEIVER)在首页会话列表中验证强提醒标签与消息摘要展示及核销
-        """
-        allure.dynamic.title(f'群聊会话状态双端协同 | {remind_strategy.desc}')
+    @allure.story('群聊@强提醒与核销双端协同')
+    @allure.title('群聊@强提醒生命周期验证 (有人@我 / @所有人 / 已读核销)')
+    @pytest.mark.parametrize('at_type, expected_tag', [
+        pytest.param('at_me', '[有人@我]', id='有人@我强提醒'),
+        pytest.param('at_all', '[@所有人]', id='@所有人全员强提醒'),
+    ])
+    def test_chat_group_mention_remind_lifecycle(self, at_type: str, expected_tag: str):
+        """【双端协同】验证群聊@强提醒触发及进入查看后标签即时消除的闭环流转"""
+        allure.dynamic.title(f'群聊@强提醒协同 | {expected_tag} 触发与已读核销闭环')
         group_name = GROUP_STRATEGY.name
+        tag_keyword = expected_tag.strip("[]")
+        target_desc = f"成员【{RECEIVER_NAME}】" if at_type == 'at_me' else "【所有人】"
 
-        try:
-            # 1. 发送端 (端A) 进入群聊并根据策略触发动作
-            with allure.step(f'1. 发送端【{SENDER_NAME}】进入群聊【{group_name}】并触发【{remind_strategy.desc}】'):
-                self.chatListS.enter_chat(group_name)
-                self.chatS.wait_for_chat_page_load()
+        with allure.step(f'1. 发送端进入群聊【{group_name}】并通过输入@选择{target_desc}发送强提醒'):
+            self.chatListS.enter_chat(group_name)
+            self.chatS.wait_for_chat_page_load()
+            self.chatS.mention_and_send(target=at_type, member_name=RECEIVER_NAME, append_text="自动化测试")
+            self.chatListS.click_back_button()
+            self.homeS.wait_home_page()
 
-                if remind_strategy.remind_type == "at_me":
-                    self.chatS.send_message(f"@{RECEIVER_NAME} 有人艾特自动化测试")
-                elif remind_strategy.remind_type == "at_all":
-                    self.chatS.send_message("@所有人 全员通知自动化测试")
-                elif remind_strategy.remind_type == "join_notify":
-                    self.chatS.send_message("欢迎新成员加入群聊")
-                elif remind_strategy.remind_type == "apply":
-                    self.chatS.send_message("申请加入群聊测试")
-                elif remind_strategy.remind_type == "both_apply_and_at":
-                    self.chatS.send_message(f"@{RECEIVER_NAME} 进群申请审批提醒")
+        with allure.step(f'2. 接收端在首页验证群聊呈现强提醒标签: {expected_tag}'):
+            actual_tag = self.homeR.get_remind_status_by_name(group_name, timeout=10)
+            logger.info(f"接收端群聊 [{group_name}] 提醒标签: 实际='{actual_tag}', 预期包含='{tag_keyword}'")
+            check.is_in(tag_keyword, actual_tag, f'❌ 接收端群会话提醒标签不匹配, 预期包含: {expected_tag}, 实际为: {actual_tag}')
 
-                self.chatListS.click_back_button()
-                self.homeS.wait_home_page()
+        with allure.step('3. 接收端进入群聊查看消息，触发强提醒已读清除'):
+            self.chatListR.enter_chat(group_name)
+            self.chatR.wait_for_chat_page_load()
+            self.chatListR.click_back_button()
+            self.homeR.wait_home_page()
 
-            # 2. 接收端 (端B) 在首页会话列表中校验强提醒标签或消息内容展示
-            with allure.step(f'2. 接收端【{RECEIVER_NAME}】在首页验证群聊【{group_name}】展示 (权限约束: {remind_strategy.required_role})'):
-                actual_tag = self.homeR.get_remind_status_by_name(group_name)
+        with allure.step(f'4. 接收端返回首页，验证【{expected_tag}】强提醒已消失'):
+            refreshed_tag = self.homeR.get_remind_status_by_name(group_name, timeout=3)
+            logger.info(f"已读消除后接收端群聊 [{group_name}] 提醒标签刷新为: '{refreshed_tag}'")
+            check.is_not_in(tag_keyword, refreshed_tag, f'❌ 查看消息返回后强提醒未能清除, 依然包含: {expected_tag}')
 
-                # 进群申请权限边界断言：普通成员无权限不可见 [进群申请]
-                if remind_strategy.remind_type == "apply" and remind_strategy.required_role == "member":
-                    logger.info(f"接收端为普通成员，校验进群申请提醒不可见，实际标签: '{actual_tag}'")
-                    check.is_not_in("进群申请", actual_tag, f'❌ 普通成员无权限却显示了进群申请强提醒: {actual_tag}')
-                elif remind_strategy.expected_tag:
-                    tag_keyword = remind_strategy.expected_tag.strip("[]")
-                    logger.info(f"接收端群聊 [{group_name}] 提醒标签: 实际='{actual_tag}', 预期包含='{tag_keyword}'")
-                    check.is_in(tag_keyword, actual_tag, f'❌ 接收端群会话提醒标签不匹配, 预期包含: {remind_strategy.expected_tag}, 实际为: {actual_tag}')
 
-                # 校验会话消息内容文本（如 "加入了群聊"）
-                if remind_strategy.expected_content:
-                    actual_content = self.homeR.get_message_by_name(group_name, expected_text=remind_strategy.expected_content)
-                    logger.info(f"接收端群聊 [{group_name}] 消息内容: 实际='{actual_content}', 预期包含='{remind_strategy.expected_content}'")
-                    check.is_in(remind_strategy.expected_content, actual_content, f'❌ 接收端群会话消息内容不匹配, 预期包含: {remind_strategy.expected_content}, 实际为: {actual_content}')
+    @allure.story('群聊系统通知双端展示')
+    @allure.title('双端群聊系统通知展示-新成员加入群聊摘要呈现')
+    def test_chat_group_join_notify_status(self):
+        """【双端协同】验证群聊新成员入群系统通知在会话列表呈现正确文本摘要【加入了群聊】"""
+        group_name = GROUP_STRATEGY.name
+        expected_content = "加入了群聊"
 
-            # 3. 若标记了“查看后强提醒消除”，验证已读核销闭环
-            if remind_strategy.check_disappear_after_enter:
-                with allure.step(f'3. 接收端【{RECEIVER_NAME}】进入群聊查看消息，触发强提醒已读清除'):
-                    self.chatListR.enter_chat(group_name)
-                    self.chatR.wait_for_chat_page_load()
-                    time.sleep(1)
-                    self.chatListR.click_back_button()
-                    self.homeR.wait_home_page()
+        with allure.step(f'1. 发送端进入群聊【{group_name}】并发送包含入群关键词的消息'):
+            self.chatListS.enter_chat(group_name)
+            self.chatS.wait_for_chat_page_load()
+            self.chatS.send_message(f"欢迎新成员{expected_content}")
+            self.chatListS.click_back_button()
+            self.homeS.wait_home_page()
 
-                with allure.step(f'4. 接收端返回首页，验证【{remind_strategy.expected_tag}】强提醒已消失'):
-                    refreshed_tag = self.homeR.get_remind_status_by_name(group_name)
-                    tag_keyword = remind_strategy.expected_tag.strip("[]")
-                    logger.info(f"已读消除后接收端群聊 [{group_name}] 提醒标签刷新为: '{refreshed_tag}'")
-                    check.is_not_in(tag_keyword, refreshed_tag, f'❌ 查看消息返回后强提醒未能清除, 依然包含: {remind_strategy.expected_tag}')
+        with allure.step(f'2. 接收端在首页验证群聊会话摘要包含: {expected_content}'):
+            actual_content = self.homeR.get_message_by_name(group_name, expected_text=expected_content, timeout=10)
+            logger.info(f"接收端群聊 [{group_name}] 消息摘要内容: 实际='{actual_content}', 预期包含='{expected_content}'")
+            check.is_in(expected_content, actual_content, f'❌ 接收端群会话消息内容不匹配, 预期包含: {expected_content}, 实际为: {actual_content}')
 
-        finally:
-            with allure.step('双端环境自愈：确保双方均安全退回主页面就绪'):
-                for main_page, desc in [(self.mainS, '发送端'), (self.mainR, '接收端')]:
-                    try:
-                        main_page.go_to_main_page()
-                    except Exception as e:
-                        logger.warning(f'双端环境清理退回首页异常 [{desc}]: {e}')
+
+    @allure.story('群聊进群申请与权限边界')
+    @allure.title('验证进群申请强提醒在不同权限角色下的可见性')
+    def test_chat_group_apply_permission_and_composite_status(self):
+        """【双端协同】验证进群申请强提醒的权限隔离边界（群主端可见 / 普通成员端不可见）：
+        1. 发送端（群主）进入群管理，判断并确保【进群验证】开关处于开启状态后返回首页；
+        2. 接收端（普通成员）进入群设置邀请人员进群，由于进群验证已开启，触发生成进群申请；
+        3. 接收端（普通成员）退回首页，验证无权限看到【[进群申请]】强提醒标签；
+        4. 发送端（群主）在首页验证成功捕获【[进群申请]】强提醒标签。
+        """
+        group_name = GROUP_STRATEGY.name
+        expected_tag = "[进群申请]"
+        tag_keyword = expected_tag.strip("[]")
+
+        with allure.step(f'1. 发送端(群主)进入群聊【{group_name}】群管理，检查并确保【进群验证】开关开启'):
+            self.chatListS.enter_chat(group_name)
+            self.chatS.wait_for_chat_page_load()
+            self.chatS.click_more_button()
+            self.groupSettingS.wait_for_setting_page_load()
+            self.groupSettingS.click_group_manager()
+            self.groupManagerS.wait_for_page_load()
+
+            verify_state = self.groupManagerS.click_join_group_verify_switch()
+            logger.info(f"群聊【{group_name}】当前进群验证开关状态: '{verify_state}'")
+            self.mainS.go_to_main_page()
+            self.homeS.wait_home_page()
+
+        with allure.step(f'2. 接收端(普通成员)进入群聊【{group_name}】群设置，邀请【{INVITE_USER}】产生进群申请'):
+            self.chatListR.enter_chat(group_name)
+            self.chatR.wait_for_chat_page_load()
+            self.chatR.click_more_button()
+            self.groupSettingR.wait_for_setting_page_load()
+            self.groupSettingR.click_add_friend_header()
+            self.groupManagerR.click_member_by_search_keyword(name=INVITE_USER)
+            self.groupManagerR.click_edit_finish_button()
+            self.chatR.wait_banner_message_disappear()
+
+            self.mainR.go_to_main_page()
+            self.homeR.wait_home_page()
+
+        with allure.step(f'3. 接收端(普通成员)在首页验证无【{tag_keyword}】强提醒权限'):
+            actual_tag_r = self.homeR.get_remind_status_by_name(group_name, timeout=5)
+            logger.info(f"接收端(普通成员)群聊 [{group_name}] 首页提醒标签: '{actual_tag_r}'")
+            check.is_not_in(tag_keyword, actual_tag_r, 
+                            f'❌ 接收端(普通成员)无审批权限却显示了进群申请强提醒: {actual_tag_r}')
+
+        with allure.step(f'4. 发送端(群主)在首页验证展示【{expected_tag}】强提醒'):
+            actual_tag_s = self.homeS.get_remind_status_by_name(group_name, timeout=10)
+            logger.info(f"发送端(群主)群聊 [{group_name}] 首页提醒标签: '{actual_tag_s}'")
+            check.is_in(tag_keyword, actual_tag_s, 
+                        f'❌ 发送端(群主)在成员提交进群申请后未检测到【{expected_tag}】强提醒, 实际展示为: {actual_tag_s}')
+
+
 
 

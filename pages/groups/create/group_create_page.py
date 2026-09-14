@@ -14,10 +14,10 @@ class GroupCreatePage(GroupSettingPage):
     # 勾选好友操作
     # ==========================
     # 点击进入好友选择页-下一步按钮
-    def click_edit_to_next(self):
+    def click_edit_to_next(self) -> None:
         """点击进入好友选择页-下一步"""
+        logger.info("👉 [Action] GroupCreatePage 群详情页 - 点击【进入好友选择页-下一步】")
         self.click(GroupCreateLocator.EDIT_TO_IV)
-        logger.info("✅ [Action] GroupCreatePage 群详情页 - 点击【进入好友选择页-下一步】")
         time.sleep(0.5)
     
     # 获取未勾选的好友
@@ -41,7 +41,7 @@ class GroupCreatePage(GroupSettingPage):
         return elements
 
     # 获取 MESSAGE_TEXT 消息文本
-    def get_message_text_elements(self) -> list[WebElement]:
+    def get_message_text_elements(self) -> list[str]:
         """获取群聊页面消息文本"""
         elements = self.find_elements(GroupCreateLocator.MESSAGE_TEXT, condition='presence', raise_exception=False)
         if not elements:
@@ -88,7 +88,7 @@ class GroupCreatePage(GroupSettingPage):
         return abnormal_users
 
     # 随机选择 x 个好友，带排除名称功能（用于分批建群）
-    def select_x_friends_with_exclusion(self, x: int, exclude_names: list = None, initial: str = "#", loop_max: int = 100) -> tuple[int, list, str]:
+    def select_x_friends_with_exclusion(self, x: int, exclude_names: list[str] | None = None, initial: str = "#", loop_max: int = 100) -> tuple[int, list[str], str]:
         """
         在会话列表中随机选择 x 个好友，排除指定名称的好友。
         :param x: 需要选择的好友数量
@@ -106,6 +106,7 @@ class GroupCreatePage(GroupSettingPage):
         selected_contacts = 0
         clicked_names = []
 
+        logger.info(f"👉 [Action] 好友选择页 - 点击字母索引栏: {initial}")
         self.click(GroupCreateLocator.get_index_bar_text(initial))
         for i in range(loop_max):
             elements = self.get_unselected_friends(timeout=1, raise_exception=False)
@@ -116,6 +117,7 @@ class GroupCreatePage(GroupSettingPage):
                     if name in exclude_names or name in clicked_names:
                         logger.info(f"⏭️ [Action] 好友选择页 - 已选择好友: {name}，跳过")
                         continue
+                    logger.info(f"👉 [Action] 好友选择页 - 准备点击好友: {name}")
                     elem.click()
                     time.sleep(0.1)
                     selected_contacts += 1

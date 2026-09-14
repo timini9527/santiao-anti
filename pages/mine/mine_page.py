@@ -4,9 +4,8 @@ from core.logger_utils import logger
 from appium.webdriver.common.appiumby import AppiumBy
 
 
-
-#   我的
 class MinePage(BasePage):
+    """我的页面对象"""
 
     MENU_MINE = (By.ID, 'lottie_mine')
     COMMON_SETTING = (By.ID, 'currency_layout')
@@ -19,27 +18,28 @@ class MinePage(BasePage):
     ACCOUNT_SECURITY = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("账号安全")')
     GENERAL_SETTING = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("通用设置")')
 
-    # 通用设置中的元素
-
-
-    def enter_mine_page(self):
-        # 进入我的页面
+    # 我的 - 点击进入我的页面
+    def enter_mine_page(self) -> None:
+        """ 进入我的页面 """
+        logger.info("⚙️ [Action - Mine] 点击底部导航【我的】进入我的页面")
         self.click(self.MENU_MINE)
 
-
+    # 我的 - 退出登录操作
     def exit_login_page(self) -> bool:
-        #  是否已经登录上
-        exit_l = self.find_element(self.MENU_MINE)
-        print(f"账号异常，需要退出: {exit_l}")
+        """ 退出登录操作，若当前已登录则执行退出 """
+        logger.info("⚙️ [Action - Mine] 检查登录状态并准备退出登录")
+        exit_l = self.find_element(self.MENU_MINE, timeout=2, expect_missing=True)
         if exit_l is not None:
-            logger.info(f"已在我的页面，需要退出: {exit_l}")
+            logger.info("⚙️ [Action - Mine] 检测到已在登录状态，开始执行退出步骤")
+            logger.info("⚙️ [Action - Mine] 点击【我的】导航")
             self.click(self.MENU_MINE)
+            logger.info("⚙️ [Action - Mine] 点击【通用设置】")
             self.click(self.COMMON_SETTING)
+            logger.info("⚙️ [Action - Mine] 点击【退出登录】入口")
             self.click(self.EXIT_LAYOUT)
+            logger.info("⚙️ [Action - Mine] 点击【确认退出】")
             self.click(self.LAYOUT_TV)
+            logger.info("✅ [Action - Mine] 退出登录成功")
             return True
+        logger.warning("⚠️ [Action - Mine] 未在登录状态，无需退出")
         return False
-
-
-
-

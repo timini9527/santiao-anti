@@ -1,10 +1,10 @@
 import time
 import random
+from typing import Tuple, List, Optional
 from core.logger_utils import logger
 from selenium.webdriver.remote.webelement import WebElement
 from locators.chat_options.emojis.chat_emoji_locator import ChatEmojiLocator
 from pages.chat_options.emojis.chat_emoji_panel_base import ChatEmojiPanelBase
-
 
 
 class ChatEmojiManagePage(ChatEmojiPanelBase):
@@ -12,42 +12,47 @@ class ChatEmojiManagePage(ChatEmojiPanelBase):
     专门负责表情包管理界面（设置页）内的状态获取与删除业务
     """
     # 点击返回按钮
-    def click_back_btn(self):
+    def click_back_btn(self) -> None:
         """ 点击返回按钮 """
+        logger.info("【Action】manage - 准备点击返回按钮...")
         self.click(ChatEmojiLocator.COLLECT_BACK_BTN)
-        logger.info("【Action】manage - 点击返回按钮")
+        logger.info("【Action】manage - 点击返回按钮完成")
     
     # 点击右上角 整理/取消 按钮
-    def click_right_btn(self):
+    def click_right_btn(self) -> None:
         """ 点击右上角 整理/取消 按钮 """
+        logger.info("【Action】manage - 准备点击右上角 整理/取消 按钮...")
         self.click(ChatEmojiLocator.COLLECT_RIGHT_BTN)
-        logger.info("【Action】manage - 点击右上角 整理/取消 按钮")
+        logger.info("【Action】manage - 点击右上角 整理/取消 按钮完成")
     
     # 点击移动按钮
-    def click_move_btn(self):
+    def click_move_btn(self) -> None:
         """ 点击移动按钮 """
+        logger.info("【Action】manage - 准备点击移动按钮...")
         self.click(ChatEmojiLocator.COLLECT_MOVE_BTN)
-        logger.info("【Action】manage - 点击移动按钮")
+        logger.info("【Action】manage - 点击移动按钮完成")
     
     # 点击删除按钮
-    def click_del_btn(self):
+    def click_del_btn(self) -> None:
         """ 点击删除按钮 """
+        logger.info("【Action】manage - 准备点击删除按钮...")
         self.click(ChatEmojiLocator.COLLECT_DEL_BTN)
-        logger.info("【Action】manage - 点击删除按钮")
+        logger.info("【Action】manage - 点击删除按钮完成")
     
     # 点击二次删除确认按钮
-    def click_del_confirm_btn(self):
+    def click_del_confirm_btn(self) -> None:
         """ 点击二次删除确认按钮 """
+        logger.info("【Action】manage - 准备点击二次删除确认按钮...")
         self.click(ChatEmojiLocator.COLLECT_DEL_CONFIRM_BTN)
-        logger.info("【Action】manage - 点击二次删除确认按钮")
+        logger.info("【Action】manage - 点击二次删除确认按钮完成")
     
     # 点击二次删除取消按钮
-    def click_del_cancel_btn(self):
+    def click_del_cancel_btn(self) -> None:
         """ 点击二次删除取消按钮 """
+        logger.info("【Action】manage - 准备点击二次删除取消按钮...")
         self.click(ChatEmojiLocator.COLLECT_DEL_CANCEL_BTN)
-        logger.info("【Action】manage - 点击二次删除取消按钮")
+        logger.info("【Action】manage - 点击二次删除取消按钮完成")
 
-    
     # 【内部方法】 获取管理页面所有已添加的表情包数量
     def get_manage_all_added_emoji_packages_count(self) -> tuple[list[WebElement], int]:
         """
@@ -55,13 +60,14 @@ class ChatEmojiManagePage(ChatEmojiPanelBase):
         Returns:
             tuple[list[WebElement], int]: (表情包列表, 表情包数量)
         """
+        logger.info("🔍 获取管理页面所有已添加的表情包数量...")
         # 1. 获取布局度量数据
         metrics = self.get_grid_layout_metrics(
             ChatEmojiLocator.COLLECT_LIST_CONTAINER, 
             ChatEmojiLocator.COLLECT_EMOJI_PKG_ITEM
         )
         if not metrics:
-            return 0
+            return [], 0
             
         pkg_count = metrics['max_per_screen']
         stride_y = metrics['stride_y']
@@ -103,6 +109,7 @@ class ChatEmojiManagePage(ChatEmojiPanelBase):
         在收藏表情管理页面批量删除表情包。
         核心优化：解决连续点击导致 DOM 刷新产生的 StaleElementReferenceException
         """
+        logger.info(f"🗑️ 准备批量删除表情包: 类型={emoji_type}, 数量={count}...")
         # 1. 仅获取当前总数，用来计算我们要点击哪些【索引】
         _, current_count = self.get_manage_all_added_emoji_packages_count()
 
@@ -131,8 +138,9 @@ class ChatEmojiManagePage(ChatEmojiPanelBase):
                 # 🌟 每次循环开始前，强制重新获取一次页面上最新的所有元素！
                 fresh_items, _ = self.get_manage_all_added_emoji_packages_count()
                 if idx < len(fresh_items):
+                    logger.info(f"[Action] manage - 准备点击选取表情包 - {i+1}/{len(target_indices)}...")
                     fresh_items[idx].click()
-                    logger.info(f"[Action] manage - 点击选取表情包 - {i+1}/{len(target_indices)}")
+                    logger.info(f"[Action] manage - 点击选取表情包完成 - {i+1}/{len(target_indices)}")
                     time.sleep(0.3) 
                 else:
                     logger.warning(f"索引 {idx} 超出当前页面元素总数！")
@@ -159,6 +167,7 @@ class ChatEmojiManagePage(ChatEmojiPanelBase):
         封装了进入面板、判断是否为空、全选删除及后退的完整业务流。
         :return: bool 是否成功清理（如果原本就为空，也返回 True）
         """
+        logger.info("🗑️ 准备一键清空所有收藏表情...")
         pkg_elems = self.get_collection_empkg_container()
         if not pkg_elems:
             logger.info("✅ 收藏表情包为空，不需要进行删除操作，直接返回")
@@ -174,6 +183,6 @@ class ChatEmojiManagePage(ChatEmojiPanelBase):
             logger.error("❌ 清理收藏表情包失败")
             return False
 
-        logger.info(f"✅ 成功清理所有收藏表情包")
+        logger.info("✅ 成功清理所有收藏表情包")
         self.click_back_btn()
         return True

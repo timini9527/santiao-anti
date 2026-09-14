@@ -1,5 +1,7 @@
 import time
+from typing import Optional
 from appium.webdriver.common.appiumby import AppiumBy
+from appium.webdriver.webelement import WebElement
 from common.base_page import BasePage
 from core.logger_utils import logger
 from pages.chat.core.chat_page import ChatPage
@@ -12,14 +14,16 @@ class ChatVoicePage(ChatPage):
     """
 
     # 点击按住说话按钮
-    def click_voice_press_button(self):
+    def click_voice_press_button(self) -> None:
         """点击聊天页面底部的按住说话按钮，进入语音录制模式"""
+        logger.info("✔️ 准备点击按住说话按钮，进入语音录制模式...")
         self.click(ChatVoiceLocator.VOICE_PRESS_BUTTON)
-        logger.info("✔️ 点击按住说话按钮，进入语音录制模式")
+        logger.info("✔️ 点击按住说话按钮完成")
 
     # 获取按住说话按钮
-    def get_voice_press_button(self):
+    def get_voice_press_button(self) -> Optional[WebElement]:
         """获取按住说话按钮元素，用于后续的位置计算和长按操作"""
+        logger.info("🔍 获取按住说话按钮...")
         btn = self.find_element(ChatVoiceLocator.VOICE_PRESS_BUTTON, timeout=2)
         if btn:
             logger.info("✔️ 成功获取按住说话按钮")
@@ -28,14 +32,16 @@ class ChatVoicePage(ChatPage):
         return btn
 
     # 点击试听按钮/操作区
-    def click_voice_press_button_listen(self):
+    def click_voice_press_button_listen(self) -> None:
         """点击试听按钮（录音过程中滑动至此区域后松手进入试听）"""
+        logger.info("✔️ 准备点击试听按钮，准备进入语音试听模式...")
         self.click(ChatVoiceLocator.VOICE_RECORD_PREVIEW_ACTION)
-        logger.info("✔️ 点击试听按钮，准备进入语音试听模式")
+        logger.info("✔️ 点击试听按钮完成")
 
     # 获取试听按钮/操作区
-    def get_voice_press_button_listen(self):
+    def get_voice_press_button_listen(self) -> Optional[WebElement]:
         """获取试听按钮元素，用于后续位移滑动的目标坐标计算"""
+        logger.info("🔍 获取试听按钮元素...")
         btn = self.find_element(ChatVoiceLocator.VOICE_RECORD_PREVIEW_ACTION, timeout=2)
         if btn:
             logger.info("✔️ 成功获取试听按钮")
@@ -44,14 +50,16 @@ class ChatVoicePage(ChatPage):
         return btn
 
     # 点击取消发送按钮/操作区
-    def click_voice_press_button_cancel(self):
+    def click_voice_press_button_cancel(self) -> None:
         """点击取消发送按钮（录音过程中滑动至此区域后松手）"""
+        logger.info("✔️ 准备点击取消发送按钮...")
         self.click(ChatVoiceLocator.VOICE_RECORD_CANCEL_ACTION)
-        logger.info("✔️ 点击取消发送按钮，本次录音已取消")
+        logger.info("✔️ 点击取消发送按钮完成，本次录音已取消")
 
     # 获取取消发送按钮/操作区
-    def get_voice_press_button_cancel(self):
+    def get_voice_press_button_cancel(self) -> Optional[WebElement]:
         """获取取消发送按钮元素，用于后续位移滑动的目标坐标计算"""
+        logger.info("🔍 获取取消发送按钮元素...")
         btn = self.find_element(ChatVoiceLocator.VOICE_RECORD_CANCEL_ACTION, timeout=2)
         if btn:
             logger.info("✔️ 成功获取取消发送按钮")
@@ -60,28 +68,32 @@ class ChatVoicePage(ChatPage):
         return btn
 
     # 点击试听下取消按钮
-    def click_voice_press_button_retry(self):
+    def click_voice_press_button_retry(self) -> None:
         """点击试听界面下的取消按钮，放弃发送"""
+        logger.info("✔️ 准备点击试听取消按钮，放弃发送...")
         self.click(ChatVoiceLocator.VOICE_PREVIEW_CANCEL_ACTION)
-        logger.info("✔️ 已点击试听取消按钮，放弃发送")
+        logger.info("✔️ 已点击试听取消按钮完成")
         time.sleep(0.5)
 
     # 点击试听下发送按钮
-    def click_voice_press_button_send(self):
+    def click_voice_press_button_send(self) -> None:
         """点击试听界面下的发送按钮，发送语音"""
+        logger.info("✔️ 准备点击试听发送按钮，发送语音...")
         self.click(ChatVoiceLocator.VOICE_PREVIEW_SEND_ACTION)
-        logger.info("✔️ 已点击试听发送按钮，发送语音")
+        logger.info("✔️ 已点击试听发送按钮完成")
         time.sleep(0.5)
 
     # 点击听筒或外放切换按钮
-    def click_voice_press_button_speaker(self):
+    def click_voice_press_button_speaker(self) -> None:
         """点击试听界面的听筒/外放切换按钮"""
+        logger.info("✔️ 准备点击试听页面的听筒/外放切换按钮...")
         self.click(ChatVoiceLocator.VOICE_PREVIEW_ROUTE_ACTION)
-        logger.info("✔️ 已点击试听页面的听筒/外放切换按钮")
+        logger.info("✔️ 已点击试听页面的听筒/外放切换按钮完成")
 
     # 获取听筒或外放切换按钮
-    def get_voice_press_button_speaker_icon(self):
+    def get_voice_press_button_speaker_icon(self) -> Optional[WebElement]:
         """获取听筒/外放切换按钮元素"""
+        logger.info("🔍 获取听筒/外放切换按钮元素...")
         btn = self.find_element(ChatVoiceLocator.VOICE_PREVIEW_ROUTE_ACTION, timeout=2)
         if btn:
             logger.info("✔️ 成功获取听筒/外放切换按钮")
@@ -92,6 +104,7 @@ class ChatVoicePage(ChatPage):
     # 获取听筒或外放按钮文字
     def get_voice_press_button_speaker_text(self) -> str:
         """获取听筒/外放切换按钮当前显示的文字（用于判断当前播放模式）"""
+        logger.info("🔍 获取听筒/外放模式文字...")
         text = self.get_attribute(ChatVoiceLocator.VOICE_PREVIEW_ROUTE_LABEL, 'text', raise_exception=False) or ""
         logger.info(f"✔️ 当前听筒/外放模式文字: 【{text}】")
         return text
@@ -99,20 +112,23 @@ class ChatVoicePage(ChatPage):
     # 获取听筒或外放状态文案
     def get_voice_preview_route_status_text(self) -> str:
         """获取试听界面听筒/外放状态文案"""
+        logger.info("🔍 获取试听界面听筒/外放状态文案...")
         text = self.get_attribute(ChatVoiceLocator.VOICE_PREVIEW_ROUTE_STATUS, 'text', raise_exception=False) or ""
         logger.info(f"✔️ 当前听筒/外放状态文案: 【{text}】")
         return text
 
     # 点击播放或暂停试听按钮
-    def click_voice_press_button_play_or_pause(self):
+    def click_voice_press_button_play_or_pause(self) -> None:
         """点击试听界面的播放/暂停按钮"""
+        logger.info("✔️ 准备点击试听页面的播放/暂停按钮...")
         self.click(ChatVoiceLocator.VOICE_PREVIEW_PLAY_ACTION)
         time.sleep(0.5)
-        logger.info("✔️ 已点击试听页面的播放/暂停按钮")
+        logger.info("✔️ 已点击试听页面的播放/暂停按钮完成")
 
     # 获取语音实时时长
     def get_voice_press_button_time(self) -> str:
         """获取录音或试听模式下的语音时长文字（如 11'' 或 00:11）"""
+        logger.info("🔍 获取录音或试听模式下的语音时长...")
         text = self.get_attribute(ChatVoiceLocator.VOICE_RECORD_TIME, 'text', raise_exception=False) or ""
         logger.info(f"✔️ 语音时长显示: 【{text}】")
         return text
@@ -120,6 +136,7 @@ class ChatVoicePage(ChatPage):
     # 获取录音提示文本
     def get_voice_text(self) -> str:
         """获取录音过程中提示框内显示的文字（如 '松开 发送' 等）"""
+        logger.info("🔍 获取录音过程中提示框文字...")
         text = self.get_attribute(ChatVoiceLocator.VOICE_RECORD_HINT, 'text', raise_exception=False) or ""
         logger.info(f"✔️ 录音提示框文字: 【{text}】")
         return text
@@ -127,13 +144,15 @@ class ChatVoicePage(ChatPage):
     # 获取语音消息不同文案显示
     def get_voice_message_text(self, text: str) -> str:
         """根据传入的标识文字获取对应语音消息气泡中的文案"""
+        logger.info(f"🔍 获取语音消息气泡文案: [{text}]...")
         result = self.get_attribute(ChatVoiceLocator.get_voice_message_locator(text), 'text', raise_exception=False) or ""
         logger.info(f"✔️ 语音气泡消息文字 [{text}]: 【{result}】")
         return result
 
     # 获取最新语音消息发送状态
-    def get_latest_voice_message_status(self, time_val: int):
+    def get_latest_voice_message_status(self, time_val: int) -> Optional[WebElement]:
         """获取最新一条语音消息的发送状态元素（有则代表发送失败，气泡上会显示红点）"""
+        logger.info(f"🔍 获取最新一条语音消息的发送状态元素 (时长: {time_val}s)...")
         locator = ChatVoiceLocator.get_latest_voice_message_status_locator(time_val)
         elem = self.find_element(locator, timeout=2, expect_missing=True)
         if elem:
@@ -149,6 +168,7 @@ class ChatVoicePage(ChatPage):
         :param hold_time: 悬停时长 (秒)
         :return: 返回一个字典，包含可能出现的 toast 提示
         """
+        logger.info(f"👉 准备发送长按语音，时长: {hold_time}秒...")
         result = {"toast": "", "warning_text": ""}
 
         voice_button = self.get_voice_press_button()
@@ -183,6 +203,7 @@ class ChatVoicePage(ChatPage):
         """
         按住录音 -> 动态定位取消按钮 -> 滑动过去 -> 悬停 -> 松手取消
         """
+        logger.info(f"👉 准备执行录音滑动取消: press={press_time}s, hold={hold_time}s...")
         actions, touch_input = self.init_w3c_actions()
 
         voice_btn = self.get_voice_press_button()
@@ -220,6 +241,7 @@ class ChatVoicePage(ChatPage):
         """
         按住录音 -> 动态定位试听按钮 -> 滑动过去 -> 悬停 -> 松手进入试听
         """
+        logger.info(f"👉 准备执行录音滑动试听: press={press_time}s, hold={hold_time}s...")
         actions, touch_input = self.init_w3c_actions()
 
         voice_btn = self.get_voice_press_button()
@@ -255,6 +277,7 @@ class ChatVoicePage(ChatPage):
     # 获取语音消息列表快照
     def get_voice_list_snapshot(self, role: str = 'sender') -> dict:
         """ 在执行 发送/取消 动作之前调用，拍摄当前语音消息列表的基准快照 """
+        logger.info(f"📷 [{role}] 准备获取语音消息列表快照...")
         try:
             side = 'sent' if role == 'sender' else 'received'
             elems = self.get_message_elements('videoDuration', side=side, expect_missing=True)
@@ -280,6 +303,7 @@ class ChatVoicePage(ChatPage):
         :param pre_snapshot: 执行操作前获取的快照字典
         :param expect_sent: True 表示预期发送成功，False 表示预期取消发送(未发送)
         """
+        logger.info(f"🔍 验证语音消息显示: expected={expected_time}s, expect_sent={expect_sent}, role={role}...")
         try:
             side = 'sent' if role == 'sender' else 'received'
             elems = self.get_message_elements('videoDuration', side=side, expect_missing=True)
@@ -331,6 +355,7 @@ class ChatVoicePage(ChatPage):
         """
         验证是否成功进入了试听模式 (特征：屏幕上出现试听界面的播放按钮或发送按钮)
         """
+        logger.info("🔍 验证是否进入试听模式...")
         try:
             play_btn = self.find_element(ChatVoiceLocator.VOICE_PREVIEW_PLAY_ACTION, timeout=3)
             if play_btn is not None:
@@ -346,6 +371,7 @@ class ChatVoicePage(ChatPage):
     # 获取试听模式下的时间
     def get_preview_mode_time(self) -> int:
         """获取试听模式下的语音时长（秒）"""
+        logger.info("🔍 获取试听模式下的语音时长...")
         listen_time = self.get_voice_press_button_time()
         if ":" in listen_time:
             minute, second = listen_time.split(":")
@@ -367,7 +393,7 @@ class ChatVoicePage(ChatPage):
         elif play_mode in ("earpiece", "speaker"):
             current_route_text = self.get_voice_press_button_speaker_text()
             if play_mode not in current_route_text.lower():
-                logger.info(f"🔄 点击切换听筒/外放模式...")
+                logger.info("🔄 准备点击切换听筒/外放模式...")
                 self.click_voice_press_button_speaker()
             return True
         return False
