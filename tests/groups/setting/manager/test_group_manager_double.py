@@ -139,6 +139,8 @@ class TestGroupManagerDouble:
             check.is_false(is_visible, '❌ 接收端被解除管理员后，群设置中依然显示【群管理】入口')
             self.groupSettingR.click_iv_back_button()
 
+
+
     @allure.story('群管理-管理员分配')
     @allure.title('【管理员】是否是管理员身份的分配验证-分配所有权限-状态：已完成')
     @pytest.mark.usefixtures('admin_role')
@@ -418,3 +420,61 @@ class TestGroupManagerDouble:
             self.chatR.send_message('群聊正常修改取消测试')
             total_msg = self.chatR.get_total_message_count()
             check.is_true(total_msg > 0, '❌ 取消解散后，群成员无法正常发送聊天消息')
+
+    @allure.story('群管理-群ID搜索双端联动')
+    @allure.title('【群ID搜索】群主关闭群ID搜索后成员端搜索可见性校验-状态：未完成')
+    @pytest.mark.skip('群ID搜索双端联动功能未实现/待验证')
+    def test_group_id_search_double_validation(self):
+        """双端验证：群主关闭群ID搜索开关后，接收端通过群ID搜索该群应无法检索到"""
+        with allure.step('1. 群主端关闭【群ID搜索】开关'):
+            self.groupManagerS.click_group_id_search_switch(checked_str='false')
+            self.chatS.wait_banner_message_disappear()
+        with allure.step('2. 接收端在搜索栏输入该群ID'):
+            pass
+        with allure.step('3. 环境复原：群主端重新开启【群ID搜索】开关'):
+            self.groupManagerS.click_group_id_search_switch(checked_str='true')
+            self.chatS.wait_banner_message_disappear()
+
+    @allure.story('群管理-公开群展示双端联动')
+    @allure.title('【公开群展示】开关切换及广场搜索可见性双端校验-状态：未完成')
+    @pytest.mark.skip('公开群展示双端联动功能未实现/待验证')
+    def test_public_group_display_double_validation(self):
+        """双端验证：群主开启公开群展示后，非群成员可在公开群列表中发现该群；关闭后不展示"""
+        with allure.step('1. 群主端开启【公开群展示】开关'):
+            self.groupManagerS.click_public_group_display_switch(checked_str='true')
+            self.chatS.wait_banner_message_disappear()
+        with allure.step('2. 接收端在公开群广场列表中校验能看到该群'):
+            pass
+        with allure.step('3. 环境复原：群主端关闭【公开群展示】开关'):
+            self.groupManagerS.click_public_group_display_switch(checked_str='false')
+            self.chatS.wait_banner_message_disappear()
+
+    @allure.story('群管理-新成员进群自动禁言双端联动')
+    @allure.title('【新成员进群自动禁言】开启后新成员入群发言权限双端校验-状态：未完成')
+    @pytest.mark.skip('新成员进群自动禁言双端联动功能未实现/待验证')
+    def test_new_member_auto_mute_double_validation(self):
+        """双端验证：群主开启【新成员进群自动禁言】后，新加入成员默认处于禁言状态无法发言"""
+        with allure.step('1. 群主端开启【新成员进群自动禁言】开关'):
+            self.groupManagerS.click_new_member_auto_mute_switch(checked_str='true')
+            self.chatS.wait_banner_message_disappear()
+        with allure.step('2. 接收端(新入群成员)校验输入框被禁用并展示禁言提示'):
+            pass
+        with allure.step('3. 环境复原：群主端关闭【新成员进群自动禁言】开关'):
+            self.groupManagerS.click_new_member_auto_mute_switch(checked_str='false')
+            self.chatS.wait_banner_message_disappear()
+
+    @allure.story('群管理-进群申请双端联动')
+    @allure.title('【进群申请】新成员申请入群后群主端红点数与审批流程双端校验-状态：未完成')
+    @pytest.mark.skip('进群申请红点与审批双端联动功能未实现/待验证')
+    def test_join_apply_badge_double_validation(self):
+        """双端验证：普通成员发起入群申请，群主端群管理页进群申请红点数+1，审批通过后红点消除"""
+        with allure.step('1. 群主端确保【进群验证】已开启'):
+            self.groupManagerS.click_join_group_verify_switch(checked_str='true')
+            self.chatS.wait_banner_message_disappear()
+        with allure.step('2. 接收端发起进群申请'):
+            pass
+        with allure.step('3. 群主端校验【进群申请】红点未读数增加'):
+            badge_count = self.groupManagerS.get_join_apply_badge_count()
+            logger.info(f"群主端进群申请红点数: {badge_count}")
+        with allure.step('4. 群主端进入审批并同意申请，校验红点消除'):
+            pass

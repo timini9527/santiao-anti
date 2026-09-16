@@ -1,0 +1,100 @@
+# ================================================================
+# 接口性能压测主配置文件 (完全配置化 · 想测几个接口就配几个)
+# ================================================================
+
+# 1. 目标被测系统根地址 (切换只需修改 host 即可)
+target:
+  host: "http://localhost:8000"        # 被测目标服务根地址（支持任意 HTTP/HTTPS 域名或 IP 端口）
+  timeout: 5.0                        # 单次请求超时时间（秒）
+
+# 2. 动态接口列表（想测哪个接口开启 enabled: true 即可，配几个测几个）
+interfaces:
+  # ============================================================
+  # 🎯 模块 A：本地 Web 自动化控制台服务接口 (http://localhost:8000)
+  # ============================================================
+  - name: "控制台首页"
+    enabled: true                     # 开启测试
+    method: "GET"
+    path: "/"
+    weight: 3                         # 流量权重：占 3/8 流量
+    params: {}
+    headers: {}
+
+  # - name: "用例树加载接口"
+  #   enabled: true                     # 开启测试
+  #   method: "GET"
+  #   path: "/api/tests"                # FastAPI 获取用例列表核心接口
+  #   weight: 3                         # 流量权重：占 3/8 流量
+  #   params: {}
+  #   headers: {}
+
+  # - name: "设备探测接口"
+  #   enabled: true                     # 开启测试
+  #   method: "POST"
+  #   path: "/api/detect_udid"          # 手机 UDID 探测接口
+  #   weight: 1                         # 流量权重：占 1/8 流量
+  #   headers:
+  #     Content-Type: "application/json"
+  #   body: {}
+
+  # - name: "Appium状态探测"
+  #   enabled: true                     # 开启测试
+  #   method: "POST"
+  #   path: "/api/detect_appium"        # Appium 状态检测接口
+  #   weight: 1                         # 流量权重：占 1/8 流量
+  #   headers:
+  #     Content-Type: "application/json"
+  #   body:
+  #     port: 4723
+
+  # ============================================================
+  # 🌐 模块 B：外部示例接口（如测试百度，只需将 host 改为百度，并开启以下配置）
+  # ============================================================
+  - name: "百度首页"
+    enabled: false                     # 是否启用此接口 (true / false)
+    method: "GET"                     # 请求方式: GET, POST, PUT, DELETE
+    path: "/"                         # 接口路径
+    weight: 3                         # 流量权重: 数字越大，并发请求越多（此处占 3/4 流量）
+    params: {}                        # URL 查询参数 (例如: { wd: "test" })
+    headers:                          # 自定义请求头
+      User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+
+  - name: "百度搜索接口"
+    enabled: false                    # 暂时关闭，切换测试百度时改为 true
+    method: "GET"
+    path: "/s"
+    weight: 1                         # 流量权重（此处占 1/4 流量）
+    params:
+      wd: "Locust性能测试"
+    headers:
+      User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+
+  # -------------------------------------------------------------
+  # 💡 想要测更多接口？直接复制下方模板追加即可：
+  # -------------------------------------------------------------
+  # - name: "示例POST登录提交接口"
+  #   enabled: false                  # 改为 true 即可立即加入并发压测
+  #   method: "POST"
+  #   path: "/api/v1/auth/login"
+  #   weight: 2
+  #   headers:
+  #     Content-Type: "application/json"
+  #   body:                           # POST / PUT 专用的 JSON 请求体
+  #     username: "test_user"
+  #     password: "123456_password"
+
+# 3. 压测运行默认参数
+run_settings:
+  users: 50                          # 最大并发用户数
+  spawn_rate: 10                     # 每秒孵化/增长用户数
+  run_time: "1m"                     # 压测持续时间（如 30s, 1m, 10m）
+  headless: false                    # 默认启动模式（false 开启 Web UI）
+  web_host: "127.0.0.1"              # Web UI 监听地址
+  web_port: 8089                     # Web UI 访问端口
+
+# 4. SLA 质量门禁阈值 (Quality Gate)
+sla:
+  max_avg_response_time_ms: 300      # 平均响应时间上限（毫秒）
+  max_p95_response_time_ms: 600      # P95 响应时间上限（毫秒）
+  max_p99_response_time_ms: 1000     # P99 响应时间上限（毫秒）
+  max_failure_rate_percent: 0.1      # 最大允许错误率（百分比）

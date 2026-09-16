@@ -17,8 +17,17 @@ class GroupManagerLocator(CommonLocator):
 
     # 列表项
     VIEW_UPDATE_GROUP = (AppiumBy.ID, f"{PACKAGE_ID}/view_update_group")                                 # 升级群组
+    IMPROVE_GROUP_ACTIVITY = (AppiumBy.ID, f"{PACKAGE_ID}/group_active_point")                           # 提升群活跃
+    GROUP_ACTIVE_POINT_TITLE = (AppiumBy.ID, f"{PACKAGE_ID}/group_active_point_title")                   # 提升群活跃标题
+    GROUP_ACTIVITY_POINTS = (AppiumBy.ID, f"{PACKAGE_ID}/group_active_point_value")                      # 今日活跃点文本
     IT_GROUP_MANAGER = (AppiumBy.ID, f"{PACKAGE_ID}/it_group_manager")                                   # 管理员
+    ADD_GROUP_ASSISTANT = (AppiumBy.ID, f"{PACKAGE_ID}/it_group_hands")                                  # 添加群助手
+    IT_GROUP_HANDS_TITLE = (AppiumBy.ID, f"{PACKAGE_ID}/it_group_hands_title")                           # 添加群助手标题
+    IT_GROUP_HANDS_STATUS = (AppiumBy.ID, f"{PACKAGE_ID}/it_group_hands_status")                         # 添加群助手状态
     JOIN_TO_GROUP_APPLY = (AppiumBy.ID, f"{PACKAGE_ID}/join_to_group_apply")                             # 进群申请
+    JOIN_TO_GROUP_APPLY_TITLE = (AppiumBy.ID, f"{PACKAGE_ID}/join_to_group_apply_title")                 # 进群申请标题
+    JOIN_TO_GROUP_APPLY_BADGE = (AppiumBy.ID, f"{PACKAGE_ID}/join_to_group_apply_value")                 # 进群申请红点数量
+    IT_SPEECH_MANAGEMENT = (AppiumBy.ID, f"{PACKAGE_ID}/lay_speech_management")                          # 发言管理
     GROUP_MEMBER_MUTE = (AppiumBy.ID, f"{PACKAGE_ID}/group_member_mute")                                 # 指定成员禁言
     GROUP_BLACK_MEMBER = (AppiumBy.ID, f"{PACKAGE_ID}/group_black_member")                               # 群黑名单
     GROUP_GIVE = (AppiumBy.ID, f"{PACKAGE_ID}/group_give")                                               # 转让群主
@@ -28,6 +37,7 @@ class GroupManagerLocator(CommonLocator):
 
 
     # 具有 Switch 开关的配置项及其对应的开关按钮
+    GROUP_RANK_SWITCH = (AppiumBy.ID, f"{PACKAGE_ID}/group_rank_switch_btn")                        # 公开群开关
     GROUP_ID_SEARCH_SWITCH = (AppiumBy.ID,  f"{PACKAGE_ID}/group_id_search_btn")                    # 群ID搜索开关
     JOIN_TO_GROUP_VERIFY_SWITCH = (AppiumBy.ID, f"{PACKAGE_ID}/join_to_group_verify_btn")           # 进群验证开关
     ALL_MEMBER_MUTE_SWITCH = (AppiumBy.ID, f"{PACKAGE_ID}/all_member_mute_btn")                     # 全员禁言开关

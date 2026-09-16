@@ -62,17 +62,87 @@ class GroupManagerPage(BasePage):
         logger.info("⚙️ [Action-groupManagerPage] 点击【升级群组】")
         self.click(GroupManagerLocator.VIEW_UPDATE_GROUP)
 
+    # 群管理-点击提升群活跃
+    def click_improve_group_activity(self) -> None:
+        """群管理-点击提升群活跃"""
+        logger.info("⚙️ [Action-groupManagerPage] 点击【提升群活跃】")
+        self.click(GroupManagerLocator.IMPROVE_GROUP_ACTIVITY)
+
+    # 群管理-获取提升群活跃标题文本
+    def get_group_active_point_title(self) -> str:
+        """群管理-获取【提升群活跃】标题文本"""
+        logger.info("📋 [Action-groupManagerPage] 获取【提升群活跃】标题文本")
+        res = self.get_attribute(GroupManagerLocator.GROUP_ACTIVE_POINT_TITLE, "text", raise_exception=False)
+        logger.info(f"✅ [Action-groupManagerPage] 获取提升群活跃标题结果: {res}")
+        return res or ""
+
+    # 群管理-获取今日活跃点文本
+    def get_group_activity_points(self) -> str:
+        """群管理-获取今日活跃点文本"""
+        logger.info("📋 [Action-groupManagerPage] 获取【今日活跃点】文本")
+        res = self.get_attribute(GroupManagerLocator.GROUP_ACTIVITY_POINTS, "text", raise_exception=False)
+        logger.info(f"✅ [Action-groupManagerPage] 获取今日活跃点结果: {res}")
+        return res or ""
+
     # 群管理-点击管理员
     def click_administrators(self) -> None:
         """群管理-点击管理员"""
         logger.info("⚙️ [Action-groupManagerPage] 点击【管理员】")
         self.click(GroupManagerLocator.IT_GROUP_MANAGER)
 
+    # 群管理-点击添加群助手
+    def click_add_group_assistant(self) -> None:
+        """群管理-点击添加群助手"""
+        logger.info("⚙️ [Action-groupManagerPage] 点击【添加群助手】")
+        self.click(GroupManagerLocator.ADD_GROUP_ASSISTANT)
+
+    # 群管理-获取添加群助手标题文本
+    def get_group_assistant_title(self) -> str:
+        """群管理-获取【添加群助手】标题文本"""
+        logger.info("📋 [Action-groupManagerPage] 获取【添加群助手】标题文本")
+        res = self.get_attribute(GroupManagerLocator.IT_GROUP_HANDS_TITLE, "text", raise_exception=False)
+        logger.info(f"✅ [Action-groupManagerPage] 获取添加群助手标题结果: {res}")
+        return res or ""
+
+    # 群管理-获取群助手状态文本
+    def get_group_assistant_status(self) -> str:
+        """群管理-获取群助手状态文本"""
+        logger.info("📋 [Action-groupManagerPage] 获取【群助手状态】文本")
+        res = self.get_attribute(GroupManagerLocator.IT_GROUP_HANDS_STATUS, "text", raise_exception=False)
+        logger.info(f"✅ [Action-groupManagerPage] 获取群助手状态: {res}")
+        return res or ""
+
     # 群管理-点击进群申请
     def click_join_to_group_apply(self) -> None:
         """群管理-点击进群申请"""
         logger.info("⚙️ [Action-groupManagerPage] 点击【进群申请】")
         self.click(GroupManagerLocator.JOIN_TO_GROUP_APPLY)
+
+    # 群管理-获取进群申请标题文本
+    def get_join_apply_title(self) -> str:
+        """群管理-获取【进群申请】标题文本"""
+        logger.info("📋 [Action-groupManagerPage] 获取【进群申请】标题文本")
+        res = self.get_attribute(GroupManagerLocator.JOIN_TO_GROUP_APPLY_TITLE, "text", raise_exception=False)
+        logger.info(f"✅ [Action-groupManagerPage] 获取进群申请标题结果: {res}")
+        return res or ""
+
+    # 群管理-获取进群申请未读红点数
+    def get_join_apply_badge_count(self) -> int:
+        """群管理-获取进群申请未读红点数，若无红点则返回 0"""
+        logger.info("📋 [Action-groupManagerPage] 获取【进群申请】未读红点数")
+        text = self.get_attribute(GroupManagerLocator.JOIN_TO_GROUP_APPLY_BADGE, "text", raise_exception=False)
+        if text and text.isdigit():
+            count = int(text)
+            logger.info(f"✅ [Action-groupManagerPage] 进群申请未读数: {count}")
+            return count
+        logger.info("ℹ️ [Action-groupManagerPage] 进群申请当前无未读红点")
+        return 0
+
+    # 群管理-点击发言管理
+    def click_speech_management(self) -> None:
+        """群管理-点击发言管理"""
+        logger.info("⚙️ [Action-groupManagerPage] 点击【发言管理】")
+        self.click(GroupManagerLocator.IT_SPEECH_MANAGEMENT)
 
     # 群管理-点击指定成员禁言
     def click_mute_member(self) -> None:
@@ -277,6 +347,50 @@ class GroupManagerPage(BasePage):
             self.click(GroupManagerLocator.UN_ADD_FRIEND_EACH_OTHER_SWITCH)
             time.sleep(1)
             logger.info(f"⚙️ [Action-groupManagerPage] 将【禁止群成员互相加好友】开关设置为{checked_str}")
+            return True
+
+    # Switch - 获取公开群展示开关状态
+    def get_public_group_display_state(self) -> str:
+        """Switch - 获取【公开群展示】开关状态"""
+        logger.info("⚙️ [Action-groupManagerPage] 获取【公开群展示】开关状态")
+        res = self.get_attribute(GroupManagerLocator.GROUP_RANK_SWITCH, "checked", raise_exception=False)
+        logger.info(f"⚙️ [Action-groupManagerPage] 获取【公开群展示】开关状态结果: {res}")
+        return str(res).lower() if res else "false"
+
+    # Switch - 点击公开群展示开关
+    def click_public_group_display_switch(self, checked_str: str = "true") -> bool:
+        """Switch - 点击【公开群展示】开关"""
+        logger.info(f"⚙️ [Action-groupManagerPage] 准备设置【公开群展示】开关为: {checked_str}")
+        init_state = self.get_public_group_display_state()
+        if init_state == checked_str:
+            logger.info(f"⚙️ [Action-groupManagerPage] 【公开群展示】开关状态已经是{checked_str},无需点击")
+            return False
+        else:
+            self.click(GroupManagerLocator.GROUP_RANK_SWITCH)
+            time.sleep(1)
+            logger.info(f"⚙️ [Action-groupManagerPage] 将【公开群展示】开关设置为{checked_str}")
+            return True
+
+    # Switch - 获取新成员进群自动禁言开关状态
+    def get_new_member_auto_mute_state(self) -> str:
+        """Switch - 获取【新成员进群自动禁言】开关状态"""
+        logger.info("⚙️ [Action-groupManagerPage] 获取【新成员进群自动禁言】开关状态")
+        res = self.get_attribute(GroupManagerLocator.NEW_MEMBER_AUTO_MUTE_SWITCH, "checked", raise_exception=False)
+        logger.info(f"⚙️ [Action-groupManagerPage] 获取【新成员进群自动禁言】开关状态结果: {res}")
+        return str(res).lower() if res else "false"
+
+    # Switch - 点击新成员进群自动禁言开关
+    def click_new_member_auto_mute_switch(self, checked_str: str = "true") -> bool:
+        """Switch - 点击【新成员进群自动禁言】开关"""
+        logger.info(f"⚙️ [Action-groupManagerPage] 准备设置【新成员进群自动禁言】开关为: {checked_str}")
+        init_state = self.get_new_member_auto_mute_state()
+        if init_state == checked_str:
+            logger.info(f"⚙️ [Action-groupManagerPage] 【新成员进群自动禁言】开关状态已经是{checked_str},无需点击")
+            return False
+        else:
+            self.click(GroupManagerLocator.NEW_MEMBER_AUTO_MUTE_SWITCH)
+            time.sleep(1)
+            logger.info(f"⚙️ [Action-groupManagerPage] 将【新成员进群自动禁言】开关设置为{checked_str}")
             return True
             
     # Switch - 获取 switch item 列表（支持状态过滤）
