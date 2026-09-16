@@ -9,6 +9,8 @@ class AddFriendLocator:
     IV_BACK = CommonLocator.TOP_IV_BACK_BTN                             # 返回按钮
     TV_TITLE = CommonLocator.TOP_TV_TITLE                               # 页面标题 "添加朋友"
     FB_ACTION = CommonLocator.TOP_FB_ACTION_BTN                         # 右上角动作按钮
+    IV_TITLE_QRCODE = (AppiumBy.ID, f"{PACKAGE_ID}/iv_title_qrcode")     # 顶部二维码图标
+    IV_TITLE_SCAN = (AppiumBy.ID, f"{PACKAGE_ID}/iv_title_scan")         # 顶部扫一扫图标
 
     # 2. 搜索框
     # SEARCH_ENTRY_ID = f"{PACKAGE_ID}/fb_search"
@@ -49,9 +51,10 @@ class AddFriendLocator:
     MY_ID = (AppiumBy.ID, f"{PACKAGE_ID}/tv_id")                        # 个人ID (如 "ID: imid_xxx")
 
 
-    # 申请页面
+    # 6. 申请页面
     # 输入备注
     INPUT_REMARK = (AppiumBy.ID, f"{PACKAGE_ID}/input_remark")
+
     
 
 

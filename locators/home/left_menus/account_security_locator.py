@@ -68,19 +68,4 @@ class AccountSecurityLocator:
     # 注销账号 文本标题
     DELETE_ACCOUNT_TEXT = (AppiumBy.ID, f'{PACKAGE_ID}/deleteAccount')
 
-    # ==========================================
-    # 底部区域 — 退出登录 (logout_container)
-    # ==========================================
-    # 退出登录 容器
-    LOGOUT_CONTAINER = (AppiumBy.ID, f'{PACKAGE_ID}/logout_container')
-    # 退出登录 按钮 (可点击)
-    LOGOUT_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/tv_logout')
-    # 退出登录二次确认弹窗 - 确认
-    LOGOUT_CONFIRM_BTN = CommonLocator.DIALOG_CONFIRM_BTN
-    # 退出登录二次确认弹窗 - 取消
-    LOGOUT_CANCEL_BTN = CommonLocator.DIALOG_CANCEL_BTN
-
-    # 退出成功弹窗
-    # LOGOUT_SUCCESS_MSG = (AppiumBy.ID, f'{PACKAGE_ID}/toast_message')
-    LOGOUT_SUCCESS_MSG = CommonLocator.TOAST_MSG
 

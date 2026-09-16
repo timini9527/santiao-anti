@@ -202,7 +202,7 @@ class GroupManagerPage(BasePage):
         return str(res).lower()
     
     # Switch - 点击群ID搜索开关
-    def click_group_id_search_switch(self, checked_str: str) -> None:
+    def click_group_id_search_switch(self, checked_str: str = "true") -> None:
         """Switch - 点击【群ID搜索】开关"""
         logger.info(f"⚙️ [Action-groupManagerPage] 准备设置【群ID搜索】开关为: {checked_str}")
         init_state = self.get_group_id_search_state()
@@ -222,7 +222,7 @@ class GroupManagerPage(BasePage):
         return str(res).lower()
     
     # Switch - 点击进群验证开关
-    def click_join_group_verify_switch(self, checked_str: str) -> bool:
+    def click_join_group_verify_switch(self, checked_str: str = "true") -> bool:
         """Switch - 点击【进群验证】开关"""
         logger.info(f"⚙️ [Action-groupManagerPage] 准备设置【进群验证】开关为: {checked_str}")
         init_state = self.get_join_group_verify_state()
@@ -244,7 +244,7 @@ class GroupManagerPage(BasePage):
         return str(res).lower()
     
     # Switch - 点击全员禁言开关
-    def click_all_member_mute_switch(self, checked_str: str) -> bool:
+    def click_all_member_mute_switch(self, checked_str: str = "true") -> bool:
         """Switch - 点击【全员禁言】开关"""
         logger.info(f"⚙️ [Action-groupManagerPage] 准备设置【全员禁言】开关为: {checked_str}")
         init_state = self.get_all_member_mute_state()
@@ -266,7 +266,7 @@ class GroupManagerPage(BasePage):
         return str(res).lower()
 
     # Switch - 点击禁止群成员互相加好友开关
-    def click_un_add_friend_each_other_switch(self, checked_str: str) -> bool:
+    def click_un_add_friend_each_other_switch(self, checked_str: str = "true") -> bool:
         """Switch - 点击【禁止群成员互相加好友】开关"""
         logger.info(f"⚙️ [Action-groupManagerPage] 准备设置【禁止群成员互相加好友】开关为: {checked_str}")
         init_state = self.get_un_add_friend_each_other_state()

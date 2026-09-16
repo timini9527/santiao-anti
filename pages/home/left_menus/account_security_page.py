@@ -7,8 +7,9 @@ import time
 
 class AccountSecurityPage(BasePage):
     """
-    账号安全页面封装类
-    入口路径：首页侧边栏 -> 账号安全
+    账号安全详情页面对象
+    入口路径：首页侧边栏 -> 设置中心 (SettingsCenterPage) -> 账号安全 (item_account_security)
+    主要功能：实名认证、解除账号限制、更换手机号、登录密码设置、设备锁管理、注销账号
     """
 
     # ==========================
@@ -111,54 +112,5 @@ class AccountSecurityPage(BasePage):
         """点击'注销账号'条目"""
         logger.info("⚙️ [Action-AccountSecurity] 点击'注销账号'")
         self.click(AccountSecurityLocator.DELETE_ACCOUNT_FRAME)
-
-    # ==========================
-    # 退出登录
-    # ==========================
-    # 退出登录 - 点击退出登录按钮
-    def click_logout_button(self) -> None:
-        """点击'退出登录'按钮"""
-        logger.info("⚙️ [Action-AccountSecurity] 点击'退出登录'")
-        self.click(AccountSecurityLocator.LOGOUT_BTN)
-
-    # 退出登录 - 点击退出登录二次确认弹窗中的确认按钮
-    def click_logout_confirm_btn(self) -> None:
-        """点击'退出登录'二次确认弹窗中的确认按钮"""
-        logger.info("⚙️ [Action-AccountSecurity] 点击'退出登录'二次确认弹窗中的确认按钮")
-        self.click(AccountSecurityLocator.LOGOUT_CONFIRM_BTN)
-        time.sleep(0.3)
-
-    # 退出登录 - 轮询获取退出登录后的 Toast 提示文案
-    def get_logout_success_msg(self, target_text: str = "已退出登录", timeout: int = 5) -> str:
-        """
-        轮询获取退出登录后的 Toast 消息
-        点击确认后会先出现"正在退出登录"，再变为"已退出登录"
-        通过轮询机制等到目标文案出现后返回
-        """
-        logger.info(f"🔍 [Action-AccountSecurity] 正在等待退出登录 Toast (目标文案: '{target_text}', 超时: {timeout}s)...")
-        end_time = time.time() + timeout
-        last_text = ""
-        while time.time() < end_time:
-            elem = self.find_element(AccountSecurityLocator.LOGOUT_SUCCESS_MSG, timeout=0.5, expect_missing=True)
-            if elem:
-                try:
-                    last_text = elem.get_attribute("text") or ""
-                    logger.info(f"退出登录 Toast 文本: {last_text}")
-                    if target_text in last_text:
-                        return last_text
-                except:
-                    pass 
-            time.sleep(0.1) # 快速轮询
-        logger.warning(f"等待 {timeout}s 后仍未出现目标 Toast '{target_text}'，最后获取到: '{last_text}'")
-        return last_text
-
-    # 退出登录 - 点击退出登录并获取toast提示
-    def click_logout_and_get_toast(self) -> str:
-        """点击'退出登录'按钮并获取Toast提示"""
-        logger.info("⚙️ [Action-AccountSecurity] 准备点击退出登录并获取 Toast 提示...")
-        self.click_logout_button()
-        self.click_logout_confirm_btn()
-        toast = self.get_logout_success_msg()
-        return toast
 
     

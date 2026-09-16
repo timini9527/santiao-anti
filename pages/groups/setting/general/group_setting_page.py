@@ -60,16 +60,44 @@ class GroupSettingPage(BasePage):
         logger.info(f"✅ [Action-groupSettingPage] 获取群成员头像成功，共 {len(elements)} 个")
         return elements
 
-    # 群成员-点击群成员头像【+】按钮 (friend_headers 倒数第二个为 + 号)
-    def click_add_friend_header(self) -> None:
-        """点击群成员【+】添加成员按钮 (friend_headers 倒数第二个为 + 号)"""
+    # 群成员-点击群成员头像【+】按钮 (管理员/群主倒数第二个为+号，非管理员倒数第一个为+号)
+    def click_add_friend_header(self, is_admin: Optional[bool] = None) -> None:
+        """
+        点击群成员【+】添加成员按钮
+        - 默认或具有群主/管理员权限时：倒数第二个为【+】按钮 (存在【-】移除按钮)
+        - 非管理员权限时：倒数第一个为【+】按钮 (无【-】移除按钮)
+        
+        :param is_admin: 是否为群主或管理员权限。若为 None 则优先根据页面【群管理】入口自动识别；未识别到时默认视为 True。
+        """
         logger.info("⚙️ [Action-groupSettingPage] 点击群成员【+】添加成员按钮")
+        if is_admin is None:
+            is_admin = self.is_group_manager_visible()
+            logger.info(f"⚙️ [Action-groupSettingPage] 未显式指定角色，自动识别管理员权限: {is_admin}")
+
         headers = self.get_friend_headers()
-        if len(headers) >= 2:
-            headers[-2].click()
-            logger.info("✅ [Action-groupSettingPage] 已点击群成员【+】添加成员按钮")
+        if not headers:
+            logger.warning("⚠️ [Action-groupSettingPage] 群成员头像列表为空，未能点击【+】按钮")
+            return
+
+        target_index = -2 if is_admin else -1
+        if abs(target_index) <= len(headers):
+            headers[target_index].click()
+            role_desc = "群主/管理员(倒数第2个)" if is_admin else "非管理员(倒数第1个)"
+            logger.info(f"✅ [Action-groupSettingPage] 已按【{role_desc}】点击群成员【+】添加成员按钮")
         else:
-            logger.warning("⚠️ [Action-groupSettingPage] 群成员头像数量不足，未能点击【+】按钮")
+            headers[-1].click()
+            logger.info(f"✅ [Action-groupSettingPage] 成员头像数量仅 {len(headers)} 个，容错点击末尾头像按钮")
+
+    # 群成员-点击群成员头像【-】移除成员按钮
+    def click_remove_friend_header(self) -> None:
+        """点击群成员【-】移除成员按钮 (具有群主/管理员权限时倒数第1个按钮)"""
+        logger.info("⚙️ [Action-groupSettingPage] 点击群成员【-】移除成员按钮")
+        headers = self.get_friend_headers()
+        if not headers or len(headers) < 2:
+            logger.warning("⚠️ [Action-groupSettingPage] 群成员头像列表不足，未能找到【-】按钮")
+            return
+        headers[-1].click()
+        logger.info("✅ [Action-groupSettingPage] 已点击群成员【-】移除成员按钮")
 
     # 群成员-点击群成员头像（默认为群助手/群主）
     def click_friend_header(self) -> None:
@@ -236,7 +264,7 @@ class GroupSettingPage(BasePage):
     def click_clear_group_chat_message(self) -> None:
         """点击【清空聊天记录】（若未展示可先点击更多菜单）"""
         logger.info("✅ [Action-groupSettingPage] 点击【清空聊天记录】")
-        if not self.is_element_exist(GroupSettingLocator.GROUP_MORE_CLEAR_CHAT, timeout=2):
+        if not self.is_element_exist(GroupSettingLocator.GROUP_MORE_CLEAR_CHAT, timeout=1, raise_exception=False):
             self.click_quick_more()
         self.click(GroupSettingLocator.GROUP_MORE_CLEAR_CHAT)
 
@@ -244,7 +272,7 @@ class GroupSettingPage(BasePage):
     def click_delete_and_out(self) -> None:
         """点击【删除并退出】（若未展示可先点击更多菜单）"""
         logger.info("✅ [Action-groupSettingPage] 点击【删除并退出】")
-        if not self.is_element_exist(GroupSettingLocator.GROUP_MORE_DELETE_EXIT, timeout=2):
+        if not self.is_element_exist(GroupSettingLocator.GROUP_MORE_DELETE_EXIT, timeout=1, raise_exception=False):
             self.click_quick_more()
         self.click(GroupSettingLocator.GROUP_MORE_DELETE_EXIT)
 
@@ -252,7 +280,7 @@ class GroupSettingPage(BasePage):
     def click_report_group(self) -> None:
         """点击【举报】群聊"""
         logger.info("✅ [Action-groupSettingPage] 点击【举报】群聊")
-        if not self.is_element_exist(GroupSettingLocator.GROUP_MORE_REPORT, timeout=2):
+        if not self.is_element_exist(GroupSettingLocator.GROUP_MORE_REPORT, timeout=1, raise_exception=False):
             self.click_quick_more()
         self.click(GroupSettingLocator.GROUP_MORE_REPORT)
 

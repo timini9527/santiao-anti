@@ -22,7 +22,7 @@ class PersonalPage(BasePage):
     def click_back(self) -> None:
         """ 点击返回按钮 """
         logger.info("⚙️ [Action - Personal] 点击返回按钮")
-        self.click(PersonalLocator.BACK, force_wait=True)
+        self.click(PersonalLocator.ACTION_DETAIL_BACK, force_wait=True)
 
     # 个人信息 - 点击头像
     def click_avatar(self) -> None:

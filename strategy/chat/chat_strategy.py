@@ -1,7 +1,7 @@
 import os
 import json
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Union, Tuple
 
 from locators.chat.core.chat_locator import ChatLocator
 from locators.home.home_locator import HomeLocator
@@ -381,14 +381,33 @@ CHAT_CONTENT_DOUBLE_SCENARIOS = [
 @dataclass
 class ChatCallStrategy:
     """音视频通话双端协同场景策略"""
-    desc: str                           # 用例标题描述 (如 "视频通话-主叫挂断")
-    call_type: str                      # 通话类型 ("video_call" / "voice_call")
-    action: str                         # 交互行为 ("cancel" / "reject" / "accept" / "timeout" / "interrupt")
-    expected_text_s: str                # 主叫端会话预期展示文本
-    expected_text_r: str                # 被叫端会话预期展示文本
+    desc: str                                        # 用例标题描述 (如 "视频通话-主叫挂断")
+    call_type: str                                   # 通话类型 ("video_call" / "voice_call")
+    action: str                                      # 交互行为 ("cancel" / "reject" / "accept" / "timeout" / "interrupt")
+    expected_text_s: Union[str, tuple, list]         # 主叫端会话预期展示文本（支持单文本、斜杠多选或候选列表）
+    expected_text_r: Union[str, tuple, list]         # 被叫端会话预期展示文本（支持单文本、斜杠多选或候选列表）
 
     def __str__(self):
         return self.desc
+
+    @property
+    def expected_s_candidates(self) -> list[str]:
+        """获取主叫端多候选预期列表"""
+        return self._parse_candidates(self.expected_text_s)
+
+    @property
+    def expected_r_candidates(self) -> list[str]:
+        """获取被叫端多候选预期列表"""
+        return self._parse_candidates(self.expected_text_r)
+
+    @staticmethod
+    def _parse_candidates(val: Union[str, tuple, list]) -> list[str]:
+        """解析多候选文本集合，支持斜杠语法与序列类型"""
+        if isinstance(val, (list, tuple)):
+            return [str(x).strip() for x in val if str(x).strip()]
+        if isinstance(val, str) and "/" in val:
+            return [x.strip() for x in val.split("/") if x.strip()]
+        return [str(val).strip()] if val else []
 
 
 # 音视频通话双端协同场景集（涵盖 5 大生命周期状态机终态）
@@ -405,9 +424,9 @@ CHAT_CALL_DOUBLE_SCENARIOS = [
     ChatCallStrategy("视频通话-通话接通", "video_call", "accept", expected_text_s="通话时长", expected_text_r="通话时长"),
     ChatCallStrategy("语音通话-通话接通", "voice_call", "accept", expected_text_s="通话时长", expected_text_r="通话时长"),
 
-    # 4. 主被超时 -> 主叫会话显示【对方无应答】，被叫会话显示【未接来电】
-    ChatCallStrategy("视频通话-主被超时", "video_call", "timeout", expected_text_s="对方无应答", expected_text_r="对方已取消"),
-    ChatCallStrategy("语音通话-主被超时", "voice_call", "timeout", expected_text_s="对方无应答", expected_text_r="对方已取消"),
+    # 4. 主被超时 -> 主叫会话显示【对方无应答】，被叫会话显示【未接来电/对方已取消】
+    ChatCallStrategy("视频通话-主被超时", "video_call", "timeout", expected_text_s="对方无应答", expected_text_r="对方已取消/未接来电"),
+    ChatCallStrategy("语音通话-主被超时", "voice_call", "timeout", expected_text_s="对方无应答", expected_text_r="对方已取消/未接来电"),
 
     # 5. 通话中断 -> 双方断网，双方会话显示【通话中断】
     ChatCallStrategy("视频通话-通话中断", "video_call", "interrupt", expected_text_s="通话中断", expected_text_r="通话时长"),

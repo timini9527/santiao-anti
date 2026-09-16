@@ -223,11 +223,29 @@ class LoginPage(BasePage):
     # ==========================
     # 登录提交与校验
     # ==========================
+    # 登录页 - 自动处理系统保存密码弹窗
+    def handle_save_password_popup(self, timeout: float = 10) -> bool:
+        """
+        自动检测并消除系统级‘自动保存账号密码’弹窗 (MIUI/HyperOS)
+        """
+        cancel_btn = self.find_element(LoginLocator.AUTO_SAVE_PWD_CANCEL, timeout=timeout, expect_missing=True)
+        if cancel_btn:
+            logger.info("⚙️ [Action - Login] 检测到系统‘自动保存账号密码’弹窗，点击【取消】")
+            try:
+                cancel_btn.click()
+                time.sleep(0.3)
+                return True
+            except Exception as e:
+                logger.warning(f"⚠️ [Action - Login] 点击取消保存密码异常: {e}")
+        return False
+
     # 登录页 - 点击登录或验证并登录按钮
-    def click_login_button(self) -> None:
+    def click_login_button(self, auto_dismiss_save_pwd: bool = True) -> None:
         """ 执行最终的‘登录’或‘验证并登录’按钮点击动作 """
         logger.info("⚙️ [Action - Login] 点击 [验证并登录/登录] 按钮")
         self.click(LoginLocator.VERIFY_AND_LOGIN_BTN)
+        if auto_dismiss_save_pwd:
+            self.handle_save_password_popup(timeout=5)
         
     # 登录页 - 点击遇到问题反馈
     def click_feedback_btn(self) -> None:
@@ -277,6 +295,18 @@ class LoginPage(BasePage):
             time.sleep(0.05)
         logger.warning(f"❌ [Action - Login] 监听结束，在 {timeout}s 内未捕获到任何符合条件的提示内容 - 实际获取到的Toast: {text}")
         return ""
+    
+    # 登录页 - 等待无卡时登录首页
+    def wait_for_login_success_no_card(self, timeout: int = 10) -> bool:
+        """ 等待无卡时登录首页 """
+        logger.info(f"⏳ [Action - Login] 开始等待无卡登录首页 (超时: {timeout}s)")
+        elem = self.find_element(LoginLocator.LOGIN_ENTRANCE, timeout=timeout)
+        if elem:
+            logger.info("✅ [Action - Login] 成功进入无卡登录首页")
+            return True
+        else:
+            logger.warning("❌ [Action - Login] 未能在规定时间内进入无卡登录首页")
+            return False
 
     # 登录页 - 显式等待验证是否处于登录页
     def wait_for_login_page(self, timeout: int = 10) -> bool:
@@ -294,16 +324,17 @@ class LoginPage(BasePage):
     # 跨页面业务流转 (Business Flow)
     # ==========================
     # 登录页 - 退出登录业务流转
+    # ==========================
     def logout_if_logged_in(self) -> str:
-        """ 退出登录业务流转 """
+        """ 退出登录业务流转 (对齐最新设置中心退出逻辑) """
         from pages.home.home_page import HomePage
         from pages.home.side_slip_page import SideSlipPage
-        from pages.home.left_menus.account_security_page import AccountSecurityPage
+        from pages.home.left_menus.settings_center_page import SettingsCenterPage
 
         logger.info("👉 [Action - Login] 开始执行退出登录流转...")
         HomePage(self.driver).open_left_menu()
-        SideSlipPage(self.driver).click_security()
-        msg = AccountSecurityPage(self.driver).click_logout_and_get_toast()
+        SideSlipPage(self.driver).click_setting()
+        msg = SettingsCenterPage(self.driver).click_logout_and_get_toast()
         return msg
 
     # 登录页 - 验证登录按钮是否置灰

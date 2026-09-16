@@ -1,6 +1,6 @@
 import re
 import time
-from typing import Optional, Literal
+from typing import Optional, Literal, Union
 from selenium.webdriver.remote.webelement import WebElement
 from common.base_page import BasePage
 from core.logger_utils import logger
@@ -11,19 +11,14 @@ class HomePage(BasePage):
 
     # 主页 - 等待 home page 完全加载
     def wait_home_page(self, timeout: int = 10) -> bool:
-        """
-        主页 - 等待 home page 完全加载
-        Args:
-            timeout: 超时时间
-        Returns:
-            bool: True 表示加载成功，False 表示超时
-        """
+        """等待主页左侧菜单出现，并返回主页是否加载完成。"""
         logger.info(f"⏳ [Wait-Home] 正在等待主页加载完成 (超时: {timeout}s)...")
-        if not self.find_elements(HomeLocator.LEFT_MENU, timeout=timeout):
-            logger.error(f"❌ [Wait] - 未找到 home icon，超时时间 {timeout} 秒")
-            return False
-        logger.info(f"✅ [Wait] - home page 加载完成，超时时间 {timeout} 秒")
-        return True
+        loaded = bool(self.find_elements(HomeLocator.LEFT_MENU, timeout=timeout))
+        if loaded:
+            logger.info(f"✅ [Wait-Home] 主页加载完成 (耗时上限: {timeout}s)")
+        else:
+            logger.error(f"❌ [Wait-Home] 未找到主页左侧菜单 (超时: {timeout}s)")
+        return loaded
 
     # 主页 - 打开侧边栏
     def open_left_menu(self, timeout: int = 2) -> None:
@@ -220,23 +215,35 @@ class HomePage(BasePage):
         return count
 
     # 主页 - 通过好友昵称获取他的会话下面有没有消息内容
-    def get_message_by_name(self, name: str, expected_text: Optional[str] = None, timeout: int = 1) -> str:
+    def get_message_by_name(self, name: str, expected_text: Optional[Union[str, list, tuple]] = None, timeout: int = 10) -> str:
         """
         主页 - 通过好友昵称获取他的会话下面有没有消息内容
         :param name: 好友或群聊名称
-        :param expected_text: 可选预期包含文本，若传入则在 timeout 时间内轮询等待刷新
-        :param timeout: 超时时间（秒）
+        :param expected_text: 可选预期包含文本（支持单文本、'/'分隔多选或列表/元组候选集），若传入则在 timeout 时间内轮询等待刷新
+        :param timeout: 总超时时间（秒），默认 10 秒保障异步刷新命中
         :return: 会话消息内容文本
         """
-        logger.info(f"🔍 [Action-Home] 正在通过会话名称[{name}]获取消息内容(期待包含: '{expected_text}')...")
+        candidates = []
+        if expected_text:
+            if isinstance(expected_text, (list, tuple)):
+                candidates = [str(x).strip() for x in expected_text if str(x).strip()]
+            elif isinstance(expected_text, str) and "/" in expected_text:
+                candidates = [x.strip() for x in expected_text.split("/") if x.strip()]
+            else:
+                candidates = [str(expected_text).strip()]
+
+        logger.info(f"🔍 [Action-Home] 正在通过会话名称[{name}]获取消息内容(期待匹配候选: {candidates if candidates else expected_text}, 超时: {timeout}s)...")
         end_time = time.time() + timeout
         content = ""
         while time.time() <= end_time:
-            content = self.get_attribute(HomeLocator.get_message_by_name(name), 'text', timeout=timeout, raise_exception=False)
-            if content:
-                if expected_text is None or expected_text in content:
-                    logger.info(f"[Action-Home] 主页 - 通过会话名称[{name}]获取到消息内容: {content}")
+            current_text = self.get_attribute(HomeLocator.get_message_by_name(name), 'text', raise_exception=False)
+            if current_text:
+                content = current_text
+                if not candidates or any(candidate in content for candidate in candidates):
+                    logger.info(f"✅ [Action-Home] 主页 - 通过会话名称[{name}]获取到匹配消息内容: {content}")
                     return content
+                logger.info(f"⏳ [Action-Home] 当前获取到会话内容: '{content}'，与预期 {candidates} 暂不匹配，等待刷新...")
+
         logger.info(f"[Action-Home] 主页 - 通过会话名称[{name}]获取到消息内容(最终): {content}")
         return content or ""
 

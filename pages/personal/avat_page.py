@@ -22,6 +22,70 @@ class AvatarPage(PersonalPage, CommonPage):
         logger.info("⚙️ [Action - Avatar] 从头像预览中点击返回")
         self.click_left_top_button()
 
+    def push_local_image_to_gallery(self, local_image_path: str, remote_filename: Optional[str] = None) -> str:
+        """
+        将电脑本地图片推送到手机相机胶卷相册，并强制刷新系统媒体库索引，使其排在相机胶卷最前列
+        :param local_image_path: 电脑本地图片路径
+        :param remote_filename: 手机端保存的文件名，默认带时间戳防止重名
+        :return: 手机上的绝对保存路径
+        """
+        import os
+        import base64
+        if not os.path.exists(local_image_path):
+            raise FileNotFoundError(f"本地图片文件不存在: {local_image_path}")
+
+        logger.info(f"📤 [Action - Avatar] 准备将本地图片推送至设备相机胶卷: {local_image_path}")
+        with open(local_image_path, "rb") as f:
+            b64_data = base64.b64encode(f.read()).decode("utf-8")
+
+        # 规范化文件扩展名并采用标准相机照片命名前缀 (如 IMG_1726000000.jpg)
+        _, ext = os.path.splitext(local_image_path)
+        ext = ext.lower() if ext else ".png"
+        filename = remote_filename or f"IMG_{int(time.time())}{ext}"
+        if not filename.startswith("IMG_"):
+            filename = f"IMG_{filename}"
+
+        # 相机胶卷标准物理存储路径 (采用 /storage/emulated/0 避免符号链接导致媒体扫描器忽略)
+        remote_dir = "/storage/emulated/0/DCIM/Camera"
+        remote_path = f"{remote_dir}/{filename}"
+
+        # 1. 推送文件至手机存储 (Appium 原生 push_file 自动处理目录创建)
+        try:
+            self.driver.push_file(remote_path, b64_data)
+            logger.info(f"✅ [Action - Avatar] 本地图片已成功推送到相机胶卷目录: {remote_path}")
+        except Exception as e:
+            logger.error(f"❌ [Action - Avatar] 推送本地图片到设备失败: {e}")
+            raise
+
+        # 2. 媒体库核心注册：通过宿主机本地 ADB 触发 Android 系统 ContentProvider 官方 scan_file 入库
+        # 这是 Android 10+ 官方提供的标准入库方式，彻底解决媒体库 datetaken 为 NULL、非重启不刷新的系统限制
+        try:
+            import subprocess
+            udid = getattr(self.driver, "_factory_udid", None) or self.driver.capabilities.get("udid")
+            adb_cmd = ["adb"]
+            if udid:
+                adb_cmd.extend(["-s", str(udid)])
+
+            # 核心指令：直接唤醒系统的 MediaProvider 将新照片同步入库并生成当前时间戳
+            subprocess.run(
+                [*adb_cmd, "shell", "content", "call", "--uri", "content://media", "--method", "scan_file", "--arg", remote_path],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5
+            )
+            # 刷新 mtime 确保相册按时间倒序排在首位
+            subprocess.run([*adb_cmd, "shell", "touch", remote_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=3)
+            logger.info(f"📡 [Action - Avatar] 已通过官方 scan_file 完成 MediaStore 实时入库: {remote_path}")
+        except Exception as adb_err:
+            logger.debug(f"⚠️ [Action - Avatar] 官方 scan_file 入库执行跳过: {adb_err}")
+
+        # 3. 辅助降级扩展调用：UiAutomator2 原生 scanMedia
+        try:
+            self.driver.execute_script("mobile: scanMedia", {"filepath": remote_path})
+        except Exception:
+            pass
+
+        time.sleep(0.5)
+        return remote_path
+
     # 头像 - 点击从相册选择
     def click_select_images(self) -> None:
         """ 头像 - 点击从相册选择 """

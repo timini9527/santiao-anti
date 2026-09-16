@@ -84,3 +84,10 @@ class LoginLocator(CommonLocator):
     @staticmethod
     def get_dynamic_toast_msg(expected_toast: str):
         return (AppiumBy.XPATH, f"//*[contains(@text, '{expected_toast}') or contains(@content-desc, '{expected_toast}')]")
+
+    # ==========================
+    # 系统级弹窗 - 自动保存账号密码 (MIUI / 原生 Android 密码填充)
+    # ==========================
+    AUTO_SAVE_PWD_TITLE = (AppiumBy.XPATH, '//*[@resource-id="miuix.stub:id/alertTitle" or @text="自动保存账号密码"]')
+    AUTO_SAVE_PWD_CANCEL = (AppiumBy.XPATH, '//*[@resource-id="android:id/button2" and @text="取消"]')
+    AUTO_SAVE_PWD_SAVE = (AppiumBy.XPATH, '//*[@resource-id="android:id/button1" and @text="存储"]')

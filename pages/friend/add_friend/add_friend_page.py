@@ -165,3 +165,17 @@ class AddFriendPage(BasePage):
         else:
             logger.error("❌ [Wait - AddFriend] 未能成功进入发送朋友验证页面")
         return isExit
+
+    # =================================================================================
+    # 顶部导航功能 (二维码、扫一扫)
+    # =================================================================================
+    def click_title_qrcode(self) -> None:
+        """添加朋友页 - 点击顶部二维码图标"""
+        logger.info("⚙️ [Action - AddFriend] 点击顶部二维码图标")
+        self.click(AddFriendLocator.IV_TITLE_QRCODE)
+
+    def click_title_scan(self) -> None:
+        """添加朋友页 - 点击顶部扫一扫图标"""
+        logger.info("⚙️ [Action - AddFriend] 点击顶部扫一扫图标")
+        self.click(AddFriendLocator.IV_TITLE_SCAN)
+

@@ -12,8 +12,15 @@ class PersonalLocator:
     CLEAR = (AppiumBy.ID, f'{PACKAGE_ID}/btn_clear')   # 清空
     DONE = CommonLocator.TOP_FB_ACTION_BTN   # 完成按钮
 
+    # 个人详情页的列表容器
+    RECYCLER_DETAIL_VIEW = (AppiumBy.ID, f'{PACKAGE_ID}/recycler_detail_view')
+    # 详情页背景图片
+    DETAIL_IV_BG = (AppiumBy.ID, f'{PACKAGE_ID}/detail_iv_bg')
+    
+
     # 返回按钮
     BACK = CommonLocator.TOP_IV_BACK_BTN
+    ACTION_DETAIL_BACK = (AppiumBy.ID, f'{PACKAGE_ID}/action_detail_back')
 
     # 头像
     ME_INFO = (AppiumBy.ID, f'{PACKAGE_ID}/detail_iv_avatar')
