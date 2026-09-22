@@ -26,12 +26,15 @@ class GroupBotLocator:
     TV_SETTING = (AppiumBy.ID, f'{PACKAGE_ID}/tv_setting')      # 每个功能的右侧的开关状态
     
     # 共同/主页面元素
+    TV_TITLE_ID = CommonLocator.TOP_TV_TITLE_ID                 # 页面标题ID
     TV_TITLE = CommonLocator.TOP_TV_TITLE                       # 页面标题
     IV_BACK = CommonLocator.TOP_IV_BACK_BTN                     # 返回按钮
     SAVE_BTN = CommonLocator.TOP_FB_ACTION_BTN                  # 右上角保存按钮
     CONFIRM_BTN = CommonLocator.TV_CONFIRM_BTN                  # 确认按钮
     CANCEL_BTN = CommonLocator.TV_CANCEL_BTN                    # 取消按钮
     SWITCH_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/switch_enable')   # 功能的开启和关闭状态的开关
+    BTN_CONFIRM = CommonLocator.BTN_CONFIRM                     # 确认按钮
+    BTN_CANCEL = CommonLocator.BTN_CANCEL                       # 取消按钮
 
     
     # 1. 进群欢迎语页面元素
@@ -63,8 +66,9 @@ class GroupBotLocator:
     KEYWORD_SUMMARY = (AppiumBy.ID, f'{PACKAGE_ID}/tv_keyword_summary')                     # 关键词检测的状态
     
     # 添加关键词设置
-    ADD_KEYWORD_BTN = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("新增")')       # 添加关键词按钮
-    ET_KEYWORD_INPUT = (AppiumBy.ID, f'{PACKAGE_ID}/et_keyword_input')                      # 关键词输入框
+    LAYOUT_ADD_KEYWORD = (AppiumBy.ID, f'{PACKAGE_ID}/layout_add_keyword')                  # 添加关键词的整体布局
+    ADD_KEYWORD_BTN = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("新增关键词")')  # 添加关键词按钮
+    ET_KEYWORDS = (AppiumBy.ID, f'{PACKAGE_ID}/et_keywords')                                # 关键词输入框
     TV_KEYWORD_NUMBER = (AppiumBy.ID, f'{PACKAGE_ID}/tv_keyword')                           # 关键词
     DELETE_KEYWORD_ICON = (AppiumBy.ID, f'{PACKAGE_ID}/iv_delete')                          # 删除关键词图标
     TV_SAVE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_save')                                        # 保存按钮
@@ -85,7 +89,7 @@ class GroupBotLocator:
     TV_SUMMARY = (AppiumBy.ID, f'{PACKAGE_ID}/tv_summary')                                  # 设置禁言时长
     PICKER_DURATION = (AppiumBy.ID, f'{PACKAGE_ID}/picker_duration')                        # 设置禁言时长控件
     
-    RULE_KICK = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("撤回+移除群聊")')     # 撤回+移除群聊
+    RULE_KICK = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("撤回+移出群聊")')     # 撤回+移除群聊
     
     # 警告语设置
     TV_CONTENT = (AppiumBy.ID, f'{PACKAGE_ID}/tv_content')                                  # 警告语默认内容
@@ -126,8 +130,14 @@ class GroupBotLocator:
     def tv_title_by_switch_status(cls, checked: bool) -> tuple:
         """通过开关的状态进行查询的xpath（获取对应状态的文本标题元素）"""
         status_str = "true" if checked else "false"
-        return (AppiumBy.XPATH, f'//*[@resource-id="{cls.SB_OPTION_ID}" and @checked="{status_str}"]/preceding-sibling::*[@resource-id="{cls.TV_TITLE}"]')
+        return (AppiumBy.XPATH, f'//*[@resource-id="{cls.SB_OPTION_ID}" and @checked="{status_str}"]/preceding-sibling::*[@resource-id="{cls.TV_TITLE_ID}"]')
     
+    # 动态匹配指定名称限制项的switch开关
+    @classmethod
+    def SPEECH_MANAGE_SWITCH(cls, item_name: str) -> tuple:
+        """根据限制项文本名称动态定位对应行右侧紧邻的 Switch 开关（利用同级 following-sibling 轴精确定位）"""
+        return (AppiumBy.XPATH, f"//*[@resource-id='{cls.TV_TITLE_ID}' and contains(@text, '{item_name}')]/following-sibling::*[@resource-id='{cls.SB_OPTION_ID}']")
+
 
     # 6. 自动清理成员页面元素
     CLEAN_RULES_ENTRY = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("清理规则设置")')

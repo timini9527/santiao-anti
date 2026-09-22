@@ -76,15 +76,12 @@ class ChatPage(BasePage):
     def back_to_chat_page(self, max_retries: int = 10) -> bool:
         """页面导航-返回到聊天主页面"""
         logger.info(f"🚀[Action-chat] - 开始循环尝试返回聊天页面，最大重试次数: {max_retries}")
-        
         for i in range(max_retries):
             if self.wait_for_chat_page_load(timeout=1, raise_exception=False):
                 logger.info(f"✅ [Action-chat] - 确认当前已处于聊天页面 (尝试次数: {i})")
                 return True
-
             logger.info(f"🔄 [Action-chat] - 未检测到聊天主界面，执行第 {i+1} 次返回...")
             self.back()
-            time.sleep(0.2)
         logger.error(f"❌ [Action-chat] - 尝试返回 {max_retries} 次后仍未能回到聊天页面")
         return False
 
@@ -105,6 +102,9 @@ class ChatPage(BasePage):
         """聊天信息-获取顶部聊天对象昵称"""
         logger.info("🚀[Action-chat] - chat 获取顶部聊天对象昵称")
         name = self.get_attribute(ChatLocator.TOP_USER_NAME_XPATH, 'text')
+        if not name:
+            logger.error("❌[Action-chat] - chat 未获取到聊天对象昵称")
+            return None
         logger.info(f"🚀[Action-chat] - chat 成功获取顶部聊天对象昵称: {name}")
         return name
 
@@ -117,6 +117,18 @@ class ChatPage(BasePage):
         cleaned_name = re.sub(r"\s*\(\d+\)", "", group_name)
         logger.info(f"🚀[Action-chat] - chat 获取群聊名称并过滤括号: '{group_name}' -> '{cleaned_name}'")
         return cleaned_name
+
+    # 聊天信息-获取群聊ID
+    def get_group_id(self) -> Optional[str]:
+        """聊天信息-获取群聊ID"""
+        logger.info("🚀[Action-chat] - chat 获取群聊ID")
+        text = self.get_attribute(ChatLocator.TOP_SHORT_NUMBER, 'text', raise_exception=False)
+        if not text:
+            logger.error("❌[Action-chat] - chat 未获取到群聊ID")
+            return None
+        group_id = text.replace('ID:', '').strip()
+        logger.info(f"🚀[Action-chat] - chat 成功获取群聊ID: {group_id}")
+        return group_id
 
     # 页面导航-获取更多按钮
     def get_top_more_button(self) -> Optional[WebElement]:
@@ -1682,7 +1694,7 @@ class ChatPage(BasePage):
         :param index: 撤回系统提示索引，默认为 -1 (最新一条)
         :return: (withmsg, smsg) -> (撤回提示文本, 上一条正常发送的文本消息内容)
         """
-        cmd_elements = self.find_elements(ChatLocator.CMD_MESSAGE_ITEM, timeout=3, expect_missing=True)
+        cmd_elements = self.find_elements(ChatLocator.CMD_MESSAGE_ITEM, timeout=2)
         if not cmd_elements:
             logger.error("❌ 未找到撤回等系统通知消息")
             return None
@@ -1773,10 +1785,8 @@ class ChatPage(BasePage):
             return [] if index is None else ""
         cmd_texts = [cmd.text for cmd in cmd_elems]
         logger.info(f"[Assert] 获取聊天界面所有CMD通知消息texts内容: {cmd_texts}")
-        
         if index is None:
             return cmd_texts
-        
         try:
             return cmd_texts[index]
         except IndexError:

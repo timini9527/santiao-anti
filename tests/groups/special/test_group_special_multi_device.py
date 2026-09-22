@@ -346,7 +346,7 @@ class TestGroupSpecialMultiDevice:
             owner_chat_page.click_more_button()
             owner_setting_page.wait_for_setting_page_load()
             owner_setting_page.click_group_manager()
-            owner_manager_page.wait_for_page_load()
+            owner_manager_page.wait_for_group_manager_page_load()
             logger.info("👑 群主端已在【群管理】页面就绪")
 
         # 2. 成员设备进入群聊聊天窗口

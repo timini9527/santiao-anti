@@ -330,7 +330,7 @@ class TestChatMultiDevice:
             self._run_async_multi_device_send(
                 device_sessions_map=device_groups_map,
                 loop_count=1,
-                interval=0.1,
+                interval=0.2,
                 session_type="群聊"
             )
 

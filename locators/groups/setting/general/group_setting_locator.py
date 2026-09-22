@@ -51,6 +51,8 @@ class GroupSettingLocator(ChatSettingLocator):
     GROUP_MORE_DELETE_EXIT = (AppiumBy.ID, f"{PACKAGE_ID}/group_more_delete_exit")                      # 删除并退出
     GROUP_MORE_REPORT = (AppiumBy.ID, f"{PACKAGE_ID}/group_more_report")                                # 举报群聊
 
+    TO_MEMBER_LIST = (AppiumBy.ID, f"{PACKAGE_ID}/to_member_list")                                      # 群成员列表
+
     # =========================================================================
     # 6. 公告与活跃度卡片
     # =========================================================================

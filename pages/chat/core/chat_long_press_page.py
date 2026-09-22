@@ -1,6 +1,7 @@
 import allure
 import time
 import os
+from typing import Optional
 from core.logger_utils import logger
 from pages.chat.core.chat_page import ChatPage
 from locators.chat.core.chat_locator import ChatLocator

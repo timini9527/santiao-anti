@@ -29,6 +29,18 @@ class GroupManagerLocator(CommonLocator):
     JOIN_TO_GROUP_APPLY_BADGE = (AppiumBy.ID, f"{PACKAGE_ID}/join_to_group_apply_value")                 # 进群申请红点数量
     IT_SPEECH_MANAGEMENT = (AppiumBy.ID, f"{PACKAGE_ID}/lay_speech_management")                          # 发言管理
     GROUP_MEMBER_MUTE = (AppiumBy.ID, f"{PACKAGE_ID}/group_member_mute")                                 # 指定成员禁言
+
+    NEW_MEMBER_AUTO_MUTE = (AppiumBy.ID, f"{PACKAGE_ID}/new_member_auto_mute")                           # 新成员进群自动禁言
+    # 新成员进群自动禁言持续时长
+    NEW_MEMBER_AUTO_MUTE_DURATION_VALUE = (AppiumBy.ID, f"{PACKAGE_ID}/new_member_auto_mute_duration_value") 
+    DESIGN_BOTTOM_SHEET = (AppiumBy.ID, f"{PACKAGE_ID}/design_bottom_sheet")
+    # 新成员进群自动禁言持续时长选项：10分钟、30分钟、2小时、24小时
+    OPTION_10M = (AppiumBy.ID, f"{PACKAGE_ID}/option_10m")
+    OPTION_30M = (AppiumBy.ID, f"{PACKAGE_ID}/option_30m")
+    OPTION_2H = (AppiumBy.ID, f"{PACKAGE_ID}/option_2h")
+    OPTION_24H = (AppiumBy.ID, f"{PACKAGE_ID}/option_24h")
+    BTN_CANCEL = (AppiumBy.ID, f"{PACKAGE_ID}/btn_cancel")
+
     GROUP_BLACK_MEMBER = (AppiumBy.ID, f"{PACKAGE_ID}/group_black_member")                               # 群黑名单
     GROUP_GIVE = (AppiumBy.ID, f"{PACKAGE_ID}/group_give")                                               # 转让群主
     DISMISS_GROUP = (AppiumBy.ID, f"{PACKAGE_ID}/setting_chat_groupDismiss")                             # 解散群组
@@ -41,7 +53,7 @@ class GroupManagerLocator(CommonLocator):
     GROUP_ID_SEARCH_SWITCH = (AppiumBy.ID,  f"{PACKAGE_ID}/group_id_search_btn")                    # 群ID搜索开关
     JOIN_TO_GROUP_VERIFY_SWITCH = (AppiumBy.ID, f"{PACKAGE_ID}/join_to_group_verify_btn")           # 进群验证开关
     ALL_MEMBER_MUTE_SWITCH = (AppiumBy.ID, f"{PACKAGE_ID}/all_member_mute_btn")                     # 全员禁言开关
-    NEW_MEMBER_AUTO_MUTE_SWITCH = (AppiumBy.ID, f"{PACKAGE_ID}/new_member_auto_mute_btn")           # 新成员进群自动禁言
+    NEW_MEMBER_AUTO_MUTE_SWITCH = (AppiumBy.ID, f"{PACKAGE_ID}/new_member_auto_mute_btn")           # 新成员进群自动禁言开关
     UN_ADD_FRIEND_EACH_OTHER_SWITCH = (AppiumBy.ID, f"{PACKAGE_ID}/all_member_un_add_friend_btn")   # 禁止群成员互相加好友开关
 
 
@@ -85,8 +97,8 @@ class GroupManagerLocator(CommonLocator):
     GROUP_VERIFY_HEADER = (AppiumBy.ID, f"{PACKAGE_ID}/group_verify_header")                # 进群申请列表头部
     GROUP_VERIFY_NAME = (AppiumBy.ID, f"{PACKAGE_ID}/group_verify_name")                    # 进群申请成员姓名
     GROUP_VERIFY_METHOD = (AppiumBy.ID, f"{PACKAGE_ID}/group_verify_method")                # 进群申请方式
-    GROUP_VERIFY_AGREE = (AppiumBy.ID, f"{PACKAGE_ID}/group_verify_no")                     # 进群申请同意
-    GROUP_VERIFY_DISAGREE = (AppiumBy.ID, f"{PACKAGE_ID}/group_verify_yes")                 # 进群申请拒绝
+    GROUP_VERIFY_AGREE = (AppiumBy.ID, f"{PACKAGE_ID}/group_verify_yes")                     # 进群申请同意
+    GROUP_VERIFY_DISAGREE = (AppiumBy.ID, f"{PACKAGE_ID}/group_verify_no")                 # 进群申请拒绝
 
 
     # ===================================================================================
@@ -147,6 +159,9 @@ class GroupManagerLocator(CommonLocator):
 
     TEXT_CONFIRM_BTN = CommonLocator.TV_CONFIRM_BTN                                         # 移除黑名单二次确认
     TEXT_CANCEL_BTN = CommonLocator.TV_CANCEL_BTN                                           # 移除黑名单二次确认
+
+    TV_TRANSFER_OWNER_CONFIRM = (AppiumBy.ID, f"{PACKAGE_ID}/tv_transfer_owner_confirm")    # 转让群主二次确认-确认按钮
+    TV_TRANSFER_OWNER_CANCEL = (AppiumBy.ID, f"{PACKAGE_ID}/tv_transfer_owner_cancel")      # 转让群主二次确认-取消按钮
 
     # 根据昵称定位黑名单移除按钮
     @classmethod

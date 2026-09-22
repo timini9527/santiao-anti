@@ -50,6 +50,11 @@ class CommonLocator:
     # 中间标题 通用
     TOP_BAR_TITLE_TV = (AppiumBy.ID, f'{PACKAGE_ID}/title_tv')
 
+    # 确认按钮
+    BTN_CONFIRM = (AppiumBy.ID, f'{PACKAGE_ID}/btn_confirm')
+    # 取消按钮
+    BTN_CANCEL = (AppiumBy.ID, f'{PACKAGE_ID}/btn_cancel')
+
 
 # class HomeLocatorIOS(HomeLocatorBase):
 #     """iOS 专属定位"""

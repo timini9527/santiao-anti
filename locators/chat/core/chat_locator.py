@@ -198,8 +198,11 @@ class ChatLocator:
     # ==================================================================================================================
     # 聊天页面【撤回和删除 / 通知】相关元素定位
     # ==================================================================================================================
-    # CMD 系统通知消息（如截屏、撤回通知）
-    CMD_MESSAGE_ITEM = (AppiumBy.XPATH, f'//android.widget.FrameLayout/*[@resource-id="{MESSAGE_CONTENT_ID}"]')
+    # CMD 系统通知消息（如截屏、撤回通知、移除群聊等居中系统提示，特征：消息列表行内无头像）
+    CMD_MESSAGE_ITEM = (
+        AppiumBy.XPATH,
+        f'//*[@resource-id="{MESSAGES_LIST_ID}"]/*[not(.//*[@resource-id="{AVATAR_ID}"])]//*[@resource-id="{MESSAGE_CONTENT_ID}"]'
+    )
 
     # 删除操作二次确认和取消
     TWO_CONFIRM = CommonLocator.DIALOG_CONFIRM_BTN

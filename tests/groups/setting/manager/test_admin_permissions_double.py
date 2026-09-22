@@ -43,7 +43,7 @@ class TestAdminPermissionsDouble:
             self.chatS.click_more_button()
             self.groupSettingS.wait_for_setting_page_load()
             self.groupSettingS.click_group_manager()
-            self.groupManagerS.wait_for_page_load()
+            self.groupManagerS.wait_for_group_manager_page_load()
             self.groupManagerS.click_administrators()
             self.groupManagerS.wait_for_admin_page_load()
             self.groupManagerS.click_add_admin()

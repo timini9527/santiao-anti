@@ -241,10 +241,10 @@ class GroupSettingPage(BasePage):
         self.click(GroupSettingLocator.GROUP_QUICK_MANAGE)
 
     # 群功能项-群管理是否存在
-    def is_group_manager_visible(self) -> bool:
+    def is_group_manager_visible(self, expect_missing=False) -> bool:
         """判断快捷【群管理】是否存在"""
         logger.info("🔍 [Action-groupSettingPage] 检查快捷【群管理】是否存在")
-        res = self.is_element_exist(GroupSettingLocator.GROUP_QUICK_MANAGE, timeout=1)
+        res = self.is_element_exist(GroupSettingLocator.GROUP_QUICK_MANAGE, timeout=1, expect_missing=expect_missing)
         if not res:
             logger.warning("❌ [Action-groupSettingPage] 快捷【群管理】不存在")
             return False
@@ -283,6 +283,12 @@ class GroupSettingPage(BasePage):
         if not self.is_element_exist(GroupSettingLocator.GROUP_MORE_REPORT, timeout=1, raise_exception=False):
             self.click_quick_more()
         self.click(GroupSettingLocator.GROUP_MORE_REPORT)
+    
+    # 群设置 - 点击群成员列表
+    def click_to_member_list(self) -> None:
+        """点击【群成员】"""
+        logger.info("✅ [Action-groupSettingPage] 点击【群成员】")
+        self.click(GroupSettingLocator.TO_MEMBER_LIST)
 
     # =========================================================================
     # 6. 公告与活跃度卡片

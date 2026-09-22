@@ -186,7 +186,7 @@ class BasePage:
         return ""
 
     @allure.step("点击元素: {locator}")
-    def click(self, locator: tuple, force_wait: bool = False, timeout: int = 10) -> None:
+    def click(self, locator: tuple, force_wait: bool = False, timeout: int = 2) -> None:
         """
         点击元素，支持通过 force_wait 切换等待条件以解决点击无效或遮挡问题
         :param locator: 元素定位元组
@@ -269,7 +269,7 @@ class BasePage:
 
 
     @allure.step("智能UI安全返回")
-    def back(self, prefer_ui: bool = True):
+    def back(self, prefer_ui: bool = True, timeout: float = 0.3):
         """
         标准智能安全返回（以应用 UI 导航栈为绝对核心）：
         1. 软键盘抑制：若软键盘处于开启状态，先行收起，防止遮挡。
@@ -279,8 +279,8 @@ class BasePage:
         # 1. 软键盘静默收起防遮挡
         # try:
         #     if hasattr(self.driver, "is_keyboard_shown") and self.driver.is_keyboard_shown():
+        #         logger.info("📱 检测到虚拟键盘弹出，正在尝试自动收起...")
         #         self.driver.hide_keyboard()
-        #         time.sleep(0.2)
         # except Exception:
         #     pass
 
@@ -288,7 +288,7 @@ class BasePage:
         try:
             self.driver.back()
             logger.info("🔙 [Action] 执行系统返回 driver.back()")
-            time.sleep(0.3)
+            time.sleep(timeout)
             return
         except Exception as e:
             logger.warning(f"⚠️ [Back] 系统返回未响应或执行失败: {e}")

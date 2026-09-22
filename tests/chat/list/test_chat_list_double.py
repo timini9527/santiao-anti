@@ -341,7 +341,7 @@ class TestChatListDouble:
             self.chatS.click_more_button()
             self.groupSettingS.wait_for_setting_page_load()
             self.groupSettingS.click_group_manager()
-            self.groupManagerS.wait_for_page_load()
+            self.groupManagerS.wait_for_group_manager_page_load()
 
             self.groupManagerS.click_join_group_verify_switch()
             self.mainS.go_to_main_page()

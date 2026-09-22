@@ -27,7 +27,7 @@ class AddFriendLocator:
     TV_SEARCH_KEY_MARK = (AppiumBy.ID, f"{PACKAGE_ID}/tv_search_key_mark")      # 确认搜索容器
     CL_ITEM = (AppiumBy.ID, f"{PACKAGE_ID}/cl_item")                            # 搜索结果item
     # 搜索结果item中的昵称 搜索结果中唯一
-    RESULT_ITEM_TV_NAME = (AppiumBy.XPATH, f"//*[@resource-id='{PACKAGE_ID}/tv_name']//android.widget.TextView")
+    RESULT_ITEM_TV_NAME = (AppiumBy.XPATH, f"//*[@resource-id='{PACKAGE_ID}/tv_name']")
 
     RESULT_ITEM_TV_MESSAGE = (AppiumBy.ID, f"{PACKAGE_ID}/tv_message")
 

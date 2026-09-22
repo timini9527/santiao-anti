@@ -1,3 +1,4 @@
+from typing import Optional
 from core.logger_utils import logger
 from common.base_page import BasePage
 from appium.webdriver.common.appiumby import AppiumBy
@@ -82,6 +83,12 @@ class GroupBotPage(BasePage):
         else:
             logger.info(f"⚙️ [Action-GroupBotPage] {locator} 开关状态已为 {enable}，无需切换")
 
+    # 切换当前页面主 Switch 开关状态
+    def toggle_switch(self, enable: bool) -> None:
+        """切换当前页面主 Switch 开关状态（默认使用 GroupBotLocator.SWITCH_BTN）"""
+        logger.info(f"⚙️ [Action-GroupBotPage] 切换当前页面主 Switch 开关状态 -> {enable}")
+        self.toggle_main_switch(enable, GroupBotLocator.SWITCH_BTN)
+
     # 点击左上角返回图标
     def click_back(self) -> None:
         """点击左上角返回图标"""
@@ -105,6 +112,16 @@ class GroupBotPage(BasePage):
         """点击弹窗取消按钮"""
         logger.info("⚙️ [Action-GroupBotPage] 点击弹窗【取消】")
         self.click(GroupBotLocator.CANCEL_BTN)
+    
+    def click_confirm_btn(self) -> None:
+        """点击弹窗确认按钮"""
+        logger.info("⚙️ [Action-GroupBotPage] 点击弹窗【确认】")
+        self.click(GroupBotLocator.BTN_CONFIRM)
+    
+    def click_cancel_btn(self) -> None:
+        """点击弹窗取消按钮"""
+        logger.info("⚙️ [Action-GroupBotPage] 点击弹窗【取消】")
+        self.click(GroupBotLocator.BTN_CANCEL)
 
 
     # =============================================================================
@@ -131,41 +148,41 @@ class GroupBotPage(BasePage):
         return text
 
     # 关键词-获取当前关键词输入框的元素
-    def get_keyword_input_element(self) -> WebElement:
-        """关键词-获取当前关键词输入框的元素"""
+    def get_keywords_element(self, timeout: int = 2) -> WebElement:
+        """关键词-获取当前关键词输入框的元素（优先匹配ID，兜底匹配EditText通用控件）"""
         logger.info("⚙️ [Action-GroupBotPage] 正在获取关键词输入框元素...")
-        element = self.find_element(GroupBotLocator.ET_KEYWORD_INPUT, timeout=2)
+        element = self.find_element(GroupBotLocator.ET_KEYWORDS, timeout=timeout, raise_exception=False)
         if not element:
-            raise Exception("未找到关键词输入框")   
-        logger.info(f"⚙️ [Action-GroupBotPage] 获取关键词输入框: {element}")
+            raise Exception("未找到新增关键词弹窗中的输入框")   
+        logger.info(f"⚙️ [Action-GroupBotPage] 获取关键词输入框成功: {element}")
         return element
     
     # 关键词-清空关键词输入框
-    def clear_keyword_input(self) -> None:
+    def clear_keywords(self) -> None:
         """关键词-清空关键词输入框"""
         logger.info("⚙️ [Action-GroupBotPage] 清空关键词输入框")
-        self.get_keyword_input_element().clear()
+        self.get_keywords_element().clear()
 
     # 关键词-点击新增关键词按钮
     def click_keyword_add_btn(self) -> None:
         """关键词-点击新增关键词按钮"""
         logger.info("⚙️ [Action-GroupBotPage] 点击【新增】关键词")
-        self.click(GroupBotLocator.ADD_KEYWORD_BTN)
+        self.click(GroupBotLocator.LAYOUT_ADD_KEYWORD)
 
     # 关键词-获取关键词输入框中的文本
-    def get_keyword_input_text(self) -> str:
+    def get_keywords_text(self) -> str:
         """关键词-获取关键词输入框中的文本"""
         logger.info("⚙️ [Action-GroupBotPage] 正在获取关键词输入框中文本...")
-        element = self.get_keyword_input_element()
+        element = self.get_keywords_element()
         text = element.get_attribute("text")
         logger.info(f"⚙️ [Action-GroupBotPage] 获取关键词输入框中文本: {text}")
         return text
 
     # 关键词-向关键词输入框填入文本
-    def input_keyword(self, text: str) -> None:
+    def input_keywords(self, text: str) -> None:
         """关键词-向关键词输入框填入文本"""
         logger.info(f"⚙️ [Action-GroupBotPage] 向关键词输入框填入文本: {text}")
-        element = self.get_keyword_input_element()
+        element = self.get_keywords_element()
         element.clear()
         element.send_keys(text)
     
@@ -177,7 +194,6 @@ class GroupBotPage(BasePage):
         if not tv_keyword_list:
             logger.warning("⚙️ [Action-GroupBotPage] 未找到关键词")
             return []
-            
         logger.info(f"⚙️ [Action-GroupBotPage] 获取所有关键词所在行元素: {len(tv_keyword_list)}个")
         return tv_keyword_list
     
@@ -186,6 +202,18 @@ class GroupBotPage(BasePage):
         """关键词-获取所有关键词所在的行（包含删除图标）的数量"""
         logger.info("⚙️ [Action-GroupBotPage] 正在统计关键词行数量...")
         return len(self.get_keyword_row_element())
+    
+    # 关键词-获取当前配置的所有关键词列表
+    def get_keyword_list(self) -> list[str]:
+        """关键词-获取当前配置的所有关键词文本列表"""
+        logger.info("⚙️ [Action-GroupBotPage] 正在获取关键词列表...")
+        elements = self.get_keyword_row_element()
+        if not elements:
+            logger.warning("⚙️ [Action-GroupBotPage] 未找到关键词")
+            return []
+        keywords = [elem.text.strip() for elem in elements if elem.text and elem.text.strip()]
+        logger.info(f"⚙️ [Action-GroupBotPage] 成功获取关键词列表 ({len(keywords)}个): {keywords}")
+        return keywords
 
     # 关键词-保存关键词配置
     def save_keywords_config(self) -> None:
@@ -231,49 +259,78 @@ class GroupBotPage(BasePage):
         """清空已配置的关键词，恢复到默认空状态。如果指定了 count，则只删除对应数量的关键词"""
         msg = "全部" if count is None else f"{count} 个"
         logger.info(f"⚙️ [Action-GroupBotPage] 开始动态删除关键词，目标数量: {msg}")
-        
         deleted = 0
-        while self.is_element_exist(GroupBotLocator.DELETE_KEYWORD_ICON, timeout=1):
+        while self.is_element_exist(GroupBotLocator.DELETE_KEYWORD_ICON, timeout=1, raise_exception=False):
             if count is not None and deleted >= count:
                 logger.info(f"⚙️ [Action-GroupBotPage] 已达到指定删除数量 {count}，停止删除")
                 break
-                
             logger.info(f"⚙️ [Action-GroupBotPage] 动态获取删除图标并点击删除 (已删 {deleted} 个)")
             self.click(GroupBotLocator.DELETE_KEYWORD_ICON)
             self.click_keyword_delete_confirm_btn()
             deleted += 1
-            
-        self.save_keywords_config()
+            time.sleep(0.3)
+        # self.save_keywords_config()
 
-    # 关键词-设置新的关键词列表
-    def set_keywords(self, keywords: list[str]) -> int:
-        """关键词-设置新的关键词列表"""
-        logger.info(f"⚙️ [Action-GroupBotPage] 准备配置关键词列表: {keywords}")
-        
-        if len(keywords) == 0:
-            logger.info("⚙️ [Action-GroupBotPage] 关键词列表为空，点击新增并退出")
-            self.click_keyword_add_btn()
+    # 关键词-弹窗批量添加关键词
+    def add_keywords(self, keywords: list[str] | str) -> int:
+        """关键词-在关键词列表页通过弹窗批量录入关键词并确认添加
+
+        支持传入列表或空格分隔的字符串，利用弹窗原生空格批量录入功能：
+        单个关键词最多10个字，批量添加用空格分隔，点击【确定】完成添加。
+        """
+        if not keywords:
             return 0
+        keyword_list = self.get_keyword_list()
+        if any(key in keyword_list for key in keywords):
+            logger.info(f"⚙️ [Action-GroupBotPage] 关键词已存在: {keywords}")
+            return len(keywords)
         
-        element = self.get_keyword_input_element()
-        count = 0
-        for kw in keywords:
-            logger.info(f"⚙️ [Action-GroupBotPage] 输入关键词: {kw}")
-            element.clear()
-            element.send_keys(kw)
+        if isinstance(keywords, list):
+            kw_list = [str(k).strip() for k in keywords if str(k).strip()]
+            text = " ".join(kw_list)
+        else:
+            text = str(keywords).strip()
+            kw_list = [k for k in text.split() if k]
+        logger.info(f"⚙️ [Action-GroupBotPage] 准备通过新增关键词弹窗批量添加: {kw_list}")
+        self.click_keyword_add_btn()
+        self.input_keywords(text)
+        self.click_confirm_btn()
+        logger.info(f"✅ [Action-GroupBotPage] 弹窗批量添加关键词完成，共计 {len(kw_list)} 个")
+        return len(kw_list)
+
+    # 关键词-设置新的关键词列表（保持与旧调用的兼容性）
+    def set_keywords(self, keywords: list[str] | str) -> int:
+        """关键词-设置/添加关键词列表（智能识别弹窗状态并完成批量录入）"""
+        if not keywords:
+            return 0
+
+        if isinstance(keywords, list):
+            kw_list = [str(k).strip() for k in keywords if str(k).strip()]
+            text = " ".join(kw_list)
+        else:
+            text = str(keywords).strip()
+            kw_list = [k for k in text.split() if k]
+
+        logger.info(f"⚙️ [Action-GroupBotPage] 准备填入关键词列表: {kw_list}")
+        dialog_input = self.find_element((AppiumBy.CLASS_NAME, "android.widget.EditText"), timeout=1, raise_exception=False)
+        if not dialog_input:
             self.click_keyword_add_btn()
-            count += 1
-        return count
+
+        self.input_keyword(text)
+        self.click_confirm()
+        time.sleep(0.5)
+        logger.info(f"✅ [Action-GroupBotPage] 关键词列表添加完成，共计 {len(kw_list)} 个")
+        return len(kw_list)
 
     # 关键词-选择处置规则: 警告、禁言、移除群聊、仅撤回
     def select_action_rule(self, rule_name: str) -> None:
-        """关键词-选择处置规则: 警告、禁言、移除群聊、仅撤回"""
+        """关键词-选择处置规则: 警告、禁言、移出群聊、仅撤回"""
         logger.info(f"⚙️ [Action-GroupBotPage] 准备选择处置规则: {rule_name}")
         action_rule_list = {
             "仅撤回": GroupBotLocator.RULE_REVOKE,
             "警告": GroupBotLocator.RULE_WARN,
             "禁言": GroupBotLocator.RULE_MUTE,
-            "移除群聊": GroupBotLocator.RULE_KICK,
+            "移出群聊": GroupBotLocator.RULE_KICK,
         }
         if rule_name in action_rule_list:
             logger.info(f"⚙️ [Action-GroupBotPage] 选择处置规则: {rule_name}")
@@ -511,13 +568,10 @@ class GroupBotPage(BasePage):
 
     # 关键词-设置禁言时长
     def select_mute_duration(self, rule_time: str = "10分钟", old_summary: str = None) -> bool:
-        """关键词-设置禁言时长
-        针对没有子节点、纯 Canvas 渲染的滚轮选择器（WheelPicker）：
-        1. 获取选择器 picker_duration 控件的 Rect 边界计算相对坐标，防分辨率兼容问题。
-        2. 向下滚动重置归零至顶端：picker 打开时定位到当前值，故按 old_summary 对应的
-           索引精准回退；old_summary 未知时按 len(options) 兜底滚动（滚轮到顶边界饱和，多滑无害）。
-        3. 按照时长列表相对顺序，计算需要向上滑动的次数，并精准执行 W3C 滑动手势。
-        :return: True 设置成功 / False 未找到选择器控件
+        """关键词-通过滚轮选择器滑动设置指定的禁言时长
+        :param rule_time: 目标禁言时长，默认 '10分钟'
+        :param old_summary: 当前已设置时长（用于计算相对滑动步长）
+        :return: 是否设置成功
         """
         logger.info(f"⚙️ [Action-GroupBotPage] 正在设置禁言时长为: {rule_time} (当前页面旧值: {old_summary})")
 
@@ -546,32 +600,39 @@ class GroupBotPage(BasePage):
         picker_element = self.find_element(GroupBotLocator.PICKER_DURATION)
         options = self.MUTE_DURATION_OPTIONS
 
-        if old_summary in options:
-            old_index = options.index(old_summary)
-        else:
-            old_index = len(options)
-
         if rule_time not in options:
             rule_time = options[0]
         target_index = options.index(rule_time)
 
         rect = picker_element.rect
-        slide_distance = int(rect['height'] * 0.18)  # 经验值：一格行高约占控件高度 18%
+        slide_distance = int(rect['height'] * 0.18)  # 一格行高约占控件高度 18%
 
-        if old_index > 0:
-            logger.info(f"🔄 正在重置选择器至顶端（滑动回退步数: {old_index}）...")
-            for _ in range(old_index):
-                self.swipe_by_offset(rect=rect, y_offset=slide_distance, duration=400)
+        # 1. 确定当前滚轮位置：未知时重置归零至顶端【10分钟】
+        if old_summary in options:
+            current_index = options.index(old_summary)
+        else:
+            logger.info("🔄 首次或未记录旧时间，执行环境重置：向下滑动至顶端【10分钟】...")
+            for _ in range(len(options)):
+                self.swipe_by_offset(rect=rect, y_offset=slide_distance, duration=300)
                 time.sleep(0.1)
+            current_index = 0
 
-        if target_index > 0:
-            logger.info(f"🔄 向上滚动选择器以选择【{rule_time}】...")
-            for _ in range(target_index):
+        # 2. 增量相对滑动：根据当前位置直接滑动 x 格到达目标位置
+        diff = target_index - current_index
+        if diff > 0:
+            logger.info(f"🔄 目标时间【{rule_time}】在下方，向上滑动 {diff} 格...")
+            for _ in range(diff):
                 self.swipe_by_offset(rect=rect, y_offset=-slide_distance, duration=400)
                 time.sleep(0.15)
-
+        elif diff < 0:
+            logger.info(f"🔄 目标时间【{rule_time}】在上方，向下滑动 {abs(diff)} 格...")
+            for _ in range(abs(diff)):
+                self.swipe_by_offset(rect=rect, y_offset=slide_distance, duration=400)
+                time.sleep(0.15)
+        else:
+            logger.info(f"ℹ️ 当前已在目标时间【{rule_time}】，无需额外滑动")
         self.click_custom_warning_msg_confirm_btn()
-        logger.info("✅ 禁言时长选择完毕并点击确定")
+        logger.info(f"✅ 禁言时长已切换为【{rule_time}】并点击确定保存")
         return True
 
 
@@ -621,16 +682,10 @@ class GroupBotPage(BasePage):
     def toggle_limit_item(self, item_name: str, enable: bool) -> None:
         """对指定的限制类型或传播限制进行勾选/取消勾选"""
         logger.info(f"⚙️ [Action-GroupBotPage] 设置限制项【{item_name}】状态为: {enable}")
-        
         locator = GroupBotLocator.SPEECH_MANAGE_SWITCH(item_name)
-        
-        # 滑动到对应的元素位置（如果列表过长）
         self.scroll_to_element(locator, max_swipes=2)
-        
-        # 获取其勾选状态，通常 checked 属性在对应元素或者其父布局上
         is_checked = self.get_attribute(locator, "checked")
         state = str(is_checked).lower() == 'true'
-        
         if state != enable:
             logger.info(f"⚙️ [Action-GroupBotPage] 成功切换限制项【{item_name}】至 {enable}")
             self.click(locator)

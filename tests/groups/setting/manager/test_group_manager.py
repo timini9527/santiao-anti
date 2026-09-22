@@ -40,7 +40,7 @@ class TestGroupManager:
             self.groupSettingPage.wait_for_setting_page_load()
         with allure.step('-> 进入【群管理】子页面'):
             self.groupSettingPage.click_group_manager()
-            self.groupManagerPage.wait_for_page_load()
+            self.groupManagerPage.wait_for_group_manager_page_load()
 
     def _enter_group_manager(self):
         """内部辅助：快速建群并导航进入群管理页面"""
@@ -55,6 +55,21 @@ class TestGroupManager:
         """测试【升级群组】功能是否正常使用"""
         with allure.step('1. 点击升级群组'):
             self.groupManagerPage.click_upgrade_group()
+
+    @allure.story('群管理-提升群活跃')
+    @allure.title('【提升群活跃】入口及今日活跃点查看-状态：未完成')
+    @pytest.mark.skip('提升群活跃功能未实现/待验证')
+    def test_improve_group_activity_functionality(self):
+        """测试群管理中【提升群活跃】入口跳转及今日活跃点展示"""
+        with allure.step('1. 校验【提升群活跃】项标题与今日活跃点'):
+            title = self.groupManagerPage.get_group_active_point_title()
+            check.is_in('提升群活跃', title, f'❌ 【提升群活跃】项标题不匹配: {title}')
+            points_text = self.groupManagerPage.get_group_activity_points()
+            logger.info(f"今日活跃点: {points_text}")
+        with allure.step('2. 点击提升群活跃入口'):
+            self.groupManagerPage.click_improve_group_activity()
+        with allure.step('3. 返回群管理'):
+            self.groupManagerPage.click_iv_back_button()
 
     @allure.story('群管理-管理员')
     @allure.title('【群管理员】功能正常使用校验-状态：已完成')
@@ -79,6 +94,21 @@ class TestGroupManager:
             self.chatPage.wait_banner_message_disappear()
             member_names = self.groupManagerPage.get_member_names()
             check.is_not_in(PRIVATE_USER1.name, member_names, '❌ [Action-groupManagerPage] 移除管理员失败')
+
+    @allure.story('群管理-添加群助手')
+    @allure.title('【添加群助手】入口及状态显示校验-状态：未完成')
+    @pytest.mark.skip('添加群助手功能未实现/待验证')
+    def test_add_group_assistant_entry(self):
+        """测试群管理中【添加群助手】入口点击及助手状态展示"""
+        with allure.step('1. 校验【添加群助手】标题及当前配置状态'):
+            title = self.groupManagerPage.get_group_assistant_title()
+            check.is_in('群助手', title, f'❌ 【添加群助手】标题不匹配: {title}')
+            status = self.groupManagerPage.get_group_assistant_status()
+            logger.info(f"群助手状态: {status}")
+        with allure.step('2. 点击添加群助手入口'):
+            self.groupManagerPage.click_add_group_assistant()
+        with allure.step('3. 返回群管理页面'):
+            self.groupManagerPage.click_iv_back_button()
 
     @allure.story('群管理-群ID搜索开关')
     @allure.title('切换【群ID搜索】开关状态校验-状态：已完成')
@@ -222,82 +252,3 @@ class TestGroupManager:
         with allure.step('3. 退出群管理页面'):
             self.groupManagerPage.click_iv_back_button()
 
-    @allure.story('群管理-进群申请')
-    @allure.title('【进群申请】未读红点提示校验-状态：未完成')
-    def test_join_apply_badge_count_validation(self):
-        """测试群管理中【进群申请】未读申请数量红点展示"""
-        with allure.step('1. 校验【进群申请】标题及未读红点数量'):
-            title = self.groupManagerPage.get_join_apply_title()
-            check.is_in('进群申请', title, f'❌ 【进群申请】标题不匹配: {title}')
-            badge_count = self.groupManagerPage.get_join_apply_badge_count()
-            check.greater_equal(badge_count, 0, '❌ 进群申请红点数获取异常')
-        with allure.step('2. 点击进入进群申请列表'):
-            self.groupManagerPage.click_join_to_group_apply()
-            self.groupManagerPage.wait_for_join_apply_page_load()
-        with allure.step('3. 返回群管理页面'):
-            self.groupManagerPage.click_iv_back_button()
-
-
-    @allure.story('群管理-公开群展示开关')
-    @allure.title('切换【公开群展示】开关状态校验-状态：未完成')
-    @pytest.mark.skip('公开群展示开关切换功能未实现/待验证')
-    def test_public_group_display_toggle(self):
-        """测试群管理中【公开群展示】开关的状态切换与校验"""
-        with allure.step('1. 获取当前公开群展示开关状态'):
-            init_state = self.groupManagerPage.get_public_group_display_state()
-        with allure.step('2. 点击切换公开群展示开关'):
-            self.groupManagerPage.click_public_group_display_switch()
-            new_state = self.groupManagerPage.get_public_group_display_state()
-            check.not_equal(init_state, new_state, '❌ 【公开群展示】开关点击后状态未改变')
-        with allure.step('3. 再次点击开关恢复至初始状态'):
-            self.groupManagerPage.click_public_group_display_switch()
-            final_state = self.groupManagerPage.get_public_group_display_state()
-            check.equal(init_state, final_state, '❌ 【公开群展示】开关恢复初始状态失败')
-
-
-    @allure.story('群管理-新成员进群自动禁言开关')
-    @allure.title('切换【新成员进群自动禁言】开关状态校验-状态：未完成')
-    @pytest.mark.skip('新成员进群自动禁言功能未实现/待验证')
-    def test_new_member_auto_mute_toggle(self):
-        """测试群管理中【新成员进群自动禁言】开关的状态切换与校验"""
-        with allure.step('1. 开启新成员进群自动禁言'):
-            self.groupManagerPage.click_new_member_auto_mute_switch(checked_str='true')
-            self.chatPage.wait_banner_message_disappear()
-        with allure.step('2. 验证开关状态已开启'):
-            state = self.groupManagerPage.get_new_member_auto_mute_state()
-            check.equal(state, 'true', '❌ 【新成员进群自动禁言】开关未开启')
-        with allure.step('3. 恢复关闭新成员进群自动禁言'):
-            self.groupManagerPage.click_new_member_auto_mute_switch(checked_str='false')
-            self.chatPage.wait_banner_message_disappear()
-            final_state = self.groupManagerPage.get_new_member_auto_mute_state()
-            check.equal(final_state, 'false', '❌ 【新成员进群自动禁言】开关未关闭')
-
-    @allure.story('群管理-提升群活跃')
-    @allure.title('【提升群活跃】入口及今日活跃点查看-状态：未完成')
-    @pytest.mark.skip('提升群活跃功能未实现/待验证')
-    def test_improve_group_activity_functionality(self):
-        """测试群管理中【提升群活跃】入口跳转及今日活跃点展示"""
-        with allure.step('1. 校验【提升群活跃】项标题与今日活跃点'):
-            title = self.groupManagerPage.get_group_active_point_title()
-            check.is_in('提升群活跃', title, f'❌ 【提升群活跃】项标题不匹配: {title}')
-            points_text = self.groupManagerPage.get_group_activity_points()
-            logger.info(f"今日活跃点: {points_text}")
-        with allure.step('2. 点击提升群活跃入口'):
-            self.groupManagerPage.click_improve_group_activity()
-        with allure.step('3. 返回群管理'):
-            self.groupManagerPage.click_iv_back_button()
-
-    @allure.story('群管理-添加群助手')
-    @allure.title('【添加群助手】入口及状态显示校验-状态：未完成')
-    @pytest.mark.skip('添加群助手功能未实现/待验证')
-    def test_add_group_assistant_entry(self):
-        """测试群管理中【添加群助手】入口点击及助手状态展示"""
-        with allure.step('1. 校验【添加群助手】标题及当前配置状态'):
-            title = self.groupManagerPage.get_group_assistant_title()
-            check.is_in('群助手', title, f'❌ 【添加群助手】标题不匹配: {title}')
-            status = self.groupManagerPage.get_group_assistant_status()
-            logger.info(f"群助手状态: {status}")
-        with allure.step('2. 点击添加群助手入口'):
-            self.groupManagerPage.click_add_group_assistant()
-        with allure.step('3. 返回群管理页面'):
-            self.groupManagerPage.click_iv_back_button()

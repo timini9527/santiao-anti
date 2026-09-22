@@ -321,7 +321,7 @@ class TestSmokeGroupManage(BaseSmokeGroupSingle):
             self.chatPage.click_more_button()
             self.groupSettingPage.wait_for_setting_page_load()
             self.groupSettingPage.click_group_manager()
-            self.groupManagerPage.wait_for_page_load()
+            self.groupManagerPage.wait_for_group_manager_page_load()
             self.groupManagerPage.click_dismiss_group()
         with allure.step('3. 确认弹窗解散群聊并验证退回首页'):
             self.groupSettingPage.click_tv_confirm_button()
@@ -347,7 +347,7 @@ class TestSmokeGroupAdminDouble(BaseSmokeGroupSingle):
             self.chatPage.click_more_button()
             self.groupSettingPage.wait_for_setting_page_load()
             self.groupSettingPage.click_group_manager()
-            self.groupManagerPage.wait_for_page_load()
+            self.groupManagerPage.wait_for_group_manager_page_load()
 
     def _enter_group_setting_back(self):
         self.chatPage.click_more_button()
@@ -389,7 +389,7 @@ class TestSmokeGroupAdminDouble(BaseSmokeGroupSingle):
         with allure.step('3. 再次点击开关恢复至初始状态'):
             self._enter_group_setting_back()
             self.groupSettingPage.click_group_manager()
-            self.groupManagerPage.wait_for_page_load()
+            self.groupManagerPage.wait_for_group_manager_page_load()
             self.groupManagerPage.click_all_member_mute_switch(checked_str='false')
             self.chatPage.wait_banner_message_disappear()
         with allure.step('4. 回到聊天页面中，并校验全员禁言关闭后Banner消息'):
@@ -410,7 +410,7 @@ class TestSmokeGroupAdminDouble(BaseSmokeGroupSingle):
         with allure.step('3. 再次点击开关恢复至初始状态'):
             self._enter_group_setting_back()
             self.groupSettingPage.click_group_manager()
-            self.groupManagerPage.wait_for_page_load()
+            self.groupManagerPage.wait_for_group_manager_page_load()
             self.groupManagerPage.click_un_add_friend_each_other_switch(checked_str='false')
             self.chatPage.wait_banner_message_disappear()
         with allure.step('4. 回到聊天页面中，并校验关闭后的Banner消息'):
@@ -442,14 +442,14 @@ class TestSmokeGroupBot(BaseSmokeGroupSingle):
     @allure.story('关闭机器人发言限制')
     @allure.title('关闭群机器人发言管理总开关后，普通文本功能不再受限-状态：已完成')
     def test_group_bot_disable_speech(self):
-        with allure.step('1. 发送方进入群详情 -> 群设置 -> 群助手 -> 发言管理'):
+        with allure.step('1. 发送方进入群详情 -> 群设置 -> 群管理 -> 发言管理'):
             self.chatListPage.enter_chat(GROUP_STRATEGY.name)
             self.chatPage.wait_for_chat_page_load()
             self.chatPage.click_more_button()
             self.groupSettingPage.wait_for_setting_page_load()
-            self.groupSettingPage.click_friend_header()
-            self.groupBotPage.wait_for_group_bot_page_load()
-            self.groupBotPage.enter_speech_manage()
+            self.groupSettingPage.click_group_manager()
+            self.groupManagerPage.wait_for_group_manager_page_load()
+            self.groupManagerPage.click_speech_management()
         with allure.step('2. 发送方关闭发言管理总开关'):
             self.groupBotPage.toggle_speech_manage_switch(enable=False)
             self.groupBotPage.click_save()

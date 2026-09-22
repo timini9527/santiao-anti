@@ -9,10 +9,10 @@ from selenium.webdriver.remote.webelement import WebElement
 class GroupManagerPage(BasePage):
     """群管理页面操作类"""
 
-    # 等待页面加载
-    def wait_for_page_load(self, timeout: int = 10) -> bool:
+    # 等待群管理页面加载
+    def wait_for_group_manager_page_load(self, timeout: int = 10, raise_exception: bool = True) -> bool:
         """等待群管理页面加载完成"""
-        res = self.wait_for_element_text(GroupManagerLocator.TV_TITLE, expected_text="群管理", timeout=timeout)
+        res = self.wait_for_element_text(GroupManagerLocator.TV_TITLE, expected_text="群管理", timeout=timeout, raise_exception=raise_exception)
         if res:
             logger.info(f"⏳ [Action-groupManagerPage] 群管理页面 - 加载完成")
         else:
@@ -23,33 +23,33 @@ class GroupManagerPage(BasePage):
     def click_iv_back_button(self) -> None:
         """顶部-点击顶部返回按钮"""
         logger.info("⚙️ [Action-groupManagerPage] 点击顶部【返回】按钮")
-        self.click(GroupManagerLocator.IV_BACK)
+        self.click(GroupManagerLocator.IV_BACK, force_wait=True)
     
     # 顶部-点击确定按钮
     def click_confirm_button(self) -> None:
         """顶部-点击确定按钮"""
         logger.info("⚙️ [Action-groupManagerPage] 点击顶部【确定】按钮")
-        self.click(GroupManagerLocator.FB_BTN)
+        self.click(GroupManagerLocator.FB_BTN, force_wait=True)
 
     # 顶部-点击编辑完成按钮
     def click_edit_finish_button(self) -> None:
         """顶部-点击编辑完成按钮"""
         logger.info("⚙️ [Action-groupManagerPage] 点击编辑【完成】按钮")
-        self.click(GroupManagerLocator.EDIT_TO_BTN)
+        self.click(GroupManagerLocator.EDIT_TO_BTN, force_wait=True)
 
     # =========================================================================
     # 智能滚动查找辅助方法 (Scroll Helpers)
     # =========================================================================
     # 智能滚动查找元素辅助方法
-    def _scroll_find_element(self, locator: tuple, max_swipes: int = 3, slid_type: str = 'up') -> Optional[WebElement]:
+    def _scroll_find_element(self, locator: tuple, max_swipes: int = 3, slid_type: str = 'up', timeout: int = 1) -> Optional[WebElement]:
         """智能滚动查找元素：先探测当前屏，未找到则按指定方向滑动探测"""
         logger.info(f"🔍 [Scroll] 智能滚动查找元素: {locator}")
-        element = self.find_element(locator, timeout=1, raise_exception=False)
+        element = self.find_element(locator, timeout=timeout, raise_exception=False)
         if element:
             return element
         for i in range(max_swipes):
             self.swipe_page_quickly(slid_type=slid_type, duration=300)
-            element = self.find_element(locator, timeout=1, raise_exception=False)
+            element = self.find_element(locator, timeout=timeout, raise_exception=False)
             if element:
                 logger.info(f"🔍 [Scroll] 滑动第 {i + 1} 次成功找到元素: {locator}")
                 return element
@@ -142,19 +142,34 @@ class GroupManagerPage(BasePage):
     def click_speech_management(self) -> None:
         """群管理-点击发言管理"""
         logger.info("⚙️ [Action-groupManagerPage] 点击【发言管理】")
-        self.click(GroupManagerLocator.IT_SPEECH_MANAGEMENT)
+        element = self._scroll_find_element(GroupManagerLocator.IT_SPEECH_MANAGEMENT)
+        if element:
+            element.click()
+            logger.info("✅ [Action-groupManagerPage] 成功点击【发言管理】")
+        else:
+            logger.error("❌ [Action-groupManagerPage] 未找到【发言管理】按钮")
 
     # 群管理-点击指定成员禁言
     def click_mute_member(self) -> None:
         """群管理-点击指定成员禁言"""
         logger.info("⚙️ [Action-groupManagerPage] 点击【指定成员禁言】")
-        self.click(GroupManagerLocator.GROUP_MEMBER_MUTE)
+        element = self._scroll_find_element(GroupManagerLocator.GROUP_MEMBER_MUTE)
+        if element:
+            element.click()
+            logger.info("✅ [Action-groupManagerPage] 成功点击【指定成员禁言】")
+        else:
+            logger.error("❌ [Action-groupManagerPage] 未找到【指定成员禁言】按钮")
 
     # 群管理-点击群黑名单
     def click_group_black_member(self) -> None:
         """群管理-点击群黑名单"""
         logger.info("⚙️ [Action-groupManagerPage] 点击【群黑名单】")
-        self.click(GroupManagerLocator.GROUP_BLACK_MEMBER)
+        element = self._scroll_find_element(GroupManagerLocator.GROUP_BLACK_MEMBER)
+        if element:
+            element.click()
+            logger.info("✅ [Action-groupManagerPage] 成功点击【群黑名单】")
+        else:
+            logger.error("❌ [Action-groupManagerPage] 未找到【群黑名单】按钮")
 
     # 群管理-点击转让群主
     def click_group_give(self) -> None:
@@ -186,7 +201,7 @@ class GroupManagerPage(BasePage):
     def wait_for_admin_page_load(self, timeout: int = 10) -> bool:
         """管理员-等待管理员列表页面加载完成"""
         logger.info(f"⏳ [Action-groupManagerPage] 等待管理员列表页面加载 (超时: {timeout}s)")
-        res = self.wait_for_element_text(GroupManagerLocator.TV_TITLE, expected_text="群管理员", timeout=timeout)
+        res = self.is_element_exist(GroupManagerLocator.IT_ADD_FRIEND, timeout=timeout)
         if res:
             logger.info(f"⏳ [Action-groupManagerPage] 管理员列表页面 - 加载完成")
         else:
@@ -228,7 +243,7 @@ class GroupManagerPage(BasePage):
         """管理员-根据姓名点击列表中的某个成员"""
         logger.info(f"⚙️ [Action-groupManagerPage] 点击列表中姓名为【{name}】的成员")
         locator = GroupManagerLocator.get_member_by_text(name)
-        self.click(locator)
+        self.click(locator, timeout=2)
         time.sleep(0.5)
     
     # 管理员-先通过搜索，再点击搜索结果中的某个成员
@@ -265,134 +280,238 @@ class GroupManagerPage(BasePage):
 
     # Switch - 获取群ID搜索开关
     def get_group_id_search_state(self) -> str:
-        """Switch - 获取【群ID搜索】开关状态"""
+        """Switch - 获取【群ID搜索】开关状态（若不在当前屏则自动滑动查找）"""
         logger.info("⚙️ [Action-groupManagerPage] 获取【群ID搜索】开关状态")
-        res = self.get_attribute(GroupManagerLocator.GROUP_ID_SEARCH_SWITCH, "checked")
+        element = self._scroll_find_element(GroupManagerLocator.GROUP_ID_SEARCH_SWITCH)
+        if not element:
+            logger.error("❌ [Action-groupManagerPage] 滑动未找到【群ID搜索】开关")
+            return "false"
+        res = element.get_attribute("checked")
         logger.info(f"⚙️ [Action-groupManagerPage] 获取【群ID搜索】开关状态结果: {res}")
-        return str(res).lower()
+        return str(res).lower() if res else "false"
     
     # Switch - 点击群ID搜索开关
-    def click_group_id_search_switch(self, checked_str: str = "true") -> None:
-        """Switch - 点击【群ID搜索】开关"""
+    def click_group_id_search_switch(self, checked_str: str = "true") -> bool:
+        """Switch - 点击【群ID搜索】开关，实际发生切换返回 True，无需点击返回 False（若不在当前屏则自动滑动查找）"""
         logger.info(f"⚙️ [Action-groupManagerPage] 准备设置【群ID搜索】开关为: {checked_str}")
         init_state = self.get_group_id_search_state()
         if init_state == checked_str:
             logger.info(f"⚙️ [Action-groupManagerPage] 【群ID搜索】开关状态已经是{checked_str},无需点击")
+            return False
         else:
-            self.click(GroupManagerLocator.GROUP_ID_SEARCH_SWITCH)
-            time.sleep(1)
-            logger.info(f"⚙️ [Action-groupManagerPage] 将【群ID搜索】开关设置为{checked_str}")
+            element = self._scroll_find_element(GroupManagerLocator.GROUP_ID_SEARCH_SWITCH)
+            if element:
+                element.click()
+                logger.info(f"⚙️ [Action-groupManagerPage] 将【群ID搜索】开关设置为{checked_str}")
+                return True
+            else:
+                logger.error("❌ [Action-groupManagerPage] 未找到【群ID搜索】开关，无法点击")
+                return False
 
     # Switch - 获取进群验证开关
     def get_join_group_verify_state(self) -> str:
         """Switch - 获取【进群验证】开关状态"""
         logger.info("⚙️ [Action-groupManagerPage] 获取【进群验证】开关状态")
-        res = self.get_attribute(GroupManagerLocator.JOIN_TO_GROUP_VERIFY_SWITCH, "checked")
+        element = self._scroll_find_element(GroupManagerLocator.JOIN_TO_GROUP_VERIFY_SWITCH)
+        if not element:
+            logger.error("❌ [Action-groupManagerPage] 滑动未找到【进群验证】开关")
+            return "false"
+        res = element.get_attribute("checked")
         logger.info(f"⚙️ [Action-groupManagerPage] 获取【进群验证】开关状态结果: {res}")
-        return str(res).lower()
+        return str(res).lower() if res else "false"
     
     # Switch - 点击进群验证开关
     def click_join_group_verify_switch(self, checked_str: str = "true") -> bool:
-        """Switch - 点击【进群验证】开关"""
+        """Switch - 点击【进群验证】开关（若不在当前屏则自动滑动查找）"""
         logger.info(f"⚙️ [Action-groupManagerPage] 准备设置【进群验证】开关为: {checked_str}")
         init_state = self.get_join_group_verify_state()
         if init_state == checked_str:
             logger.info(f"⚙️ [Action-groupManagerPage] 【进群验证】开关状态已经是{checked_str},无需点击")
             return False
         else:
-            self.click(GroupManagerLocator.JOIN_TO_GROUP_VERIFY_SWITCH)
-            time.sleep(1)
-            logger.info(f"⚙️ [Action-groupManagerPage] 将【进群验证】开关设置为{checked_str}")
-            return True
+            element = self._scroll_find_element(GroupManagerLocator.JOIN_TO_GROUP_VERIFY_SWITCH)
+            if element:
+                element.click()
+                logger.info(f"⚙️ [Action-groupManagerPage] 将【进群验证】开关设置为{checked_str}")
+                return True
+            else:
+                logger.error("❌ [Action-groupManagerPage] 未找到【进群验证】开关，无法点击")
+                return False
     
     # Switch - 获取全员禁言开关
     def get_all_member_mute_state(self) -> str:
-        """Switch - 获取【全员禁言】开关状态"""
+        """Switch - 获取【全员禁言】开关状态（若不在当前屏则自动滑动查找）"""
         logger.info("⚙️ [Action-groupManagerPage] 获取【全员禁言】开关状态")
-        res = self.get_attribute(GroupManagerLocator.ALL_MEMBER_MUTE_SWITCH, "checked")
+        element = self._scroll_find_element(GroupManagerLocator.ALL_MEMBER_MUTE_SWITCH)
+        if not element:
+            logger.error("❌ [Action-groupManagerPage] 滑动未找到【全员禁言】开关")
+            return "false"
+        res = element.get_attribute("checked")
         logger.info(f"⚙️ [Action-groupManagerPage] 获取【全员禁言】开关状态结果: {res}")
-        return str(res).lower()
+        return str(res).lower() if res else "false"
     
     # Switch - 点击全员禁言开关
     def click_all_member_mute_switch(self, checked_str: str = "true") -> bool:
-        """Switch - 点击【全员禁言】开关"""
+        """Switch - 点击【全员禁言】开关（若不在当前屏则自动滑动查找）"""
         logger.info(f"⚙️ [Action-groupManagerPage] 准备设置【全员禁言】开关为: {checked_str}")
         init_state = self.get_all_member_mute_state()
         if init_state == checked_str:
             logger.info(f"⚙️ [Action-groupManagerPage] 【全员禁言】开关状态已经是{checked_str},无需点击")
             return False
         else:
-            self.click(GroupManagerLocator.ALL_MEMBER_MUTE_SWITCH)
-            time.sleep(1)
-            logger.info(f"⚙️ [Action-groupManagerPage] 将【全员禁言】开关设置为{checked_str}")
-            return True
+            element = self._scroll_find_element(GroupManagerLocator.ALL_MEMBER_MUTE_SWITCH)
+            if element:
+                element.click()
+                logger.info(f"⚙️ [Action-groupManagerPage] 将【全员禁言】开关设置为{checked_str}")
+                return True
+            else:
+                logger.error("❌ [Action-groupManagerPage] 未找到【全员禁言】开关，无法点击")
+                return False
     
     # Switch - 获取禁止群成员互相加好友开关
     def get_un_add_friend_each_other_state(self) -> str:
-        """Switch - 获取【禁止群成员互相加好友】开关状态"""
+        """Switch - 获取【禁止群成员互相加好友】开关状态（若不在当前屏则自动滑动查找）"""
         logger.info("⚙️ [Action-groupManagerPage] 获取【禁止群成员互相加好友】开关状态")
-        res = self.get_attribute(GroupManagerLocator.UN_ADD_FRIEND_EACH_OTHER_SWITCH, "checked")
+        element = self._scroll_find_element(GroupManagerLocator.UN_ADD_FRIEND_EACH_OTHER_SWITCH)
+        if not element:
+            logger.error("❌ [Action-groupManagerPage] 滑动未找到【禁止群成员互相加好友】开关")
+            return "false"
+        res = element.get_attribute("checked")
         logger.info(f"⚙️ [Action-groupManagerPage] 获取【禁止群成员互相加好友】开关状态结果: {res}")
-        return str(res).lower()
+        return str(res).lower() if res else "false"
 
     # Switch - 点击禁止群成员互相加好友开关
     def click_un_add_friend_each_other_switch(self, checked_str: str = "true") -> bool:
-        """Switch - 点击【禁止群成员互相加好友】开关"""
+        """Switch - 点击【禁止群成员互相加好友】开关（若不在当前屏则自动滑动查找）"""
         logger.info(f"⚙️ [Action-groupManagerPage] 准备设置【禁止群成员互相加好友】开关为: {checked_str}")
         init_state = self.get_un_add_friend_each_other_state()
         if init_state == checked_str:
             logger.info(f"⚙️ [Action-groupManagerPage] 【禁止群成员互相加好友】开关状态已经是{checked_str},无需点击")
             return False
         else:
-            self.click(GroupManagerLocator.UN_ADD_FRIEND_EACH_OTHER_SWITCH)
-            time.sleep(1)
-            logger.info(f"⚙️ [Action-groupManagerPage] 将【禁止群成员互相加好友】开关设置为{checked_str}")
-            return True
+            element = self._scroll_find_element(GroupManagerLocator.UN_ADD_FRIEND_EACH_OTHER_SWITCH)
+            if element:
+                element.click()
+                logger.info(f"⚙️ [Action-groupManagerPage] 将【禁止群成员互相加好友】开关设置为{checked_str}")
+                return True
+            else:
+                logger.error("❌ [Action-groupManagerPage] 未找到【禁止群成员互相加好友】开关，无法点击")
+                return False
 
     # Switch - 获取公开群展示开关状态
     def get_public_group_display_state(self) -> str:
-        """Switch - 获取【公开群展示】开关状态"""
+        """Switch - 获取【公开群展示】开关状态（若不在当前屏则自动滑动查找）"""
         logger.info("⚙️ [Action-groupManagerPage] 获取【公开群展示】开关状态")
-        res = self.get_attribute(GroupManagerLocator.GROUP_RANK_SWITCH, "checked", raise_exception=False)
+        element = self._scroll_find_element(GroupManagerLocator.GROUP_RANK_SWITCH, timeout=3)
+        if not element:
+            logger.error("❌ [Action-groupManagerPage] 滑动未找到【公开群展示】开关")
+            return "false"
+        res = element.get_attribute("checked")
         logger.info(f"⚙️ [Action-groupManagerPage] 获取【公开群展示】开关状态结果: {res}")
         return str(res).lower() if res else "false"
 
     # Switch - 点击公开群展示开关
     def click_public_group_display_switch(self, checked_str: str = "true") -> bool:
-        """Switch - 点击【公开群展示】开关"""
+        """Switch - 点击【公开群展示】开关（若不在当前屏则自动滑动查找）"""
         logger.info(f"⚙️ [Action-groupManagerPage] 准备设置【公开群展示】开关为: {checked_str}")
         init_state = self.get_public_group_display_state()
         if init_state == checked_str:
             logger.info(f"⚙️ [Action-groupManagerPage] 【公开群展示】开关状态已经是{checked_str},无需点击")
             return False
         else:
-            self.click(GroupManagerLocator.GROUP_RANK_SWITCH)
-            time.sleep(1)
-            logger.info(f"⚙️ [Action-groupManagerPage] 将【公开群展示】开关设置为{checked_str}")
-            return True
+            element = self._scroll_find_element(GroupManagerLocator.GROUP_RANK_SWITCH)
+            if element:
+                element.click()
+                logger.info(f"⚙️ [Action-groupManagerPage] 将【公开群展示】开关设置为{checked_str}")
+                return True
+            else:
+                logger.error("❌ [Action-groupManagerPage] 未找到【公开群展示】开关，无法点击")
+                return False
 
     # Switch - 获取新成员进群自动禁言开关状态
     def get_new_member_auto_mute_state(self) -> str:
-        """Switch - 获取【新成员进群自动禁言】开关状态"""
+        """Switch - 获取【新成员进群自动禁言】开关状态（若不在当前屏则自动滑动查找）"""
         logger.info("⚙️ [Action-groupManagerPage] 获取【新成员进群自动禁言】开关状态")
-        res = self.get_attribute(GroupManagerLocator.NEW_MEMBER_AUTO_MUTE_SWITCH, "checked", raise_exception=False)
+        element = self._scroll_find_element(GroupManagerLocator.NEW_MEMBER_AUTO_MUTE_SWITCH)
+        if not element:
+            logger.error("❌ [Action-groupManagerPage] 滑动未找到【新成员进群自动禁言】开关")
+            return "false"
+        res = element.get_attribute("checked")
         logger.info(f"⚙️ [Action-groupManagerPage] 获取【新成员进群自动禁言】开关状态结果: {res}")
         return str(res).lower() if res else "false"
 
     # Switch - 点击新成员进群自动禁言开关
     def click_new_member_auto_mute_switch(self, checked_str: str = "true") -> bool:
-        """Switch - 点击【新成员进群自动禁言】开关"""
+        """Switch - 点击【新成员进群自动禁言】开关（若不在当前屏则自动滑动查找）"""
         logger.info(f"⚙️ [Action-groupManagerPage] 准备设置【新成员进群自动禁言】开关为: {checked_str}")
         init_state = self.get_new_member_auto_mute_state()
         if init_state == checked_str:
             logger.info(f"⚙️ [Action-groupManagerPage] 【新成员进群自动禁言】开关状态已经是{checked_str},无需点击")
             return False
         else:
-            self.click(GroupManagerLocator.NEW_MEMBER_AUTO_MUTE_SWITCH)
-            time.sleep(1)
-            logger.info(f"⚙️ [Action-groupManagerPage] 将【新成员进群自动禁言】开关设置为{checked_str}")
-            return True
-            
+            element = self._scroll_find_element(GroupManagerLocator.NEW_MEMBER_AUTO_MUTE_SWITCH)
+            if element:
+                element.click()
+                logger.info(f"⚙️ [Action-groupManagerPage] 将【新成员进群自动禁言】开关设置为{checked_str}")
+                return True
+            else:
+                logger.error("❌ [Action-groupManagerPage] 未找到【新成员进群自动禁言】开关，无法点击")
+                return False
+
+    # 持续时长 - 点击新成员自动禁言时长设置项
+    def click_new_member_auto_mute_duration(self) -> None:
+        """点击【新成员进群自动禁言】时长设置项唤起底部弹窗（若不在当前屏则自动滑动查找）"""
+        logger.info("⚙️ [Action-groupManagerPage] 点击【新成员进群自动禁言】时长设置项")
+        element = self._scroll_find_element(GroupManagerLocator.NEW_MEMBER_AUTO_MUTE_DURATION_VALUE)
+        if not element:
+            element = self._scroll_find_element(GroupManagerLocator.NEW_MEMBER_AUTO_MUTE)
+        if element:
+            element.click()
+            logger.info("✅ [Action-groupManagerPage] 已点击时长设置项，唤起时长弹窗")
+        else:
+            logger.error("❌ [Action-groupManagerPage] 未找到【新成员进群自动禁言】时长设置项")
+
+    # 持续时长 - 获取当前展示的时长值文本
+    def get_new_member_auto_mute_duration_value(self) -> str:
+        """获取当前展示的【新成员进群自动禁言】时长文本"""
+        logger.info("📋 [Action-groupManagerPage] 获取当前新成员自动禁言时长文本")
+        element = self._scroll_find_element(GroupManagerLocator.NEW_MEMBER_AUTO_MUTE_DURATION_VALUE)
+        if element:
+            text = element.get_attribute("text") or ""
+            logger.info(f"✅ [Action-groupManagerPage] 当前新成员自动禁言时长文本: {text}")
+            return text
+        return ""
+
+    # 持续时长 - 底部弹窗选择对应时长选项
+    def select_new_member_auto_mute_duration(self, duration: str) -> None:
+        """
+        在底部弹窗中选择新成员进群自动禁言时长选项
+        :param duration: '10分钟'/'10m', '30分钟'/'30m', '2小时'/'2h', '24小时'/'24h'
+        """
+        logger.info(f"⚙️ [Action-groupManagerPage] 准备选择新成员进群自动禁言时长: {duration}")
+        mapping = {
+            '10分钟': GroupManagerLocator.OPTION_10M,
+            '10m': GroupManagerLocator.OPTION_10M,
+            '30分钟': GroupManagerLocator.OPTION_30M,
+            '30m': GroupManagerLocator.OPTION_30M,
+            '2小时': GroupManagerLocator.OPTION_2H,
+            '2h': GroupManagerLocator.OPTION_2H,
+            '24小时': GroupManagerLocator.OPTION_24H,
+            '24h': GroupManagerLocator.OPTION_24H,
+        }
+        loc = mapping.get(duration)
+        if not loc:
+            logger.error(f"❌ [Action-groupManagerPage] 未知时长选项: {duration}")
+            return
+        self.click(loc)
+        logger.info(f"✅ [Action-groupManagerPage] 已点击选择时长: {duration}")
+
+    # 持续时长 - 点击底部弹窗取消按钮
+    def click_duration_bottom_sheet_cancel(self) -> None:
+        """点击底部时长选择弹窗取消按钮"""
+        logger.info("⚙️ [Action-groupManagerPage] 点击时长弹窗取消按钮")
+        self.click(GroupManagerLocator.BTN_CANCEL)
+
     # Switch - 获取 switch item 列表（支持状态过滤）
     def get_switch_items(self, checked_str: str = None, raise_exception: bool = True) -> list[WebElement]:
         """Switch - 获取 switch item 列表（可按 checked_str "true"/"false" 过滤，None 表示获取全部）"""
@@ -528,10 +647,10 @@ class GroupManagerPage(BasePage):
     # 群成员禁言相关（全员禁言+指定成员禁言）
     # ===================================================================================
     # 等待指定禁言页面加载
-    def wait_for_specify_mute_page_load(self, timeout: int = 10) -> bool:
+    def wait_for_specify_mute_page_load(self, timeout: int = 10, raise_exception: bool = False) -> bool:
         """等待指定禁言页面加载完成"""
         logger.info(f"⏳ [Action-groupManagerPage] 等待指定禁言页面加载 (超时: {timeout}s)")
-        res = self.get_attribute(GroupManagerLocator.TV_TITLE, "text") == "指定成员禁言"
+        res = self.get_attribute(GroupManagerLocator.TV_TITLE, "text", timeout, raise_exception) == "指定成员禁言"
         logger.info(f"⏳ [Action-groupManagerPage] 指定禁言页面 - 加载{'成功' if res else '超时'}")
         time.sleep(0.5)
         return res
@@ -801,7 +920,14 @@ class GroupManagerPage(BasePage):
         logger.info(f"✅ [Action-groupManagerPage] 获取已拥有的权限名称成功: {names}")
         return names
 
-
-
-
-
+    # 转让群主-点击确认按钮
+    def click_transfer_owner_confirm(self) -> None:
+        """转让群主-点击确认按钮"""
+        logger.info("⚙️ [Action-groupManagerPage] 转让群主-点击确认按钮")
+        self.click(GroupManagerLocator.TV_TRANSFER_OWNER_CONFIRM)
+    
+    # 转让群主-点击取消按钮
+    def click_transfer_owner_cancel(self) -> None:
+        """转让群主-点击取消按钮"""
+        logger.info("⚙️ [Action-groupManagerPage] 转让群主-点击取消按钮")
+        self.click(GroupManagerLocator.TV_TRANSFER_OWNER_CANCEL)
