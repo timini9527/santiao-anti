@@ -1,6 +1,6 @@
+import time
 import pytest
 import allure
-import time
 import pytest_check as check
 from core.logger_utils import logger
 from pages.main.main_page import MainPage
@@ -12,32 +12,56 @@ from pages.chat.list.chat_list_page import ChatListPage
 from strategy.chat.chat_strategy import GROUP_STRATEGY
 from utils.file_reader.data_loader import load_yaml_data
 
-# 加载外部测试数据
-keyword_yaml_data = load_yaml_data('groups/bot/keyword_rules.yaml')
-keyword_rules = keyword_yaml_data.get("test_data", {}).get("keyword_validation", [])
-keyword_params = [
-    (d["data"]["keyword"], d["expected"]["action"], d["expected"].get("expected_text", ""), d["title"]) 
-    for d in keyword_rules
-]
-keyword_ids = [d["title"] for d in keyword_rules]
 
-# 元数据
-origin_list = ['您发送的信息已被撤回 🌟请勿发送与本群无关的内容', 
+keyword_yaml_data = load_yaml_data('groups/bot/keyword_rules.yaml')
+test_data = keyword_yaml_data.get("test_data", {})
+
+# 1. 单个关键词合规录入（中文、字母、数字、混合，刚好10字边界）
+valid_single_rules = test_data.get("valid_single_keywords", [])
+valid_single_params = [(d["data"]["keyword"], d["expected"]["expected_word"], d["title"]) for d in valid_single_rules]
+valid_single_ids = [d["title"] for d in valid_single_rules]
+
+# 2. 空格批量添加分词（核心新 UI 特性）
+batch_space_rules = test_data.get("batch_by_space_keywords", [])
+batch_space_params = [(d["data"]["input_text"], d["expected"]["expected_words"], d["title"]) for d in batch_space_rules]
+batch_space_ids = [d["title"] for d in batch_space_rules]
+
+# 3. 超过10字截断
+truncate_rules = test_data.get("length_truncate_keywords", [])
+truncate_params = [(d["data"]["keyword"], d["expected"]["truncated_text"], d["title"]) for d in truncate_rules]
+truncate_ids = [d["title"] for d in truncate_rules]
+
+# 4. 非法字符拦截
+invalid_chars_rules = test_data.get("invalid_characters_keywords", [])
+invalid_chars_params = [(d["data"]["keyword"], d["title"]) for d in invalid_chars_rules]
+invalid_chars_ids = [d["title"] for d in invalid_chars_rules]
+
+
+origin_list = [
+    '您发送的信息已被撤回 🌟请勿发送与本群无关的内容', 
     '您发送的消息包含敏感内容已被撤回，请注意：多次违规将被禁言或移除聊天⚠️',
     '刚才的消息不太合适哦～我们一起维护良好的聊天环境吧！', 
     '请勿刷屏，保持良好聊天环境', 
     '友善提醒：刚才的消息不太合适呢～已帮你撤回啦，我们一起保持群内整洁吧！❤️', 
     '再次提醒：请注意发言内容，本次已撤回处理', 
-    '违规警告：您发送的内容严重违反群规，已撤回处理，请注意发言内容~']
+    '违规警告：您发送的内容严重违反群规，已撤回处理，请注意发言内容~'
+]
 
 
 @allure.epic("IM核心功能测试")
 @allure.feature("群助手-禁止发送关键词")
 class TestGroupBotKeyword:
     """群助手禁止发送关键词功能测试"""
-    
+
+    mainS: MainPage
+    homeS: HomePage
+    chatListS: ChatListPage
+    chatS: ChatPage
+    settingS: GroupSettingPage
+    botS: GroupBotPage
+
     @pytest.fixture(autouse=True)
-    def setup_method(self, driver_sender):
+    def setup_method(self, request, driver_sender):
         """初始化发送方的页面对象"""
         self.mainS = MainPage(driver_sender)
         self.homeS = HomePage(driver_sender)
@@ -48,30 +72,72 @@ class TestGroupBotKeyword:
 
         yield
         
+        if "cleanup_keyword_settings" in request.fixturenames or "cleanup_warning_settings" in request.fixturenames:
+            return
+
         self.mainS.go_to_main_page()
 
     @pytest.fixture
-    def cleanup_keyword_settings(self):
-        """用例后置清理：确保禁用禁发关键词检测，恢复群聊环境"""
+    def cleanup_warning_settings(self, request):
+        """警告语测试后置清理：保持在配置页连续执行，全部参数跑完后恢复默认警告语并返回主页"""
         yield
 
-        logger.info("🧹 [Cleanup] 开始清理群助手禁发关键词设置...")
+        node_name = request.node.name
+        is_last = "添加至10条上限" in node_name or "尝试删除最后一条警告语拦截" in node_name
+        if not is_last:
+            return
+
+        logger.info("🧹 [Cleanup] 警告语测试完毕，恢复初始默认警告语并安全返回主页...")
         try:
-            self.mainS.go_to_main_page()
-            self.chatListS.enter_chat(GROUP_STRATEGY.name)
-            self.chatS.wait_for_chat_page_load()
-            self.chatS.click_more_button()
-            self.settingS.wait_for_setting_page_load()
-            self.settingS.click_friend_header()
-            self.botS.enter_keyword_block()
-            self.botS.toggle_keyword_detection_switch(enable=False)
+            self.botS.set_custom_warning_msg(origin_list)
+            self.botS.toggle_switch(enable=False)
             self.botS.click_save()
-            logger.info("🧹 [Cleanup] 成功关闭群助手禁发关键词设置")
+            self.mainS.go_to_main_page()
+            logger.info("🧹 [Cleanup] 成功恢复默认警告语并返回主页")
+        except Exception as e:
+            logger.warning(f"⚠️ [Cleanup] 警告语后置恢复异常: {e}")
+            self.mainS.go_to_main_page()
+
+    @pytest.fixture
+    def cleanup_keyword_settings(self, request):
+        """用例后置清理：在全部参数执行完后才退回主页并关闭群助手禁发关键词设置"""
+        yield
+
+        is_last_case = False
+        node_name = request.node.name
+        last_candidates = [
+            "取消删除",
+            "清空所有关键词",
+            "添加第51个关键词",
+            invalid_chars_ids[-1] if invalid_chars_ids else None,
+            batch_space_ids[-1] if batch_space_ids else None,
+            truncate_ids[-1] if truncate_ids else None,
+            valid_single_ids[-1] if valid_single_ids else None,
+        ]
+        if any(c and (node_name.endswith(f"[{c}]") or c in node_name) for c in last_candidates):
+            is_last_case = True
+
+        if not is_last_case:
+            return
+
+        logger.info("🧹 [Cleanup] 关键词新增规则验证完毕，执行环境清理并安全返回主页...")
+        try:
+            self.botS.cancel_keyword_dialog_if_displayed()
+            if self.botS.get_keyword_row_count() > 0:
+                self.botS.clear_all_keywords()
+            self.botS.click_back()
+            self.botS.toggle_switch(enable=False)
+            self.botS.click_save()
+            self.mainS.go_to_main_page()
+            logger.info("🧹 [Cleanup] 成功关闭群助手禁发关键词设置并返回主页")
         except Exception as e:
             logger.warning(f"⚠️ [Cleanup] 清理禁发关键词设置时发生异常: {e}")
+            self.mainS.go_to_main_page()
 
-    def _enter_keyword_config_page(self):
-        """辅助方法：进入关键词配置页并开启功能开关"""
+
+    def _enter_keyword_config_page(self) -> None:
+        """辅助方法：从主页导航进入关键词配置页并开启功能开关"""
+        self.mainS.go_to_main_page()
         self.chatListS.enter_chat(GROUP_STRATEGY.name)
         self.chatS.wait_for_chat_page_load()
         self.chatS.click_more_button()
@@ -79,64 +145,114 @@ class TestGroupBotKeyword:
         self.settingS.click_friend_header()
         self.botS.wait_for_group_bot_page_load()
         self.botS.enter_keyword_block()
-        self.botS.toggle_keyword_detection_switch(enable=True)
+        self.botS.toggle_switch(enable=True)
         self.botS.click_save()
-    
 
-    def _exit_keyword_config_page(self):
-        """辅助方法：退出并返回聊天主页"""
-        self.botS.click_back()
-        self.botS.click_back()
-
-
-
-    # TODO：特殊字符未正确拦截，待修复
-    @allure.story("禁发关键词-添加关键词验证，合规与拦截规则")
-    @allure.title("校验关键词输入限制与有效性: {description}-状态：已完成")
-    @pytest.mark.parametrize("keyword, expected_action, expected_text, description", keyword_params, ids=keyword_ids)
-    def test_keyword_add_with_various_char_types(self, keyword, expected_action, expected_text, description):
-        """验证关键词输入规则：最多10字，且不支持邮箱和特殊符号的组合测试"""
-
-        with allure.step("1. 进入关键词配置列表"):
-            self._enter_keyword_config_page()
+    def _ensure_in_keyword_list_page(self) -> None:
+        """智能确保当前处于关键词配置列表页（零多余导航，彻底消灭每次回主页）"""
+        if self.botS.is_in_keyword_list_page(timeout=0.5):
+            return
+        if self.botS.is_in_keyword_config_page(timeout=0.5):
             self.botS.click_keyword_row()
-        
-        try:
-            with allure.step(f"2. 填入测试词: {keyword}"):
-                if expected_action == "success":
-                    # 正向合规预期，直接设置并保存
-                    self.botS.set_keywords([keyword])
-                    self.botS.save_keywords_config()
-                else:
-                    # 逆向拦截预期，逐字输入以精确捕捉拦截行为
-                    self.botS.input_keyword(keyword)
-                    actual_text = self.botS.get_keyword_input_text()
+            return
+        self._enter_keyword_config_page()
+        self.botS.click_keyword_row()
 
-            with allure.step(f"3. 校验行为: {expected_action}"):
-                if expected_action == "success":
-                    summary = self.botS.get_keyword_summary()
-                    check.is_true(keyword in summary, f"保存合规关键词 {keyword} 失败，实际摘要为: {summary}")
-                elif expected_action == "truncate":
-                    check.equal(actual_text, expected_text, f"超长字符预期截断为: {expected_text}，实际为: {actual_text}")
-                    self.botS.save_keywords_config()
-                elif expected_action == "toast_or_clear":
-                    # 拦截机制 1：输入框自动过滤
-                    if actual_text == expected_text or actual_text == "" or actual_text == "testabccom" or actual_text == "abc":
-                        logger.info(f"✅ {description} 已被输入框实时过滤拦截 (当前文本: '{actual_text}')")
-                    else:
-                        # 拦截机制 2：保存时弹窗阻断
-                        self.botS.save_keywords_config()
-                        toast = self.botS.get_toast()
-                        check.is_true(
-                            toast and ("格式" in toast or "符号" in toast or "不支持" in toast or "失败" in toast or "非法" in toast), 
-                            f"未正确拦截非法字符，也没出现有效的拦截Toast，实际获取Toast为: {toast}"
-                        )
-        finally:
-            with allure.step("4. 环境清理"):
-                if expected_action in ["success", "truncate"]:
-                    self.botS.click_keyword_row()
+
+
+    @allure.story("禁发关键词-添加关键词验证-单词合规录入")
+    @allure.title("校验单个关键词合规录入与10字上限: {title}-状态：已完成")
+    @pytest.mark.usefixtures("cleanup_keyword_settings")
+    @pytest.mark.parametrize("keyword, expected_word, title", valid_single_params, ids=valid_single_ids)
+    def test_keyword_add_valid_single(self, keyword: str, expected_word: str, title: str):
+        """验证新UI规则：单个关键词最多10个字，仅支持中文、字母和数字"""
+        with allure.step("1. 进入关键词配置列表页"):
+            self._ensure_in_keyword_list_page()
+
+        with allure.step(f"2. 点击新增弹窗录入关键词: {keyword}"):
+            keywords_list = self.botS.get_keyword_list()
+            if keyword not in keywords_list:
+                self.botS.click_keyword_add_btn()
+                self.botS.input_keywords(keyword)
+                self.botS.click_confirm_btn()
+            else:
+                logger.info(f"⚠️ [Action-GroupBotPage] 关键词 {keyword} 已存在，跳过新增")
+
+        with allure.step(f"3. 校验关键词已成功添加至列表: {expected_word}"):
+            keyword_list = self.botS.get_keyword_list()
+            check.is_true(expected_word in keyword_list, f"关键词列表未包含预期词: {expected_word}，实际列表: {keyword_list}")
+
+
+    @allure.story("禁发关键词-添加关键词验证-空格批量分词")
+    @allure.title("校验空格分隔批量添加关键词: {title}-状态：已完成")
+    @pytest.mark.usefixtures("cleanup_keyword_settings")
+    @pytest.mark.parametrize("input_text, expected_words, title", batch_space_params, ids=batch_space_ids)
+    def test_keyword_batch_add_by_space(self, input_text: str, expected_words: list[str], title: str):
+        """验证新UI规则：批量添加请用空格分隔，如：红包 广告 刷单"""
+        with allure.step("1. 进入关键词配置列表页"):
+            self._ensure_in_keyword_list_page()
+
+        with allure.step(f"2. 弹窗输入空格分隔文本: '{input_text}'"):
+            keywords_list = self.botS.get_keyword_list()
+            if keywords_list:
                 self.botS.clear_all_keywords()
-                self._exit_keyword_config_page()
+            self.botS.click_keyword_add_btn()
+            self.botS.input_keywords(input_text)
+            self.botS.click_confirm_btn()
+
+        with allure.step(f"3. 校验列表已同时批量新增所有分词: {expected_words}"):
+            keyword_list = self.botS.get_keyword_list()
+            for word in expected_words:
+                check.is_true(word in keyword_list, f"批量添加分词失败，列表缺失词: {word}，实际列表: {keyword_list}")
+
+
+    @allure.story("禁发关键词-输入规则限制-长度限制")
+    @allure.title("校验超过10字自动截断规则: {title}-状态：已完成")
+    @pytest.mark.usefixtures("cleanup_keyword_settings")
+    @pytest.mark.parametrize("keyword, truncated_text, title", truncate_params, ids=truncate_ids)
+    def test_keyword_add_length_truncate(self, keyword: str, truncated_text: str, title: str):
+        """验证新UI规则：单个关键词最多10个字，超长字符在输入框中自动截断为前10字"""
+        with allure.step("1. 进入关键词配置列表页"):
+            self._ensure_in_keyword_list_page()
+
+        with allure.step(f"2. 弹窗输入超长字符: {keyword}"):
+            self.botS.click_keyword_add_btn()
+            self.botS.input_keywords(keyword)
+            self.botS.click_confirm_btn()
+
+        with allure.step(f"3. 校验输入框截断与入库: 预期截断为 '{truncated_text}'"):
+            is_added = self.botS.verify_toast_exist(truncated_text)
+            if is_added:
+                self.botS.click_cancel_btn()
+            check.is_true(is_added, f"截断后的关键词未入库")
+
+
+    @allure.story("禁发关键词-输入规则限制-非法字符拦截")
+    @allure.title("校验非法字符拦截规则: {title}-状态：已完成")
+    @pytest.mark.usefixtures("cleanup_keyword_settings")
+    @pytest.mark.parametrize("keyword, title", invalid_chars_params, ids=invalid_chars_ids)
+    def test_keyword_add_invalid_characters(self, keyword: str, title: str):
+        """验证新UI规则：仅支持中文、字母和数字，特殊符号/邮箱等无法输入或点击确定被拦截"""
+        with allure.step("1. 进入关键词配置列表页"):
+            self._ensure_in_keyword_list_page()
+
+        with allure.step(f"2. 弹窗录入非法格式字符: {keyword}"):
+            self.botS.click_keyword_add_btn()
+            self.botS.input_keywords(keyword)
+            actual_text = self.botS.get_keywords_text()
+
+        with allure.step("3. 校验输入框实时过滤或 Toast 拦截"):
+            if not actual_text or not any(c.isalnum() for c in actual_text):
+                logger.info(f"✅ 非法字符 '{keyword}' 已被输入框实时过滤拦截 (当前文本为空或纯过滤)")
+                self.botS.click_cancel_btn()
+            else:
+                self.botS.click_confirm_btn()
+                toast = self.botS.get_toast()
+                check.is_true(
+                    toast and any(w in toast for w in ["特殊符号", "表情", "格式", "字符"]), 
+                    f"未正确拦截非法字符 '{keyword}'，Toast 提示为: {toast}"
+                )
+                self.botS.click_cancel_btn()
 
 
     @allure.story("禁发关键词-添加关键词验证")
@@ -150,104 +266,89 @@ class TestGroupBotKeyword:
             pytest.param(51, id="添加第51个关键词"),
         ],
     )
-    def test_keyword_max_limit(self, length):
+    @pytest.mark.usefixtures("cleanup_keyword_settings")
+    def test_keyword_max_limit(self, length: int):
         """验证关键词最多只能添加 50 个的边界及上限提示"""
 
-        with allure.step("1. 配置群助手-禁发关键词"):
-            self._enter_keyword_config_page()
-            self.botS.click_keyword_row()
+        with allure.step("1. 进入关键词配置列表页"):
+            self._ensure_in_keyword_list_page()
         
-        try:
-            with allure.step("2. 添加 0 - 50 个关键词"):
-                keywords_list = [f"K{i}" for i in range(0, length)]
-                count = self.botS.set_keywords(keywords=keywords_list)
-                
-                if length == 0:
-                    check.equal(count, 0, f"添加关键词数量与预期不符，预期: {0}, 实际: {count}")
-                    toast = self.botS.get_toast()
-                    check.is_true("有未填写项，无法新增" in toast, f"未提示有未填写项，无法新增, Toast为: {toast}")
-
-                if length != 51 and length != 0:
-                    self.botS.save_keywords_config()
-                    check.equal(count, length, f"添加关键词数量与预期不符，预期: {length}, 实际: {count}")
-                    summary = self.botS.get_keyword_summary()
-                    check.is_not_in("未设置" , summary, f"关键词数量与预期不符，预期: 未设置，实际: {summary}")
-
-            
-            with allure.step("3. 验证添加第51个关键词"):
-                if length == 51:
-                    self.botS.click_keyword_add_btn()
-                    toast = self.botS.get_toast()
-                    check.is_true("当前最多可设置50个关键词" in toast, f"未提示最多，Toast为: {toast}")
-                    self.botS.click_back()
-                    summary = self.botS.get_keyword_summary()
-                    check.is_true("未设置" in summary, f"关键词数量与预期不符，预期: 50个，实际: {summary}")
-                    # self.botS.click_keyword_add_btn()
-        finally:
-            if length in [1, 50]:
-                self.botS.enter_keyword_block()
-                self.botS.click_keyword_row()
+        with allure.step(f"2. 测试添加数量分支: length={length}"):
+            keywords_list = self.botS.get_keyword_list()
+            if keywords_list:
                 self.botS.clear_all_keywords()
-                self._exit_keyword_config_page()
+            if length == 0:
+                self.botS.click_keyword_add_btn()
+                self.botS.click_confirm_btn()
+                toast = self.botS.get_toast()
+                check.is_true(
+                    toast and any(w in toast for w in ["输入", "填写", "不能为空"]),
+                    f"未提示输入拦截，实际 Toast 为: {toast}"
+                )
+                self.botS.click_cancel_btn()
+                check.equal(self.botS.get_keyword_row_count(timeout=0.5), 0, "空提交不应增加关键词行")
+
+            elif length in [1, 50]:
+                keywords_list = [f"K{i} " for i in range(length)]
+                self.botS.add_keywords(keywords_list)
+                self.botS.click_back()
+                summary = self.botS.get_keyword_summary()
+                check.is_not_in("未设置", summary, f"添加 {length} 个关键词后，摘要不应为未设置，实际为: {summary}")
+                # 校验完 summary 顺手重新进列表页，保持页面处于列表页，绝不回主页
+                self.botS.click_keyword_row()
+
             elif length == 51:
-                # self.botS.clear_keyword_input()
-                # self.botS.clear_all_keywords()
-                self._exit_keyword_config_page()
-            else:
-                self._exit_keyword_config_page()
+                self.botS.add_keywords([f"K{i} " for i in range(50)])
+                time.sleep(2)
+                self.botS.click_keyword_add_btn()
+                toast = self.botS.verify_toast_exist("当前最多可设置50个关键词")
+                check.is_true(toast, f"未提示达到50个关键词上限，实际 Toast 为: {toast}")
+                self.botS.cancel_keyword_dialog_if_displayed()
+            self.botS.clear_all_keywords()
 
 
     @allure.story("禁发关键词-删除/清空关键词")
-    @allure.title("校验删除关键词成功-状态：已完成")
+    @allure.title("校验删除关键词成功-状态：已完成: {title}")
+    @pytest.mark.usefixtures("cleanup_keyword_settings")
     @pytest.mark.parametrize(
-        "del_index",
+        "del_count, is_empty_expected, title",
         [
-            pytest.param(1, id="删除第1个关键词"),
-            pytest.param(0, id="清空所有关键词"),
+            pytest.param(1, False, "删除单条关键词后列表与摘要保持有效", id="删除单条关键词"),
+            pytest.param(None, True, "清空所有关键词后列表归零且摘要重置", id="清空所有关键词"),
         ],
     )
-    def test_keyword_delete(self, del_index):
-        """验证删除关键词功能"""
-        with allure.step("1. 配置群助手-禁发关键词"):
-            self._enter_keyword_config_page()
-            self.botS.click_keyword_row()
+    def test_keyword_delete(self, del_count: int | None, is_empty_expected: bool, title: str):
+        """验证删除关键词功能：覆盖单条删除与全量清空，及其对上级摘要状态的同步更新"""
+        with allure.step("1. 智能确保进入关键词配置列表页并初始化环境"):
+            self._ensure_in_keyword_list_page()
+            if self.botS.get_keyword_row_count(timeout=0.5) > 0:
+                self.botS.clear_all_keywords()
         
-        try:
-            with allure.step("2. 添加 5 个关键词并保存"):
-                keywords_list = [f"K{i}" for i in range(0, 5)]
-                self.botS.set_keywords(keywords=keywords_list)
-                self.botS.save_keywords_config()
-                
-                summary = self.botS.get_keyword_summary()
-                check.is_not_in("未设置", summary, f"关键词数量与预期不符，实际为: {summary}")
+        with allure.step("2. 批量添加 5 个关键词准备测试环境"):
+            keywords_list = [f"K{i} " for i in range(5)]
+            self.botS.add_keywords(keywords_list)
+            check.equal(self.botS.get_keyword_row_count(timeout=0.5), 5, "列表初始数量应为 5")
 
-            with allure.step(f"3. 再次进入配置页，执行 {'删除第1个' if del_index == 1 else '清空全部'} 关键词"):
-                self.botS.click_keyword_row()
-                keyword_row_count = self.botS.get_keyword_row_count()
-                check.equal(keyword_row_count, 5, f"列表初始数量不为5，实际: {keyword_row_count}")
-                
-                delete_count = 1 if del_index == 1 else None
-                self.botS.clear_all_keywords(count=delete_count)
-                
-            with allure.step("4. 校验删除结果"):
-                if del_index == 1:
-                    self.botS.click_keyword_row()
-                    new_count = self.botS.get_keyword_row_count()
-                    check.equal(new_count, 4, f"删除1个后，列表剩余数量应为4，实际: {new_count}")
-                    self.botS.save_keywords_config()
-                else:
-                    summary = self.botS.get_keyword_summary()
-                    check.is_true("未设置" in summary, f"清空全部后，配置摘要应为未设置，实际: {summary}")
-        finally:
-            with allure.step("5. 环境清理"):
-                self.botS.enter_keyword_block()
+        with allure.step(f"3. 执行删除操作: {title}"):
+            self.botS.clear_all_keywords(count=del_count)
+            
+        with allure.step("4. 校验列表剩余行数并返回上级验证摘要同步更新"):
+            expected_remaining = 4 if del_count == 1 else 0
+            remaining_count = self.botS.get_keyword_row_count(timeout=0.5)
+            check.equal(remaining_count, expected_remaining, f"删除后列表行数不匹配，预期: {expected_remaining}，实际: {remaining_count}")
+            self.botS.click_back()
+            summary = self.botS.get_keyword_summary()
+            if is_empty_expected:
+                check.is_true("未设置" in summary, f"全部清空后摘要应为未设置，实际为: {summary}")
+            else:
+                check.is_not_in("未设置", summary, f"尚有剩余关键词时摘要不应为未设置，实际为: {summary}")
                 self.botS.click_keyword_row()
                 self.botS.clear_all_keywords()
-                self._exit_keyword_config_page()
-    
-    
+
+
     @allure.story("禁发关键词-输入规则限制")
     @allure.title("校验删除关键词二次确认流程-状态：已完成: {confirm_action}")
+    @pytest.mark.usefixtures("cleanup_keyword_settings")
     @pytest.mark.parametrize(
         "confirm_action",
         [
@@ -255,188 +356,164 @@ class TestGroupBotKeyword:
             pytest.param("cancel", id="取消删除"),
         ],
     )
-    def test_keyword_delete_flow(self, confirm_action):
-        """验证删除关键词时的二次确认弹窗的取消和确定逻辑"""
-        with allure.step("1. 进入关键词配置页"):
-            self._enter_keyword_config_page()
-            self.botS.click_keyword_row()
-            
-        try:
-            with allure.step("2. 输入内容触发删除按钮"):
-                keywords_list = ['取消删除', '确认删除']
-                self.botS.set_keywords(keywords=keywords_list)
-                self.botS.save_keywords_config()
-                self.botS.click_keyword_row()
-                check.is_true(len(self.botS.get_keyword_delete_icon_list()) > 0, "输入内容后未显示删除按钮")
-            
-            with allure.step("3. 点击删除，校验弹窗"):
-                delete_icons = self.botS.get_keyword_delete_icon_list()
-                if delete_icons:
-                    delete_icons[0].click()
-                check.is_true(self.botS.get_confirm_dialog(), "未弹出二次确认弹窗")
-            
-            with allure.step(f"4. 执行操作: {confirm_action}并校验"):
-                if confirm_action == "cancel":
-                    self.botS.click_keyword_delete_cancel_btn()
-                    check.equal(self.botS.get_keyword_row_count(), 2, "取消删除后关键词数量应该不变")
-                    rows = self.botS.get_keyword_row_element()
-                    if rows:
-                        check.equal(rows[0].get_attribute("text"), "确认删除", "取消删除后关键词内容改变")
-                else:
-                    self.botS.click_keyword_delete_confirm_btn()
-                    check.equal(self.botS.get_keyword_row_count(), 1, "确认删除后关键词数量应该减少1个")
-                    rows = self.botS.get_keyword_row_element()
-                    if rows:
-                        check.equal(rows[0].get_attribute("text"), "取消删除", "被删除后的剩余关键词不正确")
-        finally:
-            with allure.step("5. 环境清理"):
+    def test_keyword_delete_flow(self, confirm_action: str):
+        """验证删除关键词时的二次确认弹窗的取消和确定逻辑，验证数量变化及指定词精确移除"""
+        with allure.step("1. 智能确保进入关键词配置列表页并初始化纯净环境"):
+            self._ensure_in_keyword_list_page()
+            if self.botS.get_keyword_row_count(timeout=0.5) > 0:
                 self.botS.clear_all_keywords()
-                self._exit_keyword_config_page()
+            
+        with allure.step("2. 添加 2 个关键词准备测试数据"):
+            target_del_word = "待删词A"
+            keep_word = "留存词B"
+            self.botS.add_keywords([f"{target_del_word} ", f"{keep_word} "])
+            delete_icon_count = self.botS.get_keyword_delete_icon_count()
+            check.is_true(delete_icon_count >= 2, f"关键词列表中删除按钮不足 2 个，实际: {delete_icon_count}")
+        
+        with allure.step(f"3. 点击第 1 个删除按钮（{target_del_word}），校验二次确认弹窗弹出"):
+            self.botS.click_delete_keyword_icon(index=0)
+            check.is_true(self.botS.get_confirm_dialog(), "未弹出删除二次确认弹窗")
+        
+        with allure.step(f"4. 执行操作: {confirm_action} 并精确校验列表数量与词条内容"):
+            if confirm_action == "cancel":
+                self.botS.click_keyword_delete_cancel_btn()
+                current_list = self.botS.get_keyword_list()
+                check.equal(len(current_list), 2, "取消删除后关键词数量应该不变（仍为 2）")
+                check.is_true(target_del_word in current_list and keep_word in current_list, "取消删除后原词条内容应完整保留")
+            else:
+                self.botS.click_keyword_delete_confirm_btn()
+                current_list = self.botS.get_keyword_list()
+                check.equal(len(current_list), 1, "确认删除后关键词数量应该减少 1 个（剩余 1）")
+                check.is_false(target_del_word in current_list, f"确认删除后，目标词 {target_del_word} 不应再存在于列表中")
+                check.is_true(keep_word in current_list, f"确认删除后，非目标词 {keep_word} 应正常留存")
 
-    
+        with allure.step("5. 清理本次测试数据"):
+            if self.botS.get_keyword_row_count() > 0:
+                self.botS.clear_all_keywords()
+
+
     @allure.story("禁发关键词-警告语设置-添加")
-    @allure.title("自定义警告语 - 配置校验与上限测试-状态：已完成")
+    @allure.title("自定义警告语 - 配置校验与上限测试-状态：已完成: {title}")
+    @pytest.mark.usefixtures("cleanup_warning_settings")
     @pytest.mark.parametrize(
-        "warning_count, warning_msg",
+        "case_type, input_msgs, expected_toast, title",
         [
-            pytest.param(0, None, id="添加0条警告语"),
-            pytest.param(1, ["第一条警告语"], id="添加1条警告语"),
-            pytest.param(2, ["警告语敏感词：敏感词"], id="添加敏感词警告语"),
-            pytest.param(3, [f"自定义警告语{i+1}" for i in range(10)], id="添加警告语到上限"),
-            pytest.param(4, [f"超出上限的警告语{i+1}" for i in range(11)], id="添加超过10条警告语"),
+            pytest.param("empty", None, "请输入警告语", "空输入拦截", id="空输入拦截"),
+            pytest.param("sensitive", ["习近平"], "内容包含敏感词，请修改后提交", "敏感词拦截", id="敏感词拦截"),
+            pytest.param("overflow", [f"超限词{i}" for i in range(11)], "当前最多可设置10条警告语", "超限10条拦截", id="超限10条拦截"),
+            pytest.param("single", ["新增单条警告语"], None, "添加单条自定义警告语", id="添加单条警告语"),
+            pytest.param("max_limit", [f"顶格词{i}" for i in range(10)], None, "添加警告语达到10条上限", id="添加至10条上限"),
         ],
     )
-    def test_group_bot_keyword_warning_message_setting(self, warning_count, warning_msg):
-        """验证配置自定义警告语的规则与数量上限，包括空输入拦截和批量添加的边界值校验"""
-        
-        with allure.step("1. 发送方进入群助手，进入警告语设置面板"):
-            self._enter_keyword_config_page()
-            before_warning_msg_text = self.botS.get_warning_msg_text()
+    def test_group_bot_keyword_warning_message_setting(
+        self, case_type: str, input_msgs: list[str] | None, expected_toast: str | None, title: str
+    ):
+        """验证配置自定义警告语的规则与数量上限：覆盖空输入拦截、敏感词拦截、超限拦截及正常添加"""
+        with allure.step("1. 智能确保进入群助手禁发关键词配置页并打开警告语面板"):
+            if not self.botS.is_in_keyword_config_page(timeout=0.5):
+                self._enter_keyword_config_page()
+            
             self.botS.click_warning_msg_setting()
             self.botS.wait_warning_msg_panel()
-        
-        with allure.step("2. 获取元素默认值警告语"):
-            default_msg = self.botS.get_all_warning_msg_texts()
-            before_warning_msg_count = len(default_msg)
-        
-        with allure.step(f"3. 设置自定义警告语：{warning_msg}"):
-            if warning_count not in [0, 2]:
-                count = len(warning_msg) - before_warning_msg_count
-                warning_msg = warning_msg[:count]
-            
-            self.botS.set_custom_warning_msg(msgs=warning_msg)
-            new_warning_msg = self.botS.get_warning_msg_text()
+            before_count = len(self.botS.get_all_warning_msg_texts())
+            if before_count >= 10:
+                self.botS.clear_extra_warning_msgs(nums=before_count, target_remain=7)
+                before_count = self.botS.get_warning_msg_count()
 
-            if warning_msg is None and warning_count == 0:
-                warning_toast = self.botS.get_toast()
-                check.is_true("请输入警告语" in warning_toast, f"未触发空输入拦截 Toast，实际为: {warning_toast}")
-                check.equal(new_warning_msg, before_warning_msg_text, "设置自定义警告语为空后，文本不正确")
-                self.botS.click_custom_warning_msg_cancel_btn()
-            elif warning_count == 2:
-                warning_toast = self.botS.get_toast()
-                check.is_true("内容包含敏感词，请修改后提交" in warning_toast, f"未触发敏感词拦截 Toast，实际为: {warning_toast}")
-                check.equal(new_warning_msg, before_warning_msg_text, "设置自定义警告语为敏感词后，文本不正确")
-                self.botS.click_custom_warning_msg_cancel_btn()
-            elif warning_count == 4:
-                warning_toast = self.botS.get_toast()
-                check.is_true("当前最多可设置10条警告语" in warning_toast, f"未触发超限拦截 Toast，实际为: {warning_toast}")
-                check.equal(new_warning_msg, before_warning_msg_text, "设置自定义警告语超限后，文本不应改变")
-                self.botS.click_custom_warning_msg_cancel_btn()
-            else:
-                check.not_equal(new_warning_msg, before_warning_msg_text, "设置自定义警告语后文本不正确")
-        
-        with allure.step("4. 设置自定义警告语后数量"):  
-            if not self.botS.wait_warning_msg_panel():
+        with allure.step(f"2. 执行业务操作: {title}"):
+            if case_type == "empty":
+                self.botS.click_custom_warning_msg_btn()
+                self.botS.click_custom_warning_msg_confirm_btn()
+                toast = self.botS.get_toast()
+                check.is_true(expected_toast in toast, f"未触发空输入拦截，实际 Toast: {toast}")
+
+            elif case_type == "sensitive":
+                self.botS.set_custom_warning_msg(msgs=input_msgs)
+                toast = self.botS.get_toast()
+                check.is_true(expected_toast in toast, f"未触发敏感词拦截 [{expected_toast}]，实际 Toast: {toast}")
+
+            elif case_type == "overflow":
+                overflow_msgs = input_msgs[: 10 - before_count + 1]
+                self.botS.set_custom_warning_msg(msgs=overflow_msgs)
+                toast = self.botS.get_toast()
+                check.is_true(expected_toast in toast, f"未触发超限拦截 [{expected_toast}]，实际 Toast: {toast}")
+
+            elif case_type == "single":
+                self.botS.set_custom_warning_msg(msgs=input_msgs)
                 self.botS.click_warning_msg_setting()
                 self.botS.wait_warning_msg_panel()
-            
-            after_warning_msg_count = self.botS.get_warning_msg_count()
-            if warning_count in [0, 2, 4]:
-                expected_added = 0 
-            else:
-                expected_added = len(warning_msg) if warning_msg else 0
-            check.equal(after_warning_msg_count, before_warning_msg_count + expected_added, "设置自定义警告语后数量不正确")
-        
+                after_count = self.botS.get_warning_msg_count()
+                check.equal(after_count, before_count + 1, "新增单条警告语后数量未增加 1")
+
+            elif case_type == "max_limit":
+                needed = 10 - before_count
+                if needed > 0 and input_msgs:
+                    self.botS.set_custom_warning_msg(msgs=input_msgs[:needed])
+                self.botS.click_warning_msg_setting()
+                self.botS.wait_warning_msg_panel()
+                check.equal(self.botS.get_warning_msg_count(), 10, "添加至上限后总数未达到 10 条")
+
 
     @allure.story("禁发关键词-警告语设置 - 删除")
-    @allure.title("删除自定义警告语-状态：已完成")
+    @allure.title("删除自定义警告语-状态：已完成: {id_title}")
+    @pytest.mark.usefixtures("cleanup_warning_settings")
     @pytest.mark.parametrize(
-        "action, target_index, is_confirm",
+        "action, target_index, is_confirm, id_title",
         [
-            pytest.param("delete_custom", 1, True, id="删除单条_确认"),
-            pytest.param("delete_custom", 1, False, id="删除单条_取消"),
-            pytest.param("delete_last_one", 0, True, id="尝试删除最后一条警告语拦截"),
+            pytest.param("delete_custom", 1, True, "删除单条_确认", id="删除单条_确认"),
+            pytest.param("delete_custom", 1, False, "删除单条_取消", id="删除单条_取消"),
+            pytest.param("delete_last_one", 0, True, "尝试删除最后一条警告语拦截", id="尝试删除最后一条警告语拦截"),
         ],
     )
-    def test_group_bot_keyword_delete_warning_msg(self, action, target_index, is_confirm):
-        """验证删除自定义警告语的功能"""
-
-        with allure.step("1. 发送方进入群助手，进入警告语设置面板"):
-            self._enter_keyword_config_page()
-            before_warning_msg_text = self.botS.get_warning_msg_text()
-            self.botS.click_warning_msg_setting()
-            self.botS.wait_warning_msg_panel()
+    def test_group_bot_keyword_delete_warning_msg(self, action: str, target_index: int, is_confirm: bool, id_title: str):
+        """验证删除自定义警告语的功能：覆盖删除确认生效、删除取消回退以及删除最后一条的业务拦截校验"""
+        with allure.step("1. 确保进入群助手禁发关键词配置页并打开警告语面板"):
+            if not self.botS.is_in_keyword_config_page(timeout=0.5):
+                self._enter_keyword_config_page()
             
+            if not self.botS.is_warning_msg_panel_displayed(timeout=1):
+                self.botS.click_warning_msg_setting()
+                self.botS.wait_warning_msg_panel()
+
         with allure.step("2. 前置准备测试数据"):
             current_count = self.botS.get_warning_msg_count()
+            self.botS.click_custom_warning_msg_confirm_btn()
+            self.botS.click_warning_msg_setting()
+            self.botS.wait_warning_msg_panel()
             if action == "delete_custom":
                 if current_count < 2:
                     self.botS.set_custom_warning_msg(origin_list)
-                    if not self.botS.wait_warning_msg_panel(timeout=2):
-                        self.botS.click_warning_msg_setting()
-                        self.botS.wait_warning_msg_panel()
+                    self.botS.click_warning_msg_setting()
+                    self.botS.wait_warning_msg_panel()
                     current_count = self.botS.get_warning_msg_count()
             elif action == "delete_last_one":
-                pass 
-        
-        with allure.step("3. 向下滑动"):
-            if current_count > 5:
-                self.botS.scroll_warning_msg_list_down()
+                if current_count > 1:
+                    self.botS.clear_extra_warning_msgs(target_remain=1, nums=current_count)
+            after_count = self.botS.get_warning_msg_count()
 
-        with allure.step(f"4. 触发删除动作: target_index={target_index}"):
-            warning_texts = self.botS.get_current_page_warning_msg_texts()
-            target_text = warning_texts[target_index] if len(warning_texts) > target_index else None
+        with allure.step(f"3. 触发删除动作: target_index={target_index}"):
+            before_texts = self.botS.get_current_page_warning_msg_texts()
+            target_text = before_texts[target_index] if len(before_texts) > target_index else None
             self.botS.delete_warning_msg(index=target_index)
 
-        with allure.step(f"5. 执行操作: {is_confirm} 并校验结果"):
+        with allure.step(f"4. 执行操作: {'确认' if is_confirm else '取消'} 并校验结果"):
             if action == "delete_last_one":
                 self.botS.click_custom_warning_msg_confirm_btn()
                 warning_toast = self.botS.get_toast()
                 check.is_true("至少保留一条警告语" in warning_toast, f"未触发最后一条警告语拦截Toast，实际为: {warning_toast}")
+                
+            elif not is_confirm:
+                self.botS.click_custom_warning_msg_cancel_btn()
+                if not self.botS.is_warning_msg_panel_displayed(timeout=1):
+                    self.botS.click_warning_msg_setting()
+                    self.botS.wait_warning_msg_panel()
+                after_texts = self.botS.get_current_page_warning_msg_texts()
+                check.equal(len(after_texts), len(before_texts), "取消删除后，警告语数量不应改变")
+                check.equal(after_texts, before_texts, "取消删除后，警告语列表内容不应改变")
+
             else:
-                if not is_confirm:
-                    self.botS.click_custom_warning_msg_cancel_btn()
-                    self.botS.click_warning_msg_setting()
-                    self.botS.wait_warning_msg_panel()
-                    current_texts = self.botS.get_all_warning_msg_texts()
-                    check.equal(len(current_texts), current_count, "取消删除后，警告语数量不应改变")
-                    check.equal(current_texts, warning_texts, "取消删除后，警告语内容不应改变")
-                else:
-                    self.botS.click_custom_warning_msg_confirm_btn()
-                    self.botS.click_warning_msg_setting()
-                    self.botS.wait_warning_msg_panel()
-                    current_texts = self.botS.get_all_warning_msg_texts()
-                    check.equal(len(current_texts), current_count - 1, "确认删除后，警告语数量没有减少")
-                    if target_text:
-                        check.is_false(target_text in current_texts, f"确认删除后，被删警告语 {target_text} 仍然存在于列表中")
-        
-        with allure.step("6. 测试环境后置：恢复初始警告语"):
-            if action == "delete_last_one":
-                logger.info("⚙️ 正在恢复 delete_last_one 测试删除掉的警告语数据...")
-                self.botS.set_custom_warning_msg(origin_list)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                self.botS.click_custom_warning_msg_confirm_btn()
+                self.botS.click_warning_msg_setting()
+                self.botS.wait_warning_msg_panel()
+                count = self.botS.get_warning_msg_count()
+                check.equal(count, after_count - 1, "确认删除后，警告语数量未减少 1")

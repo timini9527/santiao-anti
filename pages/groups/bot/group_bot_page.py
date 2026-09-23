@@ -139,6 +139,16 @@ class GroupBotPage(BasePage):
         logger.info("⚙️ [Action-GroupBotPage] 点击进入【关键词】配置列表")
         self.click(GroupBotLocator.KEYWORD_ENTRY)
     
+    # 关键词-检查当前是否处于关键词列表页
+    def is_in_keyword_list_page(self, timeout: float = 2) -> bool:
+        """检查当前是否处于关键词配置列表页（存在新增关键词布局）"""
+        return self.is_element_exist(GroupBotLocator.LAYOUT_ADD_KEYWORD, timeout=timeout, raise_exception=False)
+
+    # 关键词-检查当前是否处于群助手禁发关键词配置页
+    def is_in_keyword_config_page(self, timeout: float = 2) -> bool:
+        """检查当前是否处于禁发关键词功能配置页（存在关键词入口行）"""
+        return self.is_element_exist(GroupBotLocator.KEYWORD_ENTRY, timeout=timeout, raise_exception=False)
+
     # 关键词-获取关键词列表配置状态
     def get_keyword_summary(self) -> str:
         """关键词-获取关键词列表配置状态"""
@@ -162,6 +172,13 @@ class GroupBotPage(BasePage):
         """关键词-清空关键词输入框"""
         logger.info("⚙️ [Action-GroupBotPage] 清空关键词输入框")
         self.get_keywords_element().clear()
+
+    # 关键词-若弹窗处于显示状态则取消关闭
+    def cancel_keyword_dialog_if_displayed(self) -> None:
+        """关键词-如果新增关键词弹窗仍处于显示状态，则点击取消关闭弹窗"""
+        if self.is_element_exist(GroupBotLocator.ET_KEYWORDS, timeout=1, raise_exception=False):
+            logger.info("⚙️ [Action-GroupBotPage] 检测到新增关键词弹窗未关闭，执行取消关闭")
+            self.click_cancel_btn()
 
     # 关键词-点击新增关键词按钮
     def click_keyword_add_btn(self) -> None:
@@ -187,10 +204,10 @@ class GroupBotPage(BasePage):
         element.send_keys(text)
     
     # 关键词-获取所有关键词所在的行（包含删除图标）的WebElement列表
-    def get_keyword_row_element(self) -> list[WebElement]:
+    def get_keyword_row_element(self, timeout: float | int = 2, raise_exception: bool = True) -> list[WebElement]:
         """关键词-获取所有关键词所在的行（包含删除图标）的WebElement列表"""
         logger.info("⚙️ [Action-GroupBotPage] 正在获取所有关键词所在的行元素列表...")
-        tv_keyword_list = self.find_elements(GroupBotLocator.TV_KEYWORD_NUMBER, timeout=2)
+        tv_keyword_list = self.find_elements(GroupBotLocator.TV_KEYWORD_NUMBER, timeout=timeout, raise_exception=raise_exception)
         if not tv_keyword_list:
             logger.warning("⚙️ [Action-GroupBotPage] 未找到关键词")
             return []
@@ -198,16 +215,16 @@ class GroupBotPage(BasePage):
         return tv_keyword_list
     
     # 关键词-获取所有关键词所在的行（包含删除图标）的数量
-    def get_keyword_row_count(self) -> int:
+    def get_keyword_row_count(self, timeout: int | float = 1) -> int:
         """关键词-获取所有关键词所在的行（包含删除图标）的数量"""
         logger.info("⚙️ [Action-GroupBotPage] 正在统计关键词行数量...")
-        return len(self.get_keyword_row_element())
+        return len(self.get_keyword_row_element(timeout, raise_exception=False))
     
     # 关键词-获取当前配置的所有关键词列表
-    def get_keyword_list(self) -> list[str]:
+    def get_keyword_list(self, timeout: int | float = 2) -> list[str]:
         """关键词-获取当前配置的所有关键词文本列表"""
         logger.info("⚙️ [Action-GroupBotPage] 正在获取关键词列表...")
-        elements = self.get_keyword_row_element()
+        elements = self.get_keyword_row_element(timeout, raise_exception=False)
         if not elements:
             logger.warning("⚙️ [Action-GroupBotPage] 未找到关键词")
             return []
@@ -222,14 +239,29 @@ class GroupBotPage(BasePage):
         self.click(GroupBotLocator.TV_SAVE)
 
     # 关键词-获取删除图标元素
-    def get_keyword_delete_icon_list(self) -> list[WebElement]:
+    def get_keyword_delete_icon_list(self, timeout: int | float = 2, raise_exception: bool = True) -> list[WebElement]:
         """关键词-获取关键词删除图标元素列表"""
         logger.info("⚙️ [Action-GroupBotPage] 正在获取关键词删除图标列表...")
-        icons = self.find_elements(GroupBotLocator.DELETE_KEYWORD_ICON, timeout=2)
+        icons = self.find_elements(GroupBotLocator.DELETE_KEYWORD_ICON, timeout=timeout, raise_exception=raise_exception)
         if not icons:
-            logger.warning("⚙️ [Action-GroupBotPage] 未找到删除图标")
+            logger.warning("⚙️ [Action-GroupBotPage] 未找到关键词")
+            return []
         logger.info(f"⚙️ [Action-GroupBotPage] 获取删除图标列表: {len(icons)}个")
         return icons
+
+    # 关键词-获取删除图标数量
+    def get_keyword_delete_icon_count(self, timeout: int | float = 1) -> int:
+        """关键词-获取关键词删除图标数量"""
+        return len(self.get_keyword_delete_icon_list(timeout, raise_exception=False))
+
+    # 关键词-点击指定索引的删除图标
+    def click_delete_keyword_icon(self, index: int = 0) -> None:
+        """关键词-点击指定索引位置的删除图标"""
+        logger.info(f"⚙️ [Action-GroupBotPage] 点击第 {index} 个关键词删除图标")
+        icons = self.get_keyword_delete_icon_list()
+        if not icons or len(icons) <= index:
+            raise Exception(f"未找到索引为 {index} 的关键词删除图标，当前图标数量: {len(icons)}")
+        icons[index].click()
     
     # 关键词-获取二次确认框中
     def get_confirm_dialog(self) -> bool:
@@ -268,7 +300,7 @@ class GroupBotPage(BasePage):
             self.click(GroupBotLocator.DELETE_KEYWORD_ICON)
             self.click_keyword_delete_confirm_btn()
             deleted += 1
-            time.sleep(0.3)
+            time.sleep(0.1)
         # self.save_keywords_config()
 
     # 关键词-弹窗批量添加关键词
@@ -369,6 +401,11 @@ class GroupBotPage(BasePage):
         logger.info("⚙️ [Action-GroupBotPage] 警告语面板已加载")
         return element
     
+    # 关键词-检查警告语面板是否显示
+    def is_warning_msg_panel_displayed(self, timeout: int = 1) -> bool:
+        """关键词-检查警告语面板是否显示"""
+        return self.wait_warning_msg_panel(timeout=timeout) is not None
+    
     # 关键词-获取当前可见的警告语元素
     def get_visible_warning_msg_elements(self, timeout: int = 2) -> list[WebElement]:
         """关键词-获取当前可见的警告语所在行元素"""
@@ -430,7 +467,10 @@ class GroupBotPage(BasePage):
                 
             self.swipe_to_distance(slid_type="up", rect=panel_rect, duration=100)
             swipe_max -= 1
-            
+        
+        # self.swipe_page_quickly(element=elem, slid_type="down")
+        # if not self.is_warning_msg_panel_displayed(timeout=2):
+        #     self.click_warning_msg_setting()
         logger.info(f"⚙️ [Action-GroupBotPage] 警告语收集完毕，共获取 {len(msg_texts)} 条去重数据: {msg_texts}")
         return msg_texts
 
@@ -499,48 +539,84 @@ class GroupBotPage(BasePage):
             self.set_custom_warning_msg_input(msg)
             self.click_custom_warning_msg_confirm_btn()
             count += 1
-            
             if count == len(msgs):
                 logger.info("⚙️ [Action-GroupBotPage] 已添加的自定义警告语数量达到预期。")
                 break
-            
             self.click_warning_msg_setting()
             self.wait_warning_msg_panel()
-        time.sleep(1)
+            time.sleep(0.5)
     
-    # 关键词-删除警告语
-    def delete_warning_msg(self, index: int = 1) -> None:
-        """关键词-删除警告语"""
-        logger.info(f"⚙️ [Action-GroupBotPage] 准备删除警告语(目标索引: {index})...")
-        elements = self.get_visible_warning_msg_elements()
+    # 关键词-批量清理多余警告语至保留条数（默认保留系统底线的 1 条）
+    def clear_extra_warning_msgs(self, target_remain: int = 1, nums: int = 0, max_cleanup_rounds: int = 10) -> bool:
+        """关键词-批量清理多余警告语至指定数量（默认清理到仅剩 1 条系统底线）
         
-        if index == 0 and len(elements) > 1:
-            logger.info("⚙️ [Action-GroupBotPage] index 为 0 且当前有多条警告语，开始自动清理多余项...")
-            while len(elements) > 1:
-                elements[0].click()
-                self.click_custom_warning_msg_edit_btn()
-                edit_element = self.get_warning_msg_input_element()
-                if edit_element:
-                    edit_element.clear()
-                    self.click_custom_warning_msg_confirm_btn()
-                    time.sleep(0.5)
-                    self.click_warning_msg_setting()
-                    self.wait_warning_msg_panel()
-                else:
-                    logger.warning("⚙️ [Action-GroupBotPage] 未找到编辑框，中止多余项清理")
-                    break
-                elements = self.get_visible_warning_msg_elements()
-            logger.info("⚙️ [Action-GroupBotPage] 多余警告语清理完毕")
-
-        if 0 <= index < len(elements):
-            elements[index].click()
+        :param target_remain: 期望保留的最小条数（系统规则通常至少保留 1 条）
+        :param max_cleanup_rounds: 防止死循环的最大清理轮数
+        :return: bool 是否成功清理到目标数量
+        """
+        logger.info(f"⚙️ [Action-GroupBotPage] 准备清理多余警告语(目标保留: {target_remain} 条)...")
+        elements = self.get_visible_warning_msg_elements()
+        rounds = 0
+        
+        while nums > target_remain and rounds < max_cleanup_rounds:
+            rounds += 1
+            logger.info(f"⚙️ [Action-GroupBotPage] 正在执行第 {rounds} 轮清理 (当前剩余: {nums} 条)...")
+            elements[0].click()
             self.click_custom_warning_msg_edit_btn()
             edit_element = self.get_warning_msg_input_element()
-            if edit_element:
-                edit_element.clear()
-            logger.info(f"⚙️ [Action-GroupBotPage] 已点击并清空索引为 {index} 的警告语，等待用例后续操作")
+            if not edit_element:
+                logger.warning("⚙️ [Action-GroupBotPage] 未找到编辑框，中止多余项清理")
+                return False
+            edit_element.clear()
+            self.click_custom_warning_msg_confirm_btn()
+            nums -= 1
+            self.click_warning_msg_setting()
+            if not self.wait_warning_msg_panel():
+                logger.warning("⚙️ [Action-GroupBotPage] 清理后警告语面板未正常加载")
+                return False
+            elements = self.get_visible_warning_msg_elements()
+            
+        success = len(elements) <= target_remain
+        if success:
+            logger.info(f"⚙️ [Action-GroupBotPage] 多余警告语清理完毕，当前保留: {len(elements)} 条")
         else:
+            logger.warning(f"⚠️ [Action-GroupBotPage] 清理达到最大轮数上限，当前剩余: {len(elements)} 条")
+        return success
+
+    # 关键词-删除警告语
+    def delete_warning_msg(self, index: int = 1, auto_confirm: bool = False) -> bool:
+        """关键词-删除/触发删除指定索引的警告语
+        
+        :param index: 目标警告语索引（0-based）
+        :param auto_confirm: 是否自动点击确认保存。
+                             - False: 仅进入编辑并清空文本，停留在弹窗供用例断言拦截 Toast 或点击取消
+                             - True: 清空后自动点击确认按钮完成删除闭环
+        :return: bool 是否成功触发或完成操作
+        """
+        logger.info(f"⚙️ [Action-GroupBotPage] 准备删除警告语(目标索引: {index}, 自动确认: {auto_confirm})...")
+        elements = self.get_visible_warning_msg_elements()
+        
+        if not (0 <= index < len(elements)):
             logger.error(f"❌ [Action-GroupBotPage] 索引 {index} 超出警告语列表范围 (总长: {len(elements)})")
+            return False
+
+        elements[index].click()
+        self.click_custom_warning_msg_edit_btn()
+        edit_element = self.get_warning_msg_input_element()
+        if not edit_element:
+            logger.error("❌ [Action-GroupBotPage] 未找到警告语编辑框元素")
+            return False
+        edit_element.clear()
+        
+        if auto_confirm:
+            self.click_custom_warning_msg_confirm_btn()
+            time.sleep(0.5)
+            self.click_warning_msg_setting()
+            self.wait_warning_msg_panel()
+            logger.info(f"⚙️ [Action-GroupBotPage] 已成功删除并确认索引为 {index} 的警告语")
+        else:
+            logger.info(f"⚙️ [Action-GroupBotPage] 已点击并清空索引为 {index} 的警告语，保持弹窗等待用例后续操作")
+        return True
 
     # 关键词-警告语列表向下滑动
     def scroll_warning_msg_list_down(self) -> None:
