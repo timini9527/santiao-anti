@@ -26,11 +26,18 @@ def safe_print(text: str):
         clean_text = text.encode(encoding, errors='replace').decode(encoding)
         print(clean_text)
 
+try:
+    from config import PROJECT_ROOT
+except Exception:
+    CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+    PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
+
+
 class SmartExecutor:
     """智能测试执行器，负责调用 pytest 并解析执行生成的 JUnit XML 报告"""
 
     def __init__(self, workspace_dir: str = None):
-        self.workspace_dir = workspace_dir or os.getcwd()
+        self.workspace_dir = workspace_dir or str(PROJECT_ROOT)
 
     def run_tests(self, test_target: str, xml_path: str = "reports/junit_report.xml") -> int:
         """

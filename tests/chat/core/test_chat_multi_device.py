@@ -330,7 +330,7 @@ class TestChatMultiDevice:
             self._run_async_multi_device_send(
                 device_sessions_map=device_groups_map,
                 loop_count=1,
-                interval=0.2,
+                interval=0.1,
                 session_type="群聊"
             )
 
@@ -364,7 +364,7 @@ class TestChatMultiDevice:
         with allure.step("1. 多设备单聊异步并发发送"):
             self._run_async_multi_device_send(
                 device_sessions_map=device_users_map,
-                loop_count=1,
+                loop_count=5,
                 interval=0.1,
                 session_type="单聊"
             )

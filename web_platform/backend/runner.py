@@ -7,6 +7,8 @@ import zipfile
 import urllib.request
 from typing import Dict, Any, List, Callable, Optional
 
+from .paths import PROJECT_ROOT, REPORTS_DIR, ALLURE_CLI_DIR, TEMP_COLLECT_SCRIPT, TASK_DEBUG_LOG
+
 # 并发任务状态池
 # active_tasks 的结构为：
 # {
@@ -23,32 +25,34 @@ active_tasks: Dict[str, Dict[str, Any]] = {}
 tasks_lock = asyncio.Lock()
 
 def write_task_debug_log(message: str):
-    log_file = os.path.join(os.getcwd(), "web_platform", "backend", "task_debug.log")
     try:
-        with open(log_file, "a", encoding="utf-8") as f:
+        with open(TASK_DEBUG_LOG, "a", encoding="utf-8") as f:
             f.write(message + "\n")
     except Exception as e:
         print(f"写入 debug 日志失败: {e}")
 
 def ensure_allure_cli() -> Optional[str]:
     """检测并确保本地环境存在 Allure 命令行工具，如果缺失则在后台自动从远程下载、解压并配置环境变量"""
-    allure_dir = os.path.join(os.getcwd(), "allure-cli")
-    allure_bat = os.path.join(allure_dir, "bin", "allure.bat")
+    allure_dir = ALLURE_CLI_DIR
+    allure_bat = os.path.join(ALLURE_CLI_DIR, "bin", "allure.bat")
     
     if os.path.exists(allure_bat):
         return allure_bat
         
     print("\n[Web Console] 检测到未安装 Allure CLI，正在自动下载 (20MB)...")
     url = "https://repo.maven.apache.org/maven2/io/qameta/allure/allure-commandline/2.27.0/allure-commandline-2.27.0.zip"
-    zip_path = os.path.join(os.getcwd(), "allure.zip")
+    zip_path = os.path.join(PROJECT_ROOT, "allure.zip")
     
     try:
         urllib.request.urlretrieve(url, zip_path)
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(os.getcwd())
+            zip_ref.extractall(PROJECT_ROOT)
         
-        extracted_dir = os.path.join(os.getcwd(), "allure-2.27.0")
+        extracted_dir = os.path.join(PROJECT_ROOT, "allure-2.27.0")
         if os.path.exists(extracted_dir):
+            if os.path.exists(allure_dir):
+                import shutil
+                shutil.rmtree(allure_dir, ignore_errors=True)
             os.rename(extracted_dir, allure_dir)
             
         if os.path.exists(zip_path):
@@ -78,31 +82,310 @@ async def broadcast_log(task_id: str, message: str):
                     if listener in task_info["listeners"]:
                         task_info["listeners"].remove(listener)
 
-async def run_allure_generator(task_id: str):
-    """子进程结束后，异步启动 Allure CLI 生成对应的可视化 HTML 测试报告"""
+def is_valid_jdk_home(path: Optional[str]) -> bool:
+    """验证给定目录是否为包含完整 bin/java 的合法 JDK/JRE 根目录"""
+    if not path or not os.path.exists(path):
+        return False
+    java_exe = os.path.join(path, "bin", "java.exe") if os.name == 'nt' else os.path.join(path, "bin", "java")
+    return os.path.exists(java_exe)
+
+def auto_detect_system_java_home() -> Optional[str]:
+    """
+    全自动、动态识别当前电脑的真实 Java 根目录（JAVA_HOME）。
+    绝不使用任何写死或硬编码的路径，自适应任何 Windows / Mac / Linux 电脑、任意盘符、任意版本。
+    """
+    # 1. 优先校验当前已配置的 JAVA_HOME
+    current_home = os.environ.get("JAVA_HOME", "").strip()
+    if is_valid_jdk_home(current_home):
+        return current_home
+
+    # 2. Windows 平台：动态读取系统与用户注册表
+    if os.name == 'nt':
+        try:
+            import winreg
+            # 2.1 用户级环境变量中的 JAVA_HOME（用户配在用户变量时自动提取）
+            try:
+                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Environment") as key:
+                    val, _ = winreg.QueryValueEx(key, "JAVA_HOME")
+                    if is_valid_jdk_home(val):
+                        return val
+            except Exception:
+                pass
+
+            # 2.2 注册表标准 JDK/JRE 软件登记项（跨所有常见 JDK 发行版：Oracle, Eclipse Adoptium, Microsoft 等）
+            roots = [winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER]
+            subkeys = [
+                r"SOFTWARE\JavaSoft\JDK",
+                r"SOFTWARE\JavaSoft\Java Development Kit",
+                r"SOFTWARE\JavaSoft\Java Runtime Environment",
+                r"SOFTWARE\Eclipse Adoptium\JDK",
+                r"SOFTWARE\Eclipse Adoptium\JRE",
+                r"SOFTWARE\Microsoft\JDK"
+            ]
+            for r in roots:
+                for sub in subkeys:
+                    try:
+                        with winreg.OpenKey(r, sub) as k:
+                            c_ver, _ = winreg.QueryValueEx(k, "CurrentVersion")
+                            with winreg.OpenKey(k, c_ver) as vk:
+                                h, _ = winreg.QueryValueEx(vk, "JavaHome")
+                                if is_valid_jdk_home(h):
+                                    return h
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+    # 3. Mac 平台：动态调用标准命令
+    if sys.platform == "darwin":
+        try:
+            out = subprocess.check_output(["/usr/libexec/java_home"], timeout=3).decode().strip()
+            if is_valid_jdk_home(out):
+                return out
+        except Exception:
+            pass
+
+    # 4. 动态解析系统 PATH 中 java 二进制文件并回溯真实物理路径
+    import shutil
+    which_java = shutil.which("java")
+    if which_java:
+        real_java = os.path.realpath(which_java)
+        cur = os.path.dirname(real_java)
+        while cur and cur != os.path.dirname(cur):
+            if is_valid_jdk_home(cur):
+                return cur
+            cur = os.path.dirname(cur)
+
+    # 5. 跨平台标准程序目录动态扫描（按系统环境变量动态枚举，不写死盘符与版本）
+    scan_roots = []
+    if os.name == 'nt':
+        for env_var in ["ProgramFiles", "ProgramFiles(x86)", "ProgramW6432", "LOCALAPPDATA"]:
+            p = os.environ.get(env_var)
+            if p and os.path.exists(p):
+                scan_roots.append(p)
+        # 动态扫描 Windows 现有物理可用驱动器盘符（如 C:\, D:\ 等）
+        for drive_char in "CDEFGHIJKLMNOPQRSTUVWXYZ":
+            drive = f"{drive_char}:\\"
+            if os.path.exists(drive):
+                scan_roots.append(drive)
+                for common_sub in ["data", "tools", "software", "env", "develop"]:
+                    sub_p = os.path.join(drive, common_sub)
+                    if os.path.exists(sub_p):
+                        scan_roots.append(sub_p)
+    else:
+        scan_roots.extend(["/usr/lib/jvm", "/usr/java", "/Library/Java/JavaVirtualMachines", "/opt/java"])
+
+    for root_dir in scan_roots:
+        for t_name in ["Java", "java", "jdk", "openjdk", "Eclipse Adoptium", "AdoptOpenJDK", "Microsoft", "Zulu"]:
+            tp = os.path.join(root_dir, t_name)
+            if os.path.exists(tp):
+                if is_valid_jdk_home(tp):
+                    return tp
+                try:
+                    for sub in os.listdir(tp):
+                        full_sub = os.path.join(tp, sub)
+                        if os.path.isdir(full_sub) and is_valid_jdk_home(full_sub):
+                            return full_sub
+                except Exception:
+                    pass
+
+    return None
+
+def get_valid_java_env() -> dict:
+    """
+    智能检测并动态注入当前电脑真实的 Java 环境，保证 Allure CLI 跨机器无缝运行。
+    """
+    env = os.environ.copy()
+    detected_home = auto_detect_system_java_home()
+    if detected_home:
+        env["JAVA_HOME"] = detected_home
+        os.environ["JAVA_HOME"] = detected_home
+        write_task_debug_log(f"[Java自适应] 成功动态定位电脑 Java 根目录: {detected_home}")
+    return env
+
+def generate_fallback_report(task_id: str, exit_code: Optional[int] = None, extra_err: str = ""):
+    """
+    当测试发生异常或 Allure 未产出结果数据时，自动生成美观规范的轻量 HTML 诊断报告，防止前端 404。
+    """
+    html_dir = os.path.join(REPORTS_DIR, f"html_{task_id}")
+    os.makedirs(html_dir, exist_ok=True)
+    html_path = os.path.join(html_dir, "index.html")
+    
+    recent_logs = ""
+    task_info = active_tasks.get(task_id)
+    if task_info and task_info.get("log_buffer"):
+        recent_logs = "".join(task_info["log_buffer"][-150:])
+    if extra_err:
+        recent_logs = f"{extra_err}\n\n{recent_logs}"
+    
+    safe_logs = (recent_logs or "（暂无详细控制台日志）").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    status_badge = f"测试执行失败 (退出码: {exit_code})" if (exit_code is not None and exit_code != 0) else "测试执行异常中断"
+    badge_color = "#e11d48" if (exit_code != 0) else "#059669"
+    
+    html_content = f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试执行诊断与日志报告 - {task_id}</title>
+    <style>
+        body {{
+            margin: 0;
+            padding: 24px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }}
+        .report-card {{
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            padding: 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+            border: 1px solid #e2e8f0;
+        }}
+        .header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #f1f5f9;
+            padding-bottom: 16px;
+            margin-bottom: 20px;
+        }}
+        .title {{
+            font-size: 20px;
+            font-weight: 600;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        .badge {{
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #ffffff;
+            background-color: {badge_color};
+        }}
+        .meta-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 8px;
+        }}
+        .meta-item {{
+            font-size: 13px;
+        }}
+        .meta-label {{
+            color: #64748b;
+            margin-bottom: 4px;
+        }}
+        .meta-val {{
+            font-weight: 600;
+            color: #334155;
+            font-family: monospace;
+        }}
+        .terminal-box {{
+            background: #0f172a;
+            color: #f8fafc;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: "Consolas", "Courier New", monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            max-height: 550px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }}
+        .tips {{
+            margin-top: 16px;
+            padding: 12px 16px;
+            background: #fffbeb;
+            border: 1px solid #fef3c7;
+            border-radius: 6px;
+            color: #92400e;
+            font-size: 13px;
+        }}
+    </style>
+</head>
+<body>
+    <div class="report-card">
+        <div class="header">
+            <div class="title">
+                <span>📊 测试执行诊断与异常分析报告</span>
+            </div>
+            <span class="badge">{status_badge}</span>
+        </div>
+        <div class="meta-grid">
+            <div class="meta-item">
+                <div class="meta-label">任务编号 (Task ID)</div>
+                <div class="meta-val">{task_id}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">退出代码 (Exit Code)</div>
+                <div class="meta-val">{exit_code}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">诊断分析</div>
+                <div class="meta-val">{'用例断言失败 / 运行时异常' if exit_code != 0 else '正常结束'}</div>
+            </div>
+        </div>
+        <div class="title" style="font-size: 16px; margin-bottom: 12px;">🖥️ 执行日志与调用堆栈 Traceback</div>
+        <div class="terminal-box">{safe_logs}</div>
+        <div class="tips">
+            💡 <strong>架构师提示：</strong>本任务执行过程中由于失败或异常中断，系统已自动捕获并汇总终端全量日志与 Traceback 供诊断定位。
+        </div>
+    </div>
+</body>
+</html>"""
+    try:
+        with open(html_path, "w", encoding="utf-8") as f:
+            f.write(html_content)
+        write_task_debug_log(f"[Fallback Report] 已成功写入兜底诊断报告: {html_path}")
+    except Exception as e:
+        write_task_debug_log(f"[Fallback Report] 写入兜底报告失败: {e}")
+
+async def run_allure_generator(task_id: str, exit_code: Optional[int] = None):
+    """子进程结束后，异步启动 Allure CLI 生成对应的可视化 HTML 测试报告；若失败则自动生成诊断兜底报告"""
     try:
         allure_bat = ensure_allure_cli()
-        if allure_bat:
+        tmp_dir = os.path.join(REPORTS_DIR, f"tmp_{task_id}")
+        html_dir = os.path.join(REPORTS_DIR, f"html_{task_id}")
+        html_path = os.path.join(html_dir, "index.html")
+
+        # 检查是否有 allure 产生的测试结果文件
+        has_results = os.path.exists(tmp_dir) and any(
+            f.endswith("-result.json") or f.endswith("-container.json") or f.endswith(".json")
+            for f in os.listdir(tmp_dir)
+        )
+
+        if allure_bat and has_results:
             await broadcast_log(task_id, f"\n[Web Console] 正在生成任务 {task_id} 的 Allure 报告，请稍候...\n")
-            tmp_dir = os.path.join("reports", f"tmp_{task_id}")
-            html_dir = os.path.join("reports", f"html_{task_id}")
+            target_env = get_valid_java_env()
             
-            # 使用 subprocess.Popen 并在 to_thread 中等待，避开 asyncio loop 限制
             def run_allure():
-                p = subprocess.Popen(
+                res = subprocess.run(
                     [allure_bat, "generate", tmp_dir, "-o", html_dir, "--clean"],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    shell=True
+                    capture_output=True,
+                    text=True,
+                    shell=True,
+                    env=target_env,
+                    cwd=PROJECT_ROOT
                 )
-                return p.wait()
-            await asyncio.to_thread(run_allure)
+                write_task_debug_log(f"[run_allure] code={res.returncode}, out={res.stdout}, err={res.stderr}")
+                return res.returncode, res.stdout, res.stderr
+
+            ret_code, out_str, err_str = await asyncio.to_thread(run_allure)
             
-            # 自动注入中文语言配置，使其默认以中文展示并设定业务屏蔽
-            html_path = os.path.join(html_dir, "index.html")
-            if os.path.exists(html_path):
+            if ret_code == 0 and os.path.exists(html_path):
                 with open(html_path, "r", encoding="utf-8") as f:
-                    content = f.read()
+                    html_c = f.read()
                 
                 script = """<script>
                     window.localStorage.setItem('allure2Settings', '{"language":"zh"}');
@@ -119,16 +402,26 @@ async def run_allure_generator(task_id: str):
                     body.role-business [href="#packages"],
                     body.role-business [href="#timeline"] { display: none !important; }
                     </style>"""
-                if "role-business" not in content:
-                    content = content.replace("<head>", f"<head>{script}")
+                if "role-business" not in html_c:
+                    html_c = html_c.replace("<head>", f"<head>{script}")
                     with open(html_path, "w", encoding="utf-8") as f:
-                        f.write(content)
+                        f.write(html_c)
                         
-            await broadcast_log(task_id, f"\n[Web Console] ✨ 任务 {task_id} 的 Allure 报告生成完毕！\n")
-        else:
-            await broadcast_log(task_id, "\n[Web Console] ⚠️ Allure 引擎配置失败，无法生成报告。\n")
+                await broadcast_log(task_id, f"\n[Web Console] ✨ 任务 {task_id} 的 Allure 报告生成完毕！\n")
+                return
+            else:
+                write_task_debug_log(f"[run_allure] Allure CLI 生成返回码异常 ({ret_code})，转入生成诊断兜底报告。err={err_str}")
+        
+        await asyncio.to_thread(generate_fallback_report, task_id, exit_code)
+        await broadcast_log(task_id, f"\n[Web Console] ✨ 任务 {task_id} 的测试执行与异常诊断报告生成完毕！\n")
+
     except Exception as e:
-        await broadcast_log(task_id, f"\n[Web Console] ⚠️ 生成 Allure 报告时出错: {e}\n")
+        write_task_debug_log(f"[run_allure_generator] 异常: {e}")
+        try:
+            await asyncio.to_thread(generate_fallback_report, task_id, exit_code, f"生成报告时发生内部异常: {e}")
+        except Exception:
+            pass
+        await broadcast_log(task_id, f"\n[Web Console] ⚠️ 生成测试报告完成（已启用异常日志诊断兜底）\n")
 
 async def read_stream_and_broadcast(task_id: str, stream: asyncio.StreamReader):
     """从子进程的输出流中读取每一行并广播"""
@@ -175,7 +468,7 @@ async def start_pytest_task(
                 "listeners": []
             }
 
-    tmp_dir = os.path.join("reports", f"tmp_{task_id}")
+    tmp_dir = os.path.join(REPORTS_DIR, f"tmp_{task_id}")
     if os.path.exists(tmp_dir):
         import shutil
         try:
@@ -189,14 +482,15 @@ async def start_pytest_task(
         import re
         safe_nodeid = re.sub(r'\[.*?\]$', '', nodeid)
         if param_index is not None:
-            collect_cmd = [sys.executable, "templates/temp_collect.py", safe_nodeid]
+            collect_cmd = [sys.executable, TEMP_COLLECT_SCRIPT, safe_nodeid]
             try:
-                # 采用 to_thread + subprocess.run 收集用例，绕过 Windows 平台下 selector 循环的 create_subprocess 限制
+                # 采用 to_thread + subprocess.run 收集用例，显式指定 cwd 为项目根目录
                 def run_collect():
                     return subprocess.run(
                         collect_cmd,
                         stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT
+                        stderr=subprocess.STDOUT,
+                        cwd=PROJECT_ROOT
                     )
                 res = await asyncio.to_thread(run_collect)
                 raw_out = res.stdout
@@ -251,19 +545,20 @@ async def start_pytest_task(
     try:
         # 启动时清空或新建 task_debug.log 文件
         try:
-            with open(os.path.join(os.getcwd(), "web_platform", "backend", "task_debug.log"), "w", encoding="utf-8") as f:
+            with open(TASK_DEBUG_LOG, "w", encoding="utf-8") as f:
                 f.write(f"=== 任务启动: {task_id} ===\n")
         except Exception:
             pass
             
         write_task_debug_log(f"[Web Console] 准备拉起 Pytest 进程，命令: {cmd}")
-        # 改用同步的 subprocess.Popen 并开启 bufsize=0 彻底消除 NotImplementedError 且保证流的无缓冲实时写入
+        # 改用同步的 subprocess.Popen 并开启 bufsize=0 且绑定 cwd=PROJECT_ROOT，保证工作目录与流的无缓冲实时写入
         proc = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             bufsize=0,
-            env=env
+            env=env,
+            cwd=PROJECT_ROOT
         )
         write_task_debug_log(f"[Web Console] Pytest 进程拉起成功，PID: {proc.pid}")
         
@@ -335,7 +630,7 @@ async def run_task_lifecycle(task_id: str, proc: subprocess.Popen):
         
         # 触发 Allure 报告生成
         write_task_debug_log("[run_task_lifecycle] 准备触发 Allure 生成")
-        await run_allure_generator(task_id)
+        await run_allure_generator(task_id, exit_code)
         write_task_debug_log("[run_task_lifecycle] Allure 报告生成完毕")
         
         async with tasks_lock:

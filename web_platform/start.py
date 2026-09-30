@@ -25,24 +25,27 @@ def safe_print(msg: str):
             print(msg.encode('ascii', errors='ignore').decode('ascii'))
 
 def get_host_ip() -> str:
-    """获取本机局域网内网 IP，用于非开发人员通过其他电脑访问"""
+    """获取本机局域网内网真实有效 IP（自适应 192.168.*、10.*、172.* 等任意网段），用于非开发人员通过其他电脑访问"""
     try:
-        hostname = socket.gethostname()
-        _, _, ips = socket.gethostbyname_ex(hostname)
-        for ip in ips:
-            if ip.startswith("127.") or ip.startswith("169.254.") or ip.endswith(".1"):
-                continue
-            if ip.startswith("192.168."):
-                return ip
-        
-        # 兜底探测
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(('8.8.8.8', 80))
         ip = s.getsockname()[0]
         s.close()
-        return ip
+        if ip and not ip.startswith("127."):
+            return ip
     except Exception:
-        return '127.0.0.1'
+        pass
+
+    try:
+        hostname = socket.gethostname()
+        _, _, ips = socket.gethostbyname_ex(hostname)
+        for ip in ips:
+            if not ip.startswith("127.") and not ip.startswith("169.254.") and not ip.endswith(".1"):
+                return ip
+    except Exception:
+        pass
+
+    return '127.0.0.1'
 
 def check_and_install_dependencies():
     """检查并自动安装重构后控制台所需的第三方库"""

@@ -32,7 +32,8 @@ def _take_screenshot_on_failure(driver, locator):
             attachment_type=allure.attachment_type.PNG,
         )
         # 3. 保存到本地 (可选，根据你的需求保留)
-        screenshot_dir = os.path.join(os.getcwd(), 'screenshots')
+        from config import SCREENSHOT_DIR
+        screenshot_dir = str(SCREENSHOT_DIR)
         os.makedirs(screenshot_dir, exist_ok=True)
         file_path = os.path.join(screenshot_dir, file_name)
         with open(file_path, "wb") as screenshot_file:

@@ -39,8 +39,9 @@ class JiraClient:
         # 检查是否配置了 Jira 凭证
         if not all([self.jira_url, self.jira_user, self.jira_token]):
             # 运行在 Mock 模式，输出本地 JSON 文件
+            from config import REPORT_DIR
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            bug_dir = os.path.join(os.getcwd(), "reports", "jira_bugs")
+            bug_dir = os.path.join(str(REPORT_DIR), "jira_bugs")
             os.makedirs(bug_dir, exist_ok=True)
             
             mock_bug_data = {

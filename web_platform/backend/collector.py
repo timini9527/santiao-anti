@@ -5,6 +5,8 @@ import json
 import subprocess
 from typing import List, Dict, Any
 
+from .paths import PROJECT_ROOT, TEMP_COLLECT_SCRIPT, TESTS_DIR
+
 class TestCollector(ast.NodeVisitor):
     """使用 AST 静态解析 Python 文件中的测试类和测试函数"""
     
@@ -181,17 +183,21 @@ def collect_all_tests(tests_dir: str = "tests") -> List[Dict[str, Any]]:
     返回: 含有用例分级结构的目录树列表。
     """
     catalog = []
-    if not os.path.exists(tests_dir):
+    # 动态支持绝对路径或基于项目根目录的相对路径
+    abs_tests_dir = tests_dir if os.path.isabs(tests_dir) else os.path.join(PROJECT_ROOT, tests_dir)
+    if not os.path.exists(abs_tests_dir):
         return catalog
 
-    for root, dirs, files in os.walk(tests_dir):
+    for root, dirs, files in os.walk(abs_tests_dir):
         dirs[:] = [d for d in dirs if d not in ('__pycache__', '.pytest_cache')]
         for file in files:
             if (file.startswith("test_") or file.endswith("_test.py")) and file.endswith(".py"):
-                filepath = os.path.join(root, file).replace("\\", "/")
+                full_path = os.path.join(root, file)
+                # 统一为相对于项目根目录的跨平台标准 posix 路径 (如 tests/smoke_test/xxx.py)
+                rel_path = os.path.relpath(full_path, PROJECT_ROOT).replace("\\", "/")
                 try:
-                    with open(filepath, "r", encoding="utf-8") as f:
-                        tree = ast.parse(f.read(), filename=filepath)
+                    with open(full_path, "r", encoding="utf-8") as f:
+                        tree = ast.parse(f.read(), filename=full_path)
                     collector = TestCollector()
                     collector.visit(tree)
                     
@@ -211,20 +217,33 @@ def collect_all_tests(tests_dir: str = "tests") -> List[Dict[str, Any]]:
                         
                         display_name = file_desc if file_desc else file
                         catalog.append({
-                            "file": filepath,
+                            "file": rel_path,
                             "display_name": display_name,
                             "classes": collector.classes,
                             "tests": collector.functions
                         })
                 except Exception as e:
-                    print(f"解析文件失败 {filepath}: {e}", file=sys.stderr)
+                    print(f"解析文件失败 {full_path}: {e}", file=sys.stderr)
 
     # 动态匹配真实的 Pytest 参数化 ID (如 ids_values)
     try:
-        # 寻找本项目的临时脚本来辅助收集参数，避免污染主服务进程
-        temp_script = "templates/temp_collect.py"
-        if os.path.exists(temp_script):
-            raw_out = subprocess.check_output([sys.executable, temp_script], stderr=subprocess.STDOUT)
+        # 在 PyInstaller 打包状态下，sys.executable 是主程序 exe，不能用于执行 python 脚本
+        py_exec = sys.executable if not getattr(sys, 'frozen', False) else None
+        if not py_exec:
+            import shutil
+            py_exec = shutil.which("python") or shutil.which("python3")
+            if not py_exec and os.path.exists(r"D:\data\Python313\python.exe"):
+                py_exec = r"D:\data\Python313\python.exe"
+
+        # 使用动态绝对路径定位辅助收集脚本，并指定工作目录为项目根目录
+        if py_exec and os.path.exists(TEMP_COLLECT_SCRIPT):
+            no_window = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+            raw_out = subprocess.check_output(
+                [py_exec, TEMP_COLLECT_SCRIPT],
+                stderr=subprocess.STDOUT,
+                cwd=PROJECT_ROOT,
+                creationflags=no_window
+            )
             try:
                 out = raw_out.decode('utf-8')
             except UnicodeDecodeError:

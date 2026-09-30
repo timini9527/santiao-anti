@@ -131,8 +131,8 @@ GROUP_STRATEGY5 = ChatSessionStrategy(
 TEST_PRIVATE_USERS = [
     ChatSessionStrategy(
         desc="私聊模式",
-        name="19200000027",
-        phone="19200000027"
+        name="003",
+        phone="19200000003"
     ),
     # ChatSessionStrategy(
     #     desc="私聊模式",

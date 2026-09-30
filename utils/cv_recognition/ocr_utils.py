@@ -5,6 +5,9 @@ import time
 import os
 
 
+from config import SCREENSHOT_DIR
+
+
 class OcrUtils:
     def __init__(self, driver):
         self.driver = driver
@@ -12,7 +15,7 @@ class OcrUtils:
 
     def _get_ocr_result(self, image_name: str, sub_dir: str = "ocr", **kwargs):
         """内部通用方法：截图并执行 OCR 识别"""
-        screenshot_dir = os.path.join("screenshots", sub_dir)
+        screenshot_dir = os.path.join(str(SCREENSHOT_DIR), sub_dir)
         os.makedirs(screenshot_dir, exist_ok=True)
         screenshot_path = os.path.join(screenshot_dir, image_name)
         

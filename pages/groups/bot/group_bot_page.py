@@ -287,12 +287,15 @@ class GroupBotPage(BasePage):
         self.click(GroupBotLocator.NEGATIVE_BUTTON)
 
     # 关键词-清空已配置的关键词
-    def clear_all_keywords(self, count: Optional[int] = None) -> None:
-        """清空已配置的关键词，恢复到默认空状态。如果指定了 count，则只删除对应数量的关键词"""
+    def clear_all_keywords(self, count: Optional[int] = None, timeout: float = 1.0) -> int:
+        """清空已配置的关键词，恢复到默认空状态（天生幂等）。
+        
+        如果当前列表中已无关键词，快速退出并返回 0；如果指定了 count，则只删除对应数量的关键词。
+        """
         msg = "全部" if count is None else f"{count} 个"
         logger.info(f"⚙️ [Action-GroupBotPage] 开始动态删除关键词，目标数量: {msg}")
         deleted = 0
-        while self.is_element_exist(GroupBotLocator.DELETE_KEYWORD_ICON, timeout=1, raise_exception=False):
+        while self.is_element_exist(GroupBotLocator.DELETE_KEYWORD_ICON, timeout=timeout, raise_exception=False):
             if count is not None and deleted >= count:
                 logger.info(f"⚙️ [Action-GroupBotPage] 已达到指定删除数量 {count}，停止删除")
                 break
@@ -301,7 +304,7 @@ class GroupBotPage(BasePage):
             self.click_keyword_delete_confirm_btn()
             deleted += 1
             time.sleep(0.1)
-        # self.save_keywords_config()
+        return deleted
 
     # 关键词-弹窗批量添加关键词
     def add_keywords(self, keywords: list[str] | str) -> int:
@@ -310,19 +313,21 @@ class GroupBotPage(BasePage):
         支持传入列表或空格分隔的字符串，利用弹窗原生空格批量录入功能：
         单个关键词最多10个字，批量添加用空格分隔，点击【确定】完成添加。
         """
-        if not keywords:
-            return 0
-        keyword_list = self.get_keyword_list()
-        if any(key in keyword_list for key in keywords):
-            logger.info(f"⚙️ [Action-GroupBotPage] 关键词已存在: {keywords}")
-            return len(keywords)
-        
         if isinstance(keywords, list):
             kw_list = [str(k).strip() for k in keywords if str(k).strip()]
             text = " ".join(kw_list)
         else:
             text = str(keywords).strip()
             kw_list = [k for k in text.split() if k]
+
+        if not kw_list:
+            return 0
+
+        keyword_list = self.get_keyword_list()
+        if any(key in keyword_list for key in kw_list):
+            logger.info(f"⚙️ [Action-GroupBotPage] 关键词已存在: {kw_list}")
+            return len(kw_list)
+
         logger.info(f"⚙️ [Action-GroupBotPage] 准备通过新增关键词弹窗批量添加: {kw_list}")
         self.click_keyword_add_btn()
         self.input_keywords(text)
@@ -405,6 +410,18 @@ class GroupBotPage(BasePage):
     def is_warning_msg_panel_displayed(self, timeout: int = 1) -> bool:
         """关键词-检查警告语面板是否显示"""
         return self.wait_warning_msg_panel(timeout=timeout) is not None
+
+    # 关键词-智能打开或重新打开警告语面板
+    def open_warning_msg_panel(self, timeout: int = 10, force_reopen: bool = False) -> WebElement | None:
+        """关键词-智能打开或重新打开警告语面板并等待就绪
+        
+        :param timeout: 等待超时时间（秒）
+        :param force_reopen: 是否强制重新点击打开（常用于确认提交后重新进入面板刷新）
+        :return: 警告语面板 WebElement 或 None
+        """
+        if force_reopen or not self.is_warning_msg_panel_displayed(timeout=1):
+            self.click_warning_msg_setting()
+        return self.wait_warning_msg_panel(timeout=timeout)
     
     # 关键词-获取当前可见的警告语元素
     def get_visible_warning_msg_elements(self, timeout: int = 2) -> list[WebElement]:
@@ -522,6 +539,20 @@ class GroupBotPage(BasePage):
         """关键词-点击取消按钮"""
         logger.info("⚙️ [Action-GroupBotPage] 点击自定义警告语取消按钮")
         self.click(GroupBotLocator.BTN_CANCEL)
+
+    # 关键词-若自定义警告语弹窗处于显示状态则取消关闭
+    def cancel_warning_msg_dialog_if_displayed(self) -> None:
+        """关键词-如果自定义警告语弹窗仍处于显示状态，则点击取消关闭弹窗"""
+        if self.is_element_exist(GroupBotLocator.BTN_CANCEL, timeout=0.5, raise_exception=False):
+            logger.info("⚙️ [Action-GroupBotPage] 检测到自定义警告语弹窗未关闭，执行取消关闭")
+            self.click_custom_warning_msg_cancel_btn()
+
+    # 关键词-确认保存自定义警告语并重新打开面板获取最新数量
+    def confirm_and_reopen_warning_panel(self, timeout: int = 10) -> int:
+        """关键词-确认保存自定义警告语并重新打开面板，返回最新的警告语数量"""
+        self.click_custom_warning_msg_confirm_btn()
+        self.open_warning_msg_panel(timeout=timeout, force_reopen=True)
+        return self.get_warning_msg_count()
     
     # 关键词-设置自定义警告语
     def set_custom_warning_msg(self, msgs: Optional[list[str]]) -> None:
@@ -539,12 +570,12 @@ class GroupBotPage(BasePage):
             self.set_custom_warning_msg_input(msg)
             self.click_custom_warning_msg_confirm_btn()
             count += 1
+            time.sleep(0.5)
             if count == len(msgs):
                 logger.info("⚙️ [Action-GroupBotPage] 已添加的自定义警告语数量达到预期。")
                 break
             self.click_warning_msg_setting()
             self.wait_warning_msg_panel()
-            time.sleep(0.5)
     
     # 关键词-批量清理多余警告语至保留条数（默认保留系统底线的 1 条）
     def clear_extra_warning_msgs(self, target_remain: int = 1, nums: int = 0, max_cleanup_rounds: int = 10) -> bool:

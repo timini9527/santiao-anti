@@ -1,0 +1,31 @@
+{
+  "mobile": {
+    "os_type": "Win",
+    "remote_appium": "127.0.0.1:4723",
+    "remote_udid": "",
+    "remote_appium2": "172.18.0.1:4724",
+    "remote_udid2": "",
+    "private_chat_name": "",
+    "group_chat_name": "",
+    "env": "dev",
+    "debug_mode": false,
+    "role": "tech",
+    "selected_test_file": "",
+    "auto_scroll_log": true
+  },
+  "web": {
+    "browser": "chromium",
+    "headless": false,
+    "base_url": "https://test.im.example.com",
+    "env": "dev"
+  },
+  "api": {
+    "target_env": "dev",
+    "concurrency": 1
+  },
+  "window": {
+    "width": 1920,
+    "height": 1009,
+    "maximized": true
+  }
+}

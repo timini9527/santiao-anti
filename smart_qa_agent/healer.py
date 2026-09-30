@@ -1,12 +1,18 @@
 import os
 import shutil
 import re
+try:
+    from config import PROJECT_ROOT
+except Exception:
+    import sys
+    CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+    PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
 
 class TestHealer:
     """定位器自动修复 (Self-Healing) 智能体"""
 
     def __init__(self, workspace_dir: str = None):
-        self.workspace_dir = workspace_dir or os.getcwd()
+        self.workspace_dir = workspace_dir or str(PROJECT_ROOT)
         self.backups = {}
 
     def backup_file(self, rel_path: str):
