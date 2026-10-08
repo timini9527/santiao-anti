@@ -434,24 +434,28 @@ function filterNode(value, data, node) {
   return false
 }
 
-// 全局独占展开逻辑：只允许展开当前操作的这一条直系链路，收起所有其他无关的树节点
+// 一级目录手风琴单开逻辑：展开某个一级目录时，自动折叠其他所有一级目录
 function handleNodeExpand(data, node) {
   if (!treeRef.value) return
   
-  // 1. 收集当前节点及其所有直系祖先节点的 key，放入白名单
-  const activeKeys = new Set()
-  let curr = node
-  while (curr && curr.key) {
-    activeKeys.add(curr.key)
-    curr = curr.parent
+  // 仅在展开一级目录时触发互斥收起
+  if (node.level === 1 || data.isCategory) {
+    const rootNodes = treeRef.value.store.root.childNodes || []
+    rootNodes.forEach(child => {
+      if (child !== node && child.expanded) {
+        child.collapse()
+      }
+    })
   }
-  
-  // 2. 遍历 el-tree 内存里的所有节点，将不在白名单内的已展开节点强制折叠
-  const nodesMap = treeRef.value.store.nodesMap
-  for (const key in nodesMap) {
-    const nd = nodesMap[key]
-    if (nd.expanded && !activeKeys.has(nd.key)) {
-      nd.collapse()
+}
+
+// 点击树节点标题区域直接平滑切换展开/折叠，无需瞄准左侧小箭头
+function handleNodeClick(data, node) {
+  if (!node.isLeaf) {
+    if (node.expanded) {
+      node.collapse()
+    } else {
+      node.expand()
     }
   }
 }
@@ -1174,7 +1178,8 @@ function resetAllNodesStatus(nodes) {
             node-key="id"
             :default-expanded-keys="defaultExpandedKeys"
             :filter-node-method="filterNode"
-            :expand-on-click-node="true"
+            :expand-on-click-node="false"
+            @node-click="handleNodeClick"
             @node-expand="handleNodeExpand"
             class="custom-tree"
           >

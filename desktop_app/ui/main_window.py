@@ -21,7 +21,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPointF, QLineF
 from PyQt6.QtGui import (
     QPainter, QColor, QPen, QBrush, QLinearGradient, QRadialGradient,
-    QFont, QPainterPath, QMouseEvent, QPixmap
+    QFont, QPainterPath, QMouseEvent, QPixmap, QIcon
 )
 
 from ..config import desktop_config
@@ -422,7 +422,14 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SANTIAO QA - 类微信三端自动化测试平台 (原生桌面版)")
+        # 优化主窗口标题：简洁大气、专业高端
+        self.setWindowTitle("三条 IM 自动化测试控制台")
+
+        # 绑定专属高清品牌窗口图标
+        icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "resources", "app_icon.png")
+        if os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path))
+
         self.resize(
             desktop_config.get("window", "width", 1440),
             desktop_config.get("window", "height", 920)

@@ -1,15 +1,15 @@
 {
   "mobile": {
     "os_type": "Win",
-    "remote_appium": "127.0.0.1:4723",
-    "remote_udid": "",
-    "remote_appium2": "172.18.0.1:4724",
-    "remote_udid2": "",
+    "remote_appium": "172.18.0.1:4723 (服务在线)",
+    "remote_udid": "3B65BN02GU600000",
+    "remote_appium2": "127.0.0.1:4724 (本地)",
+    "remote_udid2": "3B65BN02GU600000",
     "private_chat_name": "",
     "group_chat_name": "",
     "env": "dev",
-    "debug_mode": false,
-    "role": "tech",
+    "debug_mode": true,
+    "role": "business",
     "selected_test_file": "",
     "auto_scroll_log": true
   },

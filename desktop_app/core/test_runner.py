@@ -11,6 +11,7 @@ import sys
 import time
 import subprocess
 import shutil
+import re
 from typing import Optional, Dict, Any
 from PyQt6.QtCore import QThread, pyqtSignal
 
@@ -24,6 +25,24 @@ from web_platform.backend.paths import (
     ALLURE_CLI_DIR
 )
 from web_platform.backend.runner import auto_detect_system_java_home
+
+# 国际标准 ANSI / VT100 转义控制序列与不可打印字符匹配正则
+ANSI_ESCAPE_RE = re.compile(
+    r'\x1b\[[0-?]*[ -/]*[@-~]'            # CSI 转义控制序列 (如 \x1b[32m, \x1b[0m, \x1b[2K)
+    r'|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)'  # OSC 序列
+    r'|\x1b[ -/]*[@-~]'                   # 2 字节 ANSI 转义码
+    r'|[\x00-\x08\x0b\x0c\x0e-\x1f]'     # 不可打印控制字符 (保留 \t 与 \n)
+)
+
+def clean_ansi_log(text: str) -> str:
+    """清洗日志文本中的 ANSI 颜色代码与特殊终端控制符，消除头部和尾部多余字符"""
+    if not text:
+        return ""
+    cleaned = ANSI_ESCAPE_RE.sub('', text)
+    # 规避日志框架占位符导致的行首单空格，确保 [2026-xx-xx ...] 顶格平齐
+    if cleaned.startswith(" [") and "]" in cleaned:
+        cleaned = cleaned[1:]
+    return cleaned.rstrip("\r\n")
 
 class TestExecutionWorker(QThread):
     """PyQt6 独立的测试执行线程，确保主界面 120 帧丝滑不卡顿"""
@@ -69,11 +88,17 @@ class TestExecutionWorker(QThread):
         # 环境变量注入
         env = os.environ.copy()
         env["PYTHONUNBUFFERED"] = "1"
-        env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "0"
-        
-        # 净化运行环境：清除 PyInstaller 注入的变量污染，确保外部 Python 能够加载全局 site-packages 中的全部插件
-        for var in ("PYTHONHOME", "PYTHONPATH", "_MEIPASS2", "_MEIPASS"):
+        env["PYTHONIOENCODING"] = "utf-8"
+        env["PYTHONUTF8"] = "1"
+
+        # 净化运行环境：彻底移除 PyInstaller 与 pytest 禁用变量污染，确保外部 Python 能够自动扫描并加载全局 site-packages 中的全部插件 (如 allure-pytest, pytest-rerunfailures)
+        for var in ("PYTHONHOME", "PYTHONPATH", "_MEIPASS2", "_MEIPASS", "PYTEST_DISABLE_PLUGIN_AUTOLOAD", "PYTHONNOUSERSITE"):
             env.pop(var, None)
+
+        # 净化 PATH：剔除 PyInstaller 打包注入的 _internal / _MEI 目录，避免污染外部 Python 进程环境
+        path_items = [p for p in env.get("PATH", "").split(os.pathsep) if p and "_internal" not in p and "_MEI" not in p]
+        env["PATH"] = os.pathsep.join(path_items)
+
         env["PYTHONPATH"] = PROJECT_ROOT
         
         # 注入用户在控制台配置的动态设备参数
@@ -94,16 +119,40 @@ class TestExecutionWorker(QThread):
         if self.config.get("env"):
             env["TEST_ENV"] = self.config["env"]
 
-        # 获取真实的 Python 解释器（避免 frozen 状态下调用自身 EXE）
-        py_bin = sys.executable if not getattr(sys, 'frozen', False) else None
+        # 动态定位真实的 Python 解释器（支持安装包内置便携运行时、开发机原生环境及系统环境）
+        exe_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else PROJECT_ROOT
+        runtime_candidates = [
+            # 1. 软件安装目录下的内置便携 Python 运行时 (真正实现目标机 0 环境依赖)
+            os.path.join(PROJECT_ROOT, "python_runtime", "python.exe"),
+            os.path.join(exe_dir, "python_runtime", "python.exe"),
+            # 2. 本地开发机的标准 Python 3.13 路径
+            r"D:\data\Python313\python.exe",
+        ]
+        
+        py_bin = None
+        for cand in runtime_candidates:
+            if cand and os.path.exists(cand):
+                py_bin = cand
+                break
+        
+        # 3. 源码未打包状态下的当前解释器
+        if not py_bin and not getattr(sys, 'frozen', False):
+            py_bin = sys.executable
+
+        # 4. 系统全局环境 fallback
         if not py_bin:
             import shutil
-            for cand in [r"D:\data\Python313\python.exe", shutil.which("python"), shutil.which("python3")]:
+            for cand in [shutil.which("python"), shutil.which("python3")]:
                 if cand and os.path.exists(cand):
                     py_bin = cand
                     break
         if not py_bin:
             py_bin = "python"
+
+        # 若命中内置便携环境，确保将其 Scripts 与根目录注入 PATH 最前列
+        py_home = os.path.dirname(os.path.abspath(py_bin))
+        scripts_dir = os.path.join(py_home, "Scripts")
+        env["PATH"] = f"{py_home};{scripts_dir};{env.get('PATH', '')}"
 
         # 构造 Pytest 执行命令
         cmd = [
@@ -119,7 +168,8 @@ class TestExecutionWorker(QThread):
         else:
             cmd.append("tests/chat")
 
-        self.log_signal.emit(f"[命令]: {' '.join(cmd)}\n")
+        self.log_signal.emit(f"[运行环境]: {py_bin}")
+        self.log_signal.emit(f"[执行命令]: {' '.join(cmd)}\n")
 
         # 启动子进程：在 Windows 平台显式指定 CREATE_NO_WINDOW，彻底杜绝弹出控制台命令框
         creationflags = (subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP) if sys.platform == "win32" else 0
@@ -141,7 +191,7 @@ class TestExecutionWorker(QThread):
             for line in iter(self.process.stdout.readline, ''):
                 if self._is_killed:
                     break
-                self.log_signal.emit(line.rstrip("\r\n"))
+                self.log_signal.emit(clean_ansi_log(line))
             self.process.stdout.close()
 
         exit_code = self.process.wait() if not self._is_killed else -9
@@ -149,6 +199,14 @@ class TestExecutionWorker(QThread):
         if self._is_killed:
             self.log_signal.emit("\n⚠️ [测试已被用户强力终止]\n")
             self.status_signal.emit("error", "测试已被手动终止")
+            # 自动物理清理本次任务预建的空结果与报告目录，防止残留空报告污染历史
+            import shutil
+            for d in (self.allure_results_dir, self.allure_report_dir):
+                if d and os.path.exists(d):
+                    try:
+                        shutil.rmtree(d, ignore_errors=True)
+                    except Exception:
+                        pass
             self.finished_signal.emit(-9, "")
             return
 

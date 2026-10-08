@@ -30,7 +30,7 @@ from PyQt6.QtGui import QTextCursor, QFont
 from ..config import desktop_config
 from ..core.device_manager import DeviceManager
 from ..core.test_collector import TestCollectorService
-from ..core.test_runner import TestExecutionWorker
+from ..core.test_runner import TestExecutionWorker, clean_ansi_log
 from .allure_dashboard import AllureDashboardWidget
 
 def _detect_local_lan_ip() -> str:
@@ -54,12 +54,8 @@ class MobilePage(QWidget):
         self.catalog_data: List[Dict[str, Any]] = []
         self.last_report_dir: Optional[str] = None
         
-        # 记录各节点执行状态：'failed', 'passed', ''
-        self.node_status_map: Dict[str, str] = {
-            "tests/smoke_test/test_smoke_chat.py::TestSmokeChatSearch::test_search_by_text_content_and_locate": "failed",
-            "tests/smoke_test/test_smoke_chat.py::TestSmokeChatSearch::test_search_text_content_not_exist": "failed",
-            "tests/smoke_test/test_smoke_chat.py::TestSmokeChatSearch::test_search_by_category_entry": "passed",
-        }
+        # 记录各节点执行状态：'failed', 'passed', '' (初始纯净就绪态，所有用例均展示默认空心球 ⚪ ⚙️)
+        self.node_status_map: Dict[str, str] = {}
 
         self.lan_ip = _detect_local_lan_ip()
         self.total_case_count = 1383
@@ -83,9 +79,9 @@ class MobilePage(QWidget):
         top_header = self._create_top_header()
         root_layout.addWidget(top_header)
 
-        # 2. 左右核心大水平分割器 (main_h_splitter)
+        # 2. 左右核心大水平分割器 (main_h_splitter) - 极致纤细4px手柄，视觉干净无突兀粗条
         self.main_h_splitter = QSplitter(Qt.Orientation.Horizontal)
-        self.main_h_splitter.setHandleWidth(8)
+        self.main_h_splitter.setHandleWidth(4)
 
         # 2.1 左边栏：用例搜索、用例树与参数配置
         left_sidebar = self._create_left_sidebar()
@@ -100,6 +96,11 @@ class MobilePage(QWidget):
         self.main_h_splitter.setStretchFactor(1, 6)
         self.main_h_splitter.setCollapsible(0, False)
         self.main_h_splitter.setCollapsible(1, False)
+
+        # 赋予水平手柄平滑左右调节光标 (↔)
+        h_handle = self.main_h_splitter.handle(1)
+        if h_handle:
+            h_handle.setCursor(Qt.CursorShape.SplitHCursor)
 
         root_layout.addWidget(self.main_h_splitter, stretch=1)
 
@@ -247,6 +248,8 @@ class MobilePage(QWidget):
         self.tree.setColumnWidth(1, 88)
         self.tree.setTextElideMode(Qt.TextElideMode.ElideRight)
         self.tree.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.tree.itemClicked.connect(self._on_tree_item_clicked)
+        self.tree.itemExpanded.connect(self._on_tree_item_expanded)
         self.tree.itemDoubleClicked.connect(self._on_tree_item_double_clicked)
         layout.addWidget(self.tree, stretch=1)
 
@@ -422,9 +425,9 @@ class MobilePage(QWidget):
 
     # ==================== 3. 右边栏构建 (垂直分割器：上方报告 + 下方终端) ====================
     def _create_right_panel(self) -> QWidget:
-        # 右侧使用垂直分割器，完美实现日志吸底隐藏与向上拖动打开
+        # 右侧使用垂直分割器，完美实现日志吸底隐藏与向上自由拖动调节大小 (纤细4px手柄)
         self.right_v_splitter = QSplitter(Qt.Orientation.Vertical)
-        self.right_v_splitter.setHandleWidth(8)
+        self.right_v_splitter.setHandleWidth(4)
 
         # 3.1 上半部分：Allure 测试报告展示区
         report_section = self._create_report_section()
@@ -434,18 +437,29 @@ class MobilePage(QWidget):
         terminal_section = self._create_terminal_section()
         self.right_v_splitter.addWidget(terminal_section)
 
-        # 设置比例：报告区 65%，日志区 35%
-        self.right_v_splitter.setStretchFactor(0, 6)
-        self.right_v_splitter.setStretchFactor(1, 4)
+        # 设置比例：报告区 55%，日志区 45% (保证充裕的初始视野)
+        self.right_v_splitter.setStretchFactor(0, 5)
+        self.right_v_splitter.setStretchFactor(1, 5)
         self.right_v_splitter.setCollapsible(0, False)
         self.right_v_splitter.setCollapsible(1, True)
         self.right_v_splitter.splitterMoved.connect(self._on_right_splitter_moved)
+
+        # 赋予垂直把手明显的调整大小光标 (上下双向箭头 ↕)
+        handle = self.right_v_splitter.handle(1)
+        if handle:
+            handle.setCursor(Qt.CursorShape.SplitVCursor)
+
+        # 初始尺寸分配 (报告区 450px，终端区 230px，随时自由向上向下拖动改变大小)
+        self.right_v_splitter.setSizes([450, 230])
 
         return self.right_v_splitter
 
     def _create_report_section(self) -> QWidget:
         panel = QFrame()
         panel.setProperty("class", "panel-card")
+        # 允许自由压缩至 60px，彻底解除 QSplitter 向上拖动的硬性尺寸死锁
+        panel.setMinimumHeight(60)
+        panel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(12, 10, 12, 10)
         layout.setSpacing(10)
@@ -459,12 +473,12 @@ class MobilePage(QWidget):
         lbl_title.setStyleSheet("font-weight: 700; color: #0f172a; font-size: 13px;")
         header_row.addWidget(lbl_title)
 
-        # 状态胶囊药丸 (默认失败红点或就绪绿点)
-        self.lbl_status_pill = QLabel("🔴 测试失败 (退出码:1)")
+        # 状态胶囊药丸 (默认准备就绪)
+        self.lbl_status_pill = QLabel("🟢 准备就绪")
         self.lbl_status_pill.setStyleSheet("""
-            background-color: #fef2f2;
-            color: #e11d48;
-            border: 1px solid #fecdd3;
+            background-color: #ecfdf5;
+            color: #059669;
+            border: 1px solid #a7f3d0;
             border-radius: 12px;
             padding: 3px 10px;
             font-weight: 700;
@@ -474,39 +488,142 @@ class MobilePage(QWidget):
 
         header_row.addStretch()
 
-        # 填写 Web 回执
+        # 1. 填写 Web 回执
         btn_receipt = QPushButton("📝 填写 Web 回执")
-        btn_receipt.setProperty("class", "btn-secondary")
-        btn_receipt.setStyleSheet("color: #059669; border-color: #a7f3d0; font-weight: 600;")
+        btn_receipt.setStyleSheet("""
+            QPushButton {
+                background-color: #ecfdf5;
+                color: #059669;
+                border: 1px solid #a7f3d0;
+                border-radius: 6px;
+                padding: 6px 14px;
+                font-size: 12px;
+                font-weight: 700;
+            }
+            QPushButton:hover {
+                background-color: #d1fae5;
+                color: #047857;
+                border-color: #6ee7b7;
+            }
+            QPushButton:pressed {
+                background-color: #a7f3d0;
+            }
+        """)
         btn_receipt.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_receipt.clicked.connect(self._on_click_receipt)
         header_row.addWidget(btn_receipt)
 
-        # 视角切换下拉框 (精简视角 / 完整视角)
+        # 2. 视角切换下拉框 (精简视角 / 完整视角)
         self.combo_view_role = QComboBox()
         self.combo_view_role.addItem("精简视角", "business")
         self.combo_view_role.addItem("完整视角", "tech")
-        self.combo_view_role.setFixedWidth(100)
+        self.combo_view_role.setFixedWidth(106)
+        self.combo_view_role.setStyleSheet("""
+            QComboBox {
+                background-color: #ffffff;
+                color: #0f172a;
+                border: 1px solid #cbd5e1;
+                border-radius: 6px;
+                padding: 5px 10px;
+                font-size: 12px;
+                font-weight: 600;
+            }
+            QComboBox:hover {
+                border-color: #94a3b8;
+            }
+            QComboBox:focus {
+                border: 1px solid #2563eb;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #ffffff;
+                color: #0f172a;
+                selection-background-color: #eff6ff;
+                selection-color: #2563eb;
+                border: 1px solid #cbd5e1;
+            }
+        """)
         self.combo_view_role.currentIndexChanged.connect(self._on_config_changed)
         header_row.addWidget(self.combo_view_role)
 
-        # 刷新报告 (鲜艳蓝按钮)
-        self.btn_refresh_report = QPushButton("刷新报告")
+        # 3. 刷新报告 (纯白底 / 极速科技蓝文字与边框，超高对比清晰度)
+        self.btn_refresh_report = QPushButton("🔄 刷新报告")
         self.btn_refresh_report.setToolTip("在应用内刷新 Allure 可视化报告")
-        self.btn_refresh_report.setProperty("class", "btn-primary")
+        self.btn_refresh_report.setStyleSheet("""
+            QPushButton {
+                background-color: #ffffff;
+                color: #2563eb;
+                border: 1.5px solid #2563eb;
+                border-radius: 6px;
+                padding: 6px 14px;
+                font-size: 12px;
+                font-weight: 700;
+            }
+            QPushButton:hover {
+                background-color: #eff6ff;
+                border-color: #1d4ed8;
+                color: #1d4ed8;
+            }
+            QPushButton:pressed {
+                background-color: #dbeafe;
+            }
+        """)
         self.btn_refresh_report.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_refresh_report.clicked.connect(self.open_allure_report)
         header_row.addWidget(self.btn_refresh_report)
 
-        # 核心运行与终止控制
+        # 4. 核心运行按钮 (实心科技蓝，白字高对比度)
         self.btn_run = QPushButton("🚀 运行选中")
-        self.btn_run.setProperty("class", "btn-primary")
+        self.btn_run.setStyleSheet("""
+            QPushButton {
+                background-color: #2563eb;
+                color: #ffffff;
+                border: 1px solid #1d4ed8;
+                border-radius: 6px;
+                padding: 6px 16px;
+                font-size: 12px;
+                font-weight: 700;
+            }
+            QPushButton:hover {
+                background-color: #1d4ed8;
+                border-color: #1e40af;
+            }
+            QPushButton:pressed {
+                background-color: #1e40af;
+            }
+            QPushButton:disabled {
+                background-color: #bfdbfe;
+                color: #ffffff;
+                border-color: #bfdbfe;
+            }
+        """)
         self.btn_run.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_run.clicked.connect(self.run_selected_tests)
         header_row.addWidget(self.btn_run)
 
+        # 5. 终止按钮 (霓虹红，启用实心红白字，禁用柔和灰字浅边框)
         self.btn_stop = QPushButton("⏹️ 终止")
-        self.btn_stop.setProperty("class", "btn-danger")
+        self.btn_stop.setStyleSheet("""
+            QPushButton {
+                background-color: #e11d48;
+                color: #ffffff;
+                border: 1px solid #be123c;
+                border-radius: 6px;
+                padding: 6px 14px;
+                font-size: 12px;
+                font-weight: 700;
+            }
+            QPushButton:hover {
+                background-color: #be123c;
+            }
+            QPushButton:pressed {
+                background-color: #9f1239;
+            }
+            QPushButton:disabled {
+                background-color: #f8fafc;
+                color: #94a3b8;
+                border: 1px solid #e2e8f0;
+            }
+        """)
         self.btn_stop.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_stop.setEnabled(False)
         self.btn_stop.clicked.connect(self.stop_current_test)
@@ -514,7 +631,7 @@ class MobilePage(QWidget):
 
         layout.addLayout(header_row)
 
-        # 嵌入 1:1 原生自绘的 Allure 看板
+        # 嵌入 1:1 原生自绘的 Allure 看板 (默认初始就绪，不展示旧历史假数据)
         self.allure_dashboard = AllureDashboardWidget()
         layout.addWidget(self.allure_dashboard, stretch=1)
 
@@ -523,6 +640,8 @@ class MobilePage(QWidget):
     def _create_terminal_section(self) -> QWidget:
         panel = QFrame()
         panel.setProperty("class", "panel-card")
+        panel.setMinimumHeight(35)
+        panel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(12, 8, 12, 8)
         layout.setSpacing(6)
@@ -537,7 +656,7 @@ class MobilePage(QWidget):
         header_row.addWidget(lbl_term_title)
 
         # 正在执行状态提示
-        self.lbl_running_case = QLabel("正在执行: 冒烟测试-单聊-检索")
+        self.lbl_running_case = QLabel("等待启动测试任务")
         self.lbl_running_case.setStyleSheet("color: #64748b; font-size: 11px; margin-left: 6px;")
         header_row.addWidget(self.lbl_running_case)
 
@@ -575,20 +694,15 @@ class MobilePage(QWidget):
         self.console = QPlainTextEdit()
         self.console.setProperty("class", "console-log")
         self.console.setReadOnly(True)
+        self.console.setMinimumHeight(40)
         self.console.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
         
-        # 默认回显用户截图中类似的 Python Traceback 执行日志，呈现高度亲和感
+        # 默认展示专业的引擎就绪日志提示
         default_log_text = (
-            "host = req.host\n"
-            "if not host:\n"
-            "    raise URLError('no host given')\n\n"
-            "# will parse host:port\n"
-            "h = http_class(host, timeout=req.timeout, **http_conn_args)\n"
-            "h.set_debuglevel(self._debuglevel)\n\n"
-            "headers = dict(req.unredirected_hdrs)\n"
-            "headers.update({k: v for k, v in req.headers.items()\n"
-            "               if k not in headers})\n\n"
-            "# 正在监听 Appium 自动化测试会话...\n"
+            "[系统准备就绪] 三条 IM 原生移动自动化测试引擎已初始化。\n"
+            "[操作说明] 1. 在左侧用例树选择用例，点击【运行目录】、【运行文件】、【运行类】或单条用例的【运行】。\n"
+            "           2. 或直接点击顶部【🚀 运行选中】启动测试。\n"
+            "           3. 测试执行期间控制台将实时输出日志，测试完成后右侧看板将自动实时动态解析并呈现最新测试报告。\n"
         )
         self.console.setPlainText(default_log_text)
         layout.addWidget(self.console, stretch=1)
@@ -733,24 +847,33 @@ class MobilePage(QWidget):
             self.total_case_count = total_collected
             self.lbl_case_pill.setText(f"✏️ 用例: {self.total_case_count} 条")
 
+    @staticmethod
+    def _format_test_node_text(status: str, display_name: str) -> str:
+        """
+        根据执行状态格式化测试用例节点文本：
+        确保球形按钮与齿轮按钮始终同时存在：
+        - 默认未执行：⚪ ⚙️ (默认空心球形按钮 + 齿轮按钮)
+        - 通过 (passed)：🟢 ⚙️ (绿色球形按钮 + 齿轮按钮)
+        - 失败/异常 (failed/broken/error)：🔴 ⚙️ (红色球形按钮 + 齿轮按钮)
+        """
+        if status == "passed":
+            ball = "🟢"
+        elif status in ("failed", "broken", "error"):
+            ball = "🔴"
+        else:
+            ball = "⚪"
+        return f"{ball} ⚙️  {display_name}"
+
     def _add_leaf_item(self, parent: QTreeWidgetItem, file_path: str, cls_name: str, test: Dict[str, Any]):
         node_id = f"{file_path}::{cls_name}::{test['name']}" if cls_name else f"{file_path}::{test['name']}"
         test_display = test.get('display_name', test['name'])
         params = test.get("params", [])
 
-        # 状态匹配：若在失败集合中，前缀打上 🔴 红点；否则打上 ⚙️
+        # 状态匹配：默认空心球 ⚪ ⚙️，通过 🟢 ⚙️，失败/异常 🔴 ⚙️
         status = self.node_status_map.get(node_id, "")
-        if not status:
-            # 兼容检索用例的特征回显
-            if "not_exist" in test['name'] or "locate" in test['name']:
-                status = "failed"
-            elif "category" in test['name']:
-                status = "passed"
-
-        dot_prefix = "🔴 " if status == "failed" else ("🟢 " if status == "passed" else "⚙️ ")
 
         test_item = QTreeWidgetItem(parent)
-        test_item.setText(0, f"{dot_prefix}{test_display}")
+        test_item.setText(0, self._format_test_node_text(status, test_display))
         test_item.setToolTip(0, f"用例: {test_display}\n节点: {node_id}\n状态: {status or '未执行'}")
         test_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "test", "target": node_id, "name": test_display})
 
@@ -765,9 +888,8 @@ class MobilePage(QWidget):
                 sub_item = QTreeWidgetItem(test_item)
                 sub_node = f"{node_id}[{p}]"
                 sub_status = self.node_status_map.get(sub_node, "")
-                sub_dot = "🔴 " if sub_status == "failed" else "🚀 "
 
-                sub_item.setText(0, f"  {sub_dot}[{p}]")
+                sub_item.setText(0, f"  {self._format_test_node_text(sub_status, f'[{p}]')}")
                 sub_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "param", "target": sub_node, "name": str(p)})
 
                 action_param = self._create_tree_action_widget(
@@ -777,10 +899,37 @@ class MobilePage(QWidget):
                 self.tree.setItemWidget(sub_item, 1, action_param)
             test_item.setExpanded(False)
 
+    def _on_tree_item_clicked(self, item: QTreeWidgetItem, column: int):
+        """点击目录或节点标题 (第0列) 时即可直接切换展开与折叠，无需瞄准小箭头"""
+        if column == 0 and item.childCount() > 0:
+            item.setExpanded(not item.isExpanded())
+
+    def _on_tree_item_expanded(self, item: QTreeWidgetItem):
+        """当展开一个一级目录时，其他一级目录自动折叠收起 (手风琴单开模式)"""
+        if getattr(self, "_is_batch_expanding", False):
+            return
+        # 搜索过滤中不干扰全局匹配结果
+        if self.edit_search.text().strip():
+            return
+
+        # 仅针对一级目录 (顶级节点，parent 为 None)
+        if item.parent() is None:
+            self.tree.blockSignals(True)
+            try:
+                for i in range(self.tree.topLevelItemCount()):
+                    top = self.tree.topLevelItem(i)
+                    if top is not item and top.isExpanded():
+                        top.setExpanded(False)
+            finally:
+                self.tree.blockSignals(False)
+
     def _on_tree_item_double_clicked(self, item: QTreeWidgetItem, col: int):
+        """双击叶子测试用例启动运行，双击目录/文件/类切换折叠"""
         data = item.data(0, Qt.ItemDataRole.UserRole)
-        if data:
+        if data and data.get("type") in ("test", "param"):
             self._run_target_node(data["target"], data["name"])
+        elif item.childCount() > 0:
+            item.setExpanded(not item.isExpanded())
 
     def _filter_test_cases(self, text: str):
         q = text.strip().lower()
@@ -800,7 +949,11 @@ class MobilePage(QWidget):
             filter_item(self.tree.topLevelItem(i))
 
     def _expand_all(self):
-        self.tree.expandAll()
+        self._is_batch_expanding = True
+        try:
+            self.tree.expandAll()
+        finally:
+            self._is_batch_expanding = False
 
     def _collapse_all(self):
         self.tree.collapseAll()
@@ -1027,19 +1180,57 @@ class MobilePage(QWidget):
         self.btn_run.setEnabled(True)
         self.btn_stop.setEnabled(False)
 
-        # 更新用例状态红点与绿点
+        # 拦截手动终止情况 (exit_code == -9)，避免将中断用例判定为 failed 或加载空报告
+        if exit_code == -9:
+            self.lbl_running_case.setText("⏹️ 测试已被手动终止")
+            self.status_bar.setText("状态: 就绪 (测试已终止)")
+            return
+
+        # 1. 更新当前目标节点
         curr_node = getattr(self, "current_target_nodeid", None)
         if curr_node:
             self.node_status_map[curr_node] = "passed" if exit_code == 0 else "failed"
 
-        # 核心：全动态解析本次测试任务的真实报告与原始结果
+        self.lbl_running_case.setText(f"执行完毕 (退出码: {exit_code})")
+
+        # 2. 核心：全动态解析本次测试任务的真实报告与原始结果
         results_dir = getattr(self.worker, "allure_results_dir", None)
         target_report = report_dir or getattr(self.worker, "allure_report_dir", None)
 
         self.allure_dashboard.load_report_from_path(report_dir=target_report, results_dir=results_dir)
 
-        # 根据真实执行指标更新状态胶囊
+        # 3. 同步本次测试中所有实际执行完成的各用例状态到树节点映射表
         stat = getattr(self.allure_dashboard, "current_data", {})
+        cases = stat.get("cases", [])
+        if cases:
+            status_by_name = {}
+            for c in cases:
+                st = c.get("status", "")
+                if st:
+                    if c.get("fullName"):
+                        status_by_name[c["fullName"]] = st
+                    if c.get("name"):
+                        status_by_name[c["name"]] = st
+
+            def sync_status(item: QTreeWidgetItem):
+                data = item.data(0, Qt.ItemDataRole.UserRole)
+                if data and data.get("type") in ("test", "param"):
+                    target = data.get("target", "")
+                    name = data.get("name", "")
+                    for match_key, matched_st in status_by_name.items():
+                        if match_key in target or (name and name in match_key):
+                            self.node_status_map[target] = matched_st
+                            break
+                for i in range(item.childCount()):
+                    sync_status(item.child(i))
+
+            for i in range(self.tree.topLevelItemCount()):
+                sync_status(self.tree.topLevelItem(i))
+
+        # 4. 立即刷新树上所有用例的球形与齿轮状态 (通过变绿球，失败/异常变红球，齿轮始终保留)
+        self._update_tree_node_icons()
+
+        # 根据真实执行指标更新状态胶囊
         total = stat.get("total", 0)
         passed = stat.get("passed", 0)
         failed = stat.get("failed", 0)
@@ -1067,16 +1258,49 @@ class MobilePage(QWidget):
 
         self._refresh_report_pill_count()
 
+    def _update_tree_node_icons(self):
+        """递归遍历用例树更新叶子节点的球形状态与齿轮图标 (齿轮前必有球，默认空心球，通过绿球，失败/异常红球)"""
+        def visit(item: QTreeWidgetItem):
+            data = item.data(0, Qt.ItemDataRole.UserRole)
+            if data and data.get("type") in ("test", "param"):
+                target = data.get("target")
+                status = self.node_status_map.get(target, "")
+                orig_name = data.get("name", "")
+                is_param = (data.get("type") == "param")
+                prefix = "  " if is_param else ""
+                display_text = f"[{orig_name}]" if is_param else orig_name
+                item.setText(0, f"{prefix}{self._format_test_node_text(status, display_text)}")
+                item.setToolTip(0, f"用例: {orig_name}\n节点: {target}\n状态: {status or '未执行'}")
+            for i in range(item.childCount()):
+                visit(item.child(i))
+
+        for i in range(self.tree.topLevelItemCount()):
+            visit(self.tree.topLevelItem(i))
+
     def open_allure_report(self):
         self.allure_dashboard.load_latest_report()
         stat = getattr(self.allure_dashboard, "current_data", {})
         task_id = stat.get("task_id", "就绪")
         total = stat.get("total", 0)
+        passed = stat.get("passed", 0)
+        failed = stat.get("failed", 0)
+        broken = stat.get("broken", 0)
+        bad_count = failed + broken
+
+        if total > 0:
+            if bad_count == 0:
+                self.lbl_status_pill.setText(f"🎉 全部通过 ({passed}/{total})")
+                self.lbl_status_pill.setStyleSheet("background-color: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; border-radius: 12px; padding: 3px 10px; font-weight: 700; font-size: 11px;")
+            else:
+                self.lbl_status_pill.setText(f"🔴 测试失败 ({bad_count}/{total} 异常)")
+                self.lbl_status_pill.setStyleSheet("background-color: #fef2f2; color: #e11d48; border: 1px solid #fecdd3; border-radius: 12px; padding: 3px 10px; font-weight: 700; font-size: 11px;")
+
         self.append_log(f"📊 已动态同步最新 Allure 测试报告: {task_id} (执行用例: {total} 条)")
         self._refresh_report_pill_count()
 
     def append_log(self, text: str):
-        self.console.appendPlainText(text)
+        cleaned = clean_ansi_log(text)
+        self.console.appendPlainText(cleaned)
         if self.btn_toggle_autoscroll.text().startswith("🟢"):
             self.console.moveCursor(QTextCursor.MoveOperation.End)
 

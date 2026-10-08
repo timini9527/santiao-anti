@@ -98,9 +98,28 @@ def run_app():
     # 开启 Windows 4K/高分屏矢量渲染优化
     os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
 
+    # 注册 Windows 原生任务栏专属 AppId，确保任务栏独立显示专属高清图标
+    if sys.platform == "win32":
+        try:
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("SantiaoQA.AntiIM.Desktop.Platform")
+        except Exception:
+            pass
+
     app = QApplication(sys.argv)
     app.setApplicationName("三条 IM 自动化测试控制台")
     app.setOrganizationName("SantiaoQA")
+
+    # 注入应用程序全局专属高清图标 (覆盖任务栏、主窗口与通知托盘)
+    from PyQt6.QtGui import QIcon
+    icon_candidates = [
+        os.path.join(os.path.dirname(__file__), "resources", "app_icon.png"),
+        os.path.join(os.path.dirname(__file__), "resources", "sant_logo_hd.png"),
+        os.path.join(os.path.dirname(__file__), "resources", "app_icon.ico"),
+    ]
+    for ic_p in icon_candidates:
+        if os.path.exists(ic_p):
+            app.setWindowIcon(QIcon(ic_p))
+            break
 
     # 注册全局异常钩子
     sys.excepthook = handle_exception

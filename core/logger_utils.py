@@ -137,7 +137,7 @@ class LoggerUtils:
             console_handler.setLevel(logging.DEBUG)
 
             # 2. 控制台输出格式：整行渲染相同的日志等级颜色（INFO 全绿，DEBUG 全青蓝），通过行首空格规避 [ 被吞的 Bug，并启用 reset=True 保证末尾自动换行复位
-            color_fmt = ' %(log_color)s[%(asctime)s.%(msecs)03d] | %(levelname)s| %(filename)-22s:%(lineno)-4d (%(funcName)-20s) ❯ %(message)s'
+            color_fmt = ' %(log_color)s[%(asctime)s.%(msecs)03d] | %(levelname)s | %(filename)-22s:%(lineno)-4d (%(funcName)-20s) ❯ %(message)s '
             color_formatter = AdvancedColoredFormatter(
                 color_fmt,
                 datefmt=date_fmt_str,

@@ -181,7 +181,7 @@ QComboBox QAbstractItemView {
 }
 
 /* ==================== 3. 按钮规范 (Element Plus 体系) ==================== */
-QPushButton.btn-primary {
+QPushButton.btn-primary, QPushButton[class="btn-primary"] {
     background-color: #2563eb;
     color: #ffffff;
     font-weight: 600;
@@ -190,15 +190,15 @@ QPushButton.btn-primary {
     border: 1px solid #1d4ed8;
 }
 
-QPushButton.btn-primary:hover {
+QPushButton.btn-primary:hover, QPushButton[class="btn-primary"]:hover {
     background-color: #1d4ed8;
 }
 
-QPushButton.btn-primary:pressed {
+QPushButton.btn-primary:pressed, QPushButton[class="btn-primary"]:pressed {
     background-color: #1e40af;
 }
 
-QPushButton.btn-success {
+QPushButton.btn-success, QPushButton[class="btn-success"] {
     background-color: #059669;
     color: #ffffff;
     font-weight: 600;
@@ -207,11 +207,11 @@ QPushButton.btn-success {
     border: 1px solid #047857;
 }
 
-QPushButton.btn-success:hover {
+QPushButton.btn-success:hover, QPushButton[class="btn-success"]:hover {
     background-color: #047857;
 }
 
-QPushButton.btn-warning {
+QPushButton.btn-warning, QPushButton[class="btn-warning"] {
     background-color: #d97706;
     color: #ffffff;
     font-weight: 600;
@@ -220,11 +220,11 @@ QPushButton.btn-warning {
     border: 1px solid #b45309;
 }
 
-QPushButton.btn-warning:hover {
+QPushButton.btn-warning:hover, QPushButton[class="btn-warning"]:hover {
     background-color: #b45309;
 }
 
-QPushButton.btn-danger {
+QPushButton.btn-danger, QPushButton[class="btn-danger"] {
     background-color: #e11d48;
     color: #ffffff;
     font-weight: 600;
@@ -233,7 +233,7 @@ QPushButton.btn-danger {
     border: 1px solid #be123c;
 }
 
-QPushButton.btn-danger:hover {
+QPushButton.btn-danger:hover, QPushButton[class="btn-danger"]:hover {
     background-color: #be123c;
 }
 
@@ -412,21 +412,25 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
     height: 0px;
 }
 
-/* ==================== 6. 分割器美化 (Splitter Handle) ==================== */
+/* ==================== 6. 分割器美化 (极窄精致，告别粗厚视觉负担) ==================== */
 QSplitter::handle {
-    background-color: #f1f5f9;
+    background-color: transparent;
 }
 QSplitter::handle:horizontal {
-    width: 6px;
+    width: 3px;
+    background-color: #e2e8f0;
+    border-radius: 1px;
 }
 QSplitter::handle:vertical {
-    height: 7px;
+    height: 3px;
+    background-color: #e2e8f0;
+    border-radius: 1px;
 }
 QSplitter::handle:hover {
-    background-color: #93c5fd;
+    background-color: #3b82f6;
 }
 QSplitter::handle:pressed {
-    background-color: #3b82f6;
+    background-color: #1d4ed8;
 }
 """
 

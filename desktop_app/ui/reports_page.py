@@ -19,15 +19,16 @@ from typing import List, Dict, Any, Optional
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QFrame, QScrollArea, QSplitter,
-    QComboBox, QMessageBox
+    QComboBox, QMessageBox, QMenu
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from .allure_dashboard import AllureDonutWidget
+from .allure_dashboard import AllureDashboardWidget
 from web_platform.backend.paths import REPORTS_DIR
 
 class ReportHistoryItem(QFrame):
     """左侧历史任务卡片项"""
     clicked = pyqtSignal(dict)
+    delete_requested = pyqtSignal(dict)
 
     def __init__(self, data: Dict[str, Any], is_selected: bool = False, parent=None):
         super().__init__(parent)
@@ -52,11 +53,33 @@ class ReportHistoryItem(QFrame):
 
         task_id = self.data.get("task_id", "")
         # 适度缩短显示
-        display_id = task_id if len(task_id) <= 24 else (task_id[:22] + "...")
+        display_id = task_id if len(task_id) <= 20 else (task_id[:18] + "...")
         self.lbl_id = QLabel(display_id)
         self.lbl_id.setStyleSheet("font-weight: 700; color: #0f172a; font-size: 11px; font-family: monospace;")
         top_row.addWidget(self.lbl_id)
         top_row.addStretch()
+
+        # 卡片快捷微型删除按钮
+        btn_del_item = QPushButton("✕")
+        btn_del_item.setFixedSize(16, 16)
+        btn_del_item.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_del_item.setToolTip("删除此条测试报告")
+        btn_del_item.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                border: none;
+                color: #94a3b8;
+                font-size: 11px;
+                font-weight: bold;
+                border-radius: 8px;
+            }
+            QPushButton:hover {
+                background-color: #fee2e2;
+                color: #e11d48;
+            }
+        """)
+        btn_del_item.clicked.connect(lambda: self.delete_requested.emit(self.data))
+        top_row.addWidget(btn_del_item)
 
         layout.addLayout(top_row)
 
@@ -95,275 +118,17 @@ class ReportHistoryItem(QFrame):
             self.lbl_id.setStyleSheet("font-weight: 700; color: #0f172a; font-size: 11px; font-family: monospace;")
 
 
-class FullAllureViewWidget(QFrame):
-    """
-    1:1 原生复刻图 5 中的 Allure 完整看板 (含测试套、环境、特性场景、趋势、类别)
-    """
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.init_ui()
-
-    def init_ui(self):
-        self.setObjectName("allureView")
-        self.setStyleSheet("""
-            QFrame#allureView {
-                background-color: #ffffff;
-                border: 1px solid #e2e8f0;
-                border-radius: 8px;
-            }
-        """)
-        main_layout = QHBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
-
-        # 1. 左侧深灰侧边栏 (Allure 经典 Sidebar)
-        sidebar = QFrame()
-        sidebar.setFixedWidth(50)
-        sidebar.setObjectName("allureSidebar")
-        sidebar.setStyleSheet("""
-            QFrame#allureSidebar {
-                background-color: #2c323f;
-                border-top-left-radius: 8px;
-                border-bottom-left-radius: 8px;
-            }
-            QPushButton {
-                background: transparent;
-                border: none;
-                color: #94a3b8;
-                font-size: 11px;
-                padding: 8px 0px;
-                text-align: center;
-            }
-            QPushButton:hover {
-                background-color: #1e2430;
-                color: #ffffff;
-            }
-            QPushButton.active {
-                background-color: #1e2430;
-                color: #38bdf8;
-                border-left: 3px solid #38bdf8;
-            }
-        """)
-        side_layout = QVBoxLayout(sidebar)
-        side_layout.setContentsMargins(0, 12, 0, 12)
-        side_layout.setSpacing(8)
-
-        logo_lbl = QLabel("🌈")
-        logo_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        logo_lbl.setStyleSheet("font-size: 20px; margin-bottom: 6px;")
-        side_layout.addWidget(logo_lbl)
-
-        btn_overview = QPushButton("🏠\n总览")
-        btn_overview.setProperty("class", "active")
-        side_layout.addWidget(btn_overview)
-
-        btn_cat = QPushButton("🗂️\n类别")
-        side_layout.addWidget(btn_cat)
-
-        btn_charts = QPushButton("📊\n图表")
-        side_layout.addWidget(btn_charts)
-
-        btn_suites = QPushButton("📦\n功能")
-        side_layout.addWidget(btn_suites)
-
-        side_layout.addStretch()
-
-        lbl_zh = QLabel("Zh")
-        lbl_zh.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_zh.setStyleSheet("color: #64748b; font-size: 10px; font-weight: bold; background: #1e2430; border-radius: 4px; padding: 2px 4px; margin: 0 10px;")
-        side_layout.addWidget(lbl_zh)
-
-        btn_fold = QPushButton("‹ 折叠")
-        side_layout.addWidget(btn_fold)
-
-        main_layout.addWidget(sidebar)
-
-        # 2. 中间与右侧看板
-        content = QWidget()
-        c_layout = QHBoxLayout(content)
-        c_layout.setContentsMargins(12, 10, 12, 10)
-        c_layout.setSpacing(14)
-
-        # 2.1 中间列
-        mid_col = QVBoxLayout()
-        mid_col.setSpacing(12)
-
-        # 标题与时间
-        self.lbl_head_time = QLabel("ALLURE REPORT 2026/9/29\n18:05:18 - 18:05:19 (1s 435ms)")
-        self.lbl_head_time.setStyleSheet("font-size: 14px; font-weight: 800; color: #0f172a; line-height: 1.4;")
-        mid_col.addWidget(self.lbl_head_time)
-
-        # 环形图与大字用例数
-        chart_row = QHBoxLayout()
-        chart_row.setSpacing(14)
-
-        self.donut = AllureDonutWidget()
-        self.donut.set_stats(total=6, passed=0, failed=6)
-        chart_row.addWidget(self.donut)
-
-        count_box = QVBoxLayout()
-        count_box.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-        self.lbl_case_num = QLabel("6")
-        self.lbl_case_num.setStyleSheet("font-size: 34px; font-weight: 800; color: #0f172a;")
-        lbl_desc = QLabel("测试用例")
-        lbl_desc.setStyleSheet("color: #64748b; font-size: 12px; font-weight: 600;")
-        count_box.addWidget(self.lbl_case_num)
-        count_box.addWidget(lbl_desc)
-        chart_row.addLayout(count_box)
-        chart_row.addStretch()
-        mid_col.addLayout(chart_row)
-
-        # 测试套卡片
-        suite_box = QFrame()
-        suite_box.setObjectName("allureSuiteBox")
-        suite_box.setStyleSheet("QFrame#allureSuiteBox { background: #fafafa; border: 1px solid #e2e8f0; border-radius: 6px; }")
-        s_layout = QVBoxLayout(suite_box)
-        s_layout.setContentsMargins(8, 7, 8, 7)
-        s_layout.setSpacing(7)
-        lbl_s_head = QLabel("测试套  总共1项")
-        lbl_s_head.setStyleSheet("font-weight: 700; color: #334155; font-size: 11px;")
-        s_layout.addWidget(lbl_s_head)
-
-        bar1 = QHBoxLayout()
-        lbl_s_name = QLabel("tests.smoke_test")
-        lbl_s_name.setStyleSheet("color: #475569; font-size: 11px;")
-        bar1.addWidget(lbl_s_name)
-        bar1.addStretch()
-
-        self.lbl_suite_val = QLabel("6")
-        self.lbl_suite_val.setStyleSheet("background-color: #f59e0b; color: #ffffff; font-weight: 700; font-size: 11px; padding: 2px 10px; border-radius: 4px;")
-        bar1.addWidget(self.lbl_suite_val)
-        s_layout.addLayout(bar1)
-        mid_col.addWidget(suite_box)
-
-        # 环境卡片
-        env_box = QFrame()
-        env_box.setObjectName("allureEnvBox")
-        env_box.setStyleSheet("QFrame#allureEnvBox { background: #fafafa; border: 1px solid #e2e8f0; border-radius: 6px; }")
-        e_layout = QVBoxLayout(env_box)
-        e_layout.setContentsMargins(8, 7, 8, 7)
-        lbl_env = QLabel("环境")
-        lbl_env.setStyleSheet("font-weight: 700; color: #334155; font-size: 11px;")
-        e_layout.addWidget(lbl_env)
-        lbl_no_env = QLabel("没有环境变量")
-        lbl_no_env.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_no_env.setStyleSheet("color: #94a3b8; font-size: 11px; margin: 10px 0;")
-        e_layout.addWidget(lbl_no_env)
-        mid_col.addWidget(env_box)
-
-        # 特性场景卡片
-        feat_box = QFrame()
-        feat_box.setObjectName("allureFeatureBox")
-        feat_box.setStyleSheet("QFrame#allureFeatureBox { background: #fafafa; border: 1px solid #e2e8f0; border-radius: 6px; }")
-        f_layout = QVBoxLayout(feat_box)
-        f_layout.setContentsMargins(8, 7, 8, 7)
-        f_layout.setSpacing(7)
-        lbl_f_head = QLabel("特性场景  总共1项")
-        lbl_f_head.setStyleSheet("font-weight: 700; color: #334155; font-size: 11px;")
-        f_layout.addWidget(lbl_f_head)
-
-        bar2 = QHBoxLayout()
-        lbl_f_name = QLabel("IM核心功能测试")
-        lbl_f_name.setStyleSheet("color: #475569; font-size: 11px;")
-        bar2.addWidget(lbl_f_name)
-        bar2.addStretch()
-
-        lbl_f_val = QLabel("1")
-        lbl_f_val.setStyleSheet("background-color: #f59e0b; color: #ffffff; font-weight: 700; font-size: 11px; padding: 2px 10px; border-radius: 4px;")
-        bar2.addWidget(lbl_f_val)
-        f_layout.addLayout(bar2)
-
-        lbl_show_all = QLabel("显示所有")
-        lbl_show_all.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_show_all.setStyleSheet("color: #94a3b8; font-size: 10px; margin-top: 4px;")
-        f_layout.addWidget(lbl_show_all)
-        mid_col.addWidget(feat_box)
-
-        c_layout.addLayout(mid_col, stretch=6)
-
-        # 2.2 右侧列 (趋势 + 类别)
-        right_col = QVBoxLayout()
-        right_col.setSpacing(12)
-
-        # 趋势
-        trend_box = QFrame()
-        trend_box.setObjectName("allureTrendBox")
-        trend_box.setStyleSheet("QFrame#allureTrendBox { background: #fafafa; border: 1px solid #e2e8f0; border-radius: 6px; }")
-        t_layout = QVBoxLayout(trend_box)
-        t_layout.setContentsMargins(8, 7, 8, 7)
-        lbl_trend = QLabel("趋势")
-        lbl_trend.setStyleSheet("font-weight: 700; color: #334155; font-size: 13px;")
-        t_layout.addWidget(lbl_trend)
-
-        lbl_trend_none = QLabel("没有信息")
-        lbl_trend_none.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_trend_none.setStyleSheet("color: #94a3b8; font-size: 12px; margin: 50px 0;")
-        t_layout.addWidget(lbl_trend_none)
-        right_col.addWidget(trend_box)
-
-        # 类别
-        cat_box = QFrame()
-        cat_box.setObjectName("allureCategoryBox")
-        cat_box.setStyleSheet("QFrame#allureCategoryBox { background: #fafafa; border: 1px solid #e2e8f0; border-radius: 6px; }")
-        cat_layout = QVBoxLayout(cat_box)
-        cat_layout.setContentsMargins(8, 7, 8, 7)
-        cat_layout.setSpacing(8)
-
-        lbl_c_head = QLabel("类别  总共1项")
-        lbl_c_head.setStyleSheet("font-weight: 700; color: #334155; font-size: 11px;")
-        cat_layout.addWidget(lbl_c_head)
-
-        bar3 = QHBoxLayout()
-        lbl_def = QLabel("Test defects")
-        lbl_def.setStyleSheet("color: #475569; font-size: 11px;")
-        bar3.addWidget(lbl_def)
-        bar3.addStretch()
-
-        self.lbl_def_val = QLabel("6")
-        self.lbl_def_val.setStyleSheet("background-color: #f59e0b; color: #ffffff; font-weight: 700; font-size: 11px; padding: 2px 12px; border-radius: 4px;")
-        bar3.addWidget(self.lbl_def_val)
-        cat_layout.addLayout(bar3)
-
-        lbl_cat_show = QLabel("显示所有")
-        lbl_cat_show.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_cat_show.setStyleSheet("color: #94a3b8; font-size: 10px; margin-top: 4px;")
-        cat_layout.addWidget(lbl_cat_show)
-        right_col.addWidget(cat_box)
-
-        # 运行器
-        lbl_runner = QLabel("运行器")
-        lbl_runner.setStyleSheet("font-weight: 700; color: #334155; font-size: 11px; margin-top: 6px;")
-        right_col.addWidget(lbl_runner)
-
-        right_col.addStretch()
-        c_layout.addLayout(right_col, stretch=4)
-
-        main_layout.addWidget(content, stretch=1)
-
-    def update_report_data(self, task_name: str, time_str: str, count: int = 6):
-        self.lbl_head_time.setText(f"ALLURE REPORT 2026/9/29\n{time_str}")
-        self.lbl_case_num.setText(str(count))
-        self.lbl_suite_val.setText(str(count))
-        self.lbl_def_val.setText(str(count))
-        self.donut.set_stats(total=count, passed=0, failed=count)
-
-
 class ReportsPage(QWidget):
     """测试报告与质量门禁看板 (图 5 像素级复刻)"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.history_data = [
-            {"task_id": "task_yhcvq0auv_1790676257298", "time": "2026-09-29 18:05:25", "cases": 6},
-            {"task_id": "task_xex3yd553_1790669377414", "time": "2026-09-29 17:12:08", "cases": 3},
-            {"task_id": "task_test_mock_999", "time": "2026-09-29 17:11:59", "cases": 3},
-            {"task_id": "task_kyq4sxyos_1790672244909", "time": "2026-09-29 17:08:46", "cases": 5},
-            {"task_id": "task_2ruvqy8df_1787645855950", "time": "2026-09-29 17:12:06", "cases": 3}
-        ]
-        self.selected_task = self.history_data[0]
-        self.history_items = []
+        self.history_data: List[Dict[str, Any]] = []
+        self.selected_task: Dict[str, Any] = {}
+        self.history_items: List[ReportHistoryItem] = []
 
         self.init_ui()
+        self.refresh_reports()
 
     def init_ui(self):
         root_layout = QVBoxLayout(self)
@@ -378,10 +143,10 @@ class ReportsPage(QWidget):
         kpi_row = QHBoxLayout()
         kpi_row.setSpacing(14)
 
-        card_cov = self._create_kpi_card("自动化覆盖率", "86.4%", "门禁目标: ≥ 80% (达标)", "#059669")
-        card_smoke = self._create_kpi_card("冒烟测试通过率", "14.3%", "门禁目标: ≥ 95% (未达标)", "#0f172a")
-        card_flaky = self._create_kpi_card("Flaky Test 占比", "0%", "门禁目标: ≤ 2% (健康)", "#d97706")
-        card_count = self._create_kpi_card("累计归档报告", "5 份", "Allure 独立任务隔离", "#7c3aed")
+        card_cov, self.card_cov_val = self._create_kpi_card("自动化覆盖率", "86.4%", "门禁目标: ≥ 80% (达标)", "#059669")
+        card_smoke, self.card_smoke_val = self._create_kpi_card("冒烟测试通过率", "14.3%", "门禁目标: ≥ 95% (未达标)", "#0f172a")
+        card_flaky, self.card_flaky_val = self._create_kpi_card("Flaky Test 占比", "0%", "门禁目标: ≤ 2% (健康)", "#d97706")
+        card_count, self.card_count_val = self._create_kpi_card("累计归档报告", "0 份", "Allure 独立任务隔离", "#7c3aed")
 
         kpi_row.addWidget(card_cov)
         kpi_row.addWidget(card_smoke)
@@ -391,14 +156,14 @@ class ReportsPage(QWidget):
 
         # 3. 左右分栏核心主体 (水平 QSplitter)
         self.h_splitter = QSplitter(Qt.Orientation.Horizontal)
-        self.h_splitter.setHandleWidth(6)
+        self.h_splitter.setHandleWidth(4)
 
         # 3.1 左侧：历史执行任务报告列表
         left_card = self._create_history_list_card()
         left_card.setMinimumWidth(220)
         self.h_splitter.addWidget(left_card)
 
-        # 3.2 右侧：Allure 报告详情大面板
+        # 3.2 右侧：Allure 报告详情大面板 (与移动端执行报告 100% 统一)
         right_card = self._create_report_detail_panel()
         right_card.setMinimumWidth(360)
         self.h_splitter.addWidget(right_card)
@@ -467,9 +232,9 @@ class ReportsPage(QWidget):
         sep2.setStyleSheet("color: #cbd5e1;")
         pg_layout.addWidget(sep2)
 
-        lbl_rep = QLabel("📑 报告: 5 份")
-        lbl_rep.setStyleSheet("color: #7c3aed; font-weight: 700; font-size: 12px;")
-        pg_layout.addWidget(lbl_rep)
+        self.lbl_rep = QLabel("📑 报告: 0 份")
+        self.lbl_rep.setStyleSheet("color: #7c3aed; font-weight: 700; font-size: 12px;")
+        pg_layout.addWidget(self.lbl_rep)
 
         btn_refresh = QPushButton("🔄")
         btn_refresh.setFixedSize(24, 24)
@@ -482,7 +247,7 @@ class ReportsPage(QWidget):
         return card
 
     # ================= 2. 门禁指标 KPI 卡片 =================
-    def _create_kpi_card(self, label: str, val: str, sub: str, color: str) -> QWidget:
+    def _create_kpi_card(self, label: str, val: str, sub: str, color: str) -> tuple[QWidget, QLabel]:
         card = QFrame()
         card.setObjectName("reportsKpiCard")
         card.setStyleSheet("QFrame#reportsKpiCard { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; }")
@@ -501,7 +266,7 @@ class ReportsPage(QWidget):
         lbl_s = QLabel(sub)
         lbl_s.setStyleSheet("color: #94a3b8; font-size: 10px;")
         layout.addWidget(lbl_s)
-        return card
+        return card, lbl_v
 
     # ================= 3. 左侧历史执行任务报告列表 =================
     def _create_history_list_card(self) -> QWidget:
@@ -518,9 +283,29 @@ class ReportsPage(QWidget):
         head_row.addWidget(lbl_head)
         head_row.addStretch()
 
+        # 垃圾桶删除操作按钮
+        btn_del = QPushButton("🗑️")
+        btn_del.setFixedSize(22, 22)
+        btn_del.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_del.setToolTip("删除报告 (支持删除当前 / 一键清空全部)")
+        btn_del.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                border: none;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background: #fee2e2;
+                border-radius: 11px;
+            }
+        """)
+        btn_del.clicked.connect(self._on_click_delete_menu)
+        head_row.addWidget(btn_del)
+
         btn_ref = QPushButton("🔄")
         btn_ref.setFixedSize(22, 22)
         btn_ref.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_ref.setToolTip("刷新报告列表")
         btn_ref.setStyleSheet("QPushButton { background: transparent; border: none; font-size: 12px; } QPushButton:hover { background: #e2e8f0; border-radius: 11px; }")
         btn_ref.clicked.connect(self.refresh_reports)
         head_row.addWidget(btn_ref)
@@ -554,23 +339,158 @@ class ReportsPage(QWidget):
         self.history_items = []
 
         for idx, r in enumerate(self.history_data):
-            is_active = (r["task_id"] == self.selected_task["task_id"])
+            is_active = (r.get("task_id") == self.selected_task.get("task_id"))
             item = ReportHistoryItem(r, is_selected=is_active)
             item.clicked.connect(self._on_select_history)
+            item.delete_requested.connect(self._delete_single_report)
             self.history_items.append(item)
             self.list_layout.insertWidget(idx, item)
+
+    # ================= 删除测试报告业务逻辑 =================
+    def _delete_single_report(self, task_data: Dict[str, Any]):
+        """删除指定的一条报告及其物理磁盘数据"""
+        task_id = task_data.get("task_id", "")
+        if not task_id:
+            return
+
+        reply = QMessageBox.question(
+            self,
+            "确认删除测试报告",
+            f"确定要彻底删除该测试报告吗？\n\n任务编号: {task_id}\n生成时间: {task_data.get('time', '未知')}\n\n该操作将永久从磁盘中清除本次报告的所有结果文件与截图。",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            self._do_delete_report_files(task_id, task_data.get("path"))
+            self.refresh_reports()
+
+    def _delete_current_selected_report(self):
+        """删除当前选中的报告"""
+        if not self.selected_task or not self.selected_task.get("task_id"):
+            QMessageBox.information(self, "提示", "当前没有选中的测试报告可删除。")
+            return
+        self._delete_single_report(self.selected_task)
+
+    def _clear_all_reports(self):
+        """一键清空本地所有历史测试报告"""
+        if not self.history_data:
+            QMessageBox.information(self, "提示", "当前历史报告列表已为空，无需清理。")
+            return
+
+        reply = QMessageBox.warning(
+            self,
+            "危险操作：清空全部报告",
+            f"确定要一键清空本地所有的历史测试报告吗？（共 {len(self.history_data)} 份）\n\n此操作将永久清理磁盘上所有生成的测试报告、JSON 结果与失败截图，不可撤回！",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            for item in list(self.history_data):
+                self._do_delete_report_files(item.get("task_id", ""), item.get("path"))
+            self.refresh_reports()
+            QMessageBox.information(self, "清理完成", "已成功清空本地所有历史测试报告！")
+
+    def _do_delete_report_files(self, task_id: str, task_path: Optional[str] = None):
+        """彻底清理单个任务在文件系统中的全部产物"""
+        import shutil
+        targets = set()
+        if task_path and os.path.exists(task_path):
+            targets.add(os.path.abspath(task_path))
+        if task_id:
+            targets.add(os.path.abspath(os.path.join(REPORTS_DIR, "allure_reports", task_id)))
+            targets.add(os.path.abspath(os.path.join(REPORTS_DIR, "allure_results", task_id)))
+            targets.add(os.path.abspath(os.path.join(REPORTS_DIR, f"html_{task_id}")))
+            targets.add(os.path.abspath(os.path.join(REPORTS_DIR, f"tmp_{task_id}")))
+
+        for p in targets:
+            if os.path.exists(p):
+                try:
+                    if os.path.isdir(p):
+                        shutil.rmtree(p, ignore_errors=True)
+                    else:
+                        os.remove(p)
+                except Exception as e:
+                    print(f"删除报告文件失败 ({p}): {e}")
+
+    def _on_click_delete_menu(self):
+        """点击顶栏垃圾桶按钮，弹出操作菜单（删除当前或清空全部）"""
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 6px;
+                padding: 4px;
+            }
+            QMenu::item {
+                padding: 6px 14px;
+                font-size: 11px;
+                color: #334155;
+                border-radius: 4px;
+            }
+            QMenu::item:hover {
+                background-color: #f1f5f9;
+                color: #0f172a;
+            }
+            QMenu::item:selected {
+                background-color: #fee2e2;
+                color: #e11d48;
+            }
+        """)
+
+        curr_id = self.selected_task.get("task_id", "")
+        short_id = (curr_id[:16] + "...") if len(curr_id) > 18 else curr_id
+        action_del_curr = menu.addAction(f"🗑️ 删除当前报告 ({short_id or '未选择'})")
+        action_del_curr.triggered.connect(self._delete_current_selected_report)
+        if not curr_id:
+            action_del_curr.setEnabled(False)
+
+        menu.addSeparator()
+
+        action_clear_all = menu.addAction("🧹 清空全部历史报告")
+        action_clear_all.triggered.connect(self._clear_all_reports)
+
+        btn_sender = self.sender()
+        if isinstance(btn_sender, QPushButton):
+            menu.exec(btn_sender.mapToGlobal(btn_sender.rect().bottomLeft()))
+        else:
+            from PyQt6.QtGui import QCursor
+            menu.exec(QCursor.pos())
 
     def _on_select_history(self, task_data: Dict[str, Any]):
         self.selected_task = task_data
         for item in self.history_items:
-            item.set_selected(item.data["task_id"] == task_data["task_id"])
+            item.set_selected(item.data.get("task_id") == task_data.get("task_id"))
 
-        self.lbl_curr_report.setText(f"当前报告: {task_data['task_id']}   生成时间: {task_data.get('time', '')}")
-        self.allure_view.update_report_data(
-            task_name=task_data["task_id"],
-            time_str=f"{task_data.get('time', '').split(' ')[-1]}",
-            count=task_data.get("cases", 0)
-        )
+        self.lbl_curr_report.setText(f"当前报告: {task_data.get('task_id', '未选择')}   生成时间: {task_data.get('time', '')}")
+
+        # 核心：精准动态加载并呈现该历史任务的真实测试报告
+        task_id = task_data.get("task_id", "")
+        task_path = task_data.get("path", "")
+        report_dir = None
+        results_dir = None
+
+        if task_path and os.path.exists(task_path):
+            if os.path.exists(os.path.join(task_path, "widgets", "summary.json")):
+                report_dir = task_path
+            else:
+                results_dir = task_path
+
+        if not report_dir:
+            cand_report = os.path.join(REPORTS_DIR, "allure_reports", task_id)
+            if os.path.exists(os.path.join(cand_report, "widgets", "summary.json")):
+                report_dir = cand_report
+
+        if not results_dir:
+            cand_results = os.path.join(REPORTS_DIR, "allure_results", task_id)
+            if os.path.exists(cand_results):
+                results_dir = cand_results
+            else:
+                cand_tmp = os.path.join(REPORTS_DIR, f"tmp_{task_id}")
+                if os.path.exists(cand_tmp):
+                    results_dir = cand_tmp
+
+        self.allure_dashboard.load_report_from_path(report_dir=report_dir, results_dir=results_dir)
 
     # ================= 4. 右侧 Allure 看板详情面板 =================
     def _create_report_detail_panel(self) -> QWidget:
@@ -585,7 +505,9 @@ class ReportsPage(QWidget):
         top_bar.setContentsMargins(4, 2, 4, 2)
         top_bar.setSpacing(10)
 
-        self.lbl_curr_report = QLabel(f"当前报告: {self.selected_task['task_id']}   生成时间: {self.selected_task.get('time', '')}")
+        curr_id = self.selected_task.get('task_id', '就绪')
+        curr_time = self.selected_task.get('time', '')
+        self.lbl_curr_report = QLabel(f"当前报告: {curr_id}   生成时间: {curr_time}")
         self.lbl_curr_report.setStyleSheet("color: #0f172a; font-weight: 700; font-size: 12px; font-family: monospace;")
         top_bar.addWidget(self.lbl_curr_report)
         top_bar.addStretch()
@@ -606,19 +528,26 @@ class ReportsPage(QWidget):
 
         layout.addLayout(top_bar)
 
-        self.allure_view = FullAllureViewWidget()
-        self.allure_scroll = QScrollArea()
-        self.allure_scroll.setWidgetResizable(True)
-        self.allure_scroll.setFrameShape(QFrame.Shape.NoFrame)
-        self.allure_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self.allure_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self.allure_scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
-        self.allure_scroll.setWidget(self.allure_view)
-        layout.addWidget(self.allure_scroll, stretch=1)
+        # 核心：直接嵌入功能完备、与实际运行完全统一的 Allure 原生看板组件
+        self.allure_dashboard = AllureDashboardWidget(parent=self)
+        layout.addWidget(self.allure_dashboard, stretch=1)
 
         return panel
 
     def _open_selected_in_browser(self):
+        curr_task = getattr(self, "selected_task", {})
+        if curr_task:
+            task_id = curr_task.get("task_id", "")
+            task_path = curr_task.get("path", "")
+            candidates = [
+                os.path.join(task_path, "index.html") if task_path else "",
+                os.path.join(REPORTS_DIR, "allure_reports", task_id, "index.html"),
+                os.path.join(REPORTS_DIR, f"html_{task_id}", "index.html"),
+            ]
+            for cand in candidates:
+                if cand and os.path.exists(cand):
+                    webbrowser.open(f"file:///{os.path.abspath(cand)}")
+                    return
         reports_base = os.path.join(REPORTS_DIR, "allure_reports")
         if os.path.exists(reports_base):
             dirs = [os.path.join(reports_base, d) for d in os.listdir(reports_base) if os.path.isdir(os.path.join(reports_base, d))]
@@ -628,54 +557,151 @@ class ReportsPage(QWidget):
                 if os.path.exists(idx_file):
                     webbrowser.open(f"file:///{os.path.abspath(idx_file)}")
                     return
-        QMessageBox.information(self, "Allure 报告", "已通过系统默认浏览器全屏打开 Allure 测试报告看板！")
+        QMessageBox.information(self, "Allure 报告", "当前任务尚未生成独立 HTML 报告，可在右侧仪表盘实时预览测试数据。")
 
     def refresh_reports(self):
+        """全自动扫描并同步本地所有测试任务报告，按时间倒序排列并渲染"""
         from datetime import datetime
         new_list = []
-        if os.path.exists(REPORTS_DIR):
-            for name in os.listdir(REPORTS_DIR):
-                p = os.path.join(REPORTS_DIR, name)
-                if not os.path.isdir(p):
+        found_ids = set()
+
+        # 1. 扫描 REPORTS_DIR/allure_reports/ 下的编译报告
+        allure_reports_dir = os.path.join(REPORTS_DIR, "allure_reports")
+        if os.path.exists(allure_reports_dir):
+            for name in os.listdir(allure_reports_dir):
+                sp = os.path.join(allure_reports_dir, name)
+                if not os.path.isdir(sp):
                     continue
-                sum_f = os.path.join(p, "widgets", "summary.json")
-                if os.path.exists(sum_f):
+
+                # 自动清理完全为空的异常残留目录
+                if not os.listdir(sp):
                     try:
-                        with open(sum_f, "r", encoding="utf-8") as f:
+                        os.rmdir(sp)
+                    except Exception:
+                        pass
+                    continue
+
+                sum_sub = os.path.join(sp, "widgets", "summary.json")
+                tot = 0
+                t_str = ""
+                if os.path.exists(sum_sub):
+                    try:
+                        with open(sum_sub, "r", encoding="utf-8") as f:
                             s_data = json.load(f)
                         tot = s_data.get("statistic", {}).get("total", 0)
                         st = s_data.get("time", {}).get("start", 0)
-                        t_str = datetime.fromtimestamp(st / 1000.0).strftime("%Y-%m-%d %H:%M:%S") if st else ""
-                        new_list.append({
-                            "task_id": name,
-                            "time": t_str or "2026-09-30 14:00:00",
-                            "cases": tot,
-                            "path": p
-                        })
+                        if st:
+                            t_str = datetime.fromtimestamp(st / 1000.0).strftime("%Y-%m-%d %H:%M:%S")
                     except Exception:
                         pass
-                elif name in ("allure_reports", "reports"):
-                    for sub in os.listdir(p):
-                        sp = os.path.join(p, sub)
-                        sum_sub = os.path.join(sp, "widgets", "summary.json")
-                        if os.path.isdir(sp) and os.path.exists(sum_sub):
-                            try:
-                                with open(sum_sub, "r", encoding="utf-8") as f:
-                                    s_data = json.load(f)
-                                tot = s_data.get("statistic", {}).get("total", 0)
-                                st = s_data.get("time", {}).get("start", 0)
-                                t_str = datetime.fromtimestamp(st / 1000.0).strftime("%Y-%m-%d %H:%M:%S") if st else ""
-                                new_list.append({
-                                    "task_id": sub,
-                                    "time": t_str or "2026-09-30 14:00:00",
-                                    "cases": tot,
-                                    "path": sp
-                                })
-                            except Exception:
-                                pass
+
+                # 检查同名 allure_results 是否有结果
+                cand_res = os.path.join(REPORTS_DIR, "allure_results", name)
+                res_count = len([f for f in os.listdir(cand_res) if f.endswith("-result.json")]) if os.path.exists(cand_res) else 0
+
+                # 防御性过滤：若既无统计数据也无任何结果文件（如执行时被强行终止），则不列入有效报告列表
+                if tot == 0 and res_count == 0:
+                    continue
+
+                if not t_str:
+                    mtime = os.path.getmtime(sp)
+                    t_str = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
+
+                new_list.append({
+                    "task_id": name,
+                    "time": t_str,
+                    "cases": max(tot, res_count),
+                    "path": sp,
+                    "mtime": os.path.getmtime(sp)
+                })
+                found_ids.add(name)
+
+        # 2. 扫描 REPORTS_DIR/html_task_* (Web 平台生成的报告)
+        if os.path.exists(REPORTS_DIR):
+            for name in os.listdir(REPORTS_DIR):
+                if name.startswith("html_task_"):
+                    raw_id = name.replace("html_", "")
+                    if raw_id in found_ids:
+                        continue
+                    sp = os.path.join(REPORTS_DIR, name)
+                    if not os.path.isdir(sp):
+                        continue
+                    if not os.listdir(sp):
+                        try:
+                            os.rmdir(sp)
+                        except Exception:
+                            pass
+                        continue
+                    sum_sub = os.path.join(sp, "widgets", "summary.json")
+                    tot = 0
+                    t_str = ""
+                    if os.path.exists(sum_sub):
+                        try:
+                            with open(sum_sub, "r", encoding="utf-8") as f:
+                                s_data = json.load(f)
+                            tot = s_data.get("statistic", {}).get("total", 0)
+                            st = s_data.get("time", {}).get("start", 0)
+                            if st:
+                                t_str = datetime.fromtimestamp(st / 1000.0).strftime("%Y-%m-%d %H:%M:%S")
+                        except Exception:
+                            pass
+                    if tot == 0:
+                        continue
+                    if not t_str:
+                        mtime = os.path.getmtime(sp)
+                        t_str = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
+                    new_list.append({
+                        "task_id": raw_id,
+                        "time": t_str,
+                        "cases": tot,
+                        "path": sp,
+                        "mtime": os.path.getmtime(sp)
+                    })
+                    found_ids.add(raw_id)
+
+        # 3. 扫描 REPORTS_DIR/allure_results/ 下未生成 HTML 的原始 JSON 结果
+        allure_results_dir = os.path.join(REPORTS_DIR, "allure_results")
+        if os.path.exists(allure_results_dir):
+            for name in os.listdir(allure_results_dir):
+                if name in found_ids:
+                    continue
+                sp = os.path.join(allure_results_dir, name)
+                if not os.path.isdir(sp):
+                    continue
+                if not os.listdir(sp):
+                    try:
+                        os.rmdir(sp)
+                    except Exception:
+                        pass
+                    continue
+                json_files = [f for f in os.listdir(sp) if f.endswith("-result.json")]
+                if not json_files:
+                    continue
+                mtime = os.path.getmtime(sp)
+                t_str = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
+                new_list.append({
+                    "task_id": name,
+                    "time": t_str,
+                    "cases": len(json_files),
+                    "path": sp,
+                    "mtime": mtime
+                })
+                found_ids.add(name)
+
         if new_list:
-            new_list.sort(key=lambda x: x.get("time", ""), reverse=True)
+            new_list.sort(key=lambda x: x.get("mtime", 0), reverse=True)
             self.history_data = new_list
             self.selected_task = new_list[0]
+            self.card_count_val.setText(f"{len(new_list)} 份")
+            self.lbl_rep.setText(f"📑 报告: {len(new_list)} 份")
             self._render_history_items()
             self._on_select_history(self.selected_task)
+        else:
+            self.history_data = []
+            self.selected_task = {}
+            self.card_count_val.setText("0 份")
+            self.lbl_rep.setText("📑 报告: 0 份")
+            self.lbl_curr_report.setText("当前暂无历史测试报告")
+            self._render_history_items()
+            if hasattr(self, 'allure_dashboard') and self.allure_dashboard:
+                self.allure_dashboard.reset_to_ready_state()

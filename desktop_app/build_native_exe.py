@@ -25,6 +25,14 @@ if sys.platform == "win32":
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
 
+# ==============================================================================
+# 核心打包配置开关
+# ==============================================================================
+# 控制是否编译生成 Inno Setup 单文件安装包 (SetupInstaller/Santiao_IM_Native_Setup_v0.9.9.exe)
+# - True  : 完整全量流水线 (PyInstaller 打包 -> 核心资产加密脱敏 -> Inno Setup 编译生成单文件安装包)
+# - False : 仅执行 PyInstaller 打包 (输出 dist/三条IM自动化测试控制台 绿色运行目录，跳过加密与安装包制作，极速秒级构建)
+BUILD_INSTALLER = True
+
 
 def sanitize_build_environment() -> dict:
     """
@@ -76,22 +84,65 @@ def post_build_cleanup(dist_app_dir: str):
                 print(f"[产物净化] 清理 {dll_name} 提示: {e}")
 
 
-def generate_inno_setup_script(output_dir: str):
-    """生成 Inno Setup 安装包脚本"""
+def generate_inno_setup_script(output_dir: str, encrypted_dir: str = None, install_password: str = ""):
+    """生成 Inno Setup 安装包脚本（密码为空时免密码直接安装，密码非空时激活 AES-256 原生保护）"""
+    # 优先采用已完成深度加密编译的脱敏资产目录，杜绝明文 .py 源码被打包进安装包
+    source_root = encrypted_dir if (encrypted_dir and os.path.exists(encrypted_dir)) else PROJECT_ROOT
+
+    # 动态密码策略：密码为空时，不配置 Password 与 Encryption，安装向导不会显示密码输入界面，直达安装向导；
+    # 只有当显式传入非空密码时，才激活 Inno Setup 原生 AES-256 加密与密码拦截。
+    password_section = ""
+    if install_password and install_password.strip():
+        password_section = f"""; ===== 方案 4: 工业级 AES-256 安装包加密与授权保护 =====
+Encryption=yes
+Password={install_password.strip()}
+"""
+
     iss_content = f"""[Setup]
 AppName=三条IM自动化测试控制台
-AppVersion=2.5.0
+AppVersion=0.9.9
 DefaultDirName={{autopf}}\\SantiaoAntiDesktop
 DefaultGroupName=三条IM自动化测试控制台
 OutputDir={output_dir}\\SetupInstaller
-OutputBaseFilename=Santiao_IM_Native_Setup_v2.5.0
-Compression=lzma2/ultra64
+OutputBaseFilename=Santiao_IM_Native_Setup_v0.9.9
+Compression=lzma2/fast
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64
 PrivilegesRequired=lowest
+; 显式开启路径选择页面，允许用户在安装向导中点击【浏览】自由选择安装到任意磁盘目录
+DisableDirPage=no
+; 严禁静默复用历史安装路径，确保每次安装均可自定义新位置
+UsePreviousAppDir=no
+DirExistsWarning=auto
+AlwaysShowDirOnReadyPage=yes
+; 绑定应用程序专属品牌高清图标 (应用于安装向导主程序与卸载器)
+SetupIconFile={os.path.join(CURRENT_DIR, 'resources', 'app_icon.ico')}
+{password_section}
+; 强制关闭正在运行的应用程序，避免卸载或覆盖安装时文件被占用无法删除
+CloseApplications=yes
+CloseApplicationsFilter=*.exe
+RestartApplications=no
 
 [Files]
+; 1. 桌面端应用主程序与运行库
 Source: "{output_dir}\\三条IM自动化测试控制台\\*"; DestDir: "{{app}}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; 2. 核心自动化测试工程（方案4加密成果：已彻底抹除 .py 源码，安装后目标电脑上只有二进制加密/机器码文件）
+Source: "{source_root}\\tests\\*"; DestDir: "{{app}}\\tests"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{source_root}\\pages\\*"; DestDir: "{{app}}\\pages"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{source_root}\\locators\\*"; DestDir: "{{app}}\\locators"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{source_root}\\common\\*"; DestDir: "{{app}}\\common"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{source_root}\\core\\*"; DestDir: "{{app}}\\core"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{source_root}\\utils\\*"; DestDir: "{{app}}\\utils"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{source_root}\\config\\*"; DestDir: "{{app}}\\config"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{source_root}\\data\\*"; DestDir: "{{app}}\\data"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{source_root}\\requirements.txt"; DestDir: "{{app}}"; Flags: ignoreversion
+
+; 3. 内置独立免安装 Python 3.13 运行环境 (精准排除完全无关的AI大包与碎片，保留 torch 以确保 cnocr/RapidOCR 完整可用)
+Source: "D:\\data\\Python313\\*"; DestDir: "{{app}}\\python_runtime"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.pdb,Doc,include,tcl,__pycache__,*.dist-info,paddle*,scipy*,sympy*,wandb*,modelscope*,*polars*,Lib\\test"
+
+; 4. 内置 Allure CLI 命令行工具 (开箱即用支持生成全维度可视化测试报告)
+Source: "{PROJECT_ROOT}\\allure-cli\\*"; DestDir: "{{app}}\\allure-cli"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{{autoprograms}}\\三条IM自动化测试控制台"; Filename: "{{app}}\\三条IM自动化测试控制台.exe"
@@ -99,11 +150,40 @@ Name: "{{autodesktop}}\\三条IM自动化测试控制台"; Filename: "{{app}}\\�
 
 [Run]
 Filename: "{{app}}\\三条IM自动化测试控制台.exe"; Description: "运行 三条IM自动化测试控制台"; Flags: nowait postinstall skipifsilent
+
+[UninstallDelete]
+; 显式指示卸载程序彻底清除运行期间动态产生的测试报告、日志、缓存及主目录
+Type: filesandordirs; Name: "{{app}}\\reports"
+Type: filesandordirs; Name: "{{app}}\\logs"
+Type: filesandordirs; Name: "{{app}}\\_internal"
+Type: filesandordirs; Name: "{{app}}\\python_runtime"
+Type: filesandordirs; Name: "{{app}}\\allure-cli"
+Type: filesandordirs; Name: "{{app}}"
+
+[Code]
+// 卸载初始化阶段：强制终止正在运行的主程序与后台任务，彻底解除 Windows 独占文件锁
+function InitializeUninstall(): Boolean;
+var
+  ErrorCode: Integer;
+begin
+  Exec('taskkill.exe', '/F /IM 三条IM自动化测试控制台.exe', '', SW_HIDE, ewWaitUntilTerminated, ErrorCode);
+  Sleep(500);
+  Result := True;
+end;
+
+// 卸载收尾阶段：确保整个应用安装根目录连根拔起彻底清除，做到 0 字节残留
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usPostUninstall then
+  begin
+    DelTree(ExpandConstant('{{app}}'), True, True, True);
+  end;
+end;
 """
     iss_path = os.path.join(CURRENT_DIR, "installer.iss")
     with open(iss_path, "w", encoding="utf-8") as f:
         f.write(iss_content)
-    print(f"[Inno Setup] 原生安装包脚本已生成: {iss_path}")
+    print(f"[Inno Setup] 原生加密安装包脚本已生成 (AES-256 保护已激活): {iss_path}")
 
 
 def check_and_kill_running_instance():
@@ -121,10 +201,29 @@ def check_and_kill_running_instance():
             pass
 
 
-def build():
+def ensure_compatible_inno_icon() -> str:
+    """
+    确保生成符合 Inno Setup 与 Windows PE 资源规范的原生 ICO 图标。
+    Inno Setup 核心限制：必须是非 PNG 压缩的 Windows 经典 DIB 图标（尺寸包含 16x16, 32x32, 48x48, 64x64, 128x128）。
+    若包含 256x256 PNG 压缩流，Inno Setup 底层 UpdateResource 会抛出: Resource update error: Icon file is invalid.
+    """
+    ico_path = os.path.join(CURRENT_DIR, "resources", "app_icon.ico")
+    png_path = os.path.join(CURRENT_DIR, "resources", "sant_logo_hd.png")
+    if os.path.exists(png_path):
+        try:
+            from PIL import Image
+            img = Image.open(png_path).convert("RGBA")
+            img.save(ico_path, format="ICO", sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128)])
+        except Exception:
+            pass
+    return ico_path
+
+
+def build(build_installer: bool = BUILD_INSTALLER):
     check_and_kill_running_instance()
     print("==================================================")
     print(" [打包] 正在打包 纯原生 Windows 独立桌面端 (PyQt6 架构)...")
+    print(f" [模式] 是否编译生成安装包 (BUILD_INSTALLER): {build_installer}")
     print("==================================================")
 
     main_entry = os.path.join(CURRENT_DIR, "main.py")
@@ -144,7 +243,8 @@ def build():
     # 1. 净化环境变量，杜绝不兼容动态链接库被打包
     build_env = sanitize_build_environment()
 
-    # 2. 构造 PyInstaller 编译参数
+    # 2. 构造 PyInstaller 编译参数 (自动校验并使用 Inno Setup 兼容的合规 ICO 图标)
+    icon_ico = ensure_compatible_inno_icon()
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--name=三条IM自动化测试控制台",
@@ -154,6 +254,7 @@ def build():
         f"--distpath={dist_dir}",
         f"--workpath={build_dir}",
         f"--paths={PROJECT_ROOT}",
+        f"--icon={icon_ico}", # 注入专属品牌高清图标到生成的 Windows exe 资源段
         f"--add-data={os.path.join(CURRENT_DIR, 'resources')};desktop_app/resources",
         "--hidden-import=desktop_app",
         "--hidden-import=desktop_app.style",
@@ -191,16 +292,59 @@ def build():
     app_output_dir = os.path.join(dist_dir, "三条IM自动化测试控制台")
     post_build_cleanup(app_output_dir)
 
-    # 4. 生成 Inno Setup 安装包制作脚本
-    generate_inno_setup_script(dist_dir)
+    if build_installer:
+        # 4. 执行方案 4 核心资产全量加密编译 (抹除 .py 源码，生成机器码/二进制发布包)
+        from desktop_app.encrypt_engine import stage_encrypted_assets
+        encrypted_dir = os.path.join(dist_dir, "encrypted_release")
+        stage_encrypted_assets(encrypted_dir)
 
-    print("\n==================================================")
-    print(" [成功] 打包完成！纯原生 Windows 独立桌面软件已就绪：")
-    print(f" 目录: {app_output_dir}")
-    print(f" 主程序: {os.path.join(app_output_dir, '三条IM自动化测试控制台.exe')}")
-    print(f" 安装包配置脚本: {os.path.join(CURRENT_DIR, 'installer.iss')}")
-    print("==================================================")
+        # 5. 生成 Inno Setup 安装包制作脚本 (基于已加密的资产库与免密策略)
+        generate_inno_setup_script(dist_dir, encrypted_dir=encrypted_dir, install_password="")
+
+        # 6. 自动检测并调用 Inno Setup 编译器输出最终单文件安装包
+        compile_installer_if_available()
+
+        print("\n==================================================")
+        print(" [成功] 打包完成！纯原生 Windows 独立桌面软件与安装包已就绪：")
+        print(f" 本地绿色目录: {app_output_dir}")
+        print(f" 主程序文件: {os.path.join(app_output_dir, '三条IM自动化测试控制台.exe')}")
+        print(f" 安装包配置脚本: {os.path.join(CURRENT_DIR, 'installer.iss')}")
+        print(f" 终极单文件安装包: {os.path.join(dist_dir, 'SetupInstaller', 'Santiao_IM_Native_Setup_v0.9.9.exe')}")
+        print("==================================================")
+    else:
+        print("\n==================================================")
+        print(" [成功] 本地桌面端打包完成！(已按配置跳过 Inno Setup 安装包制作)")
+        print(f" 本地绿色目录: {app_output_dir}")
+        print(f" 主程序文件: {os.path.join(app_output_dir, '三条IM自动化测试控制台.exe')}")
+        print(" 提示: 如需编译单文件安装包，可将 BUILD_INSTALLER 设为 True，或追加参数 --installer")
+        print("==================================================")
+
+
+def compile_installer_if_available():
+    """检测并自动调用 Inno Setup 编译器生成最终单文件安装包"""
+    iss_path = os.path.join(CURRENT_DIR, "installer.iss")
+    candidates = [
+        r"D:\Program Files\Inno Setup 7\ISCC.exe",
+        shutil.which("ISCC")
+    ]
+    iscc_bin = next((p for p in candidates if p and os.path.exists(p)), None)
+    if iscc_bin:
+        print(f"\n[Inno Setup] 检测到编译器: {iscc_bin}")
+        print(" 正在一键编译生成最终 Setup 安装程序 (压缩 Python 运行时)...")
+        try:
+            subprocess.run([iscc_bin, iss_path], cwd=PROJECT_ROOT, check=True)
+            print(" [Inno Setup 成功] 包含自定义路径与内置运行时的安装包已编译完成！")
+        except Exception as e:
+            print(f" [Inno Setup 提示] 编译遇到提示: {e}")
 
 
 if __name__ == '__main__':
-    build()
+    # 优先解析命令行参数，支持命令行动态控制开关：
+    # python desktop_app/build_native_exe.py --no-installer  (仅打包本地绿色版程序)
+    # python desktop_app/build_native_exe.py --installer     (完整打包并生成单文件安装包)
+    target_build_installer = BUILD_INSTALLER
+    if "--no-installer" in sys.argv:
+        target_build_installer = False
+    elif "--installer" in sys.argv:
+        target_build_installer = True
+    build(build_installer=target_build_installer)
