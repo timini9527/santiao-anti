@@ -15,8 +15,28 @@ if PROJECT_ROOT not in sys.path:
 
 from web_platform.backend.collector import collect_all_tests
 
+import json
+
 class TestCollectorService:
     """提供用例目录树扫描服务"""
+
+    @staticmethod
+    def _get_catalog_data() -> List[Dict[str, Any]]:
+        """
+        自适应获取测试用例目录清单：
+        1. 优先加载 tests/tests_catalog.json (方案4深度加密发布包专用的预提取索引，0 源码依赖，毫秒级响应)
+        2. 源码开发状态下动态实时扫描 tests/
+        """
+        cached_json = os.path.join(PROJECT_ROOT, "tests", "tests_catalog.json")
+        if os.path.exists(cached_json):
+            try:
+                with open(cached_json, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, list) and data:
+                        return data
+            except Exception:
+                pass
+        return collect_all_tests(os.path.join(PROJECT_ROOT, "tests"))
 
     @staticmethod
     def get_test_hierarchy(category: str = "mobile") -> List[Dict[str, Any]]:
@@ -24,7 +44,7 @@ class TestCollectorService:
         按 一级目录(Category) -> 二级文件(File) -> 三级类(Class) -> 四级用例(Test) -> 五级参数(Param)
         组织全量多级测试用例树结构
         """
-        all_catalog = collect_all_tests(os.path.join(PROJECT_ROOT, "tests"))
+        all_catalog = TestCollectorService._get_catalog_data()
         categories: Dict[str, List[Dict[str, Any]]] = {}
         direct_files: List[Dict[str, Any]] = []
 
@@ -93,8 +113,8 @@ class TestCollectorService:
     @staticmethod
     def get_test_catalog(category: str = "mobile") -> List[Dict[str, Any]]:
         """保留扁平文件列表兼容接口"""
+        all_catalog = TestCollectorService._get_catalog_data()
         if category == "mobile":
-            all_catalog = collect_all_tests(os.path.join(PROJECT_ROOT, "tests"))
             mobile_catalog = []
             for item in all_catalog:
                 rel = item["file"].replace("\\", "/")
@@ -103,10 +123,8 @@ class TestCollectorService:
             mobile_catalog.sort(key=lambda x: (0 if "smoke" in x["file"].lower() else 1, x["file"]))
             return mobile_catalog
         elif category == "web":
-            target_dir = os.path.join(PROJECT_ROOT, "tests", "web")
-            return collect_all_tests(target_dir) if os.path.exists(target_dir) else []
+            return [item for item in all_catalog if item["file"].replace("\\", "/").startswith("tests/web")]
         elif category == "api":
-            target_dir = os.path.join(PROJECT_ROOT, "tests", "api")
-            return collect_all_tests(target_dir) if os.path.exists(target_dir) else []
+            return [item for item in all_catalog if item["file"].replace("\\", "/").startswith("tests/api")]
         else:
-            return collect_all_tests(os.path.join(PROJECT_ROOT, "tests"))
+            return all_catalog

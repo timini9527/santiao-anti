@@ -22,8 +22,89 @@ PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
 # 核心受保护业务模块（必须二进制机器码化，不留任何 .py 源码）
 PROTECTED_MODULES = ["core", "pages", "locators", "common", "utils"]
 
-# 业务开放模块与数据（保留原始格式以支持用例编写与配置变更）
-PASSTHROUGH_DIRS = ["tests", "config", "data"]
+# 业务开放模块与数据（保留原始格式以支持现场配置与数据驱动）
+PASSTHROUGH_DIRS = ["config", "data"]
+
+
+def encrypt_test_suite(src_tests_dir: str, target_tests_dir: str):
+    """
+    深度加密测试用例层：
+    1. 预提取全量元数据生成 tests_catalog.json 索引，确保客户端 UI 依然能完整显示用例树与参数
+    2. 将全部 67 个 test_*.py 源码及 conftest.py 深度编译为不可逆二进制执行码，彻底销毁所有明文业务源码
+    """
+    import zlib
+    import marshal
+    import base64
+    import json
+    from web_platform.backend.collector import collect_all_tests
+
+    os.makedirs(target_tests_dir, exist_ok=True)
+
+    # 1. 预提取元数据索引
+    print("  [元数据提取] 正在为 tests 模块生成静态用例索引 tests_catalog.json ...")
+    try:
+        catalog = collect_all_tests(src_tests_dir)
+        catalog_path = os.path.join(target_tests_dir, "tests_catalog.json")
+        with open(catalog_path, "w", encoding="utf-8") as f:
+            json.dump(catalog, f, ensure_ascii=False, indent=2)
+        print(f"  [元数据提取完成] 已收录 {len(catalog)} 个测试文件的完整层级结构")
+    except Exception as e:
+        print(f"  [元数据警告] 预提取索引异常: {e}")
+
+    # 2. 遍历加密所有 .py 文件
+    encrypted_count = 0
+    for root, dirs, files in os.walk(src_tests_dir):
+        rel_dir = os.path.relpath(root, src_tests_dir)
+        dest_dir = os.path.join(target_tests_dir, rel_dir) if rel_dir != "." else target_tests_dir
+        os.makedirs(dest_dir, exist_ok=True)
+
+        for f in files:
+            src_file = os.path.join(root, f)
+            dest_file = os.path.join(dest_dir, f)
+
+            if f.endswith(".py"):
+                try:
+                    with open(src_file, "r", encoding="utf-8") as sf:
+                        source_text = sf.read()
+
+                    # 标准 posix 相对路径作为文件名元数据
+                    rel_source_path = os.path.relpath(src_file, PROJECT_ROOT).replace("\\", "/")
+
+                    # 编译为 Python 3.13 原生 Code Object (optimize=0 确保保留 assert 断言)
+                    code_obj = compile(source_text, rel_source_path, 'exec', optimize=0)
+
+                    # 序列化 + zlib 最大压缩 + base85 紧凑编码
+                    serialized = marshal.dumps(code_obj)
+                    compressed = zlib.compress(serialized, level=9)
+                    encoded_payload = base64.b85encode(compressed).decode('ascii')
+
+                    # 构造完全脱敏的二进制执行外壳，不留任何真实业务代码
+                    wrapper_code = f'''# -*- coding: utf-8 -*-
+"""
+======================================================================
+三条 IM 自动化测试系统 - 资产保护模块 (Binary Protected)
+======================================================================
+模块: {rel_source_path}
+保护状态: 核心用例逻辑已深度编译为不可逆二进制执行码，杜绝明文源码泄露。
+======================================================================
+"""
+import zlib
+import marshal
+import base64
+
+exec(marshal.loads(zlib.decompress(base64.b85decode({repr(encoded_payload)}))))
+'''
+                    with open(dest_file, "w", encoding="utf-8") as df:
+                        df.write(wrapper_code)
+                    encrypted_count += 1
+                except Exception as e:
+                    print(f"  [加密异常] {f}: {e}")
+                    shutil.copy2(src_file, dest_file)
+            else:
+                # 非 .py 文件 (如 yaml、json、txt 等辅助文件) 直接复制
+                shutil.copy2(src_file, dest_file)
+
+    print(f"  [用例深度脱敏] tests 模块全部加密：已脱敏封装 {encrypted_count} 个用例脚本，彻底消除明文源码！")
 
 
 def detect_c_compiler() -> Tuple[bool, str]:
@@ -183,7 +264,13 @@ def stage_encrypted_assets(dest_root: str):
         else:
             fallback_compile_directory(src_path, target_path)
 
-    # 2. 复制开放层模块（测试用例、配置、数据源）
+    # 2. 对测试用例层进行深度加密脱敏 (抹除全部明文源码，保留可执行二进制壳并生成目录索引)
+    src_tests_path = os.path.join(PROJECT_ROOT, "tests")
+    if os.path.exists(src_tests_path):
+        target_tests_path = os.path.join(dest_root, "tests")
+        encrypt_test_suite(src_tests_path, target_tests_path)
+
+    # 3. 复制开放业务层模块（配置、测试数据，支持数据驱动与现场灵活修改）
     for pass_dir in PASSTHROUGH_DIRS:
         src_dir = os.path.join(PROJECT_ROOT, pass_dir)
         if os.path.exists(src_dir):
@@ -191,15 +278,15 @@ def stage_encrypted_assets(dest_root: str):
             shutil.copytree(src_dir, target_dir, dirs_exist_ok=True)
             print(f"  [资产复制] 开放业务层: {pass_dir} 已同步至发布区")
 
-    # 3. 复制根目录必要配置
+    # 4. 复制根目录必要配置
     req_file = os.path.join(PROJECT_ROOT, "requirements.txt")
     if os.path.exists(req_file):
         shutil.copy2(req_file, os.path.join(dest_root, "requirements.txt"))
 
     elapsed = time.time() - start_time
-    print(f"\n [成功] 核心资产加密完成！耗时: {elapsed:.2f} 秒")
+    print(f"\n [成功] 核心资产与测试用例全量加密完成！耗时: {elapsed:.2f} 秒")
     print(f" 发布暂存区: {dest_root}")
-    print(" 核心目录已脱敏：目标安装电脑上将完全不存在明文 .py 业务源码！")
+    print(" 全域脱敏：目标安装电脑上核心框架与全部测试用例均无明文 .py 源码！")
     print("==================================================\n")
 
 

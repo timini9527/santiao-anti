@@ -65,8 +65,9 @@ class MobilePage(QWidget):
         self.init_ui()
         self.load_persisted_config()
 
-        # 异步非阻塞执行设备检测与用例加载
+        # 异步非阻塞执行设备检测、用例加载与分割器精确几何还原
         QTimer.singleShot(60, self.refresh_test_cases)
+        QTimer.singleShot(80, self._restore_splitter_sizes)
         QTimer.singleShot(160, self.auto_detect_devices)
         QTimer.singleShot(260, self._refresh_report_pill_count)
 
@@ -96,6 +97,7 @@ class MobilePage(QWidget):
         self.main_h_splitter.setStretchFactor(1, 6)
         self.main_h_splitter.setCollapsible(0, False)
         self.main_h_splitter.setCollapsible(1, False)
+        self.main_h_splitter.splitterMoved.connect(self._on_h_splitter_moved)
 
         # 赋予水平手柄平滑左右调节光标 (↔)
         h_handle = self.main_h_splitter.handle(1)
@@ -714,7 +716,13 @@ class MobilePage(QWidget):
 
         return panel
 
-    # ==================== 4. 垂直分割器拖拽折叠与恢复 ====================
+    # ==================== 4. 垂直与水平分割器拖拽折叠与记忆恢复 ====================
+    def _on_h_splitter_moved(self, pos: int, index: int):
+        """左右主布局分割器拖拽调整时，实时持久化尺寸记忆"""
+        sizes = self.main_h_splitter.sizes()
+        if len(sizes) == 2 and sum(sizes) > 0:
+            desktop_config.set("mobile", "splitter_h_sizes", sizes)
+
     def _on_right_splitter_moved(self, pos: int, index: int):
         """当下半部分高度拖动到最底部（<= 30px）时吸底折叠隐藏，向上拖动恢复"""
         sizes = self.right_v_splitter.sizes()
@@ -727,13 +735,16 @@ class MobilePage(QWidget):
                 self._is_log_collapsed = False
                 self._last_log_height = max(bottom_h, 180)
                 self.btn_collapse_terminal.setText("▾ 收起")
+            desktop_config.set("mobile", "splitter_v_sizes", sizes)
+            desktop_config.set("mobile", "log_collapsed", self._is_log_collapsed)
+            desktop_config.set("mobile", "last_log_height", self._last_log_height)
 
     def toggle_terminal_visibility(self):
         """一键平滑折叠或展开下半部分日志终端"""
         sizes = self.right_v_splitter.sizes()
         total = sum(sizes)
         if self._is_log_collapsed:
-            target_h = getattr(self, "_last_log_height", 240)
+            target_h = getattr(self, "_last_log_height", 230)
             self.right_v_splitter.setSizes([total - target_h, target_h])
             self._is_log_collapsed = False
             self.btn_collapse_terminal.setText("▾ 收起")
@@ -743,6 +754,32 @@ class MobilePage(QWidget):
             self.right_v_splitter.setSizes([total, 0])
             self._is_log_collapsed = True
             self.btn_collapse_terminal.setText("▴ 展开")
+        desktop_config.set("mobile", "splitter_v_sizes", self.right_v_splitter.sizes())
+        desktop_config.set("mobile", "log_collapsed", self._is_log_collapsed)
+        desktop_config.set("mobile", "last_log_height", self._last_log_height)
+
+    def _restore_splitter_sizes(self):
+        """在首屏几何布局稳定后二次精确应用分割器尺寸，确保像素级还原"""
+        cfg = desktop_config.get_section("mobile")
+        h_sizes = cfg.get("splitter_h_sizes", None)
+        if h_sizes and isinstance(h_sizes, list) and len(h_sizes) == 2 and sum(h_sizes) > 0:
+            self.main_h_splitter.setSizes(h_sizes)
+
+        v_sizes = cfg.get("splitter_v_sizes", None)
+        if v_sizes and isinstance(v_sizes, list) and len(v_sizes) == 2 and sum(v_sizes) > 0:
+            if not getattr(self, "_is_log_collapsed", False):
+                self.right_v_splitter.setSizes(v_sizes)
+
+    def save_layout_state(self):
+        """退出应用时完整同步分割器尺寸"""
+        h_sizes = self.main_h_splitter.sizes()
+        if len(h_sizes) == 2 and sum(h_sizes) > 0:
+            desktop_config.set("mobile", "splitter_h_sizes", h_sizes)
+        v_sizes = self.right_v_splitter.sizes()
+        if len(v_sizes) == 2 and sum(v_sizes) > 0:
+            desktop_config.set("mobile", "splitter_v_sizes", v_sizes)
+            desktop_config.set("mobile", "log_collapsed", self._is_log_collapsed)
+            desktop_config.set("mobile", "last_log_height", self._last_log_height)
 
     def _toggle_autoscroll(self):
         is_active = self.btn_toggle_autoscroll.text().startswith("🟢")
@@ -997,6 +1034,24 @@ class MobilePage(QWidget):
         role = cfg.get("role", "business")
         idx = 0 if role == "business" else 1
         self.combo_view_role.setCurrentIndex(idx)
+
+        # 恢复左右与上下分割器布局尺寸记忆
+        h_sizes = cfg.get("splitter_h_sizes", None)
+        if h_sizes and isinstance(h_sizes, list) and len(h_sizes) == 2 and sum(h_sizes) > 0:
+            self.main_h_splitter.setSizes(h_sizes)
+
+        v_sizes = cfg.get("splitter_v_sizes", None)
+        if v_sizes and isinstance(v_sizes, list) and len(v_sizes) == 2 and sum(v_sizes) > 0:
+            self.right_v_splitter.setSizes(v_sizes)
+
+        self._is_log_collapsed = bool(cfg.get("log_collapsed", False))
+        self._last_log_height = cfg.get("last_log_height", 230)
+        if self._is_log_collapsed:
+            total = sum(self.right_v_splitter.sizes())
+            self.right_v_splitter.setSizes([total, 0])
+            self.btn_collapse_terminal.setText("▴ 展开")
+        else:
+            self.btn_collapse_terminal.setText("▾ 收起")
 
     def _on_config_changed(self):
         role = self.combo_view_role.currentData() or "business"

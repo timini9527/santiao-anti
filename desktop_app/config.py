@@ -46,7 +46,12 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
         "debug_mode": True,
         "role": "business",  # 默认业务精简视角
         "selected_test_file": "",
-        "auto_scroll_log": True
+        "auto_scroll_log": True,
+        # 布局与分割器持久化记忆
+        "splitter_h_sizes": [450, 850],   # 左右布局分割器尺寸记忆 (左边栏 : 右工作区)
+        "splitter_v_sizes": [450, 230],   # 上下报告与日志分割器尺寸记忆 (上方看板 : 下方日志)
+        "log_collapsed": False,           # 日志控制台吸底折叠状态
+        "last_log_height": 230            # 折叠前日志高度记忆
     },
     # Web 端测试默认状态
     "web": {
@@ -60,8 +65,10 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
         "target_env": "dev",
         "concurrency": 1
     },
-    # 窗口大小与位置
+    # 窗口大小与位置 (支持非最大化时的窗口坐标与尺寸完整记忆)
     "window": {
+        "x": None,
+        "y": None,
         "width": 1440,
         "height": 920,
         "maximized": False

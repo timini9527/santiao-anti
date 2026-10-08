@@ -111,10 +111,17 @@ def run_app():
 
     # 注入应用程序全局专属高清图标 (覆盖任务栏、主窗口与通知托盘)
     from PyQt6.QtGui import QIcon
+    base_res = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
     icon_candidates = [
-        os.path.join(os.path.dirname(__file__), "resources", "app_icon.png"),
-        os.path.join(os.path.dirname(__file__), "resources", "sant_logo_hd.png"),
-        os.path.join(os.path.dirname(__file__), "resources", "app_icon.ico"),
+        os.path.join(base_res, "resources", "sant_logo_hd.png"),
+        os.path.join(base_res, "resources", "app_icon.png"),
+        os.path.join(base_res, "resources", "app_icon.ico"),
+        os.path.join(base_res, "desktop_app", "resources", "sant_logo_hd.png"),
+        os.path.join(base_res, "desktop_app", "resources", "app_icon.png"),
+        os.path.join(base_res, "desktop_app", "resources", "app_icon.ico"),
+        os.path.join(PROJECT_ROOT, "desktop_app", "resources", "sant_logo_hd.png"),
+        os.path.join(PROJECT_ROOT, "desktop_app", "resources", "app_icon.png"),
+        os.path.join(PROJECT_ROOT, "desktop_app", "resources", "app_icon.ico"),
     ]
     for ic_p in icon_candidates:
         if os.path.exists(ic_p):

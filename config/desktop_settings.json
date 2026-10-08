@@ -2,16 +2,26 @@
   "mobile": {
     "os_type": "Win",
     "remote_appium": "172.18.0.1:4723 (服务在线)",
-    "remote_udid": "3B65BN02GU600000",
+    "remote_udid": "",
     "remote_appium2": "127.0.0.1:4724 (本地)",
-    "remote_udid2": "3B65BN02GU600000",
+    "remote_udid2": "",
     "private_chat_name": "",
     "group_chat_name": "",
     "env": "dev",
-    "debug_mode": true,
+    "debug_mode": false,
     "role": "business",
     "selected_test_file": "",
-    "auto_scroll_log": true
+    "auto_scroll_log": true,
+    "splitter_h_sizes": [
+      595,
+      1225
+    ],
+    "splitter_v_sizes": [
+      913,
+      0
+    ],
+    "log_collapsed": true,
+    "last_log_height": 180
   },
   "web": {
     "browser": "chromium",
@@ -24,8 +34,10 @@
     "concurrency": 1
   },
   "window": {
-    "width": 1920,
-    "height": 1009,
+    "x": 319,
+    "y": 69,
+    "width": 1335,
+    "height": 864,
     "maximized": true
   }
 }

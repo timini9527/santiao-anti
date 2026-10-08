@@ -31,7 +31,7 @@ PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
 # 控制是否编译生成 Inno Setup 单文件安装包 (SetupInstaller/Santiao_IM_Native_Setup_v0.9.9.exe)
 # - True  : 完整全量流水线 (PyInstaller 打包 -> 核心资产加密脱敏 -> Inno Setup 编译生成单文件安装包)
 # - False : 仅执行 PyInstaller 打包 (输出 dist/三条IM自动化测试控制台 绿色运行目录，跳过加密与安装包制作，极速秒级构建)
-BUILD_INSTALLER = True
+BUILD_INSTALLER = False
 
 
 def sanitize_build_environment() -> dict:
@@ -61,6 +61,8 @@ def sanitize_build_environment() -> dict:
         filtered_dirs.insert(0, sys32)
 
     clean_env["PATH"] = os.pathsep.join(filtered_dirs)
+    clean_env["PYTHONUTF8"] = "1"
+    clean_env["PYTHONIOENCODING"] = "utf-8"
     return clean_env
 
 
@@ -203,9 +205,9 @@ def check_and_kill_running_instance():
 
 def ensure_compatible_inno_icon() -> str:
     """
-    确保生成符合 Inno Setup 与 Windows PE 资源规范的原生 ICO 图标。
-    Inno Setup 核心限制：必须是非 PNG 压缩的 Windows 经典 DIB 图标（尺寸包含 16x16, 32x32, 48x48, 64x64, 128x128）。
-    若包含 256x256 PNG 压缩流，Inno Setup 底层 UpdateResource 会抛出: Resource update error: Icon file is invalid.
+    确保生成符合 Inno Setup 与 Windows PE 资源规范的原生标准 DIB ICO 图标。
+    必须显式指定 bitmap_format="bmp" 生成非 PNG 压缩的 Windows 经典 DIB 格式（涵盖 16x16, 24x24, 32x32, 48x48, 64x64, 128x128, 256x256）。
+    杜绝 PNG 压缩流导致 Windows 资源管理器解码失败而回退显示为默认 Python 白纸蛇标。
     """
     ico_path = os.path.join(CURRENT_DIR, "resources", "app_icon.ico")
     png_path = os.path.join(CURRENT_DIR, "resources", "sant_logo_hd.png")
@@ -213,9 +215,15 @@ def ensure_compatible_inno_icon() -> str:
         try:
             from PIL import Image
             img = Image.open(png_path).convert("RGBA")
-            img.save(ico_path, format="ICO", sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128)])
-        except Exception:
-            pass
+            img.save(
+                ico_path,
+                format="ICO",
+                bitmap_format="bmp",
+                sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
+            )
+            print(f"[图标生成] Windows 原生标准 DIB 高清 ICO 图标已生成 (361KB 全尺寸): {ico_path}")
+        except Exception as e:
+            print(f"[图标警告] 生成 app_icon.ico 提示: {e}")
     return ico_path
 
 

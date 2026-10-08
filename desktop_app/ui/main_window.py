@@ -426,14 +426,39 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("三条 IM 自动化测试控制台")
 
         # 绑定专属高清品牌窗口图标
-        icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "resources", "app_icon.png")
-        if os.path.exists(icon_path):
-            self.setWindowIcon(QIcon(icon_path))
+        base_dir = getattr(sys, '_MEIPASS', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        icon_candidates = [
+            os.path.join(base_dir, "desktop_app", "resources", "sant_logo_hd.png"),
+            os.path.join(base_dir, "desktop_app", "resources", "app_icon.png"),
+            os.path.join(base_dir, "desktop_app", "resources", "app_icon.ico"),
+            os.path.join(os.path.dirname(__file__), "..", "resources", "sant_logo_hd.png"),
+            os.path.join(os.path.dirname(__file__), "..", "resources", "app_icon.png"),
+            os.path.join(os.path.dirname(__file__), "..", "resources", "app_icon.ico"),
+        ]
+        for ic_p in icon_candidates:
+            if os.path.exists(ic_p):
+                self.setWindowIcon(QIcon(ic_p))
+                break
 
-        self.resize(
-            desktop_config.get("window", "width", 1440),
-            desktop_config.get("window", "height", 920)
-        )
+        # 恢复窗口尺寸与位置记忆
+        width = desktop_config.get("window", "width", 1440)
+        height = desktop_config.get("window", "height", 920)
+        self.resize(int(width), int(height))
+
+        # 精准恢复非最大化状态下的窗口坐标位置 (x, y)
+        x = desktop_config.get("window", "x", None)
+        y = desktop_config.get("window", "y", None)
+        if x is not None and y is not None:
+            try:
+                from PyQt6.QtGui import QGuiApplication
+                screens = QGuiApplication.screens()
+                # 校验保存的坐标是否落在当前连接的任一物理显示器工作区内，防止断开副屏后窗口飞出视野
+                point_valid = any(s.geometry().contains(int(x), int(y)) for s in screens) if screens else True
+                if point_valid:
+                    self.move(int(x), int(y))
+            except Exception:
+                pass
+
         if desktop_config.get("window", "maximized", False):
             self.showMaximized()
 
@@ -478,7 +503,25 @@ class MainWindow(QMainWindow):
             self.page_reports.refresh_reports()
 
     def closeEvent(self, event):
-        desktop_config.set("window", "width", self.width())
-        desktop_config.set("window", "height", self.height())
-        desktop_config.set("window", "maximized", self.isMaximized())
+        is_max = self.isMaximized()
+        desktop_config.set("window", "maximized", is_max)
+        if is_max:
+            # 当窗口当前为最大化状态时，通过 normalGeometry 记录最大化前的常规位置与尺寸
+            norm = self.normalGeometry()
+            desktop_config.set("window", "x", norm.x())
+            desktop_config.set("window", "y", norm.y())
+            desktop_config.set("window", "width", norm.width())
+            desktop_config.set("window", "height", norm.height())
+        else:
+            # 常规窗口状态直接记录当前左上角坐标与大小
+            desktop_config.set("window", "x", self.x())
+            desktop_config.set("window", "y", self.y())
+            desktop_config.set("window", "width", self.width())
+            desktop_config.set("window", "height", self.height())
+
+        # 触发移动端控制台等子页面的分割器与布局记忆持久化
+        if hasattr(self, "page_mobile") and hasattr(self.page_mobile, "save_layout_state"):
+            self.page_mobile.save_layout_state()
+
+        desktop_config.save()
         super().closeEvent(event)
