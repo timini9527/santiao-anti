@@ -67,6 +67,12 @@ def _prepare_qt_runtime() -> None:
 
 _prepare_qt_runtime()
 
+# 确保项目根路径优先注入 sys.path，支持脚本直接运行与打包环境
+_CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+_PROJECT_ROOT = os.path.dirname(_CURRENT_DIR)
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
 # 统一从桌面应用配置中心获取标准项目根目录
 from desktop_app.config import PROJECT_ROOT
 

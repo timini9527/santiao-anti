@@ -68,11 +68,22 @@ def detect_raw_connected_devices() -> list[tuple[str, str, bool]]:
     """
     raw_devices = []
     no_window = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+    safe_cwd = os.environ.get("TEMP", os.environ.get("SystemRoot", r"C:\Windows\Temp"))
     
-    # 1. 尝试使用 adb 探测安卓设备
+    # 动态探测 ADB 与 HDC 工具链物理路径（支持 Android SDK / HarmonyOS SDK 环境变量与默认安装路径）
     try:
-        subprocess.run(["adb", "start-server"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5, creationflags=no_window)
-        out = subprocess.check_output(["adb", "devices"], timeout=10, creationflags=no_window).decode('utf-8')
+        from desktop_app.core.path_resolver import SmartPathResolver
+        toolchain = SmartPathResolver.discover_mobile_toolchain()
+        adb_bin = toolchain.get("adb") or "adb"
+        hdc_bin = toolchain.get("hdc") or "hdc"
+    except Exception:
+        adb_bin = "adb"
+        hdc_bin = "hdc"
+
+    # 1. 尝试使用 adb 探测安卓设备 (显式指定 safe_cwd，避免后台 adb server 锚定并锁定应用目录)
+    try:
+        subprocess.run([adb_bin, "start-server"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5, creationflags=no_window, cwd=safe_cwd)
+        out = subprocess.check_output([adb_bin, "devices"], timeout=10, creationflags=no_window, cwd=safe_cwd).decode('utf-8')
         lines = out.strip().split('\n')
         for line in lines[1:]:
             if '\tdevice' in line:
@@ -84,9 +95,9 @@ def detect_raw_connected_devices() -> list[tuple[str, str, bool]]:
     except Exception as e:
         logger.warning(f"ADB 设备探测异常: {e}")
 
-    # 2. 尝试使用 hdc 探测鸿蒙设备
+    # 2. 尝试使用 hdc 探测鸿蒙设备 (同样显式指定 safe_cwd)
     try:
-        out = subprocess.check_output(["hdc", "list", "targets"], timeout=10, creationflags=no_window).decode('utf-8')
+        out = subprocess.check_output([hdc_bin, "list", "targets"], timeout=10, creationflags=no_window, cwd=safe_cwd).decode('utf-8')
         lines = out.strip().split('\n')
         for line in lines:
             line_str = line.strip()

@@ -13,11 +13,11 @@
     "selected_test_file": "",
     "auto_scroll_log": true,
     "splitter_h_sizes": [
-      595,
-      1225
+      637,
+      1311
     ],
     "splitter_v_sizes": [
-      913,
+      1112,
       0
     ],
     "log_collapsed": true,
@@ -35,7 +35,7 @@
   },
   "window": {
     "x": 319,
-    "y": 69,
+    "y": 99,
     "width": 1335,
     "height": 864,
     "maximized": true

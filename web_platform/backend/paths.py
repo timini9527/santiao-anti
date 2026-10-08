@@ -5,22 +5,26 @@ import sys
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 WEB_PLATFORM_DIR = os.path.dirname(BACKEND_DIR)
 
-if getattr(sys, 'frozen', False):
-    exe_dir = os.path.dirname(sys.executable)
-    candidates = [
-        exe_dir,
-        os.path.dirname(exe_dir),
-        os.getcwd(),
-        r"D:\projects\santiao-anti"
-    ]
-    for cand in candidates:
-        if os.path.exists(os.path.join(cand, "tests")):
-            PROJECT_ROOT = cand
-            break
+try:
+    from desktop_app.core.path_resolver import SmartPathResolver
+    PROJECT_ROOT = SmartPathResolver.get_project_root()
+except Exception:
+    if getattr(sys, 'frozen', False):
+        exe_dir = os.path.dirname(sys.executable)
+        candidates = [
+            exe_dir,
+            os.path.dirname(exe_dir),
+            os.path.dirname(os.path.dirname(exe_dir)),
+            os.getcwd(),
+        ]
+        for cand in candidates:
+            if cand and os.path.isdir(cand) and os.path.exists(os.path.join(cand, "tests")):
+                PROJECT_ROOT = os.path.abspath(cand)
+                break
+        else:
+            PROJECT_ROOT = exe_dir
     else:
-        PROJECT_ROOT = exe_dir
-else:
-    PROJECT_ROOT = os.path.dirname(WEB_PLATFORM_DIR)
+        PROJECT_ROOT = os.path.dirname(WEB_PLATFORM_DIR)
 
 # 全局核心动态绝对路径定义（保证在任意工作目录运行均 100% 准确）
 REPORTS_DIR = os.path.join(PROJECT_ROOT, "reports")

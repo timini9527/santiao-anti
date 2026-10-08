@@ -227,13 +227,14 @@ def collect_all_tests(tests_dir: str = "tests") -> List[Dict[str, Any]]:
 
     # 动态匹配真实的 Pytest 参数化 ID (如 ids_values)
     try:
-        # 在 PyInstaller 打包状态下，sys.executable 是主程序 exe，不能用于执行 python 脚本
-        py_exec = sys.executable if not getattr(sys, 'frozen', False) else None
-        if not py_exec:
-            import shutil
-            py_exec = shutil.which("python") or shutil.which("python3")
-            if not py_exec and os.path.exists(r"D:\data\Python313\python.exe"):
-                py_exec = r"D:\data\Python313\python.exe"
+        try:
+            from desktop_app.core.path_resolver import SmartPathResolver
+            py_exec = SmartPathResolver.discover_python_runtime().get("executable")
+        except Exception:
+            py_exec = sys.executable if not getattr(sys, 'frozen', False) else None
+            if not py_exec:
+                import shutil
+                py_exec = shutil.which("python") or shutil.which("python3")
 
         # 使用动态绝对路径定位辅助收集脚本，并指定工作目录为项目根目录
         if py_exec and os.path.exists(TEMP_COLLECT_SCRIPT):

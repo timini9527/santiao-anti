@@ -326,6 +326,7 @@ class TestMomentsInteraction:
                     logger.warning(f"⚠️ 清理取消删除测试评论失败: {e}")
 
 
+
     @allure.story("点赞与评论")
     @allure.title("删除自己的评论-状态：已完成")
     def test_delete_own_comment(self, temp_interaction_moment):
@@ -357,3 +358,57 @@ class TestMomentsInteraction:
                 any(test_comment in comment for comment in comments_after),
                 f"❌ 评论 [{test_comment}] 删除后依然可见"
             )
+
+
+
+    @allure.story("点赞与评论")
+    @allure.title("点赞并取消点赞-状态：已完成")
+    def test_like_and_cancel_moment(self, temp_like_moment):
+        """测试对朋友圈动态点赞后可再次取消点赞（自产自销，数据闭环）"""
+        
+        with allure.step("1. 获取该动态的初始点赞状态（预期为空）"):
+            before_like = self.momentsPage.get_nth_moment_like_users(0)
+            check.equal(before_like, [], "❌ 新发布的动态点赞状态应该为空")
+
+        with allure.step("2. 正常执行点赞"):
+            self.momentsPage.click_like_nth_moment(0)
+            like_changed = self._wait_until(
+                lambda: self.momentsPage.get_nth_moment_like_users(0) != before_like,
+                timeout=5,
+                description="点赞后点赞列表变化"
+            )
+            check.is_true(like_changed, "❌ 点赞后点赞状态未在预期时间内变化")
+            after_like = self.momentsPage.get_nth_moment_like_users(0)
+            check.not_equal(after_like, before_like, "❌ 点赞后点赞状态未发生变化")
+
+        with allure.step("3. 刷新后校验点赞状态仍保持"):
+            self.momentsPage.refresh_moments()
+            like_persisted = self._wait_until(
+                lambda: self.momentsPage.get_nth_moment_like_users(0) == after_like,
+                timeout=5,
+                description="刷新后点赞状态保持"
+            )
+            check.is_true(like_persisted, "❌ 刷新后点赞状态未保持")
+
+        with allure.step("4. 正常执行取消点赞"):
+            self.momentsPage.click_like_nth_moment(0)
+            like_cancelled = self._wait_until(
+                lambda: self.momentsPage.get_nth_moment_like_users(0) == before_like,
+                timeout=5,
+                description="取消点赞后点赞列表恢复"
+            )
+            check.is_true(like_cancelled, "❌ 取消点赞后状态未在预期时间内恢复")
+            after_cancel = self.momentsPage.get_nth_moment_like_users(0)
+            check.equal(after_cancel, before_like, "❌ 取消点赞后状态未恢复到点赞前")
+
+        with allure.step("5. 刷新后校验取消点赞状态仍保持"):
+            self.momentsPage.refresh_moments()
+            cancel_persisted = self._wait_until(
+                lambda: self.momentsPage.get_nth_moment_like_users(0) == before_like,
+                timeout=5,
+                description="刷新后取消点赞状态保持"
+            )
+            check.is_true(cancel_persisted, "❌ 刷新后取消点赞状态未保持")
+
+
+

@@ -3,7 +3,7 @@ AppName=三条IM自动化测试控制台
 AppVersion=0.9.9
 DefaultDirName={autopf}\SantiaoAntiDesktop
 DefaultGroupName=三条IM自动化测试控制台
-OutputDir=d:\projects\santiao-anti\dist\SetupInstaller
+OutputDir=d:\桌面\work\santiao-anti\dist\SetupInstaller
 OutputBaseFilename=Santiao_IM_Native_Setup_v0.9.9
 Compression=lzma2/fast
 SolidCompression=yes
@@ -16,7 +16,7 @@ UsePreviousAppDir=no
 DirExistsWarning=auto
 AlwaysShowDirOnReadyPage=yes
 ; 绑定应用程序专属品牌高清图标 (应用于安装向导主程序与卸载器)
-SetupIconFile=d:\projects\santiao-anti\desktop_app\resources\app_icon.ico
+SetupIconFile=d:\桌面\work\santiao-anti\desktop_app\resources\app_icon.ico
 
 ; 强制关闭正在运行的应用程序，避免卸载或覆盖安装时文件被占用无法删除
 CloseApplications=yes
@@ -25,24 +25,24 @@ RestartApplications=no
 
 [Files]
 ; 1. 桌面端应用主程序与运行库
-Source: "d:\projects\santiao-anti\dist\三条IM自动化测试控制台\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "d:\桌面\work\santiao-anti\dist\三条IM自动化测试控制台\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; 2. 核心自动化测试工程（方案4加密成果：已彻底抹除 .py 源码，安装后目标电脑上只有二进制加密/机器码文件）
-Source: "d:\projects\santiao-anti\dist\encrypted_release\tests\*"; DestDir: "{app}\tests"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "d:\projects\santiao-anti\dist\encrypted_release\pages\*"; DestDir: "{app}\pages"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "d:\projects\santiao-anti\dist\encrypted_release\locators\*"; DestDir: "{app}\locators"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "d:\projects\santiao-anti\dist\encrypted_release\common\*"; DestDir: "{app}\common"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "d:\projects\santiao-anti\dist\encrypted_release\core\*"; DestDir: "{app}\core"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "d:\projects\santiao-anti\dist\encrypted_release\utils\*"; DestDir: "{app}\utils"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "d:\projects\santiao-anti\dist\encrypted_release\config\*"; DestDir: "{app}\config"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "d:\projects\santiao-anti\dist\encrypted_release\data\*"; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "d:\projects\santiao-anti\dist\encrypted_release\requirements.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "d:\桌面\work\santiao-anti\tests\*"; DestDir: "{app}\tests"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "d:\桌面\work\santiao-anti\pages\*"; DestDir: "{app}\pages"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "d:\桌面\work\santiao-anti\locators\*"; DestDir: "{app}\locators"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "d:\桌面\work\santiao-anti\common\*"; DestDir: "{app}\common"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "d:\桌面\work\santiao-anti\core\*"; DestDir: "{app}\core"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "d:\桌面\work\santiao-anti\utils\*"; DestDir: "{app}\utils"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "d:\桌面\work\santiao-anti\config\*"; DestDir: "{app}\config"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "d:\桌面\work\santiao-anti\data\*"; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "d:\桌面\work\santiao-anti\requirements.txt"; DestDir: "{app}"; Flags: ignoreversion
 
-; 3. 内置独立免安装 Python 3.13 运行环境 (精准排除完全无关的AI大包与碎片，保留 torch 以确保 cnocr/RapidOCR 完整可用)
-Source: "D:\data\Python313\*"; DestDir: "{app}\python_runtime"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.pdb,Doc,include,tcl,__pycache__,*.dist-info,paddle*,scipy*,sympy*,wandb*,modelscope*,*polars*,Lib\test"
+; 3. 内置独立免安装 Python 运行环境
+Source: "C:\Program Files\Python\Python313\*"; DestDir: "{app}\python_runtime"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.pdb,Doc,include,tcl,__pycache__,*.dist-info,paddle*,scipy*,sympy*,wandb*,modelscope*,*polars*,Lib\test"
 
 ; 4. 内置 Allure CLI 命令行工具 (开箱即用支持生成全维度可视化测试报告)
-Source: "d:\projects\santiao-anti\allure-cli\*"; DestDir: "{app}\allure-cli"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "d:\桌面\work\santiao-anti\allure-cli\*"; DestDir: "{app}\allure-cli"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\三条IM自动化测试控制台"; Filename: "{app}\三条IM自动化测试控制台.exe"

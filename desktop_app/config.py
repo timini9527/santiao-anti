@@ -11,23 +11,11 @@ import sys
 import json
 from typing import Dict, Any
 
+from desktop_app.core.path_resolver import SmartPathResolver
+
 def resolve_project_root() -> str:
-    """自适应获取真实项目根目录（支持源码运行和 PyInstaller 打包环境）"""
-    if getattr(sys, 'frozen', False):
-        exe_dir = os.path.dirname(sys.executable)
-        candidates = [
-            exe_dir,
-            os.path.dirname(exe_dir),
-            os.getcwd(),
-            r"D:\projects\santiao-anti"
-        ]
-        for cand in candidates:
-            if os.path.exists(os.path.join(cand, "tests")):
-                return cand
-        return exe_dir
-    else:
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        return os.path.dirname(current_dir)
+    """自适应获取真实项目根目录（通过 SmartPathResolver 智能识别）"""
+    return SmartPathResolver.get_project_root()
 
 PROJECT_ROOT = resolve_project_root()
 CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "desktop_settings.json")

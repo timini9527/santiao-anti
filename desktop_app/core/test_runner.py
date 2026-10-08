@@ -16,6 +16,7 @@ from typing import Optional, Dict, Any
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from desktop_app.config import PROJECT_ROOT
+from desktop_app.core.path_resolver import SmartPathResolver
 
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
@@ -119,35 +120,9 @@ class TestExecutionWorker(QThread):
         if self.config.get("env"):
             env["TEST_ENV"] = self.config["env"]
 
-        # 动态定位真实的 Python 解释器（支持安装包内置便携运行时、开发机原生环境及系统环境）
-        exe_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else PROJECT_ROOT
-        runtime_candidates = [
-            # 1. 软件安装目录下的内置便携 Python 运行时 (真正实现目标机 0 环境依赖)
-            os.path.join(PROJECT_ROOT, "python_runtime", "python.exe"),
-            os.path.join(exe_dir, "python_runtime", "python.exe"),
-            # 2. 本地开发机的标准 Python 3.13 路径
-            r"D:\data\Python313\python.exe",
-        ]
-        
-        py_bin = None
-        for cand in runtime_candidates:
-            if cand and os.path.exists(cand):
-                py_bin = cand
-                break
-        
-        # 3. 源码未打包状态下的当前解释器
-        if not py_bin and not getattr(sys, 'frozen', False):
-            py_bin = sys.executable
-
-        # 4. 系统全局环境 fallback
-        if not py_bin:
-            import shutil
-            for cand in [shutil.which("python"), shutil.which("python3")]:
-                if cand and os.path.exists(cand):
-                    py_bin = cand
-                    break
-        if not py_bin:
-            py_bin = "python"
+        # 动态定位真实的 Python 解释器（基于 SmartPathResolver 多级雷达扫描：便携运行时/虚拟环境/系统安装/注册表/PATH）
+        runtime_info = SmartPathResolver.discover_python_runtime()
+        py_bin = runtime_info.get("executable") or sys.executable or "python"
 
         # 若命中内置便携环境，确保将其 Scripts 与根目录注入 PATH 最前列
         py_home = os.path.dirname(os.path.abspath(py_bin))
@@ -223,7 +198,8 @@ class TestExecutionWorker(QThread):
 
     def _generate_allure_report(self) -> str:
         """自动定位 Java 环境与 Allure CLI 并编译报告"""
-        allure_bin = os.path.join(ALLURE_CLI_DIR, "bin", "allure.bat" if sys.platform == "win32" else "allure")
+        allure_info = SmartPathResolver.discover_allure_cli()
+        allure_bin = allure_info.get("executable")
         java_home = auto_detect_system_java_home()
         
         gen_env = os.environ.copy()

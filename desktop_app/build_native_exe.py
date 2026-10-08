@@ -11,6 +11,7 @@
 """
 import os
 import sys
+import time
 import shutil
 import subprocess
 
@@ -24,6 +25,11 @@ if sys.platform == "win32":
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+from desktop_app.core.path_resolver import SmartPathResolver
+PROJECT_ROOT = SmartPathResolver.get_project_root()
 
 # ==============================================================================
 # 核心打包配置开关
@@ -86,6 +92,49 @@ def post_build_cleanup(dist_app_dir: str):
                 print(f"[产物净化] 清理 {dll_name} 提示: {e}")
 
 
+def sync_portable_assets(app_output_dir: str):
+    """
+    将测试用例、配置文件、数据字典及页面业务库同步至本地绿色运行目录，
+    基于 SmartPathResolver 动态感知全部业务模块与核心配置文件，
+    并预构建 tests_catalog.json 静态索引，确保脱离源码目录也能独立运行并秒级展示用例树。
+    """
+    print("[资产同步] 正在智能扫描并装配工程全部测试业务资源与核心配置...")
+    assets = SmartPathResolver.discover_project_assets(PROJECT_ROOT)
+    
+    # 1. 动态自适应同步所有业务模块子目录
+    for d in assets["business_dirs"]:
+        src = os.path.join(PROJECT_ROOT, d)
+        dst = os.path.join(app_output_dir, d)
+        if os.path.isdir(src):
+            try:
+                shutil.copytree(src, dst, dirs_exist_ok=True)
+            except Exception as e:
+                print(f"[资产提示] 同步业务目录 {d} 异常: {e}")
+
+    # 2. 动态同步核心配置文件
+    for f in assets["core_files"]:
+        src_file = os.path.join(PROJECT_ROOT, f)
+        dst_file = os.path.join(app_output_dir, f)
+        if os.path.isfile(src_file):
+            try:
+                shutil.copy2(src_file, dst_file)
+            except Exception as e:
+                print(f"[资产提示] 同步核心配置 {f} 异常: {e}")
+
+    # 预提取生成静态用例索引 tests_catalog.json
+    try:
+        from web_platform.backend.collector import collect_all_tests
+        import json
+        catalog = collect_all_tests(os.path.join(PROJECT_ROOT, "tests"))
+        for target_dir in [os.path.join(app_output_dir, "tests"), os.path.join(PROJECT_ROOT, "tests")]:
+            os.makedirs(target_dir, exist_ok=True)
+            with open(os.path.join(target_dir, "tests_catalog.json"), "w", encoding="utf-8") as f:
+                json.dump(catalog, f, ensure_ascii=False, indent=2)
+        print(f"[索引就绪] 已预生成用例结构索引 tests_catalog.json (收录 {len(catalog)} 个测试文件，支持开箱即用秒级展示)")
+    except Exception as e:
+        print(f"[索引警告] 生成 tests_catalog.json 提示: {e}")
+
+
 def generate_inno_setup_script(output_dir: str, encrypted_dir: str = None, install_password: str = ""):
     """生成 Inno Setup 安装包脚本（密码为空时免密码直接安装，密码非空时激活 AES-256 原生保护）"""
     # 优先采用已完成深度加密编译的脱敏资产目录，杜绝明文 .py 源码被打包进安装包
@@ -98,6 +147,34 @@ def generate_inno_setup_script(output_dir: str, encrypted_dir: str = None, insta
         password_section = f"""; ===== 方案 4: 工业级 AES-256 安装包加密与授权保护 =====
 Encryption=yes
 Password={install_password.strip()}
+"""
+
+    # 动态探测宿主机可用 Python 运行环境源路径 (多级雷达扫描，支持便携版、虚拟环境及系统安装)
+    py_runtime_info = SmartPathResolver.discover_python_runtime()
+    py_runtime_src = py_runtime_info.get("home_dir")
+    python_section = ""
+    if py_runtime_src and os.path.exists(py_runtime_src):
+        python_section = f"""; 3. 内置独立免安装 Python 运行环境
+Source: "{py_runtime_src}\\*"; DestDir: "{{app}}\\python_runtime"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.pdb,Doc,include,tcl,__pycache__,*.dist-info,paddle*,scipy*,sympy*,wandb*,modelscope*,*polars*,Lib\\test"
+"""
+
+    # 动态扫描识别全部测试业务目录与核心配置文件，彻底消除人工遗漏
+    assets = SmartPathResolver.discover_project_assets(source_root)
+    files_entries = []
+    for d in assets["business_dirs"]:
+        if d == "allure-cli":
+            continue
+        files_entries.append(f'Source: "{source_root}\\{d}\\*"; DestDir: "{{{{app}}}}\\{d}"; Flags: ignoreversion recursesubdirs createallsubdirs')
+    for f in assets["core_files"]:
+        files_entries.append(f'Source: "{source_root}\\{f}"; DestDir: "{{{{app}}}}"; Flags: ignoreversion')
+    business_files_section = "\n".join(files_entries)
+
+    # 动态定位 Allure-CLI 命令行工具
+    allure_info = SmartPathResolver.discover_allure_cli()
+    allure_section = ""
+    if allure_info.get("home_dir") and os.path.exists(allure_info["home_dir"]):
+        allure_section = f"""; 4. 内置 Allure CLI 命令行工具 (开箱即用支持生成全维度可视化测试报告)
+Source: "{allure_info['home_dir']}\\*"; DestDir: "{{app}}\\allure-cli"; Flags: ignoreversion recursesubdirs createallsubdirs
 """
 
     iss_content = f"""[Setup]
@@ -129,23 +206,11 @@ RestartApplications=no
 ; 1. 桌面端应用主程序与运行库
 Source: "{output_dir}\\三条IM自动化测试控制台\\*"; DestDir: "{{app}}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
-; 2. 核心自动化测试工程（方案4加密成果：已彻底抹除 .py 源码，安装后目标电脑上只有二进制加密/机器码文件）
-Source: "{source_root}\\tests\\*"; DestDir: "{{app}}\\tests"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{source_root}\\pages\\*"; DestDir: "{{app}}\\pages"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{source_root}\\locators\\*"; DestDir: "{{app}}\\locators"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{source_root}\\common\\*"; DestDir: "{{app}}\\common"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{source_root}\\core\\*"; DestDir: "{{app}}\\core"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{source_root}\\utils\\*"; DestDir: "{{app}}\\utils"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{source_root}\\config\\*"; DestDir: "{{app}}\\config"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{source_root}\\data\\*"; DestDir: "{{app}}\\data"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{source_root}\\requirements.txt"; DestDir: "{{app}}"; Flags: ignoreversion
+; 2. 核心自动化测试工程（动态收纳所有业务目录与核心配置，二进制加密/机器码发布）
+{business_files_section}
 
-; 3. 内置独立免安装 Python 3.13 运行环境 (精准排除完全无关的AI大包与碎片，保留 torch 以确保 cnocr/RapidOCR 完整可用)
-Source: "D:\\data\\Python313\\*"; DestDir: "{{app}}\\python_runtime"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.pdb,Doc,include,tcl,__pycache__,*.dist-info,paddle*,scipy*,sympy*,wandb*,modelscope*,*polars*,Lib\\test"
-
-; 4. 内置 Allure CLI 命令行工具 (开箱即用支持生成全维度可视化测试报告)
-Source: "{PROJECT_ROOT}\\allure-cli\\*"; DestDir: "{{app}}\\allure-cli"; Flags: ignoreversion recursesubdirs createallsubdirs
-
+{python_section}
+{allure_section}
 [Icons]
 Name: "{{autoprograms}}\\三条IM自动化测试控制台"; Filename: "{{app}}\\三条IM自动化测试控制台.exe"
 Name: "{{autodesktop}}\\三条IM自动化测试控制台"; Filename: "{{app}}\\三条IM自动化测试控制台.exe"
@@ -189,8 +254,9 @@ end;
 
 
 def check_and_kill_running_instance():
-    """打包前关闭可能正在运行的旧实例，防止 DLL 占用导致拒绝访问"""
+    """打包前关闭可能正在运行的旧实例与解除目录占用，彻底解决 WinError 32 权限拒绝"""
     if sys.platform == "win32":
+        # 1. 强制终止可能残留的主程序实例
         try:
             subprocess.run(
                 ["taskkill", "/F", "/IM", "三条IM自动化测试控制台.exe"],
@@ -198,9 +264,40 @@ def check_and_kill_running_instance():
                 stderr=subprocess.DEVNULL,
                 creationflags=subprocess.CREATE_NO_WINDOW
             )
-            time.sleep(1)
         except Exception:
             pass
+
+        # 2. 检查并终止将 dist 目录作为当前工作目录(CWD)挂起的后台进程 (如被拉起的 adb.exe / hdc.exe)
+        try:
+            import psutil
+            dist_marker = "三条IM自动化测试控制台".lower()
+            current_pid = os.getpid()
+            for p in psutil.process_iter(['pid', 'name', 'cwd']):
+                try:
+                    if p.info['pid'] != current_pid:
+                        cwd = p.info.get('cwd') or ""
+                        if dist_marker in cwd.lower():
+                            p.kill()
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        # 3. 若 Windows 资源管理器正打开在待覆盖目录，令其后退一层至 dist/ 目录以释放目录句柄锁
+        try:
+            import win32com.client
+            shell = win32com.client.Dispatch("Shell.Application")
+            for w in shell.Windows():
+                try:
+                    loc = str(getattr(w, "LocationURL", ""))
+                    if "三条IM" in loc or "三条" in loc:
+                        w.Navigate(os.path.join(PROJECT_ROOT, "dist"))
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        time.sleep(1)
 
 
 def ensure_compatible_inno_icon() -> str:
@@ -268,6 +365,7 @@ def build(build_installer: bool = BUILD_INSTALLER):
         "--hidden-import=desktop_app.style",
         "--hidden-import=desktop_app.config",
         "--hidden-import=desktop_app.core",
+        "--hidden-import=desktop_app.core.path_resolver",
         "--hidden-import=desktop_app.core.device_manager",
         "--hidden-import=desktop_app.core.test_collector",
         "--hidden-import=desktop_app.core.test_runner",
@@ -320,6 +418,9 @@ def build(build_installer: bool = BUILD_INSTALLER):
         print(f" 终极单文件安装包: {os.path.join(dist_dir, 'SetupInstaller', 'Santiao_IM_Native_Setup_v0.9.9.exe')}")
         print("==================================================")
     else:
+        # 4. 同步测试用例、配置、数据与业务层至本地绿色运行目录，并生成索引
+        sync_portable_assets(app_output_dir)
+
         print("\n==================================================")
         print(" [成功] 本地桌面端打包完成！(已按配置跳过 Inno Setup 安装包制作)")
         print(f" 本地绿色目录: {app_output_dir}")
@@ -329,16 +430,12 @@ def build(build_installer: bool = BUILD_INSTALLER):
 
 
 def compile_installer_if_available():
-    """检测并自动调用 Inno Setup 编译器生成最终单文件安装包"""
+    """智能探测并自动调用 Inno Setup 编译器生成最终单文件安装包"""
     iss_path = os.path.join(CURRENT_DIR, "installer.iss")
-    candidates = [
-        r"D:\Program Files\Inno Setup 7\ISCC.exe",
-        shutil.which("ISCC")
-    ]
-    iscc_bin = next((p for p in candidates if p and os.path.exists(p)), None)
+    iscc_bin = SmartPathResolver.discover_inno_compiler()
     if iscc_bin:
-        print(f"\n[Inno Setup] 检测到编译器: {iscc_bin}")
-        print(" 正在一键编译生成最终 Setup 安装程序 (压缩 Python 运行时)...")
+        print(f"\n[Inno Setup] 智能雷达探测到编译器: {iscc_bin}")
+        print(" 正在一键编译生成最终 Setup 安装程序 (压缩 Python 运行时与业务资产)...")
         try:
             subprocess.run([iscc_bin, iss_path], cwd=PROJECT_ROOT, check=True)
             print(" [Inno Setup 成功] 包含自定义路径与内置运行时的安装包已编译完成！")
