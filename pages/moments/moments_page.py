@@ -38,6 +38,12 @@ class MomentsPage(BasePage):
         logger.info("🚀 [Action-moments] 点击发布朋友圈按钮")
         self.click(MomentsLocator.IV_CAMERA)
     
+    # 动态 - 校验发布朋友圈按钮是否可见
+    def is_camera_displayed(self, timeout: int = 3) -> bool:
+        """ 动态 - 校验发布朋友圈按钮(相机图标)是否正常可见 """
+        logger.info(f"🔍 [Check-moments] 正在校验朋友圈发布相机图标是否可见(超时: {timeout}s)...")
+        return bool(self.is_element_exist(MomentsLocator.IV_CAMERA, timeout=timeout))
+
     # 动态 - 长按发布朋友圈按钮
     def long_press_post_moments(self, hold_time: int = 1000) -> None:
         """ 动态 - 长按发布朋友圈按钮 """
@@ -106,28 +112,33 @@ class MomentsPage(BasePage):
     def is_moment_contains_media(self, motype: int = 1, index: int = 0) -> bool:
         """
         动态 - 判断指定朋友圈列表项是否包含图片/视频。
-        motype: 1=图片, 2=视频
+        :param motype: 1=图片 (单图与单个视频公用 IV_SINGLE_PIC，多图使用 IV_MEDIA), 2=视频 (单个视频只有 IV_SINGLE_PIC 单独定位元素)
+        :param index: 朋友圈Item项的索引序号，默认为 0 (首条)
+        :return: bool 是否包含指定媒体资源
         """
-        locator_map = {
-            1: MomentsLocator.IV_MEDIA,
-            2: MomentsLocator.IV_SINGLE_PIC,
-        }
-        locator = locator_map.get(motype)
-        if locator is None:
-            raise ValueError(f"不支持的朋友圈媒体类型: {motype}")
-
         moment_item = self.get_moment_item(index=index)
         if moment_item is None:
             logger.warning(f"⚠️ [Check-moments] 未找到第 {index} 条朋友圈，无法校验媒体类型 {motype}")
             return False
 
-        media_elements = moment_item.find_elements(*locator)
-        has_media = len(media_elements) > 0
-        media_name = "图片" if motype == 1 else "视频"
-        if has_media:
-            logger.info(f"🔍 [Check-moments] 第 {index} 条朋友圈包含{media_name}")
+        single_pic_elems = moment_item.find_elements(*MomentsLocator.IV_SINGLE_PIC)
+        multi_pic_elems = moment_item.find_elements(*MomentsLocator.IV_MEDIA)
+        has_single_media = len(single_pic_elems) > 0
+        has_multi_media = len(multi_pic_elems) > 0
+
+        if motype == 1:
+            has_media = has_single_media or has_multi_media
+            media_name = "图片"
+        elif motype == 2:
+            has_media = has_single_media
+            media_name = "视频"
         else:
-            logger.warning(f"⚠️ [Check-moments] 第 {index} 条朋友圈不包含{media_name}")
+            raise ValueError(f"不支持的朋友圈媒体类型: {motype}")
+
+        if has_media:
+            logger.info(f"🔍 [Check-moments] 第 {index} 条朋友圈包含{media_name} (single_pic={has_single_media}, multi_media={has_multi_media})")
+        else:
+            logger.warning(f"⚠️ [Check-moments] 第 {index} 条朋友圈不包含{media_name} (single_pic={has_single_media}, multi_media={has_multi_media})")
         return has_media
 
     # 动态 - 点击全文展开或收起

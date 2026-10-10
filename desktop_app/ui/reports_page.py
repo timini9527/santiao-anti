@@ -12,6 +12,7 @@
    - 右侧：当前报告详情条 (精简视角下拉、新窗口全屏打开) + 1:1 原生复刻的 Allure 完整大盘
 """
 import os
+import sys
 import json
 import webbrowser
 from typing import List, Dict, Any, Optional
@@ -22,8 +23,17 @@ from PyQt6.QtWidgets import (
     QComboBox, QMessageBox, QMenu
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from .allure_dashboard import AllureDashboardWidget
+_CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(_CURRENT_DIR))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
+try:
+    from .allure_dashboard import AllureDashboardWidget
+except (ImportError, ValueError):
+    from desktop_app.ui.allure_dashboard import AllureDashboardWidget
 from web_platform.backend.paths import REPORTS_DIR
+from desktop_app.core.report_scanner import scan_available_reports, get_reports_count
 
 class ReportHistoryItem(QFrame):
     """左侧历史任务卡片项"""
@@ -232,7 +242,7 @@ class ReportsPage(QWidget):
         sep2.setStyleSheet("color: #cbd5e1;")
         pg_layout.addWidget(sep2)
 
-        self.lbl_rep = QLabel("📑 报告: 0 份")
+        self.lbl_rep = QLabel(f"📑 报告: {get_reports_count()} 份")
         self.lbl_rep.setStyleSheet("color: #7c3aed; font-weight: 700; font-size: 12px;")
         pg_layout.addWidget(self.lbl_rep)
 
@@ -514,7 +524,7 @@ class ReportsPage(QWidget):
 
         self.combo_role = QComboBox()
         self.combo_role.addItems(["精简视角", "完整视角"])
-        self.combo_role.setFixedWidth(96)
+        self.combo_role.setFixedWidth(130)
         self.combo_role.setFixedHeight(28)
         top_bar.addWidget(self.combo_role)
 
@@ -561,135 +571,9 @@ class ReportsPage(QWidget):
 
     def refresh_reports(self):
         """全自动扫描并同步本地所有测试任务报告，按时间倒序排列并渲染"""
-        from datetime import datetime
-        new_list = []
-        found_ids = set()
-
-        # 1. 扫描 REPORTS_DIR/allure_reports/ 下的编译报告
-        allure_reports_dir = os.path.join(REPORTS_DIR, "allure_reports")
-        if os.path.exists(allure_reports_dir):
-            for name in os.listdir(allure_reports_dir):
-                sp = os.path.join(allure_reports_dir, name)
-                if not os.path.isdir(sp):
-                    continue
-
-                # 自动清理完全为空的异常残留目录
-                if not os.listdir(sp):
-                    try:
-                        os.rmdir(sp)
-                    except Exception:
-                        pass
-                    continue
-
-                sum_sub = os.path.join(sp, "widgets", "summary.json")
-                tot = 0
-                t_str = ""
-                if os.path.exists(sum_sub):
-                    try:
-                        with open(sum_sub, "r", encoding="utf-8") as f:
-                            s_data = json.load(f)
-                        tot = s_data.get("statistic", {}).get("total", 0)
-                        st = s_data.get("time", {}).get("start", 0)
-                        if st:
-                            t_str = datetime.fromtimestamp(st / 1000.0).strftime("%Y-%m-%d %H:%M:%S")
-                    except Exception:
-                        pass
-
-                # 检查同名 allure_results 是否有结果
-                cand_res = os.path.join(REPORTS_DIR, "allure_results", name)
-                res_count = len([f for f in os.listdir(cand_res) if f.endswith("-result.json")]) if os.path.exists(cand_res) else 0
-
-                # 防御性过滤：若既无统计数据也无任何结果文件（如执行时被强行终止），则不列入有效报告列表
-                if tot == 0 and res_count == 0:
-                    continue
-
-                if not t_str:
-                    mtime = os.path.getmtime(sp)
-                    t_str = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
-
-                new_list.append({
-                    "task_id": name,
-                    "time": t_str,
-                    "cases": max(tot, res_count),
-                    "path": sp,
-                    "mtime": os.path.getmtime(sp)
-                })
-                found_ids.add(name)
-
-        # 2. 扫描 REPORTS_DIR/html_task_* (Web 平台生成的报告)
-        if os.path.exists(REPORTS_DIR):
-            for name in os.listdir(REPORTS_DIR):
-                if name.startswith("html_task_"):
-                    raw_id = name.replace("html_", "")
-                    if raw_id in found_ids:
-                        continue
-                    sp = os.path.join(REPORTS_DIR, name)
-                    if not os.path.isdir(sp):
-                        continue
-                    if not os.listdir(sp):
-                        try:
-                            os.rmdir(sp)
-                        except Exception:
-                            pass
-                        continue
-                    sum_sub = os.path.join(sp, "widgets", "summary.json")
-                    tot = 0
-                    t_str = ""
-                    if os.path.exists(sum_sub):
-                        try:
-                            with open(sum_sub, "r", encoding="utf-8") as f:
-                                s_data = json.load(f)
-                            tot = s_data.get("statistic", {}).get("total", 0)
-                            st = s_data.get("time", {}).get("start", 0)
-                            if st:
-                                t_str = datetime.fromtimestamp(st / 1000.0).strftime("%Y-%m-%d %H:%M:%S")
-                        except Exception:
-                            pass
-                    if tot == 0:
-                        continue
-                    if not t_str:
-                        mtime = os.path.getmtime(sp)
-                        t_str = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
-                    new_list.append({
-                        "task_id": raw_id,
-                        "time": t_str,
-                        "cases": tot,
-                        "path": sp,
-                        "mtime": os.path.getmtime(sp)
-                    })
-                    found_ids.add(raw_id)
-
-        # 3. 扫描 REPORTS_DIR/allure_results/ 下未生成 HTML 的原始 JSON 结果
-        allure_results_dir = os.path.join(REPORTS_DIR, "allure_results")
-        if os.path.exists(allure_results_dir):
-            for name in os.listdir(allure_results_dir):
-                if name in found_ids:
-                    continue
-                sp = os.path.join(allure_results_dir, name)
-                if not os.path.isdir(sp):
-                    continue
-                if not os.listdir(sp):
-                    try:
-                        os.rmdir(sp)
-                    except Exception:
-                        pass
-                    continue
-                json_files = [f for f in os.listdir(sp) if f.endswith("-result.json")]
-                if not json_files:
-                    continue
-                mtime = os.path.getmtime(sp)
-                t_str = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
-                new_list.append({
-                    "task_id": name,
-                    "time": t_str,
-                    "cases": len(json_files),
-                    "path": sp,
-                    "mtime": mtime
-                })
-                found_ids.add(name)
+        new_list = scan_available_reports()
 
         if new_list:
-            new_list.sort(key=lambda x: x.get("mtime", 0), reverse=True)
             self.history_data = new_list
             self.selected_task = new_list[0]
             self.card_count_val.setText(f"{len(new_list)} 份")

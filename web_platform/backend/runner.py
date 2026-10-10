@@ -82,114 +82,26 @@ async def broadcast_log(task_id: str, message: str):
                     if listener in task_info["listeners"]:
                         task_info["listeners"].remove(listener)
 
-def is_valid_jdk_home(path: Optional[str]) -> bool:
-    """验证给定目录是否为包含完整 bin/java 的合法 JDK/JRE 根目录"""
-    if not path or not os.path.exists(path):
-        return False
-    java_exe = os.path.join(path, "bin", "java.exe") if os.name == 'nt' else os.path.join(path, "bin", "java")
-    return os.path.exists(java_exe)
-
 def auto_detect_system_java_home() -> Optional[str]:
     """
-    全自动、动态识别当前电脑的真实 Java 根目录（JAVA_HOME）。
-    绝不使用任何写死或硬编码的路径，自适应任何 Windows / Mac / Linux 电脑、任意盘符、任意版本。
+    通过系统标准环境变量 JAVA_HOME 与 cmd 命令 (where java) 解析 Java 根目录。
+    找不到直接返回 None，不再进行任何磁盘扫描与注册表查询。
     """
-    # 1. 优先校验当前已配置的 JAVA_HOME
-    current_home = os.environ.get("JAVA_HOME", "").strip()
-    if is_valid_jdk_home(current_home):
-        return current_home
-
-    # 2. Windows 平台：动态读取系统与用户注册表
-    if os.name == 'nt':
-        try:
-            import winreg
-            # 2.1 用户级环境变量中的 JAVA_HOME（用户配在用户变量时自动提取）
-            try:
-                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Environment") as key:
-                    val, _ = winreg.QueryValueEx(key, "JAVA_HOME")
-                    if is_valid_jdk_home(val):
-                        return val
-            except Exception:
-                pass
-
-            # 2.2 注册表标准 JDK/JRE 软件登记项（跨所有常见 JDK 发行版：Oracle, Eclipse Adoptium, Microsoft 等）
-            roots = [winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER]
-            subkeys = [
-                r"SOFTWARE\JavaSoft\JDK",
-                r"SOFTWARE\JavaSoft\Java Development Kit",
-                r"SOFTWARE\JavaSoft\Java Runtime Environment",
-                r"SOFTWARE\Eclipse Adoptium\JDK",
-                r"SOFTWARE\Eclipse Adoptium\JRE",
-                r"SOFTWARE\Microsoft\JDK"
-            ]
-            for r in roots:
-                for sub in subkeys:
-                    try:
-                        with winreg.OpenKey(r, sub) as k:
-                            c_ver, _ = winreg.QueryValueEx(k, "CurrentVersion")
-                            with winreg.OpenKey(k, c_ver) as vk:
-                                h, _ = winreg.QueryValueEx(vk, "JavaHome")
-                                if is_valid_jdk_home(h):
-                                    return h
-                    except Exception:
-                        pass
-        except Exception:
-            pass
-
-    # 3. Mac 平台：动态调用标准命令
-    if sys.platform == "darwin":
-        try:
-            out = subprocess.check_output(["/usr/libexec/java_home"], timeout=3).decode().strip()
-            if is_valid_jdk_home(out):
-                return out
-        except Exception:
-            pass
-
-    # 4. 动态解析系统 PATH 中 java 二进制文件并回溯真实物理路径
-    import shutil
-    which_java = shutil.which("java")
-    if which_java:
-        real_java = os.path.realpath(which_java)
-        cur = os.path.dirname(real_java)
-        while cur and cur != os.path.dirname(cur):
-            if is_valid_jdk_home(cur):
-                return cur
-            cur = os.path.dirname(cur)
-
-    # 5. 跨平台标准程序目录动态扫描（按系统环境变量动态枚举，不写死盘符与版本）
-    scan_roots = []
-    if os.name == 'nt':
-        for env_var in ["ProgramFiles", "ProgramFiles(x86)", "ProgramW6432", "LOCALAPPDATA"]:
-            p = os.environ.get(env_var)
-            if p and os.path.exists(p):
-                scan_roots.append(p)
-        # 动态扫描 Windows 现有物理可用驱动器盘符（如 C:\, D:\ 等）
-        for drive_char in "CDEFGHIJKLMNOPQRSTUVWXYZ":
-            drive = f"{drive_char}:\\"
-            if os.path.exists(drive):
-                scan_roots.append(drive)
-                for common_sub in ["data", "tools", "software", "env", "develop"]:
-                    sub_p = os.path.join(drive, common_sub)
-                    if os.path.exists(sub_p):
-                        scan_roots.append(sub_p)
-    else:
-        scan_roots.extend(["/usr/lib/jvm", "/usr/java", "/Library/Java/JavaVirtualMachines", "/opt/java"])
-
-    for root_dir in scan_roots:
-        for t_name in ["Java", "java", "jdk", "openjdk", "Eclipse Adoptium", "AdoptOpenJDK", "Microsoft", "Zulu"]:
-            tp = os.path.join(root_dir, t_name)
-            if os.path.exists(tp):
-                if is_valid_jdk_home(tp):
-                    return tp
-                try:
-                    for sub in os.listdir(tp):
-                        full_sub = os.path.join(tp, sub)
-                        if os.path.isdir(full_sub) and is_valid_jdk_home(full_sub):
-                            return full_sub
-                except Exception:
-                    pass
-
-    return None
+    try:
+        from desktop_app.core.path_resolver import SmartPathResolver
+        return SmartPathResolver.discover_java_home()
+    except Exception:
+        home = os.environ.get("JAVA_HOME", "").strip()
+        if home and os.path.isdir(home):
+            return home
+        import shutil
+        which_java = shutil.which("java")
+        if which_java:
+            real_java = os.path.realpath(which_java)
+            cand = os.path.dirname(os.path.dirname(real_java))
+            if os.path.isdir(cand):
+                return cand
+        return None
 
 def get_valid_java_env() -> dict:
     """

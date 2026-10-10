@@ -12,7 +12,8 @@ from pages.mine.collection.collection_page import CollectionPage
 from pages.mine.collection.chat_collection_page import ChatCollectionPage
 from pages.home.side_slip_page import SideSlipPage
 from pages.chat_options.images.chat_image_page import ChatImagePage
-from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2
+from core.logger_utils import logger
+from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, PRIVATE_USER3
 
 class BaseSmokeCollectionSingle:
     """单端收藏夹测试基类，统一管理单端 Page 的初始化以及公共辅助方法"""
@@ -43,6 +44,7 @@ class BaseSmokeCollectionSingle:
         self.mainPageR = MainPage(driver)
         self.chatListPageR = ChatListPage(driver)
         self.chatPageR = ChatPage(driver)
+        self.longPressPageR = ChatLongPressPage(driver)
         self.collectionPageR = CollectionPage(driver)
         self.chatCollectionPageR = ChatCollectionPage(driver)
 
@@ -64,7 +66,7 @@ class BaseSmokeCollectionSingle:
         self.longPressPage.long_press_last_message()
         self.longPressPage.click_menu_item('收藏')
         toast = self.collectionPage.get_toast()
-        if toast != '收藏成功':
+        if toast != '添加成功':
             pytest.fail(f'❌ 收藏失败，实际 Toast：{toast}')
 
     def _send_image_and_collect(self):
@@ -79,7 +81,7 @@ class BaseSmokeCollectionSingle:
         self.longPressPage.long_press_last_message()
         self.longPressPage.click_menu_item('收藏')
         toast = self.collectionPage.get_toast()
-        if toast != '收藏成功':
+        if toast != '添加成功':
             pytest.fail(f'❌ 收藏图片失败，实际 Toast：{toast}')
 
     def _assert_latest_text_collection(self, expected_text: str) -> str:
@@ -106,6 +108,8 @@ class BaseSmokeCollectionSingle:
         is_deleted = self.collectionPage.del_collection_item(del_type='image', index=0)
         check.is_true(is_deleted, '❌ 删除本用例图片收藏失败')
         return is_deleted
+
+
 
 @allure.epic('IM核心功能测试')
 @allure.feature('冒烟测试-我的收藏-管理')
@@ -169,6 +173,8 @@ class TestSmokeCollectionSingle(BaseSmokeCollectionSingle):
             self.common_enter_my_collection()
             self._delete_latest_text_collection(source_text)
 
+
+
 @allure.epic('IM核心功能测试')
 @allure.feature('冒烟测试-我的收藏-聊天页面收藏')
 class TestSmokeChatCollection(BaseSmokeCollectionSingle):
@@ -199,6 +205,8 @@ class TestSmokeChatCollection(BaseSmokeCollectionSingle):
         with allure.step('3. 清理本用例创建的图片收藏'):
             self._delete_latest_image_collection()
 
+
+
 @allure.epic('IM核心功能测试')
 @allure.feature('冒烟测试-我的收藏-双端协同')
 class TestSmokeCollectionDouble(BaseSmokeCollectionSingle):
@@ -208,37 +216,52 @@ class TestSmokeCollectionDouble(BaseSmokeCollectionSingle):
     def setup_double_env(self, driver_sender, driver_receiver):
         self.init_single_pages(driver_sender)
         self.init_receiver_pages(driver_receiver)
-        with allure.step('前置准备：发送端与接收端均进入聊天室'):
+        with allure.step('前置准备：发送端与接收端均进入对应聊天室'):
             self.chatListPage.enter_chat(PRIVATE_USER1.name)
             self.chatPage.wait_for_chat_page_load()
-            self.chatListPageR.enter_chat(PRIVATE_USER2.name)
+            self.chatListPageR.enter_chat(PRIVATE_USER3.name)
             self.chatPageR.wait_for_chat_page_load()
         yield
-        try:
-            self.mainPage.go_to_main_page()
-            self.mainPageR.go_to_main_page()
-        except Exception:
-            pass
+        with allure.step('后置清理：双端退出聊天室并返回首页'):
+            try:
+                self.mainPage.go_to_main_page()
+                self.mainPageR.go_to_main_page()
+            except Exception as e:
+                logger.warning(f'⚠️ [Cleanup] 双端清理返回首页异常: {e}')
 
     @allure.story('双端协同实时收藏')
     @allure.title('收藏对方发送的文本消息-双端实时状态校验-状态：已完成')
-    @pytest.mark.skip('用例本身需要双端同步，暂时跳过执行')
     def test_collect_received_text_message_double(self):
-        test_msg = f'SmokeDoubleCollect_{int(time.time())}'
-        with allure.step('1. 接收端发送消息'):
-            self.chatPageR.send_message(test_msg)
+        """
+        冒烟测试-双端协同实时收藏文本消息：
+        1. 接收端(Receiver)在会话中向发送端发送一条唯一标识文本消息
+        2. 发送端(Sender)在聊天界面确认接收，长按该消息并点击【收藏】
+        3. 发送端进入【我的收藏】页面，校验该消息已成功同步落库（文本一致、被收藏人为接收端）
+        4. 环境清理：发送端删除该条测试产生的收藏记录，确保数据幂等
+        """
+        unique_text = self._build_text('smoke_double_collect')
+
+        with allure.step('1. 接收端向发送端发送文本消息'):
+            self.chatPageR.send_message(unique_text)
             self.chatPageR.wait_banner_message_disappear()
-        with allure.step('2. 发送端长按并收藏消息'):
-            elem, text_val = self.collectionPage.get_received_text(index=-1)
-            check.equal(text_val, test_msg, '❌ 接收的最新消息内容不匹配')
-            self.collectionPage.get_first_collection_item(elem)
+
+        with allure.step('2. 发送端确认接收、长按消息并执行收藏'):
+            recv_elem = self.chatPage.get_last_message_content_element(msg_type='text')
+            check.equal(recv_elem.text, unique_text, f'❌ 发送端接收的最新消息文本不匹配，实际: {recv_elem.text}')
+            self.longPressPage.long_press_last_message(msg_type='text')
+            self.longPressPage.click_favorite()
             toast = self.collectionPage.get_toast(expected_toast='成功')
-            check.is_true(toast, '❌ 收藏操作失败')
-        with allure.step('3. 发送端进入我的收藏页面校验'):
-            self.collectionPage.back_to_main()
-            self.collectionPage.enter_my_collection()
-            actual_text_list = self.collectionPage.get_collection_text_data(index=1)
-            check.is_true(len(actual_text_list) > 0, '❌ 收藏未同步')
-            check.equal(actual_text_list[0], test_msg, '❌ 收藏的文本内容与原消息不符')
-        with allure.step('4. 环境清理：删除该收藏'):
-            self.collectionPage.del_collection_item(del_type='text', index=0)
+            check.is_true(bool(toast), f'❌ 发送端长按收藏失败，实际 Toast: {toast}')
+
+        with allure.step('3. 发送端进入【我的收藏】页面校验落库数据'):
+            self.common_enter_my_collection()
+            actual_text = self._assert_latest_text_collection(unique_text)
+            check.equal(actual_text, unique_text, '❌ 收藏列表中最新文本内容与原消息不符')
+            details = self.collectionPage.get_collection_details_data(item_type='text', index=0)
+            if details and isinstance(details, dict):
+                check.equal(details.get('collected_person'), PRIVATE_USER1.name, '❌ 收藏项来源联系人不匹配')
+
+        with allure.step('4. 环境清理：发送端删除该条测试产生的收藏记录'):
+            self._delete_latest_text_collection(unique_text)
+            after_content = self.chatCollectionPage.get_collection_text_content(0)
+            check.not_equal(after_content, unique_text, '❌ 删除校验失败：本用例收藏仍在最新位置')

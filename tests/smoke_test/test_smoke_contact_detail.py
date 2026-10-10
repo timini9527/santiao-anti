@@ -32,6 +32,8 @@ class BaseSmokeContactDetail:
         except Exception:
             pass
 
+
+
 @allure.epic('IM核心功能测试')
 @allure.feature('冒烟测试-好友资料与备注设置')
 class TestSmokeContactDetail(BaseSmokeContactDetail):
@@ -63,18 +65,25 @@ class TestSmokeContactDetail(BaseSmokeContactDetail):
         self.remarkSettingPage.wait_friend_detail_page()
 
     def _prepare_tag_page_and_clean(self):
-        """进入标签选择页并清理当前已选中的标签"""
+        """进入标签选择页并清理当前已选中的标签，确保最终稳定停留在标签选择页"""
         self._go_to_remark_setting_page()
         tag_values = self.remarkSettingPage.get_tag_values()
         self.remarkSettingPage.click_tags()
         self.remarkSettingPage.wait_for_tag_page_load()
         if tag_values:
             self.remarkSettingPage.clear_tag(list_tags=tag_values)
+            self.remarkSettingPage.wait_friend_detail_page()
+            self.remarkSettingPage.click_tags()
+            self.remarkSettingPage.wait_for_tag_page_load()
 
     def _clean_tags_and_back_to_detail(self):
-        """在标签页/备注页清理已选标签并安全切回好友详情页"""
-        self.contactDetailPage.click_friend_detail_title_remark()
-        self.remarkSettingPage.wait_friend_detail_page()
+        """在标签页/备注页清理已选标签并安全切回好友详情页 (自愈兼容)"""
+        if self.remarkSettingPage.wait_for_tag_page_load(timeout=1):
+            self.contactDetailPage.click_iv_back()
+            self.remarkSettingPage.wait_friend_detail_page(timeout=2)
+        if self.contactDetailPage.wait_for_detail_page_load(timeout=1, raise_exception=False):
+            self.contactDetailPage.click_friend_detail_title_remark()
+            self.remarkSettingPage.wait_friend_detail_page(timeout=3)
         tag_values = self.remarkSettingPage.get_tag_values()
         if tag_values:
             self.remarkSettingPage.click_tags()
@@ -82,14 +91,24 @@ class TestSmokeContactDetail(BaseSmokeContactDetail):
             self.remarkSettingPage.clear_tag(list_tags=tag_values)
             self.remarkSettingPage.wait_friend_detail_page()
         self.contactDetailPage.click_iv_back()
+        self.contactDetailPage.wait_for_detail_page_load(timeout=3)
 
     def _go_to_phone_setting_page(self):
         """进入好友电话列表项"""
         self._go_to_remark_setting_page()
         self.remarkSettingPage.click_phone_item()
 
+    def _clear_specific_tag(self, tag_name: str):
+        """精准删除指定名称的分组标签，保护环境隔离性不影响其他分组"""
+        logger.info(f"⚙️ [SmokeClean] 精准清理测试生成的临时标签分组: {tag_name}")
+        self.homePage.click_category_manager()
+        self.tagGroupPage.wait_for_group_list_page_load(page_title='0')
+        self.tagGroupPage.delete_group_or_all_groups_flow(group_name=tag_name, is_all=False)
+        self.contactDetailPage.click_iv_back()
+        self.homePage.wait_for_friend_page_load()
+
     def _clear_all_tags(self):
-        """进入好友页面-分组管理-删除所有分组"""
+        """进入好友页面-分组管理-删除所有分组 (保留兼容全量清理)"""
         with allure.step('1. 进入分组管理页面'):
             self.homePage.click_category_manager()
             self.tagGroupPage.wait_for_group_list_page_load(page_title='0')
@@ -127,132 +146,188 @@ class TestSmokeContactDetail(BaseSmokeContactDetail):
     @allure.story('设置备注名')
     @allure.title('正常修改备注名并同步，校验后恢复-状态：已完成')
     def test_smoke_modify_contact_remark_and_sync(self):
-        """修改备注名 -> 校验资料卡、通讯录同步 -> 清空备注名并恢复"""
-        input_remark = f'测试备注_{int(time.time())}'
-        with allure.step('1. 进入资料页并修改备注名'):
-            self._go_to_remark_setting_page()
-            self.remarkSettingPage.click_remark_name()
-            self.remarkSettingPage.input_remark_name(input_remark)
-            self.remarkSettingPage.click_save()
-            self.contactDetailPage.click_iv_back()
-            self.contactDetailPage.wait_for_detail_page_load()
-        with allure.step('2. 校验资料页大字正确展示新备注名'):
-            main_name = self.contactDetailPage.get_formatted_friend_name()
-            check.equal(main_name, input_remark, f'❌ 资料卡顶部未成功显示修改后的备注名: {input_remark}')
-        with allure.step('3. 校验通讯录好友列表中同步为新备注名'):
-            self.contactDetailPage.click_iv_back()
-            self.homePage.wait_for_friend_page_load()
-            has_remark = self.contactSelectPage.select_contact_by_name(input_remark)
-            check.is_true(bool(has_remark), f'❌ 备注修改后，通讯录中找不到新备注名: {input_remark}')
-        with allure.step('4. 清空备注名并保存，校验是否成功恢复为原名称显示'):
-            self.mainPage.go_to_main_page()
-            self._go_to_remark_setting_page(name=input_remark)
-            self.remarkSettingPage.click_remark_name()
-            self.remarkSettingPage.clear_remark_name()
-            self.remarkSettingPage.click_save()
-            self.contactDetailPage.click_iv_back()
-            self.contactDetailPage.wait_for_detail_page_load()
-        with allure.step('5. 校验通讯录好友列表同步恢复'):
-            after_main_name = self.contactDetailPage.get_formatted_friend_name()
-            check.equal(after_main_name, RECEIVER_NAME, f'❌ 资料卡顶部未成功恢复显示原昵称，实际显示：{after_main_name}')
-            self.contactDetailPage.click_iv_back()
-            self.homePage.wait_for_friend_page_load()
-            has_remark = self.contactSelectPage.select_contact_by_name(RECEIVER_NAME)
-            check.is_true(bool(has_remark), f'❌ 清空备注后通讯录未恢复展示好友原昵称')
+        """修改备注名 -> 校验资料卡(大字备注+小字原昵称)、通讯录同步 -> 清空备注名并恢复"""
+        input_remark = f'A测试备注_{int(time.time())}'
+
+        try:
+            with allure.step('1. 进入资料页并修改备注名'):
+                self._go_to_remark_setting_page(RECEIVER_NAME)
+                self.remarkSettingPage.click_remark_name()
+                self.remarkSettingPage.input_remark_name(input_remark)
+                self.remarkSettingPage.click_save()
+                self.contactDetailPage.click_iv_back()
+                self.contactDetailPage.wait_for_detail_page_load()
+
+            with allure.step('2. 校验资料卡大字展示新备注名，小字保留展示原昵称'):
+                main_name = self.contactDetailPage.get_formatted_friend_name()
+                check.equal(main_name, input_remark, f'❌ 资料卡顶部未成功显示修改后的备注名: {input_remark}')
+                small_name = self.contactDetailPage.get_contact_nickname(raise_exception=False)
+                check.is_in(RECEIVER_NAME, small_name, f'❌ 资料卡昵称小字处未成功保留显示好友原名称: {RECEIVER_NAME}')
+
+            with allure.step('3. 校验通讯录好友列表中同步为新备注名'):
+                self.contactDetailPage.click_iv_back()
+                self.homePage.wait_for_friend_page_load()
+                has_remark = self.contactSelectPage.click_contact_by_name(input_remark, search=True)
+                check.is_true(bool(has_remark), f'❌ 备注修改后，通讯录中找不到带有新备注名的联系人: {input_remark}')
+
+        finally:
+            with allure.step('4. 环境清理与恢复：清空备注名并保存，校验恢复为原昵称'):
+                if not self.contactDetailPage.wait_for_detail_page_load(timeout=2, raise_exception=False):
+                    self._go_to_contact_detail_from_list(input_remark)
+                self.contactDetailPage.click_friend_detail_title_remark()
+                self.remarkSettingPage.wait_friend_detail_page()
+                self.remarkSettingPage.click_remark_name()
+                self.remarkSettingPage.clear_remark_name()
+                self.remarkSettingPage.click_save()
+                self.contactDetailPage.click_iv_back()
+                self.contactDetailPage.wait_for_detail_page_load()
+
+            with allure.step('5. 校验资料卡与通讯录同步恢复原昵称展示'):
+                after_main_name = self.contactDetailPage.get_formatted_friend_name()
+                check.equal(after_main_name, RECEIVER_NAME, f'❌ 资料卡顶部未成功恢复显示原昵称，实际显示：{after_main_name}')
+                after_small_name = self.contactDetailPage.get_contact_nickname(raise_exception=False)
+                check.is_false(bool(after_small_name), f'❌ 清空备注后，资料卡仍残留显示昵称小字：{after_small_name}')
+                self.contactDetailPage.click_iv_back()
+                self.homePage.wait_for_friend_page_load()
+                has_orig = self.contactSelectPage.click_contact_by_name(RECEIVER_NAME, search=True)
+                check.is_true(bool(has_orig), f'❌ 清空备注后通讯录未恢复展示好友原昵称: {RECEIVER_NAME}')
 
     @allure.story('电话管理')
     @allure.title('新增电话号码回显校验并清空还原-状态：已完成')
     def test_smoke_phone_number_addition_and_deletion(self):
-        """新增电话号码 -> 资料卡回显校验 -> 删除电话号码还原环境"""
-        phone_val = '13800001234'
-        with allure.step('1. 进入设置备注与电话页，尝试输入测试号码'):
-            self._go_to_phone_setting_page()
-            self.remarkSettingPage.click_add_phone()
-            self.remarkSettingPage.input_phone(phone_val, index=0, by_action=True)
-        with allure.step('2. 保存电话并重新进入，校验号码持久化回显'):
-            self.remarkSettingPage.click_save()
-            self.remarkSettingPage.wait_friend_detail_page()
-            ph_list = self.remarkSettingPage.get_phone_numbers()
-            check.is_in(phone_val, ph_list, f'❌ 设置备注页未成功回显电话号码: {phone_val}')
-            self.contactDetailPage.click_iv_back()
-        with allure.step('3. 好友资料卡页面，校验号码正确回显'):
-            profile_phones = self.contactDetailPage.get_profile_phone_value()
-            check.is_in(phone_val, profile_phones, f'❌ 资料卡电话行未回显电话号码: {phone_val}')
-        with allure.step('4. 环境还原：再次进入并清空删除已添加的所有电话'):
-            self.contactDetailPage.click_friend_detail_title_remark()
-            self.remarkSettingPage.wait_friend_detail_page()
-            self.remarkSettingPage.click_phone_item()
-            self.remarkSettingPage.delete_all_phones()
-            self.remarkSettingPage.click_save()
-            self.contactDetailPage.click_iv_back()
-            is_exist = self.contactDetailPage.is_row_profile_phone()
-            check.is_false(is_exist, '❌ 电话清空后，好友资料详情页依然显示了电话栏目')
+        """新增电话号码 -> 资料卡与设置页双重回显校验 -> 删除电话号码还原环境 (高健壮自愈)"""
+        phone_val = f'138{int(time.time()) % 100000000:08d}'
+
+        try:
+            with allure.step('1. 进入设置备注与电话页，预检清理并输入测试号码'):
+                self._go_to_phone_setting_page()
+                current_existing = self.remarkSettingPage.get_phones(raise_exception=False)
+                if current_existing:
+                    self.remarkSettingPage.delete_all_phones()
+                self.remarkSettingPage.click_add_phone()
+                self.remarkSettingPage.input_phone(phone_val, index=0, by_action=True)
+
+            with allure.step('2. 保存电话，校验设置备注页持久化正确回显'):
+                self.remarkSettingPage.click_save()
+                self.remarkSettingPage.wait_friend_detail_page()
+                ph_list = self.remarkSettingPage.get_phone_numbers()
+                check.is_in(phone_val, ph_list, f'❌ 设置备注页未成功回显电话号码: {phone_val}')
+                self.contactDetailPage.click_iv_back()
+                self.contactDetailPage.wait_for_detail_page_load()
+
+            with allure.step('3. 返回好友资料卡页面，校验电话行正确回显'):
+                profile_phones = self.contactDetailPage.get_profile_phone_value()
+                check.is_in(phone_val, profile_phones, f'❌ 资料卡电话行未回显电话号码: {phone_val}')
+
+        finally:
+            with allure.step('4. 环境清理与恢复：清空删除所有电话并保存还原'):
+                if self.contactDetailPage.wait_for_detail_page_load(timeout=2, raise_exception=False):
+                    self.contactDetailPage.click_friend_detail_title_remark()
+                    self.remarkSettingPage.wait_friend_detail_page()
+                    self.remarkSettingPage.click_phone_item()
+                self.remarkSettingPage.delete_all_phones()
+                self.remarkSettingPage.click_save()
+                self.remarkSettingPage.wait_friend_detail_page()
+                self.contactDetailPage.click_iv_back()
+                self.contactDetailPage.wait_for_detail_page_load()
+
+            with allure.step('5. 校验资料卡电话行彻底清除'):
+                is_exist = self.contactDetailPage.is_row_profile_phone()
+                check.is_false(is_exist, '❌ 电话清空后，好友资料详情页依然残留显示了电话栏目')
 
     @allure.story('标签')
     @allure.title('选择标签并保存同步，校验后环境恢复-状态：已完成')
     def test_smoke_tag_selection_and_sync(self):
-        """选择标签并保存 -> 校验卡片回显 -> 后置清理还原"""
-        with allure.step('1. 进入标签选择页并清理已选标签'):
-            self._prepare_tag_page_and_clean()
-        with allure.step('2. 获取现有标签（若无则新建一个）并进行选择'):
-            tag_names = self.remarkSettingPage.get_tag_names()
-            need_click = True
-            if not tag_names:
-                new_tag = f'qa_smoke_{int(time.time())}'
-                self.remarkSettingPage.click_add_new_tag()
-                self.remarkSettingPage.input_tag_name(new_tag)
-                self.remarkSettingPage.click_create_done()
-                self.remarkSettingPage.wait_for_tag_page_load()
-                target_tag = new_tag
-                need_click = False
-            else:
-                target_tag = tag_names[0]
-            if need_click:
-                self.remarkSettingPage.click_tag(tag_type=1, target=target_tag)
-        with allure.step('3. 保存并验证设置页和资料卡页面成功回显选中标签'):
-            self.remarkSettingPage.click_save()
-            self.remarkSettingPage.wait_friend_detail_page()
-            selected_tags = self.remarkSettingPage.get_tag_page_values(tag_type=0, split_type=0)
-            check.is_in(target_tag, selected_tags, f'❌ 设置备注页未展示选中标签: {target_tag}')
-            self.contactDetailPage.click_iv_back()
-            self.contactDetailPage.wait_for_detail_page_load()
-            out_tags = self.remarkSettingPage.get_tag_page_values(tag_type=1, split_type=1)
-            check.is_in(target_tag, out_tags, f'❌ 资料详情卡未展示选中标签: {target_tag}')
-        with allure.step('4. 环境恢复：清除选中的标签并安全退回详情页'):
-            self._clean_tags_and_back_to_detail()
-        with allure.step('5. 清理创建的系统标签分组'):
-            self.contactDetailPage.click_iv_back()
-            self.homePage.wait_for_friend_page_load()
-            self._clear_all_tags()
+        """选择标签并保存 -> 校验卡片回显 -> 后置清理还原 (高健壮自愈与精准隔离)"""
+        target_tag = ""
+        is_new_tag = False
+
+        try:
+            with allure.step('1. 进入标签选择页并清理已选标签'):
+                self._prepare_tag_page_and_clean()
+
+            with allure.step('2. 获取现有标签（若无则新建一个）并进行选择'):
+                tag_names = self.remarkSettingPage.get_tag_names()
+                need_click = True
+                if not tag_names:
+                    target_tag = f'qa_smoke_{int(time.time())}'
+                    is_new_tag = True
+                    self.remarkSettingPage.click_add_new_tag()
+                    self.remarkSettingPage.input_tag_name(target_tag)
+                    self.remarkSettingPage.click_create_done()
+                    self.remarkSettingPage.wait_for_tag_page_load()
+                    need_click = False
+                else:
+                    target_tag = tag_names[0]
+
+                if need_click:
+                    self.remarkSettingPage.click_tag(tag_type=1, target=target_tag)
+
+            with allure.step('3. 保存并验证设置页和资料卡页面成功回显选中标签'):
+                self.remarkSettingPage.click_save()
+                self.remarkSettingPage.wait_friend_detail_page()
+                selected_tags = self.remarkSettingPage.get_tag_page_values(tag_type=0, split_type=0)
+                check.is_in(target_tag, selected_tags, f'❌ 设置备注页未展示选中标签: {target_tag}')
+                self.contactDetailPage.click_iv_back()
+                self.contactDetailPage.wait_for_detail_page_load()
+                out_tags = self.remarkSettingPage.get_tag_page_values(tag_type=1, split_type=1)
+                check.is_in(target_tag, out_tags, f'❌ 资料详情卡未展示选中标签: {target_tag}')
+
+        finally:
+            with allure.step('4. 环境恢复：清除选中的标签并安全退回详情页'):
+                self._clean_tags_and_back_to_detail()
+
+            with allure.step('5. 校验资料卡标签彻底清除'):
+                cleared_profile_tags = self.remarkSettingPage.get_tag_page_values(tag_type=1, split_type=1)
+                check.is_not_in(target_tag, cleared_profile_tags, f'❌ 标签解绑后，资料详情卡依然残留展示该标签: {target_tag}')
+
+            if is_new_tag and target_tag:
+                with allure.step(f'6. 精准清理本次测试新建的标签分组: {target_tag}'):
+                    self.contactDetailPage.click_iv_back()
+                    self.homePage.wait_for_friend_page_load()
+                    self._clear_specific_tag(target_tag)
 
     @allure.story('备忘描述')
     @allure.title('新增备忘描述回显校验与清除还原-状态：已完成')
     def test_smoke_memo_description(self):
-        """输入备忘描述保存 -> 双重回显校验 -> 清除还原环境"""
-        note_val = '冒烟测试：备忘特性描述内容🌟'
-        with allure.step('1. 进入设置备注页，点击备忘，输入描述文本并保存'):
-            self._go_to_remark_setting_page()
-            self.remarkSettingPage.click_memo()
-            self.remarkSettingPage.input_note(note_val)
-            self.remarkSettingPage.click_save()
-            self.remarkSettingPage.wait_friend_detail_page()
-            self.contactDetailPage.click_iv_back()
-            self.contactDetailPage.wait_for_detail_page_load()
-        with allure.step('2. 在好友资料卡页面校验备忘回显'):
-            profile_note = self.remarkSettingPage.get_profile_memo_value()
-            check.equal(profile_note, note_val, f'❌ 资料卡展示的备忘文本不符合预期，实际: {profile_note}')
-        with allure.step('3. 重新进入设置备注页，校验编辑内备忘回显'):
-            self.contactDetailPage.click_friend_detail_title_remark()
-            self.remarkSettingPage.wait_friend_detail_page()
-            displayed_note = self.remarkSettingPage.get_note()
-            check.equal(displayed_note, note_val, f'❌ 备注页展示的备忘文本不符合预期，实际: {displayed_note}')
-        with allure.step('4. 环境恢复：清空备忘描述并安全退回详情页'):
-            self.remarkSettingPage.click_memo()
-            self.remarkSettingPage.clear_note()
-            self.remarkSettingPage.click_save()
-            self.remarkSettingPage.wait_friend_detail_page()
-            self.contactDetailPage.click_iv_back()
-            self.contactDetailPage.wait_for_detail_page_load()
+        """输入备忘描述保存 -> 双重回显校验 -> 清除还原环境 (高健壮自愈与反向断言)"""
+        note_val = f'冒烟测试_备忘_{int(time.time())}'
+
+        try:
+            with allure.step('1. 进入设置备注页，输入动态备忘描述并保存'):
+                self._go_to_remark_setting_page()
+                self.remarkSettingPage.click_memo()
+                self.remarkSettingPage.input_note(note_val)
+                self.remarkSettingPage.click_save()
+                self.remarkSettingPage.wait_friend_detail_page()
+                self.contactDetailPage.click_iv_back()
+                self.contactDetailPage.wait_for_detail_page_load()
+
+            with allure.step('2. 在好友资料卡页面校验备忘回显'):
+                profile_note = self.remarkSettingPage.get_profile_memo_value()
+                check.equal(profile_note, note_val, f'❌ 资料卡展示的备忘文本不符合预期，实际: {profile_note}')
+
+            with allure.step('3. 重新进入设置备注页，校验编辑内备忘回显'):
+                self.contactDetailPage.click_friend_detail_title_remark()
+                self.remarkSettingPage.wait_friend_detail_page()
+                displayed_note = self.remarkSettingPage.get_note()
+                check.equal(displayed_note, note_val, f'❌ 备注页展示的备忘文本不符合预期，实际: {displayed_note}')
+
+        finally:
+            with allure.step('4. 环境恢复：清空备忘描述并安全退回详情页'):
+                if self.contactDetailPage.wait_for_detail_page_load(timeout=2, raise_exception=False):
+                    self.contactDetailPage.click_friend_detail_title_remark()
+                    self.remarkSettingPage.wait_friend_detail_page()
+                self.remarkSettingPage.click_memo()
+                self.remarkSettingPage.clear_note()
+                self.remarkSettingPage.click_save()
+                self.remarkSettingPage.wait_friend_detail_page()
+                self.contactDetailPage.click_iv_back()
+                self.contactDetailPage.wait_for_detail_page_load()
+
+            with allure.step('5. 校验资料卡备忘描述彻底清除'):
+                cleared_memo = self.remarkSettingPage.get_profile_memo_value(raise_exception=False)
+                check.is_false(bool(cleared_memo), f'❌ 备忘清空后，好友资料详情页依然残留展示了备忘描述: {cleared_memo}')
 
     @allure.story('共同群聊')
     @allure.title('进入共同群聊列表并点击切入聊天界面-状态：已完成')
@@ -281,3 +356,4 @@ class TestSmokeContactDetail(BaseSmokeContactDetail):
             self.contactDetailPage.click_iv_back()
             self.remarkSettingPage.wait_friend_detail_page()
             self.contactDetailPage.click_iv_back()
+            self.contactDetailPage.wait_for_detail_page_load(timeout=3, raise_exception=False)

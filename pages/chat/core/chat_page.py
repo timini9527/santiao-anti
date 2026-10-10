@@ -107,16 +107,36 @@ class ChatPage(BasePage):
             return None
         logger.info(f"🚀[Action-chat] - chat 成功获取顶部聊天对象昵称: {name}")
         return name
+ 
 
     # 聊天信息-获取群聊名称并过滤括号
-    def get_group_name(self) -> str:
+    def get_group_name(self) -> Optional[str]:
         """聊天信息-获取群聊名称并过滤括号"""
-        logger.info("🚀[Action-chat] - chat 开始获取群聊名称并过滤括号")
+        logger.info("🚀[Action-chat] - chat 开始获取群聊名称")
         group_name = self.get_top_name()
-        # 使用 r"\s*\(\d+\)" 正则匹配 0 个或多个空格 + 左括号 + 1 个或多个数字 + 右括号
-        cleaned_name = re.sub(r"\s*\(\d+\)", "", group_name)
-        logger.info(f"🚀[Action-chat] - chat 获取群聊名称并过滤括号: '{group_name}' -> '{cleaned_name}'")
+        if not group_name:
+            logger.error("❌[Action-chat] - chat 未获取到群聊名称")
+            return None
+        cleaned_name = re.sub(r"\s*\(\d+\)", "", group_name).strip()
+        logger.info(f"🚀[Action-chat] - chat 获取群聊名称: '{group_name}' -> '{cleaned_name}'")
         return cleaned_name
+   
+    # 聊天信息-获取群聊人数并过滤括号
+    def get_group_number_count(self) -> Optional[int]:
+        """聊天信息-获取顶部群聊人数控件中的数字"""
+        logger.info("🚀[Action-chat] - chat 开始获取群聊人数")
+        text = self.get_attribute(ChatLocator.GROUP_NUMBER_COUNT, 'text', raise_exception=False)
+        if not text:
+            logger.warning("⚠️[Action-chat] - chat 未获取到群聊人数控件文本")
+            return None
+        # 提取括号内的数字或纯数字 (例如 "(3)" 提取出 3)
+        match = re.search(r'\d+', text)
+        if match:
+            number = int(match.group())
+            logger.info(f"🚀[Action-chat] - chat 成功解析群聊人数: '{text}' -> {number}")
+            return number
+        logger.warning(f"⚠️[Action-chat] - chat 未能在人数文本中提取到有效数字: '{text}'")
+        return None
 
     # 聊天信息-获取群聊ID
     def get_group_id(self) -> Optional[str]:

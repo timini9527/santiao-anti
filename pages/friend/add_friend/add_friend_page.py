@@ -64,6 +64,14 @@ class AddFriendPage(BasePage):
         self.click_search_input()
         if friend_content:
             self.send_keys(AddFriendLocator.ET_SEARCH, friend_content)
+
+    # 添加朋友 - 搜索好友并点击进入详情页
+    def search_friend(self, friend_content: str) -> None:
+        """ 添加朋友 - 输入搜索关键字、确认搜索并点击搜索结果进入资料详情页 """
+        logger.info(f"🔍 [Action - AddFriend] 执行搜索并进入资料页流程: {friend_content}")
+        self.search_friend_by_content(friend_content)
+        self.click_confirm_search()
+        self.click_search_result_item()
     
     # 添加朋友 - 点击取消
     def click_cancel(self) -> None:

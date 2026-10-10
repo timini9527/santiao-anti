@@ -11,11 +11,16 @@ import sys
 import json
 from typing import Dict, Any
 
-from desktop_app.core.path_resolver import SmartPathResolver
-
 def resolve_project_root() -> str:
-    """自适应获取真实项目根目录（通过 SmartPathResolver 智能识别）"""
-    return SmartPathResolver.get_project_root()
+    """自适应获取真实项目根目录（基于 SmartPathResolver 动态雷达定位）"""
+    try:
+        from desktop_app.core.path_resolver import SmartPathResolver
+        return SmartPathResolver.get_project_root()
+    except Exception:
+        if getattr(sys, 'frozen', False):
+            return os.path.dirname(sys.executable)
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        return os.path.dirname(current_dir)
 
 PROJECT_ROOT = resolve_project_root()
 CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "desktop_settings.json")
@@ -39,7 +44,15 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
         "splitter_h_sizes": [450, 850],   # 左右布局分割器尺寸记忆 (左边栏 : 右工作区)
         "splitter_v_sizes": [450, 230],   # 上下报告与日志分割器尺寸记忆 (上方看板 : 下方日志)
         "log_collapsed": False,           # 日志控制台吸底折叠状态
-        "last_log_height": 230            # 折叠前日志高度记忆
+        "last_log_height": 230,           # 折叠前日志高度记忆
+        # 默认 Web 回执表单结构
+        "web_receipt_fields": [
+            {"key": "设备1", "val": ""},
+            {"key": "私聊用户1", "val": ""},
+            {"key": "私聊用户2", "val": ""},
+            {"key": "群聊名称1", "val": ""},
+            {"key": "群聊名称2", "val": ""},
+        ]
     },
     # Web 端测试默认状态
     "web": {

@@ -227,9 +227,11 @@ def collect_all_tests(tests_dir: str = "tests") -> List[Dict[str, Any]]:
 
     # 动态匹配真实的 Pytest 参数化 ID (如 ids_values)
     try:
+        # 动态定位真实的 Python 解释器（优先使用 SmartPathResolver 多级雷达探测）
         try:
             from desktop_app.core.path_resolver import SmartPathResolver
-            py_exec = SmartPathResolver.discover_python_runtime().get("executable")
+            py_info = SmartPathResolver.discover_python_runtime()
+            py_exec = py_info.get("executable")
         except Exception:
             py_exec = sys.executable if not getattr(sys, 'frozen', False) else None
             if not py_exec:

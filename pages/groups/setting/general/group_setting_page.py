@@ -1,4 +1,5 @@
 import time
+import re
 from typing import Optional
 from core.logger_utils import logger
 from common.base_page import BasePage
@@ -110,6 +111,23 @@ class GroupSettingPage(BasePage):
         """点击首个群成员名称"""
         logger.info("⚙️ [Action-groupSettingPage] 点击【群成员名称】")
         self.click(GroupSettingLocator.FRIEND_NAME)
+
+    # 群成员-获取群聊页面群成员数量
+    def get_group_member_number(self) -> int:
+        """群成员 - 获取群聊页面群成员数量"""
+        logger.info("📋 [Action-groupSettingPage] 获取群成员数量")
+        text = self.get_attribute(GroupSettingLocator.GROUP_MEMBER_NUMBER, "text")
+        if not text:
+            logger.warning("⚠️ [Action-groupSettingPage] 获取群成员数量失败")
+            return 0
+        # 提取群成员数量：兼容"群成员(8)"、中文全角括号"群成员（8）"、"8人"及纯数字"8"
+        match = re.search(r"\d+", text)
+        if not match:
+            logger.warning(f"⚠️ [Action-groupSettingPage] 群成员数量未解析到有效数字: '{text}'")
+            return 0
+        number = int(match.group())
+        logger.info(f"📋 [Action-groupSettingPage] 成功解析群成员数量: '{text}' -> {number}")
+        return number
 
     # 群成员-获取群聊页面群成员名称列表
     def get_friend_names(self) -> list[str]:

@@ -14,12 +14,11 @@ except Exception:
         candidates = [
             exe_dir,
             os.path.dirname(exe_dir),
-            os.path.dirname(os.path.dirname(exe_dir)),
-            os.getcwd(),
+            os.getcwd()
         ]
         for cand in candidates:
-            if cand and os.path.isdir(cand) and os.path.exists(os.path.join(cand, "tests")):
-                PROJECT_ROOT = os.path.abspath(cand)
+            if os.path.exists(os.path.join(cand, "tests")):
+                PROJECT_ROOT = cand
                 break
         else:
             PROJECT_ROOT = exe_dir

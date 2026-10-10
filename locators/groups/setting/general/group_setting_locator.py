@@ -20,6 +20,7 @@ class GroupSettingLocator(ChatSettingLocator):
     # =========================================================================
     # 2. 成员区域
     # =========================================================================
+    GROUP_MEMBER_NUMBER = (AppiumBy.ID, f"{PACKAGE_ID}/group_member_number")                            # 群成员数量
     MEMBER_LIST = (AppiumBy.ID, "member_list")                                                          # 成员列表容器
     FRIEND_HEADER_ID = f"{PACKAGE_ID}/friend_header"                                                    # 群成员头像 ID
     FRIEND_HEADER = (AppiumBy.ID, FRIEND_HEADER_ID)                                                     # 群成员头像

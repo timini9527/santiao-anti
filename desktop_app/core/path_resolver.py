@@ -1,368 +1,337 @@
 # -*- coding: utf-8 -*-
 """
-==============================================================================
-三条 IM 自动化测试体系 · 智能路径与环境发现引擎 (SmartPathResolver)
-==============================================================================
-职责：
-1. 全自动智能定位工程根目录，杜绝硬编码路径带来的跨设备运行异常；
-2. 动态自适应扫描工程全部业务模块目录（tests, pages, locators, strategy 等）与核心配置文件；
-3. 智能多级雷达探测宿主机/便携包中的 Python 运行时、Inno Setup 编译器、Allure-CLI、Java 及移动端工具链；
-4. 为打包流水线（Inno Setup / 绿色便携包）与运行期（TestRunner / Collector）提供统一、高内聚的路径服务。
-==============================================================================
+=======================================================
+三条 IM 自动化测试控制台 - 环境解析器 (SmartPathResolver)
+=======================================================
+设计原则：
+1. 遵循标准工程规范：直接通过系统 cmd 命令 (where / shutil.which) 及标准环境变量检索工具链。
+2. 坚决摒弃复杂扫盘与注册表黑魔法：找不到即代表本机未安装或未加入环境变量，直接返回 None，
+   避免猜测路径导致加载错误或残留环境。
+3. 高效极简：零冗余磁盘 I/O，毫秒级响应。
 """
 
 import os
 import sys
-import glob
 import shutil
 import subprocess
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Optional
 
 
 class SmartPathResolver:
-    """智能路径与环境感知解析器"""
+    """系统环境与项目路径解析器"""
 
-    # 动态构建与临时缓存黑名单目录（智能排除，不纳入业务资产打包）
-    EXCLUDED_DIR_NAMES = {
-        '.git', '.github', '.vscode', '.idea', '.agents', '.claude',
-        '__pycache__', '.pytest_cache', '.cache',
-        'build', 'build_native', 'build_desktop', 'build_mac',
-        'dist', 'logs', 'reports', 'screenshots', 'allure-results', 'allure-report',
-        'desktop_app', 'web_platform', 'web_console_v2', 'tmp', 'scratch', 'output',
-        'node_modules', '.venv', 'venv', 'env'
-    }
-
-    # 核心根目录单文件资产白名单候选
-    CORE_CONFIG_FILES = [
-        'requirements.txt',
-        'pytest.ini',
-        'conftest.py',
-        'config.py'
-    ]
-
-    _cached_root: Optional[str] = None
+    _cached_project_root: Optional[str] = None
+    _cached_python_runtime: Optional[Dict[str, Optional[str]]] = None
+    _cached_java_home: Optional[str] = None
+    _cached_inno_compiler: Optional[str] = None
+    _cached_allure_cli: Optional[Dict[str, Optional[str]]] = None
+    _cached_mobile_toolchain: Optional[Dict[str, Optional[str]]] = None
 
     @classmethod
     def get_project_root(cls) -> str:
         """
-        智能识别并返回当前工程的绝对根目录。
-        在源码运行、相对路径拉起以及 PyInstaller 打包环境（sys.frozen）下自适应回溯。
+        获取项目真实根目录。
+        1. 环境变量 SANTIAO_PROJECT_ROOT 显式指定
+        2. 打包运行态 (sys.frozen)：主程序 exe 所在目录
+        3. 源码开发态：向上回溯寻找 tests 或 config 目录
+        4. 兜底回退：当前工作目录
         """
-        if cls._cached_root and os.path.isdir(cls._cached_root):
-            return cls._cached_root
+        if cls._cached_project_root and os.path.isdir(cls._cached_project_root):
+            return cls._cached_project_root
 
-        if getattr(sys, 'frozen', False):
+        # 1. 显式环境变量
+        env_root = os.environ.get("SANTIAO_PROJECT_ROOT", "").strip()
+        if env_root and os.path.isdir(env_root):
+            cls._cached_project_root = os.path.abspath(env_root)
+            return cls._cached_project_root
+
+        # 2. 打包运行态
+        if getattr(sys, "frozen", False):
             exe_dir = os.path.dirname(os.path.abspath(sys.executable))
-            candidates = [
-                exe_dir,                                              # 1. 独立安装包目录
-                os.path.dirname(exe_dir),                             # 2. 上级目录 (如 dist/)
-                os.path.dirname(os.path.dirname(exe_dir)),             # 3. 上上级工程根目录
-                os.path.dirname(os.path.dirname(os.path.dirname(exe_dir))),
-                os.getcwd(),                                          # 4. 当前工作目录
-                os.path.dirname(os.getcwd()),
-                os.path.dirname(os.path.dirname(os.getcwd())),
-            ]
-            for cand in candidates:
-                if cand and os.path.isdir(cand) and os.path.exists(os.path.join(cand, "tests")):
-                    cls._cached_root = os.path.abspath(cand)
-                    return cls._cached_root
-            cls._cached_root = exe_dir
-            return cls._cached_root
-        else:
-            # 源码运行状态：当前文件位于 desktop_app/core/path_resolver.py
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            desktop_app_dir = os.path.dirname(current_dir)
-            cls._cached_root = os.path.dirname(desktop_app_dir)
-            return cls._cached_root
+            # 2.1 若位于最终安装目录 (同级已被安装包释放了 tests 或 config 资源)
+            if os.path.isdir(os.path.join(exe_dir, "tests")) or os.path.isdir(os.path.join(exe_dir, "config")):
+                cls._cached_project_root = exe_dir
+                return cls._cached_project_root
+            # 2.2 若位于本地工程编译产物目录 (dist/三条IM自动化测试控制台)，向上回溯定位工程根目录
+            parent = os.path.dirname(exe_dir)
+            while parent and parent != os.path.dirname(parent):
+                if os.path.isdir(os.path.join(parent, "tests")) or os.path.isdir(os.path.join(parent, "config")):
+                    cls._cached_project_root = parent
+                    return cls._cached_project_root
+                parent = os.path.dirname(parent)
+            cls._cached_project_root = exe_dir
+            return cls._cached_project_root
+
+        # 3. 源码态：向上递归查找项目特征目录
+        current = os.path.dirname(os.path.abspath(__file__))
+        while True:
+            if os.path.isdir(os.path.join(current, "tests")) or os.path.isdir(os.path.join(current, "config")):
+                cls._cached_project_root = current
+                return cls._cached_project_root
+            parent = os.path.dirname(current)
+            if parent == current:
+                break
+            current = parent
+
+        # 4. 兜底当前目录
+        cls._cached_project_root = os.path.abspath(os.getcwd())
+        return cls._cached_project_root
 
     @classmethod
-    def discover_project_assets(cls, source_root: Optional[str] = None) -> Dict[str, Any]:
+    def _find_cmd(cls, cmd_name: str) -> Optional[str]:
         """
-        智能扫描并识别工程中的全部测试业务目录与核心配置文件。
-        无论后续新增什么业务模块（如 business_helpers, strategy, resources），均自动感知，无需手动修改打包配置。
-        
-        :param source_root: 指定扫描根路径，默认使用 get_project_root()
-        :return: {"business_dirs": [目录名列表], "core_files": [文件名列表], "all_assets": [...]}
+        通过系统原生命令探测工具绝对路径。
+        过滤 WindowsApps 微软商店占位符替身。找不到直接返回 None。
         """
-        root = os.path.abspath(source_root) if source_root else cls.get_project_root()
-        discovered_dirs: List[str] = []
-        discovered_files: List[str] = []
+        # 1. 首选标准库快速查询
+        found = shutil.which(cmd_name)
+        if found and os.path.isfile(found) and "windowsapps" not in found.lower():
+            return os.path.abspath(found)
 
-        if not os.path.isdir(root):
-            return {"business_dirs": [], "core_files": [], "all_assets": []}
-
-        # 1. 动态过滤识别根目录下的业务资产子目录
-        for entry in os.listdir(root):
-            full_path = os.path.join(root, entry)
-            if not os.path.isdir(full_path):
-                continue
-            
-            name_lower = entry.lower()
-            if name_lower in cls.EXCLUDED_DIR_NAMES or entry.startswith('.'):
-                continue
-
-            # 只要不是排除目录，即作为测试业务模块资产自动收纳
-            discovered_dirs.append(entry)
-
-        # 排序确保构建一致性，基础核心目录置顶
-        priority_dirs = ['tests', 'core', 'common', 'locators', 'pages', 'strategy', 'business_helpers', 'config', 'data', 'resources', 'allure-cli']
-        discovered_dirs.sort(key=lambda x: (priority_dirs.index(x) if x in priority_dirs else 99, x))
-
-        # 2. 动态识别根目录下的核心配置文件
-        for f in cls.CORE_CONFIG_FILES:
-            if os.path.isfile(os.path.join(root, f)):
-                discovered_files.append(f)
-
-        return {
-            "business_dirs": discovered_dirs,
-            "core_files": discovered_files,
-            "all_assets": discovered_dirs + discovered_files
-        }
-
-    @classmethod
-    def discover_python_runtime(cls) -> Dict[str, Optional[str]]:
-        """
-        智能多级雷达探测宿主机或工程内置的 Python 运行时环境。
-        依次扫描：内置便携运行时 -> 当前解释器主目录 -> 注册表与系统标准安装路径 -> PATH 环境变量。
-        
-        :return: {"executable": python可执行文件绝对路径, "home_dir": Python安装根目录}
-        """
-        root = cls.get_project_root()
-        candidates: List[str] = []
-
-        # 1. 内置便携运行时 (真正实现 0 依赖环境)
-        candidates.append(os.path.join(root, "python_runtime", "python.exe"))
-        if getattr(sys, 'frozen', False):
-            exe_dir = os.path.dirname(os.path.abspath(sys.executable))
-            candidates.append(os.path.join(exe_dir, "python_runtime", "python.exe"))
-
-        # 2. 当前正在运行的 Python 宿主根目录（自动剔除虚拟环境代理，定位实体环境）
-        base_prefix = getattr(sys, 'base_prefix', sys.prefix)
-        if base_prefix:
-            candidates.append(os.path.join(base_prefix, "python.exe"))
-        if sys.executable and not getattr(sys, 'frozen', False):
-            candidates.append(sys.executable)
-
-        # 3. Windows 平台注册表自动探测
+        # 2. Windows 环境下调用 where 命令检索所有候选路径
         if sys.platform == "win32":
             try:
-                import winreg
-                for root_key in [winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER]:
-                    for sub_key in [r"SOFTWARE\Python\PythonCore", r"SOFTWARE\WOW6432Node\Python\PythonCore"]:
-                        try:
-                            with winreg.OpenKey(root_key, sub_key) as k:
-                                num_subkeys = winreg.QueryInfoKey(k)[0]
-                                for i in range(num_subkeys):
-                                    ver = winreg.EnumKey(k, i)
-                                    try:
-                                        with winreg.OpenKey(root_key, f"{sub_key}\\{ver}\\InstallPath") as ik:
-                                            p = winreg.QueryValue(ik, "")
-                                            if p:
-                                                candidates.append(os.path.join(p.strip(), "python.exe"))
-                                    except Exception:
-                                        pass
-                        except Exception:
-                            pass
+                proc = subprocess.run(
+                    ["where", cmd_name],
+                    capture_output=True,
+                    text=True,
+                    shell=True,
+                    timeout=2
+                )
+                if proc.returncode == 0 and proc.stdout:
+                    for line in proc.stdout.splitlines():
+                        candidate = line.strip()
+                        if candidate and os.path.isfile(candidate) and "windowsapps" not in candidate.lower():
+                            return os.path.abspath(candidate)
             except Exception:
                 pass
-
-        # 4. Windows 常见标准全盘安装默认路径
-        std_patterns = [
-            r"C:\Program Files\Python*\python.exe",
-            r"C:\Program Files (x86)\Python*\python.exe",
-            r"C:\Python*\python.exe",
-            os.path.expandvars(r"%LOCALAPPDATA%\Programs\Python\Python*\python.exe"),
-            r"D:\Python*\python.exe",
-            r"D:\data\Python*\python.exe",
-            r"E:\Python*\python.exe",
-        ]
-        for pat in std_patterns:
-            candidates.extend(glob.glob(pat))
-
-        # 5. 系统环境变量 PATH (python / python3 / py)
-        for cmd in ["python", "python3", "py"]:
-            found = shutil.which(cmd)
-            if found:
-                candidates.append(found)
-
-        # 校验并返回第一个真实有效且可执行的 Python
-        for cand in candidates:
-            if cand and os.path.isfile(cand) and os.path.exists(cand):
-                abs_cand = os.path.abspath(cand)
-                home_dir = os.path.dirname(abs_cand)
-                # 排除可能残留的空路径或临时目录
-                if os.path.isfile(os.path.join(home_dir, "python.exe")):
-                    return {
-                        "executable": abs_cand,
-                        "home_dir": home_dir
-                    }
-
-        # 兜底回退
-        fallback_exe = shutil.which("python") or "python"
-        return {
-            "executable": fallback_exe,
-            "home_dir": os.path.dirname(fallback_exe) if os.path.isabs(fallback_exe) else None
-        }
-
-    @classmethod
-    def discover_inno_compiler(cls) -> Optional[str]:
-        """
-        智能探测 Inno Setup 安装包编译器 (ISCC.exe)。
-        自动检索环境变量、注册表以及各磁盘驱动器标准安装路径。
-        """
-        # 1. PATH 环境变量命中
-        which_iscc = shutil.which("ISCC") or shutil.which("iscc.exe")
-        if which_iscc and os.path.isfile(which_iscc):
-            return os.path.abspath(which_iscc)
-
-        candidates: List[str] = []
-
-        # 2. Windows 注册表卸载项探测
-        if sys.platform == "win32":
-            try:
-                import winreg
-                for root_key in [winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER]:
-                    for sub in [r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
-                                r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"]:
-                        try:
-                            with winreg.OpenKey(root_key, sub) as k:
-                                num = winreg.QueryInfoKey(k)[0]
-                                for i in range(num):
-                                    app_key_name = winreg.EnumKey(k, i)
-                                    if "inno setup" in app_key_name.lower():
-                                        try:
-                                            with winreg.OpenKey(root_key, f"{sub}\\{app_key_name}") as ik:
-                                                loc = winreg.QueryValueEx(ik, "InstallLocation")[0]
-                                                if loc:
-                                                    candidates.append(os.path.join(loc.strip(), "ISCC.exe"))
-                                        except Exception:
-                                            pass
-                        except Exception:
-                            pass
-            except Exception:
-                pass
-
-        # 3. 常见全盘驱动器安装路径通配扫描 (涵盖 Inno Setup 5 / 6 / 7)
-        patterns = [
-            r"C:\Program Files*\Inno Setup*\ISCC.exe",
-            r"D:\Program Files*\Inno Setup*\ISCC.exe",
-            r"E:\Program Files*\Inno Setup*\ISCC.exe",
-            os.path.expandvars(r"%LOCALAPPDATA%\Programs\Inno Setup*\ISCC.exe"),
-        ]
-        for pat in patterns:
-            candidates.extend(glob.glob(pat))
-
-        for cand in candidates:
-            if cand and os.path.isfile(cand) and os.path.exists(cand):
-                return os.path.abspath(cand)
 
         return None
 
     @classmethod
-    def discover_allure_cli(cls) -> Dict[str, Optional[str]]:
+    def discover_python_runtime(cls, force_refresh: bool = False) -> Dict[str, Optional[str]]:
         """
-        智能定位 Allure-CLI 命令行工具目录与执行脚本。
+        定位 Python 运行环境。
+        找不到即代表环境未就绪，返回 None。
         """
+        if not force_refresh and cls._cached_python_runtime:
+            return cls._cached_python_runtime
+
         root = cls.get_project_root()
-        candidates = [
-            os.path.join(root, "allure-cli"),
-            os.path.join(os.path.dirname(root), "allure-cli"),
-        ]
-        if getattr(sys, 'frozen', False):
-            exe_dir = os.path.dirname(os.path.abspath(sys.executable))
-            candidates.insert(0, os.path.join(exe_dir, "allure-cli"))
+        exe_path: Optional[str] = None
 
-        for cand in candidates:
-            bat_path = os.path.join(cand, "bin", "allure.bat")
-            sh_path = os.path.join(cand, "bin", "allure")
-            if os.path.exists(bat_path) or os.path.exists(sh_path):
-                return {
-                    "home_dir": os.path.abspath(cand),
-                    "executable": os.path.abspath(bat_path if sys.platform == "win32" else sh_path)
-                }
+        # 1. 项目内置独立便携包 (如果有)
+        portable_py = os.path.join(root, "python_runtime", "python.exe" if sys.platform == "win32" else "bin/python")
+        if os.path.isfile(portable_py):
+            exe_path = os.path.abspath(portable_py)
 
-        # 系统 PATH fallback
-        which_allure = shutil.which("allure")
-        if which_allure:
-            return {
-                "home_dir": os.path.dirname(os.path.dirname(which_allure)),
-                "executable": os.path.abspath(which_allure)
+        # 2. 源码开发状态下当前正在执行的 Python
+        elif not getattr(sys, "frozen", False) and sys.executable and os.path.isfile(sys.executable):
+            exe_path = os.path.abspath(sys.executable)
+
+        # 3. 命令行 where python 查找
+        if not exe_path:
+            exe_path = cls._find_cmd("python") or cls._find_cmd("python3")
+
+        if exe_path and os.path.isfile(exe_path):
+            parent = os.path.dirname(exe_path)
+            # 若位于 Scripts 或 bin 虚拟环境目录，推导实际环境根目录
+            if os.path.basename(parent).lower() in ["scripts", "bin"]:
+                home_dir = os.path.dirname(parent)
+            else:
+                home_dir = parent
+
+            cls._cached_python_runtime = {
+                "executable": exe_path,
+                "home_dir": os.path.abspath(home_dir)
             }
+            return cls._cached_python_runtime
 
-        return {"home_dir": None, "executable": None}
+        # 找不到环境，绝不去猜其他路径
+        cls._cached_python_runtime = {
+            "executable": None,
+            "home_dir": None
+        }
+        return cls._cached_python_runtime
 
     @classmethod
-    def discover_java_runtime(cls) -> Optional[str]:
+    def discover_java_home(cls, force_refresh: bool = False) -> Optional[str]:
         """
-        智能探测系统 Java 运行环境 (JRE / JDK 11+，渲染 Allure HTML 报告必备)。
+        定位 Java 运行环境根目录 (JAVA_HOME)。
+        1. 优先读取系统环境变量 JAVA_HOME / JDK_HOME
+        2. 通过 cmd 命令 where java 解析其所在根目录
+        找不到即返回 None。
         """
-        # 1. 检查 JAVA_HOME / JDK_HOME
-        for env_var in ["JAVA_HOME", "JDK_HOME"]:
-            j_home = os.environ.get(env_var, "").strip()
-            if j_home:
-                exe = os.path.join(j_home, "bin", "java.exe" if sys.platform == "win32" else "java")
-                if os.path.isfile(exe):
-                    return os.path.abspath(exe)
+        if not force_refresh and cls._cached_java_home:
+            return cls._cached_java_home
 
-        # 2. 检查系统 PATH
-        which_java = shutil.which("java")
-        if which_java:
-            return os.path.abspath(which_java)
+        # 1. 环境变量优先
+        for env_k in ["JAVA_HOME", "JDK_HOME"]:
+            val = os.environ.get(env_k, "").strip()
+            if val and os.path.isdir(val):
+                java_bin = os.path.join(val, "bin", "java.exe" if sys.platform == "win32" else "java")
+                if os.path.isfile(java_bin):
+                    cls._cached_java_home = os.path.abspath(val)
+                    return cls._cached_java_home
 
-        # 3. 常见默认安装路径扫描
-        if sys.platform == "win32":
-            java_patterns = [
-                r"C:\Program Files\Java\*\bin\java.exe",
-                r"C:\Program Files\Eclipse Adoptium\*\bin\java.exe",
-                r"C:\Program Files\Amazon Corretto\*\bin\java.exe",
-                r"C:\Program Files\Zulu\*\bin\java.exe",
-                r"C:\Program Files\BellSoft\*\bin\java.exe",
-                r"D:\Program Files\Java\*\bin\java.exe",
-                r"D:\data\Java\*\bin\java.exe",
-            ]
-            for pat in java_patterns:
-                matched = glob.glob(pat)
-                if matched:
-                    return os.path.abspath(matched[0])
+        # 2. 通过 where java 反推
+        java_exe = cls._find_cmd("java")
+        if java_exe:
+            real_path = os.path.realpath(java_exe)
+            bin_dir = os.path.dirname(real_path)
+            candidate_home = os.path.dirname(bin_dir)
+            if os.path.isdir(candidate_home):
+                cls._cached_java_home = os.path.abspath(candidate_home)
+                return cls._cached_java_home
 
+        cls._cached_java_home = None
         return None
 
     @classmethod
-    def discover_mobile_toolchain(cls) -> Dict[str, Optional[str]]:
+    def discover_inno_compiler(cls, force_refresh: bool = False) -> Optional[str]:
         """
-        智能探测移动端 ADB 与 HDC 工具链绝对路径。
+        定位 Inno Setup 编译器 (ISCC.exe)。
+        直接通过 cmd 命令 where iscc 查找，找不到即返回 None。
         """
-        tools = {"adb": None, "hdc": None}
+        if not force_refresh and cls._cached_inno_compiler:
+            return cls._cached_inno_compiler
 
-        # 1. ADB 探测
-        adb_candidates = []
-        for env_var in ["ANDROID_HOME", "ANDROID_SDK_ROOT"]:
-            sdk = os.environ.get(env_var, "").strip()
-            if sdk:
-                adb_candidates.append(os.path.join(sdk, "platform-tools", "adb.exe" if sys.platform == "win32" else "adb"))
+        # 1. 优先检查 cmd 命令与环境变量
+        found = cls._find_cmd("iscc") or cls._find_cmd("iscc.exe")
+        if found:
+            cls._cached_inno_compiler = os.path.abspath(found)
+            return cls._cached_inno_compiler
+
+        # 2. 未配置 PATH 时，秒级检查各盘标准 Program Files 默认安装目录 (绝不全盘递归)
         if sys.platform == "win32":
-            adb_candidates.append(os.path.expandvars(r"%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe"))
+            import glob
+            for drv in ["C", "D", "E", "F"]:
+                for sub in ["Program Files", "Program Files (x86)"]:
+                    patterns = [
+                        rf"{drv}:\{sub}\Inno Setup*\ISCC.exe",
+                        rf"{drv}:\Inno Setup*\ISCC.exe",
+                    ]
+                    for pat in patterns:
+                        for matched in glob.glob(pat):
+                            if os.path.isfile(matched):
+                                cls._cached_inno_compiler = os.path.abspath(matched)
+                                return cls._cached_inno_compiler
 
-        for cand in adb_candidates:
-            if cand and os.path.isfile(cand):
-                tools["adb"] = os.path.abspath(cand)
-                break
+        cls._cached_inno_compiler = None
+        return None
+
+    @classmethod
+    def discover_allure_cli(cls, force_refresh: bool = False) -> Dict[str, Optional[str]]:
+        """
+        定位 Allure-CLI 命令行工具。
+        1. 项目根目录或 exe 同级下的 allure-cli 目录
+        2. cmd 命令 where allure
+        找不到即返回 None。
+        """
+        if not force_refresh and cls._cached_allure_cli:
+            return cls._cached_allure_cli
+
+        root = cls.get_project_root()
+        local_candidates = [
+            os.path.join(root, "allure-cli"),
+            os.path.join(os.path.dirname(root), "allure-cli")
+        ]
+        if getattr(sys, "frozen", False):
+            exe_dir = os.path.dirname(os.path.abspath(sys.executable))
+            local_candidates.insert(0, os.path.join(exe_dir, "allure-cli"))
+
+        for cand in local_candidates:
+            bat_bin = os.path.join(cand, "bin", "allure.bat" if sys.platform == "win32" else "allure")
+            if os.path.isfile(bat_bin):
+                cls._cached_allure_cli = {
+                    "home_dir": os.path.abspath(cand),
+                    "executable": os.path.abspath(bat_bin)
+                }
+                return cls._cached_allure_cli
+
+        # cmd 命令查找
+        allure_bin = cls._find_cmd("allure") or cls._find_cmd("allure.bat") or cls._find_cmd("allure.cmd")
+        if allure_bin:
+            home = os.path.dirname(os.path.dirname(allure_bin))
+            cls._cached_allure_cli = {
+                "home_dir": os.path.abspath(home),
+                "executable": os.path.abspath(allure_bin)
+            }
+            return cls._cached_allure_cli
+
+        cls._cached_allure_cli = {"home_dir": None, "executable": None}
+        return cls._cached_allure_cli
+
+    @classmethod
+    def discover_mobile_toolchain(cls, force_refresh: bool = False) -> Dict[str, Optional[str]]:
+        """
+        定位移动端调试工具链 (ADB / HDC)。
+        通过环境变量与 cmd 命令查找，找不到即返回 None。
+        """
+        if not force_refresh and cls._cached_mobile_toolchain:
+            return cls._cached_mobile_toolchain
+
+        tools: Dict[str, Optional[str]] = {"adb": None, "hdc": None}
+
+        # ADB 查找: ANDROID_HOME 环境变量 -> cmd 命令 where adb
+        android_home = os.environ.get("ANDROID_HOME", "").strip() or os.environ.get("ANDROID_SDK_ROOT", "").strip()
+        if android_home and os.path.isdir(android_home):
+            adb_file = os.path.join(android_home, "platform-tools", "adb.exe" if sys.platform == "win32" else "adb")
+            if os.path.isfile(adb_file):
+                tools["adb"] = os.path.abspath(adb_file)
+
         if not tools["adb"]:
-            tools["adb"] = shutil.which("adb")
+            tools["adb"] = cls._find_cmd("adb")
 
-        # 2. HDC 探测
-        hdc_candidates = []
-        for env_var in ["HDC_HOME", "OHOS_BASE_SDK_HOME", "HARMONY_SDK_HOME"]:
-            h_sdk = os.environ.get(env_var, "").strip()
-            if h_sdk:
-                hdc_candidates.append(os.path.join(h_sdk, "toolchains", "hdc.exe" if sys.platform == "win32" else "hdc"))
-                hdc_candidates.append(os.path.join(h_sdk, "hdc.exe" if sys.platform == "win32" else "hdc"))
+        # HDC 查找: HDC_HOME 环境变量 -> cmd 命令 where hdc
+        hdc_home = os.environ.get("HDC_HOME", "").strip() or os.environ.get("OHOS_BASE_SDK_HOME", "").strip()
+        if hdc_home and os.path.isdir(hdc_home):
+            for sub in ["toolchains/hdc.exe", "hdc.exe"]:
+                hdc_file = os.path.join(hdc_home, sub.replace("/", os.sep))
+                if os.path.isfile(hdc_file):
+                    tools["hdc"] = os.path.abspath(hdc_file)
+                    break
 
-        for cand in hdc_candidates:
-            if cand and os.path.isfile(cand):
-                tools["hdc"] = os.path.abspath(cand)
-                break
         if not tools["hdc"]:
-            tools["hdc"] = shutil.which("hdc")
+            tools["hdc"] = cls._find_cmd("hdc")
 
+        cls._cached_mobile_toolchain = tools
         return tools
+
+    @classmethod
+    def discover_project_assets(cls, source_root: str) -> Dict[str, List[str]]:
+        """
+        精确收敛纯测试业务模块与核心配置文件（供构建与独立运行使用）。
+        严禁将临时目录 (build_native, temp_dist_core, tmp)、无关平台代码 (web_platform, web_console_v2)、
+        桌面端源码自身 (desktop_app) 以及根目录历史调试脚本拷贝进发布运行包。
+        """
+        source_root = os.path.abspath(source_root)
+
+        # 1. 严格限定必须同步的测试业务模块白名单
+        candidate_dirs = [
+            "tests", "pages", "locators", "common", "core",
+            "business_helpers", "config", "data", "utils", "apis",
+            "resources", "strategy", "performance", "IOS"
+        ]
+        business_dirs = [
+            d for d in candidate_dirs
+            if os.path.isdir(os.path.join(source_root, d))
+        ]
+
+        # 2. 严格限定必须同步的测试核心配置文件
+        candidate_files = [
+            "pytest.ini", "conftest.py", "requirements.txt"
+        ]
+        core_files = [
+            f for f in candidate_files
+            if os.path.isfile(os.path.join(source_root, f))
+        ]
+
+        return {
+            "business_dirs": sorted(business_dirs),
+            "core_files": sorted(core_files)
+        }
+
+
+# 兼容简写别名
+PathResolver = SmartPathResolver

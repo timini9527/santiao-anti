@@ -1,27 +1,49 @@
 {
   "mobile": {
     "os_type": "Win",
-    "remote_appium": "172.18.0.1:4723 (服务在线)",
-    "remote_udid": "",
-    "remote_appium2": "127.0.0.1:4724 (本地)",
-    "remote_udid2": "",
+    "remote_appium": "172.18.0.1:4723 (局域网本机)",
+    "remote_udid": "nzwcvo9ls87hws7t",
+    "remote_appium2": "172.18.0.1:4724 (局域网本机)",
+    "remote_udid2": "3865BN02GU600000",
     "private_chat_name": "",
     "group_chat_name": "",
     "env": "dev",
     "debug_mode": false,
     "role": "business",
     "selected_test_file": "",
-    "auto_scroll_log": true,
+    "auto_scroll_log": false,
     "splitter_h_sizes": [
-      637,
-      1311
+      611,
+      1209
     ],
     "splitter_v_sizes": [
-      1112,
-      0
+      513,
+      400
     ],
-    "log_collapsed": true,
-    "last_log_height": 180
+    "log_collapsed": false,
+    "last_log_height": 400,
+    "web_receipt_fields": [
+      {
+        "key": "设备1",
+        "val": ""
+      },
+      {
+        "key": "私聊用户1",
+        "val": ""
+      },
+      {
+        "key": "私聊用户2",
+        "val": ""
+      },
+      {
+        "key": "群聊名称1",
+        "val": ""
+      },
+      {
+        "key": "群聊名称2",
+        "val": ""
+      }
+    ]
   },
   "web": {
     "browser": "chromium",
@@ -34,9 +56,9 @@
     "concurrency": 1
   },
   "window": {
-    "x": 319,
-    "y": 99,
-    "width": 1335,
+    "x": 326,
+    "y": 117,
+    "width": 1406,
     "height": 864,
     "maximized": true
   }

@@ -14,6 +14,8 @@ from core.logger_utils import logger
 from pages.chat.setting.chat_setting_page import ChatSettingPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, PRIVATE_DISABLE1, PRIVATE_DISABLE2, GROUP_STRATEGY
 
+
+
 @allure.epic('IM核心功能测试')
 @allure.feature('群聊模块-发起群聊')
 @allure.story('群聊创建相关测试用例')

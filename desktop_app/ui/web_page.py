@@ -16,6 +16,8 @@
    - 标题 + 一键执行全量 Web 冒烟 纯蓝实心按钮
    - 5 条独立卡片项：P0 冒烟 / P1 回归 / P2 兼容、通过 (12s/18s) 绿色徽标、执行 细线框按钮
 """
+import os
+import sys
 import time
 from typing import List, Dict, Any
 
@@ -25,6 +27,15 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPointF, QTimer
 from PyQt6.QtGui import QPainter, QColor, QBrush, QPen, QFont
+_CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(_CURRENT_DIR))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
+try:
+    from ..core.report_scanner import get_reports_count
+except (ImportError, ValueError):
+    from desktop_app.core.report_scanner import get_reports_count
 
 
 class ModernSwitch(QWidget):
@@ -361,7 +372,7 @@ class WebPage(QWidget):
         pr_layout = QHBoxLayout(pill_rep)
         pr_layout.setContentsMargins(8, 2, 8, 2)
         pr_layout.setSpacing(4)
-        lbl_rep = QLabel("📑 报告: <b>5</b> 份")
+        lbl_rep = QLabel(f"📑 报告: <b>{get_reports_count()}</b> 份")
         lbl_rep.setStyleSheet("color: #475569; font-size: 11.5px; border: none; background: transparent;")
         pr_layout.addWidget(lbl_rep)
         h_layout.addWidget(pill_rep)

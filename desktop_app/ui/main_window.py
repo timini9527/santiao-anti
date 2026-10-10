@@ -497,7 +497,9 @@ class MainWindow(QMainWindow):
 
     def _switch_page(self, index: int):
         self.stacked_widget.setCurrentIndex(index)
-        if index == 3 and hasattr(self.page_devices, "refresh_devices"):
+        if index == 0 and hasattr(self.page_mobile, "_refresh_report_pill_count"):
+            self.page_mobile._refresh_report_pill_count()
+        elif index == 3 and hasattr(self.page_devices, "refresh_devices"):
             self.page_devices.refresh_devices()
         elif index == 4 and hasattr(self.page_reports, "refresh_reports"):
             self.page_reports.refresh_reports()

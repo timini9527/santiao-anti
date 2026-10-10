@@ -8,7 +8,7 @@ class MomentsLocator:
     # 顶部元素
     IV_BACK = CommonLocator.TOP_IV_BACK_BTN                     # 返回图标
     TV_MOMENTS = CommonLocator.TOP_TV_TITLE                     # 动态标题
-    TV_MOMENTS_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{CommonLocator.TOP_TV_TITLE_ID}" and @text="动态"]')
+    TV_MOMENTS_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{CommonLocator.TOP_TV_TITLE_ID}" and @text="朋友圈"]')
     IV_CAMERA = (AppiumBy.ID, f'{PACKAGE_ID}/iv_camera')        # 发布朋友圈按钮 (相机图标)
 
     IV_BG = (AppiumBy.ID, f'{PACKAGE_ID}/iv_bg')                # 背景图片
@@ -21,7 +21,7 @@ class MomentsLocator:
     # ===========================================
     RV_LIST = (AppiumBy.ID, f'{PACKAGE_ID}/rv_list')            # 朋友圈列表
     # 朋友圈列表最新一条内容 (发布成功后需要下拉刷新才能看到最新发布)
-    RV_LIST_MOMENT_CONTENT = (AppiumBy.XPATH, f'//*[@resource-id="{PACKAGE_ID}/rv_list"]/android.view.ViewGroup[2]')
+    RV_LIST_MOMENT_CONTENT = (AppiumBy.XPATH, f'//*[@resource-id="{PACKAGE_ID}/rv_list"]/android.view.ViewGroup')
 
     # 朋友圈昵称
     TV_NAME_ID = f'{PACKAGE_ID}/tv_name'
@@ -31,8 +31,8 @@ class MomentsLocator:
     TV_CONTENT = (AppiumBy.ID, f'{PACKAGE_ID}/tv_content')              # 动态正文内容
     CL_PIC = (AppiumBy.ID, f'{PACKAGE_ID}/cl_pic')                      # 朋友圈多图区域
     RV_PIC = (AppiumBy.ID, f'{PACKAGE_ID}/rv_pic')                      # 朋友圈内容图片区域          
-    IV_MEDIA = (AppiumBy.ID, f'{PACKAGE_ID}/iv_media')                  # 朋友圈图片
-    IV_SINGLE_PIC = (AppiumBy.ID, f'{PACKAGE_ID}/iv_single_pic')        # 朋友圈单个视频 
+    IV_MEDIA = (AppiumBy.ID, f'{PACKAGE_ID}/iv_media')                  # 朋友圈多个图片
+    IV_SINGLE_PIC = (AppiumBy.ID, f'{PACKAGE_ID}/iv_single_pic')        # 朋友圈单个视频/图片
     TV_TIME = (AppiumBy.ID, f'{PACKAGE_ID}/tv_time')                    # 朋友圈时间
     TV_DELETE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_delete')                # 删除
     DIALOG_CONFIRM_BTN = CommonLocator.DIALOG_CONFIRM_BTN               # 确认按钮

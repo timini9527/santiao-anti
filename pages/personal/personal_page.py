@@ -30,6 +30,12 @@ class PersonalPage(BasePage):
         logger.info("⚙️ [Action - Personal] 点击头像")
         self.click(PersonalLocator.ME_INFO)
 
+    # 个人信息 - 点击昵称
+    def click_nickname(self) -> None:
+        """ 点击昵称 """
+        logger.info("⚙️ [Action - Personal] 点击昵称")
+        self.click(PersonalLocator.ME_NICKNAME, force_wait=True)
+
     # 个人信息 - 点击昵称编辑按钮
     def click_nickname_edit_btn(self) -> None:
         """ 点击昵称编辑按钮 """
@@ -84,9 +90,9 @@ class PersonalPage(BasePage):
         logger.info("⚙️ [Action - Personal] 点击所在地")
         self.click(PersonalLocator.ME_LOCATION_TEXT)
 
-    # 个人信息 - 获取详细值 0-手机号，1-三条ID，2-性别，3-邮箱，4-所在地
+    # 个人信息 - 获取详细值 0-手机号，1-三条ID，2-二维码，3-性别，4-邮箱，5-所在地
     def get_detail_value(self, index: int) -> str:
-        """ 获取详细值 0-手机号，1-三条ID，2-性别，3-邮箱，4-所在地 """
+        """ 获取详细值 0-手机号，1-三条ID，2-二维码，3-性别，4-邮箱，5-所在地 """
         logger.info(f"🧐 [Action - Personal] 获取详细值 [index={index}]")
         try:
             values = self.find_elements(PersonalLocator.DETAIL_VALUE)
@@ -113,7 +119,7 @@ class PersonalPage(BasePage):
         """ 从任何子页面（如大图查看页）退回到个人信息主页 """
         logger.info("⚙️ [Action - Personal] 尝试退回到个人信息主页")
         while max_retry > 0:
-            if len(self.find_elements(PersonalLocator.ME_NICKNAME, timeout=2)) > 0:
+            if len(self.find_elements(PersonalLocator.ME_NICKNAME, timeout=2, expect_missing=False)) > 0:
                 logger.info("✅ [Action - Personal] 已成功处于个人信息主页")
                 return True
             logger.info("⚙️ [Action - Personal] 未检测到个人信息主页特征元素，执行返回")

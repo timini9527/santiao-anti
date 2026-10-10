@@ -14,7 +14,12 @@
 """
 import os
 import sys
+import re
+import json
+import shutil
 import socket
+import subprocess
+from pathlib import Path
 from typing import Optional, List, Dict, Any, Set
 
 from PyQt6.QtWidgets import (
@@ -22,16 +27,35 @@ from PyQt6.QtWidgets import (
     QLineEdit, QComboBox, QCheckBox, QPushButton, QRadioButton,
     QButtonGroup, QTreeWidget, QTreeWidgetItem, QSplitter,
     QPlainTextEdit, QMessageBox, QFrame, QScrollArea, QApplication,
-    QHeaderView, QSizePolicy
+    QHeaderView, QSizePolicy, QDialog, QTextBrowser
 )
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QTextCursor, QFont
 
-from ..config import desktop_config
-from ..core.device_manager import DeviceManager
-from ..core.test_collector import TestCollectorService
-from ..core.test_runner import TestExecutionWorker, clean_ansi_log
-from .allure_dashboard import AllureDashboardWidget
+# 工业级运行时环境自愈：自适应注入项目根路径，同时完美兼容主程序模块化导入与独立脚本运行调试
+_CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(_CURRENT_DIR))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
+try:
+    from ..config import desktop_config
+    from ..core.device_manager import DeviceManager
+    from ..core.test_collector import TestCollectorService
+    from ..core.test_runner import TestExecutionWorker, clean_ansi_log
+    from ..core.path_resolver import SmartPathResolver
+    from ..core.report_scanner import get_reports_count
+    from .allure_dashboard import AllureDashboardWidget
+    from .receipt_dialog import WebReceiptDialog
+except (ImportError, ValueError):
+    from desktop_app.config import desktop_config
+    from desktop_app.core.device_manager import DeviceManager
+    from desktop_app.core.test_collector import TestCollectorService
+    from desktop_app.core.test_runner import TestExecutionWorker, clean_ansi_log
+    from desktop_app.core.path_resolver import SmartPathResolver
+    from desktop_app.core.report_scanner import get_reports_count
+    from desktop_app.ui.allure_dashboard import AllureDashboardWidget
+    from desktop_app.ui.receipt_dialog import WebReceiptDialog
 
 def _detect_local_lan_ip() -> str:
     """获取本机真实有效局域网 IP"""
@@ -43,6 +67,133 @@ def _detect_local_lan_ip() -> str:
         return ip
     except Exception:
         return "127.0.0.1"
+
+
+class MarkdownDocDialog(QDialog):
+    """测试用例文档说明专用对话框"""
+    def __init__(self, doc_path: str, title_name: str, parent=None):
+        super().__init__(parent)
+        self.doc_path = doc_path
+        self.setWindowTitle(f"用例文档说明 - {title_name}")
+        self.resize(780, 580)
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #ffffff;
+            }
+        """)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(12)
+
+        # 头部栏
+        header_bar = QHBoxLayout()
+        header_bar.setSpacing(12)
+
+        icon_box = QFrame()
+        icon_box.setFixedSize(36, 36)
+        icon_box.setStyleSheet("""
+            background-color: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+        """)
+        ib_l = QVBoxLayout(icon_box)
+        ib_l.setContentsMargins(0, 0, 0, 0)
+        lbl_icon = QLabel("📖")
+        lbl_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_icon.setStyleSheet("font-size: 18px;")
+        ib_l.addWidget(lbl_icon)
+        header_bar.addWidget(icon_box)
+
+        title_info = QVBoxLayout()
+        title_info.setSpacing(2)
+        lbl_title = QLabel(f"用例文档: {os.path.basename(doc_path)}")
+        lbl_title.setStyleSheet("font-size: 15px; font-weight: 800; color: #0f172a;")
+        lbl_path = QLabel(f"绝对路径: {doc_path}")
+        lbl_path.setStyleSheet("font-size: 11px; color: #64748b;")
+        title_info.addWidget(lbl_title)
+        title_info.addWidget(lbl_path)
+        header_bar.addLayout(title_info)
+
+        header_bar.addStretch()
+
+        btn_open_external = QPushButton("在系统外部打开 ↗")
+        btn_open_external.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_open_external.setStyleSheet("""
+            QPushButton {
+                background-color: #f8fafc;
+                color: #0f172a;
+                border: 1px solid #cbd5e1;
+                border-radius: 6px;
+                padding: 6px 12px;
+                font-size: 12px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background-color: #f1f5f9;
+                border-color: #94a3b8;
+            }
+        """)
+        btn_open_external.clicked.connect(self._open_in_system)
+        header_bar.addWidget(btn_open_external)
+        layout.addLayout(header_bar)
+
+        # Markdown 渲染内容展示区
+        text_view = QTextBrowser()
+        text_view.setStyleSheet("""
+            QTextBrowser {
+                background-color: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 14px;
+                font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+                font-size: 13px;
+                line-height: 1.6;
+                color: #1e293b;
+            }
+        """)
+        try:
+            with open(doc_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            text_view.setMarkdown(content)
+        except Exception as e:
+            text_view.setPlainText(f"读取文档内容异常: {e}")
+        layout.addWidget(text_view, stretch=1)
+
+        # 底部按钮区
+        btn_close = QPushButton("关闭")
+        btn_close.setFixedWidth(88)
+        btn_close.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_close.setStyleSheet("""
+            QPushButton {
+                background-color: #2563eb;
+                color: #ffffff;
+                border: none;
+                border-radius: 6px;
+                padding: 6px 16px;
+                font-size: 12px;
+                font-weight: 700;
+            }
+            QPushButton:hover {
+                background-color: #1d4ed8;
+            }
+        """)
+        btn_close.clicked.connect(self.accept)
+
+        b_box = QHBoxLayout()
+        b_box.addStretch()
+        b_box.addWidget(btn_close)
+        layout.addLayout(b_box)
+
+    def _open_in_system(self):
+        try:
+            if sys.platform == "win32":
+                os.startfile(self.doc_path)
+            else:
+                subprocess.Popen(["xdg-open", self.doc_path])
+        except Exception as e:
+            QMessageBox.warning(self, "打开失败", f"调用系统程序打开文档失败:\n{e}")
+
 
 
 class MobilePage(QWidget):
@@ -61,6 +212,8 @@ class MobilePage(QWidget):
         self.total_case_count = 1383
         self._is_log_collapsed = False
         self._last_log_height = 240
+        self._auto_scroll = True
+        self.web_receipt_fields: List[Dict[str, str]] = []
 
         self.init_ui()
         self.load_persisted_config()
@@ -146,9 +299,86 @@ class MobilePage(QWidget):
         title_box.addWidget(lbl_sub_title)
         h_layout.addLayout(title_box)
 
+        # 1.2 标题右侧紧邻：Appium 服务集群与设备检测控制区
+        svc_btn_group = QFrame()
+        svc_btn_group.setStyleSheet("""
+            QFrame {
+                background-color: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+            }
+        """)
+        svc_layout = QHBoxLayout(svc_btn_group)
+        svc_layout.setContentsMargins(6, 3, 6, 3)
+        svc_layout.setSpacing(6)
+
+        # 按钮 1: 启动服务 (打开 start_appium_batch.bat)
+        btn_start_svc = QPushButton(" ▶ 启动服务 ")
+        btn_start_svc.setToolTip("在独立终端窗口执行 start_appium_batch.bat 批处理文件，启动 Appium 服务集群")
+        btn_start_svc.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_start_svc.setStyleSheet("""
+            QPushButton {
+                background-color: #10b981;
+                color: #ffffff;
+                border: none;
+                border-radius: 6px;
+                padding: 4px 10px;
+                font-size: 12px;
+                font-weight: 700;
+            }
+            QPushButton:hover {
+                background-color: #059669;
+            }
+        """)
+        btn_start_svc.clicked.connect(self._start_appium_service)
+        svc_layout.addWidget(btn_start_svc)
+
+        # 按钮 2: 关闭服务 (关闭 Appium 服务与对应端口)
+        btn_stop_svc = QPushButton(" ⏹ 关闭服务 ")
+        btn_stop_svc.setToolTip("终止后台所有 Appium 服务进程并释放 4723-4731 端口")
+        btn_stop_svc.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_stop_svc.setStyleSheet("""
+            QPushButton {
+                background-color: #ef4444;
+                color: #ffffff;
+                border: none;
+                border-radius: 6px;
+                padding: 4px 10px;
+                font-size: 12px;
+                font-weight: 700;
+            }
+            QPushButton:hover {
+                background-color: #dc2626;
+            }
+        """)
+        btn_stop_svc.clicked.connect(self._stop_appium_service)
+        svc_layout.addWidget(btn_stop_svc)
+
+        # 按钮 3: 检测服务 (通过 adb kill-server 和 adb devices -l 深度检查是否有设备连接)
+        btn_check_svc = QPushButton(" 🔍 检测服务 ")
+        btn_check_svc.setToolTip("执行 adb kill-server、adb start-server 和 adb devices -l 检查是否有设备连接成功")
+        btn_check_svc.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_check_svc.setStyleSheet("""
+            QPushButton {
+                background-color: #0284c7;
+                color: #ffffff;
+                border: none;
+                border-radius: 6px;
+                padding: 4px 10px;
+                font-size: 12px;
+                font-weight: 700;
+            }
+            QPushButton:hover {
+                background-color: #0369a1;
+            }
+        """)
+        btn_check_svc.clicked.connect(self._check_appium_and_devices)
+        svc_layout.addWidget(btn_check_svc)
+
+        h_layout.addWidget(svc_btn_group)
         h_layout.addStretch()
 
-        # 1.2 右侧药丸状态 Badge 组 (用户红框 1:1 对应)
+        # 1.3 右侧药丸状态 Badge 组 (用户红框 1:1 对应)
         pill_group = QFrame()
         pill_group.setStyleSheet("""
             QFrame {
@@ -180,8 +410,9 @@ class MobilePage(QWidget):
         sep2.setStyleSheet("color: #cbd5e1;")
         pg_layout.addWidget(sep2)
 
-        # 药丸 3: 报告总数
-        self.lbl_report_pill = QLabel("📑 报告: 5 份")
+        # 药丸 3: 报告总数 (实时动态读取报告中心真实份数，绝不硬编码)
+        init_rep_count = get_reports_count()
+        self.lbl_report_pill = QLabel(f"📑 报告: {init_rep_count} 份")
         self.lbl_report_pill.setStyleSheet("color: #7c3aed; font-weight: 700; font-size: 12px;")
         pg_layout.addWidget(self.lbl_report_pill)
 
@@ -247,7 +478,7 @@ class MobilePage(QWidget):
         self.tree.header().setStretchLastSection(False)
         self.tree.header().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.tree.header().setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
-        self.tree.setColumnWidth(1, 88)
+        self.tree.setColumnWidth(1, 136)
         self.tree.setTextElideMode(Qt.TextElideMode.ElideRight)
         self.tree.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.tree.itemClicked.connect(self._on_tree_item_clicked)
@@ -325,7 +556,15 @@ class MobilePage(QWidget):
         row1_input = QHBoxLayout()
         self.combo_os = QComboBox()
         self.combo_os.addItems(["Win", "Mac", "Linux"])
-        self.combo_os.setFixedWidth(64)
+        self.combo_os.setFixedWidth(88)
+        self.combo_os.setStyleSheet("""
+            QComboBox {
+                font-size: 12px;
+                font-weight: 600;
+                padding-left: 8px;
+                padding-right: 24px;
+            }
+        """)
         self.combo_os.currentIndexChanged.connect(self._on_config_changed)
 
         self.combo_appium1 = QComboBox()
@@ -519,29 +758,13 @@ class MobilePage(QWidget):
         self.combo_view_role = QComboBox()
         self.combo_view_role.addItem("精简视角", "business")
         self.combo_view_role.addItem("完整视角", "tech")
-        self.combo_view_role.setFixedWidth(106)
+        self.combo_view_role.setFixedWidth(132)
         self.combo_view_role.setStyleSheet("""
             QComboBox {
-                background-color: #ffffff;
-                color: #0f172a;
-                border: 1px solid #cbd5e1;
-                border-radius: 6px;
-                padding: 5px 10px;
                 font-size: 12px;
                 font-weight: 600;
-            }
-            QComboBox:hover {
-                border-color: #94a3b8;
-            }
-            QComboBox:focus {
-                border: 1px solid #2563eb;
-            }
-            QComboBox QAbstractItemView {
-                background-color: #ffffff;
-                color: #0f172a;
-                selection-background-color: #eff6ff;
-                selection-color: #2563eb;
-                border: 1px solid #cbd5e1;
+                padding-left: 10px;
+                padding-right: 28px;
             }
         """)
         self.combo_view_role.currentIndexChanged.connect(self._on_config_changed)
@@ -781,15 +1004,31 @@ class MobilePage(QWidget):
             desktop_config.set("mobile", "log_collapsed", self._is_log_collapsed)
             desktop_config.set("mobile", "last_log_height", self._last_log_height)
 
-    def _toggle_autoscroll(self):
-        is_active = self.btn_toggle_autoscroll.text().startswith("🟢")
-        if is_active:
-            self.btn_toggle_autoscroll.setText("⏸️ 滚屏暂停")
-            self.btn_toggle_autoscroll.setStyleSheet("background-color: #f1f5f9; color: #64748b;")
-        else:
+    def _set_autoscroll_state(self, enabled: bool):
+        """设置自动滚屏（向下滚动）状态与 UI 展现 (True: 启动向下滚动, False: 停止向下滚动)"""
+        self._auto_scroll = bool(enabled)
+        if self._auto_scroll:
             self.btn_toggle_autoscroll.setText("🟢 自动滚屏")
-            self.btn_toggle_autoscroll.setStyleSheet("background-color: #ecfdf5; color: #059669; font-weight: 700;")
-            self.console.moveCursor(QTextCursor.MoveOperation.End)
+            self.btn_toggle_autoscroll.setStyleSheet("background-color: #ecfdf5; color: #059669; font-weight: 700; border: 1px solid #a7f3d0; border-radius: 4px;")
+            self.btn_toggle_autoscroll.setToolTip("当前状态: 已开启向下自动滚屏 (新日志产生时自动向下滚动至最底部)")
+            self._scroll_to_bottom()
+        else:
+            self.btn_toggle_autoscroll.setText("⚪ 滚屏暂停")
+            self.btn_toggle_autoscroll.setStyleSheet("background-color: #f1f5f9; color: #64748b; font-weight: 500; border: 1px solid #cbd5e1; border-radius: 4px;")
+            self.btn_toggle_autoscroll.setToolTip("当前状态: 已关闭向下自动滚屏 (可随意向上翻阅排查历史日志)")
+
+    def _scroll_to_bottom(self):
+        """向下滚动日志终端至最底部"""
+        self.console.moveCursor(QTextCursor.MoveOperation.End)
+        scrollbar = self.console.verticalScrollBar()
+        if scrollbar:
+            scrollbar.setValue(scrollbar.maximum())
+
+    def _toggle_autoscroll(self):
+        """切换自动向下滚屏状态，并持久化写入配置 (启动为 True，未启动为 False)"""
+        new_state = not getattr(self, "_auto_scroll", True)
+        self._set_autoscroll_state(new_state)
+        desktop_config.set("mobile", "auto_scroll_log", self._auto_scroll)
 
     # ==================== 5. 用例树构建与状态呈现 (1:1 复刻红框与红点) ====================
     def _create_tree_action_widget(self, text: str, btn_class: str, width: int, on_click) -> QWidget:
@@ -807,6 +1046,90 @@ class MobilePage(QWidget):
 
         layout.addWidget(btn)
         return container
+
+    def _create_file_node_actions(self, file_path: str, display_name: str) -> QWidget:
+        """为二级文件节点创建【📄 文档】与【运行文件】双胶囊按钮组件"""
+        container = QWidget()
+        layout = QHBoxLayout(container)
+        layout.setContentsMargins(0, 0, 4, 0)
+        layout.setSpacing(4)
+        layout.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+
+        # 1. 📄 文档按钮 (点击打开 test_docs 对应文档)
+        btn_doc = QPushButton("📄 文档")
+        btn_doc.setProperty("class", "tree-pill-btn-doc")
+        btn_doc.setToolTip(f"查看【{display_name}】对应的测试用例文档说明")
+        btn_doc.setFixedSize(54, 22)
+        btn_doc.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_doc.clicked.connect(lambda ch, f=file_path, n=display_name: self._open_test_doc(f, n))
+        layout.addWidget(btn_doc)
+
+        # 2. 运行文件按钮
+        btn_run = QPushButton("运行文件")
+        btn_run.setProperty("class", "tree-pill-btn-file")
+        btn_run.setToolTip(f"批量执行【{display_name}】中的全部测试用例")
+        btn_run.setFixedSize(66, 22)
+        btn_run.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_run.clicked.connect(lambda ch, f=file_path, n=display_name: self._run_target_node(f, n))
+        layout.addWidget(btn_run)
+
+        return container
+
+    def _find_test_doc_path(self, file_path_or_target: str, display_name: str) -> Optional[Path]:
+        """
+        智能解析测试文件对应的文档说明路径：
+        1. 动态获取 test_docs 根目录（兼顾开发态与打包安装态，无写死路径）
+        2. 基于测试文件名 stem 深度全量检索匹配
+        3. 基于 display_name 中文关键词深度模糊检索匹配
+        """
+        project_root = Path(SmartPathResolver.get_project_root())
+        candidates = [
+            project_root / "test_docs",
+            Path(sys.executable).parent / "test_docs",
+            Path.cwd() / "test_docs"
+        ]
+        doc_root: Optional[Path] = None
+        for c in candidates:
+            if c.is_dir():
+                doc_root = c
+                break
+
+        if not doc_root:
+            return None
+
+        # 提取文件基本名称，例如 test_smoke_chat.py -> test_smoke_chat
+        file_stem = Path(file_path_or_target).stem.lower()
+
+        # 优先级 1: 文档名中精确包含测试文件 stem (例如 【冒烟测试-单聊-基础与设置】test_smoke_chat.md)
+        for p in doc_root.rglob("*.md"):
+            p_name = p.stem.lower()
+            if p_name.endswith(file_stem) or f"{file_stem}" in p_name:
+                return p
+
+        # 优先级 2: 文档名中包含中文 display_name (如 "单聊-基础与设置")
+        clean_display = re.sub(r"[^\w\u4e00-\u9fa5]", "", display_name)
+        if clean_display:
+            for p in doc_root.rglob("*.md"):
+                p_clean = re.sub(r"[^\w\u4e00-\u9fa5]", "", p.stem)
+                if clean_display in p_clean or p_clean in clean_display:
+                    return p
+
+        return None
+
+    def _open_test_doc(self, file_path: str, display_name: str):
+        """点击文档按钮，弹出对应的测试用例文档说明"""
+        doc_path = self._find_test_doc_path(file_path, display_name)
+        if not doc_path or not doc_path.is_file():
+            self.append_log(f"⚠ 未在 test_docs 目录下找到与【{display_name}】({file_path}) 对应的用例文档。")
+            QMessageBox.warning(
+                self, "未找到文档",
+                f"未在 test_docs 目录中检索到与以下用例对应的说明文档：\n\n• 模块: {display_name}\n• 文件: {file_path}"
+            )
+            return
+
+        self.append_log(f"📖 正在打开用例文档说明: {doc_path.name}")
+        dialog = MarkdownDocDialog(str(doc_path), display_name, self)
+        dialog.exec()
 
     def refresh_test_cases(self):
         self.tree.clear()
@@ -834,7 +1157,7 @@ class MobilePage(QWidget):
             is_first_cat = (c_idx == 0)
             cat_item.setExpanded(is_first_cat)
 
-            # 2. 二级文件节点 (👾)
+            # 2. 二级文件节点 (👾) - 完美挂载【📄 文档】与【运行文件】双按钮
             for f_idx, file_obj in enumerate(cat.get("files", [])):
                 file_item = QTreeWidgetItem(cat_item)
                 file_name = file_obj.get('display_name', file_obj['file'])
@@ -844,10 +1167,7 @@ class MobilePage(QWidget):
                 file_item.setToolTip(0, f"二级测试文件: {file_obj['file']}\n包含 {file_count} 个测试用例")
                 file_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "file", "target": file_obj["file"], "name": file_name})
 
-                action_file = self._create_tree_action_widget(
-                    "运行文件", "tree-pill-btn-file", 66,
-                    lambda ch, f=file_obj["file"], n=file_name: self._run_target_node(f, n)
-                )
+                action_file = self._create_file_node_actions(file_obj["file"], file_name)
                 self.tree.setItemWidget(file_item, 1, action_file)
 
                 is_first_file = (is_first_cat and f_idx == 0)
@@ -1009,6 +1329,8 @@ class MobilePage(QWidget):
         self.edit_group_chat.setText("")
         self.chk_debug_mode.setChecked(False)
         self.combo_view_role.setCurrentIndex(0)
+        self._set_autoscroll_state(True)
+        desktop_config.set("mobile", "auto_scroll_log", True)
         self._on_config_changed()
         QMessageBox.information(self, "提示", "参数配置已恢复为默认值！")
 
@@ -1035,6 +1357,15 @@ class MobilePage(QWidget):
         idx = 0 if role == "business" else 1
         self.combo_view_role.setCurrentIndex(idx)
 
+        # 加载持久化的 Web 回执字段列表
+        self.web_receipt_fields = cfg.get("web_receipt_fields", [
+            {"key": "设备1", "val": ""},
+            {"key": "私聊用户1", "val": ""},
+            {"key": "私聊用户2", "val": ""},
+            {"key": "群聊名称1", "val": ""},
+            {"key": "群聊名称2", "val": ""},
+        ])
+
         # 恢复左右与上下分割器布局尺寸记忆
         h_sizes = cfg.get("splitter_h_sizes", None)
         if h_sizes and isinstance(h_sizes, list) and len(h_sizes) == 2 and sum(h_sizes) > 0:
@@ -1053,6 +1384,10 @@ class MobilePage(QWidget):
         else:
             self.btn_collapse_terminal.setText("▾ 收起")
 
+        # 恢复自动向下滚屏记忆 (启动为 True，未启动为 False，默认 True)
+        saved_autoscroll = cfg.get("auto_scroll_log", True)
+        self._set_autoscroll_state(saved_autoscroll)
+
     def _on_config_changed(self):
         role = self.combo_view_role.currentData() or "business"
         desktop_config.set("mobile", "os_type", self.combo_os.currentText())
@@ -1067,12 +1402,12 @@ class MobilePage(QWidget):
 
     # ==================== 7. 设备与报告辅助 ====================
     def _refresh_report_pill_count(self):
-        from web_platform.backend.paths import REPORTS_DIR
-        base_dir = os.path.join(REPORTS_DIR, "allure_reports")
-        if os.path.exists(base_dir):
-            dirs = [d for d in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, d))]
-            count = len(dirs)
+        """实时同步报告中心当前实际存在的有效测试报告总份数"""
+        try:
+            count = get_reports_count()
             self.lbl_report_pill.setText(f"📑 报告: {count} 份")
+        except Exception:
+            pass
 
     def _on_top_refresh_clicked(self):
         self.refresh_test_cases()
@@ -1168,7 +1503,35 @@ class MobilePage(QWidget):
             self.append_log(f"⚠️ 启动 Appium 失败")
 
     def _on_click_receipt(self):
-        QMessageBox.information(self, "Web 回执", "已开启 Web 回执与 Jira 质量缺陷自动归档流。")
+        """弹出 1:1 像素级复刻的 Web 回执配置模态表单，并将数据实时同步保存与传参到底层"""
+        dlg = WebReceiptDialog(self.web_receipt_fields, self)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self.web_receipt_fields = dlg.get_receipt_fields()
+            desktop_config.set("mobile", "web_receipt_fields", self.web_receipt_fields)
+            desktop_config.save()
+
+            r_dict = dlg.get_receipt_dict()
+
+            # 联动数据回显至控制台输入框（保持视觉与数据双向一致性）
+            dev1 = r_dict.get("设备1", "").strip()
+            if dev1 and dev1 != self.combo_udid2.currentText().strip():
+                self.combo_udid2.setEditText(dev1)
+
+            priv1 = r_dict.get("私聊用户1", "").strip()
+            if priv1 and not self.edit_private_chat.text().strip():
+                self.edit_private_chat.setText(priv1)
+
+            grp1 = r_dict.get("群聊名称1", "").strip()
+            if grp1 and not self.edit_group_chat.text().strip():
+                self.edit_group_chat.setText(grp1)
+
+            self.append_log(f"💾 Web 回执配置已成功保存更新！(已同步 {len(self.web_receipt_fields)} 项表单参数，执行时自动生效)")
+            QMessageBox.information(
+                self, "保存成功",
+                f"💾 验收测试 Web 回执配置已保存更新！\n\n"
+                f"• 已同步 {len(self.web_receipt_fields)} 项回执字段；\n"
+                f"• 执行测试时将自动注入环境变量 WEB_RECEIPT_DATA 并传参到底层驱动与策略。"
+            )
 
     # ==================== 8. 执行控制与状态联动 ====================
     def run_selected_tests(self):
@@ -1189,8 +1552,19 @@ class MobilePage(QWidget):
         if getattr(self, "_is_log_collapsed", False):
             self.toggle_terminal_visibility()
 
+        # 启动新测试用例前，自动清空终端历史日志记录
+        self.clear_console()
+
         ap1 = self.combo_appium1.currentText().split(" ")[0].strip()
         ap2 = self.combo_appium2.currentText().split(" ")[0].strip()
+
+        # 组装回执数据字典并序列化为 JSON 字符串，供底层 DriverFactory 与 ChatStrategy 动态读取
+        receipt_dict = {
+            item["key"].strip(): item["val"].strip()
+            for item in getattr(self, "web_receipt_fields", [])
+            if item.get("key", "").strip()
+        }
+        receipt_json = json.dumps(receipt_dict, ensure_ascii=False) if receipt_dict else ""
 
         cfg = {
             "nodeid": target_nodeid,
@@ -1202,7 +1576,8 @@ class MobilePage(QWidget):
             "group_chat_name": self.edit_group_chat.text().strip(),
             "debug_mode": self.chk_debug_mode.isChecked(),
             "role": self.combo_view_role.currentData() or "business",
-            "env": "dev"
+            "env": "dev",
+            "web_receipt_data": receipt_json
         }
 
         self.btn_run.setEnabled(False)
@@ -1356,8 +1731,8 @@ class MobilePage(QWidget):
     def append_log(self, text: str):
         cleaned = clean_ansi_log(text)
         self.console.appendPlainText(cleaned)
-        if self.btn_toggle_autoscroll.text().startswith("🟢"):
-            self.console.moveCursor(QTextCursor.MoveOperation.End)
+        if getattr(self, "_auto_scroll", True):
+            self._scroll_to_bottom()
 
     def clear_console(self):
         self.console.clear()
@@ -1368,3 +1743,144 @@ class MobilePage(QWidget):
         if clipboard:
             clipboard.setText(text)
             self.append_log("📋 已复制终端日志到剪贴板")
+
+    # ==================== 7. Appium 服务集群控制与设备状态深度检测 ====================
+    def _start_appium_service(self):
+        """启动 Appium 批处理服务 (独立终端窗口执行 start_appium_batch.bat)"""
+        # 严格优先从安装包文件夹目录 (应用主程序目录) 与工程根目录获取
+        app_dir = Path(sys.executable).parent
+        project_root = Path(SmartPathResolver.get_project_root())
+        candidates = [
+            app_dir / "start_appium_batch.bat",
+            project_root / "start_appium_batch.bat",
+            Path.cwd() / "start_appium_batch.bat"
+        ]
+        bat_file: Optional[Path] = None
+        for p in candidates:
+            if p.is_file():
+                bat_file = p
+                break
+
+        if not bat_file:
+            self.append_log("❌ 未找到 start_appium_batch.bat 批处理文件！请检查程序安装目录或工程根目录。")
+            QMessageBox.warning(
+                self, "文件未找到",
+                "未找到 start_appium_batch.bat 批处理文件！\n\n请确认该文件已放置在程序安装目录或工程根目录。"
+            )
+            return
+
+        self.append_log(f"▶ 正在打开 Appium 批量启动服务脚本: {bat_file}")
+        try:
+            if sys.platform == "win32":
+                # 在独立控制台窗口运行，不阻塞主程序
+                os.startfile(str(bat_file))
+            else:
+                subprocess.Popen(["bash", str(bat_file)])
+            self.append_log(f"✅ 已成功启动 Appium 服务进程窗口: {bat_file.name}")
+        except Exception as e:
+            self.append_log(f"❌ 启动服务脚本异常: {e}")
+            QMessageBox.critical(self, "启动失败", f"启动 Appium 服务脚本时出现异常:\n{e}")
+
+    def _stop_appium_service(self):
+        """关闭 Appium 批量服务 (精准释放 4723~4731 端口并清理后台服务)"""
+        self.append_log("⏹ 正在停止 Appium 服务集群并释放对应端口 (4723~4731)...")
+        killed_pids: Set[str] = set()
+        ports_closed: List[int] = []
+
+        if sys.platform == "win32":
+            try:
+                # 遍历 4723 到 4731 端口，精确定位监听状态的 PID 并终止
+                for port in range(4723, 4732):
+                    cmd = f"netstat -ano | findstr :{port}"
+                    proc = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+                    if proc.stdout:
+                        for line in proc.stdout.strip().splitlines():
+                            parts = line.split()
+                            if len(parts) >= 5 and "LISTENING" in parts:
+                                pid = parts[-1]
+                                if pid.isdigit() and int(pid) > 0 and pid not in killed_pids:
+                                    killed_pids.add(pid)
+                                    ports_closed.append(port)
+                                    subprocess.run(f"taskkill /F /T /PID {pid}", shell=True, capture_output=True)
+            except Exception as e:
+                self.append_log(f"⚠ 释放 Appium 端口进程出现异常: {e}")
+
+        if killed_pids:
+            msg = f"已成功停止 Appium 服务，终止了 {len(killed_pids)} 个后台服务进程，释放端口: {', '.join(map(str, sorted(set(ports_closed))))}"
+            self.append_log(f"✅ {msg}")
+            QMessageBox.information(self, "服务已关闭", msg)
+        else:
+            self.append_log("ℹ 4723~4731 端口均处于空闲状态，未检测到活跃的 Appium 服务进程。")
+            QMessageBox.information(self, "服务已关闭", "当前未检测到正在运行的 Appium 服务 (4723~4731 端口均已空闲)。")
+
+    def _check_appium_and_devices(self):
+        """
+        检测服务与设备连接状态：
+        执行 adb kill-server、adb start-server 和 adb devices -l 深度检查是否有设备连接成功。
+        如果无设备则弹出提示警告，有设备则提示连接成功并更新药丸状态。
+        """
+        self.append_log("🔍 正在检查移动设备连接状态 (执行 adb kill-server & adb devices -l)...")
+
+        # 动态定位 ADB 工具
+        tools = SmartPathResolver.discover_mobile_toolchain()
+        adb_path = tools.get("adb") or shutil.which("adb")
+
+        if not adb_path:
+            self.append_log("❌ 系统未检测到 ADB 工具，请确保已安装 Android SDK 或将 adb 添加至系统环境变量。")
+            QMessageBox.warning(
+                self, "ADB 未就绪",
+                "系统未检测到 ADB 命令行工具！\n\n请确保已配置 Android SDK 或已将 adb 加入系统环境变量 PATH。"
+            )
+            return
+
+        try:
+            # 1. 执行 adb kill-server
+            self.append_log("  - 执行: adb kill-server")
+            subprocess.run([adb_path, "kill-server"], capture_output=True, text=True, timeout=10)
+
+            # 2. 执行 adb start-server
+            self.append_log("  - 执行: adb start-server")
+            subprocess.run([adb_path, "start-server"], capture_output=True, text=True, timeout=10)
+
+            # 3. 执行 adb devices -l
+            self.append_log("  - 执行: adb devices -l")
+            res = subprocess.run([adb_path, "devices", "-l"], capture_output=True, text=True, timeout=10)
+            output = res.stdout.strip()
+            self.append_log(f"  - ADB 响应:\n{output}")
+
+            lines = [line.strip() for line in output.splitlines() if line.strip()]
+            connected_devices = []
+            for line in lines[1:]:  # 跳过首行 "List of devices attached"
+                if "device" in line and not any(bad in line for bad in ["offline", "unauthorized"]):
+                    parts = line.split()
+                    dev_id = parts[0]
+                    # 解析设备型号等附加信息
+                    model_info = ""
+                    for p in parts[1:]:
+                        if p.startswith("model:"):
+                            model_info = p.replace("model:", "")
+                            break
+                    desc = f"{dev_id} ({model_info})" if model_info else dev_id
+                    connected_devices.append(desc)
+
+            if not connected_devices:
+                self.lbl_device_pill.setText("⚪ 设备: 0 台在线")
+                self.append_log("⚠ 检查结果: 当前没有检测到任何已连接成功的移动设备。")
+                QMessageBox.warning(
+                    self, "设备连接提示",
+                    "当前没有设备进行连接！\n\n请检查 USB 数据线是否插紧、手机是否已开启【开发者选项】与【USB 调试】功能，或确认 Android 模拟器是否已启动。"
+                )
+            else:
+                self.lbl_device_pill.setText(f"🟢 设备: {len(connected_devices)} 台在线")
+                dev_list_str = "\n".join(f"• {d}" for d in connected_devices)
+                self.append_log(f"✅ 检查结果: 检测到 {len(connected_devices)} 台设备连接成功:\n{dev_list_str}")
+                QMessageBox.information(
+                    self, "设备连接成功",
+                    f"检测到 {len(connected_devices)} 台设备连接成功：\n\n{dev_list_str}"
+                )
+                # 联动刷新界面的设备下拉列表
+                self.auto_detect_devices()
+        except Exception as e:
+            self.append_log(f"❌ 检测设备服务时出现异常: {e}")
+            QMessageBox.critical(self, "检测异常", f"检测设备服务时发生错误:\n{e}")
+

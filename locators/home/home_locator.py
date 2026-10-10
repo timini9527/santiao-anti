@@ -48,10 +48,12 @@ class HomeLocator:
     TV_TITLE = CommonLocator.TOP_TV_TITLE
 
 
-    # 好友页面 
-    NEW_FRIEND = (AppiumBy.ID, f'{PACKAGE_ID}/ll_new_friends')         # 新的朋友容器
-    NEW_FRIEND_IV = (AppiumBy.ID, f'{PACKAGE_ID}/new_friends_iv')      # 新的朋友图标
-    NEW_FRIEND_TV = (AppiumBy.ID, f'{PACKAGE_ID}/new_friends_tv')      # 新的朋友文本
+    # 好友页面
+    LL_FRIEND_MOMENTS = (AppiumBy.ID, f'{PACKAGE_ID}/ll_friend_moments')    # 朋友圈
+    FRIEND_MOMENTS = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("好友动态")')
+    NEW_FRIEND = (AppiumBy.ID, f'{PACKAGE_ID}/ll_new_friends')              # 新的朋友容器
+    NEW_FRIEND_IV = (AppiumBy.ID, f'{PACKAGE_ID}/new_friends_iv')           # 新的朋友图标
+    NEW_FRIEND_TV = (AppiumBy.ID, f'{PACKAGE_ID}/new_friends_tv')           # 新的朋友文本
     NEW_FRIEND_FB_BADGE_COUNT_ID = f'{PACKAGE_ID}/fb_badge_count'
     NEW_FRIEND_FB_BADGE_COUNT = (AppiumBy.ID, NEW_FRIEND_FB_BADGE_COUNT_ID)     # 新的朋友未读消息数
     NEW_FRIEND_FB_BADGE_COUNT_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{NEW_FRIEND_FB_BADGE_COUNT_ID}"]/android.widget.TextView')     # 新的朋友未读消息数文本

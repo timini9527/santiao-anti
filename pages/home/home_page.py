@@ -639,6 +639,12 @@ class HomePage(BasePage):
         self.click_friend()
         return self.wait_for_friend_page_load(timeout=timeout, raise_exception=raise_exception)
 
+    # 好友页面 - 点击朋友圈
+    def click_friend_moments(self) -> None:
+        """ 好友页面 - 点击朋友圈 """
+        logger.info("🆕 [Action - Home] 好友页面 - 点击朋友圈")
+        self.click(HomeLocator.FRIEND_MOMENTS)
+
     # 好友页面 - 新的朋友文本
     def get_new_friend_text(self) -> str:
         """ 好友页面 - 获取新的朋友文本 """

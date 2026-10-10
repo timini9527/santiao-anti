@@ -6,20 +6,39 @@
 1:1 像素级复刻图 4 (DevicesPlatform.vue)：
 1. 顶部 Header：设备矩阵 控制台 + 多设备拓扑与 Appium 服务实时监控 + 右侧药丸 Badges
 2. 说明横幅卡片：移动端自动化设备矩阵与环境中心
-3. Appium 服务拓扑行：:4723 (主叫发送端) 与 :4724 (被叫接收端) 状态监控卡片
-4. 在线测试设备池 (7 台)：多卡片 Grid 布局，支持真实 USB 真机与模拟器卡片展示、重新扫描
+3. Appium 服务拓扑行：:4723 (主叫发送端) 与 :4724 (被叫接收端) 状态监控卡片 (支持真实拉起与连通性测量)
+4. 在线测试设备池 (7 台)：多卡片 Grid 布局，支持真实 USB 真机与模拟器卡片展示、重新扫描与详细规格查看
 """
+import os
+import sys
+import time
 import socket
-from typing import List, Dict, Any
+import subprocess
+from pathlib import Path
+from typing import List, Dict, Any, Optional
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
-    QPushButton, QFrame, QScrollArea, QMessageBox
+    QPushButton, QFrame, QScrollArea, QMessageBox, QApplication
 )
 from PyQt6.QtCore import Qt, QTimer
-from ..core.device_manager import DeviceManager
+_CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(_CURRENT_DIR))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
+try:
+    from ..core.device_manager import DeviceManager
+    from ..core.path_resolver import SmartPathResolver
+    from ..core.report_scanner import get_reports_count
+except (ImportError, ValueError):
+    from desktop_app.core.device_manager import DeviceManager
+    from desktop_app.core.path_resolver import SmartPathResolver
+    from desktop_app.core.report_scanner import get_reports_count
+
 
 def _get_lan_ip() -> str:
+    """获取本机真实有效局域网 IP"""
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
@@ -31,9 +50,16 @@ def _get_lan_ip() -> str:
 
 
 class DeviceCard(QFrame):
-    """目标布局中的紧凑设备卡片。"""
+    """目标布局中的紧凑设备卡片 (支持点击查看详情与一键复制 UDID)"""
+
     def __init__(self, dev_type: str, udid: str, driver: str = "Android (UIAutomator2)", port: str = "http://127.0.0.1:4724", res: str = "1080x2400", parent=None):
         super().__init__(parent)
+        self.dev_type = dev_type
+        self.udid = udid
+        self.driver = driver
+        self.port = port
+        self.res = res
+
         self.setObjectName("deviceCard")
         self.setStyleSheet("""
             QFrame#deviceCard {
@@ -50,7 +76,7 @@ class DeviceCard(QFrame):
         layout.setContentsMargins(14, 12, 14, 12)
         layout.setSpacing(9)
 
-        # 顶部：手机图标 + 设备类型 + 就绪药丸
+        # 顶部：手机图标 + 设备类型 + 就绪按钮
         top_row = QHBoxLayout()
         top_row.setSpacing(8)
 
@@ -78,9 +104,26 @@ class DeviceCard(QFrame):
 
         top_row.addStretch()
 
-        lbl_ready = QLabel("就绪")
-        lbl_ready.setStyleSheet("background-color: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; border-radius: 4px; padding: 2px 6px; font-weight: 700; font-size: 10px;")
-        top_row.addWidget(lbl_ready)
+        btn_ready = QPushButton("就绪")
+        btn_ready.setToolTip(f"点击查看设备【{udid}】详细规格与复制识别码")
+        btn_ready.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_ready.setStyleSheet("""
+            QPushButton {
+                background-color: #ecfdf5;
+                color: #059669;
+                border: 1px solid #a7f3d0;
+                border-radius: 4px;
+                padding: 2px 8px;
+                font-weight: 700;
+                font-size: 10px;
+            }
+            QPushButton:hover {
+                background-color: #d1fae5;
+                border-color: #6ee7b7;
+            }
+        """)
+        btn_ready.clicked.connect(self._show_device_info)
+        top_row.addWidget(btn_ready)
 
         layout.addLayout(top_row)
         layout.addSpacing(2)
@@ -103,6 +146,23 @@ class DeviceCard(QFrame):
             s_row.addWidget(lbl_v)
             layout.addLayout(s_row)
 
+    def _show_device_info(self, *args):
+        """展示设备详细信息弹窗并自动复制 UDID"""
+        clipboard = QApplication.clipboard()
+        if clipboard:
+            clipboard.setText(self.udid)
+        QMessageBox.information(
+            self,
+            "设备连接详情",
+            f"📱 设备类型: {self.dev_type}\n"
+            f"🆔 设备识别码 (UDID): {self.udid}\n"
+            f"🔧 底层驱动系统: {self.driver}\n"
+            f"🌐 映射服务端口: {self.port}\n"
+            f"🖥️ 物理屏幕分辨率: {self.res}\n"
+            f"🟢 运行状态: 就绪可用 (Ready)\n\n"
+            f"✅ 设备识别码已自动复制到剪贴板！"
+        )
+
 
 class DevicesPage(QWidget):
     """设备矩阵与环境中心工作台 (图 4 像素级复刻)"""
@@ -110,8 +170,11 @@ class DevicesPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.lan_ip = _get_lan_ip()
+        self.appium_status_labels: Dict[int, QLabel] = {}
         self.init_ui()
-        self.refresh_devices()
+        self.refresh_devices(show_toast=False)
+        # 延时自动异步检测一次两个 Appium 端口的真实连通状态
+        QTimer.singleShot(300, self._detect_all_appium_status)
 
     def init_ui(self):
         root_layout = QVBoxLayout(self)
@@ -196,9 +259,9 @@ class DevicesPage(QWidget):
         pg_layout.setContentsMargins(6, 2, 6, 2)
         pg_layout.setSpacing(10)
 
-        lbl_dev = QLabel("🟢 设备: 1 台在线")
-        lbl_dev.setStyleSheet("color: #059669; font-weight: 700; font-size: 12px;")
-        pg_layout.addWidget(lbl_dev)
+        self.lbl_dev = QLabel("🟢 设备: 1 台在线")
+        self.lbl_dev.setStyleSheet("color: #059669; font-weight: 700; font-size: 12px;")
+        pg_layout.addWidget(self.lbl_dev)
 
         sep1 = QLabel("|")
         sep1.setStyleSheet("color: #cbd5e1;")
@@ -212,15 +275,16 @@ class DevicesPage(QWidget):
         sep2.setStyleSheet("color: #cbd5e1;")
         pg_layout.addWidget(sep2)
 
-        lbl_rep = QLabel("📑 报告: 5 份")
-        lbl_rep.setStyleSheet("color: #7c3aed; font-weight: 700; font-size: 12px;")
-        pg_layout.addWidget(lbl_rep)
+        self.lbl_report_pill = QLabel(f"📑 报告: {get_reports_count()} 份")
+        self.lbl_report_pill.setStyleSheet("color: #7c3aed; font-weight: 700; font-size: 12px;")
+        pg_layout.addWidget(self.lbl_report_pill)
 
         btn_refresh = QPushButton("🔄")
+        btn_refresh.setToolTip("重新检测设备与服务连通性")
         btn_refresh.setFixedSize(24, 24)
         btn_refresh.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_refresh.setStyleSheet("QPushButton { background: transparent; border: none; font-size: 13px; } QPushButton:hover { background: #e2e8f0; border-radius: 12px; }")
-        btn_refresh.clicked.connect(self.refresh_devices)
+        btn_refresh.clicked.connect(lambda checked=False: self.refresh_devices(show_toast=True))
         pg_layout.addWidget(btn_refresh)
 
         h_layout.addWidget(pill_group)
@@ -266,8 +330,9 @@ class DevicesPage(QWidget):
         top_row.addWidget(lbl_title)
         top_row.addStretch()
 
-        lbl_active = QLabel("运行中 (Active)")
-        lbl_active.setStyleSheet("background-color: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; border-radius: 4px; padding: 2px 6px; font-weight: 700; font-size: 10px;")
+        lbl_active = QLabel("检测中...")
+        lbl_active.setStyleSheet("background-color: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 6px; font-weight: 700; font-size: 10px;")
+        self.appium_status_labels[port] = lbl_active
         top_row.addWidget(lbl_active)
         layout.addLayout(top_row)
 
@@ -283,17 +348,51 @@ class DevicesPage(QWidget):
         btn_row.setSpacing(8)
 
         btn_start = QPushButton("一键拉起服务")
-        btn_start.setProperty("class", "btn-primary")
-        btn_start.setStyleSheet("background-color: #93c5fd; color: #1e3a8a; font-weight: 700; padding: 4px 12px; border-radius: 4px; border: none;")
+        btn_start.setToolTip(f"启动端口 {port} 对应的 Appium 服务")
         btn_start.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_start.clicked.connect(lambda: QMessageBox.information(self, "Appium 服务", f"Appium (端口 {port}) 已触发启动信号！"))
+        btn_start.setStyleSheet("""
+            QPushButton {
+                background-color: #2563eb;
+                color: #ffffff;
+                font-size: 11px;
+                font-weight: 700;
+                padding: 5px 14px;
+                border: 1px solid #1d4ed8;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #1d4ed8;
+            }
+            QPushButton:pressed {
+                background-color: #1e40af;
+            }
+        """)
+        btn_start.clicked.connect(lambda checked=False, p=port: self._on_start_appium(p))
         btn_row.addWidget(btn_start)
 
         btn_detect = QPushButton("探测连通性")
-        btn_detect.setProperty("class", "btn-secondary")
-        btn_detect.setStyleSheet("color: #475569; border: 1px solid #cbd5e1; font-weight: 600; padding: 4px 12px; border-radius: 4px;")
+        btn_detect.setToolTip(f"探测端口 {port} 实际网络延迟与连通状态")
         btn_detect.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_detect.clicked.connect(lambda: QMessageBox.information(self, "探测连通性", f"Appium (端口 {port}) 探测正常，响应延时 4ms。"))
+        btn_detect.setStyleSheet("""
+            QPushButton {
+                background-color: #ffffff;
+                color: #334155;
+                font-size: 11px;
+                font-weight: 600;
+                padding: 4px 14px;
+                border: 1px solid #cbd5e1;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #f8fafc;
+                border-color: #94a3b8;
+                color: #0f172a;
+            }
+            QPushButton:pressed {
+                background-color: #f1f5f9;
+            }
+        """)
+        btn_detect.clicked.connect(lambda checked=False, p=port: self._on_detect_appium(p))
         btn_row.addWidget(btn_detect)
 
         btn_row.addStretch()
@@ -301,7 +400,102 @@ class DevicesPage(QWidget):
 
         return card
 
-    # ================= 4. 在线测试设备池 =================
+    # ================= 4. Appium 实际控制与探测逻辑 =================
+    def _check_appium_alive(self, port: int) -> tuple[bool, float]:
+        """真实测试端口连通性并计算往返延时 (ms)"""
+        t0 = time.perf_counter()
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=0.8):
+                latency = (time.perf_counter() - t0) * 1000
+                return True, max(latency, 1.0)
+        except Exception:
+            return False, 0.0
+
+    def _update_appium_card_status(self, port: int, is_alive: bool):
+        lbl = self.appium_status_labels.get(port)
+        if not lbl:
+            return
+        if is_alive:
+            lbl.setText("运行中 (Active)")
+            lbl.setStyleSheet("background-color: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; border-radius: 4px; padding: 2px 6px; font-weight: 700; font-size: 10px;")
+        else:
+            lbl.setText("未启动 (Inactive)")
+            lbl.setStyleSheet("background-color: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 6px; font-weight: 700; font-size: 10px;")
+
+    def _detect_all_appium_status(self):
+        """批量静默刷新所有 Appium 卡片状态"""
+        for port in [4723, 4724]:
+            alive, _ = self._check_appium_alive(port)
+            self._update_appium_card_status(port, alive)
+
+    def _on_start_appium(self, port: int):
+        """一键拉起 Appium 服务"""
+        alive, _ = self._check_appium_alive(port)
+        if alive:
+            QMessageBox.information(
+                self, "Appium 服务",
+                f"Appium Server (端口 {port}) 当前已处于活跃运行状态！\n无需重复拉起服务。"
+            )
+            self._update_appium_card_status(port, True)
+            return
+
+        # 动态定位 start_appium_batch.bat 批处理文件
+        project_root = Path(SmartPathResolver.get_project_root())
+        candidates = [
+            Path(sys.executable).parent / "start_appium_batch.bat",
+            project_root / "start_appium_batch.bat",
+            Path.cwd() / "start_appium_batch.bat"
+        ]
+        bat_file: Optional[Path] = None
+        for c in candidates:
+            if c.is_file():
+                bat_file = c
+                break
+
+        try:
+            if bat_file and sys.platform == "win32":
+                os.startfile(str(bat_file))
+                msg = f"▶ 已在独立控制台窗口拉起 Appium 批量服务脚本: {bat_file.name}\n(包含端口 {port})"
+            else:
+                subprocess.Popen(["appium", "server", "-p", str(port)], shell=True)
+                msg = f"▶ 已向系统发起拉起 Appium Server (端口 {port}) 的指令！"
+
+            QMessageBox.information(
+                self, "服务拉起成功",
+                f"{msg}\n\n系统将在 2 秒后自动重新探测连通性状态。"
+            )
+            # 延时 2 秒重新检测该端口并刷新界面
+            QTimer.singleShot(2000, lambda: self._on_detect_appium(port, silent=True))
+        except Exception as e:
+            QMessageBox.critical(self, "启动失败", f"启动 Appium 服务出现异常:\n{e}")
+
+    def _on_detect_appium(self, port: int, silent: bool = False):
+        """探测指定端口连通性"""
+        alive, latency = self._check_appium_alive(port)
+        self._update_appium_card_status(port, alive)
+
+        if silent:
+            return
+
+        if alive:
+            QMessageBox.information(
+                self, "探测连通性成功",
+                f"✅ Appium Server (端口 {port}) 连通正常！\n\n"
+                f"• 监听端口: {port}\n"
+                f"• 局域网接入点: {self.lan_ip}:{port}\n"
+                f"• 本地通信回路: http://127.0.0.1:{port}\n"
+                f"• 往返响应延时: {latency:.1f} ms\n"
+                f"• 服务运行状态: 活跃就绪 (Active)"
+            )
+        else:
+            QMessageBox.warning(
+                self, "探测连通性失败",
+                f"❌ Appium Server (端口 {port}) 未检测到服务响应！\n\n"
+                f"当前端口未检测到正在监听的服务进程。\n"
+                f"请点击【一键拉起服务】启动该服务，或检查 4723/4724 端口配置。"
+            )
+
+    # ================= 5. 在线测试设备池 =================
     def _create_devices_pool_card(self) -> QWidget:
         card = QFrame()
         card.setObjectName("devicesPoolCard")
@@ -317,9 +511,26 @@ class DevicesPage(QWidget):
         header_row.addStretch()
 
         btn_scan = QPushButton("重新扫描 USB 设备")
-        btn_scan.setProperty("class", "btn-primary")
         btn_scan.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_scan.clicked.connect(self.refresh_devices)
+        btn_scan.setStyleSheet("""
+            QPushButton {
+                background-color: #2563eb;
+                color: #ffffff;
+                font-size: 12px;
+                font-weight: 700;
+                padding: 6px 16px;
+                border: 1px solid #1d4ed8;
+                border-radius: 6px;
+            }
+            QPushButton:hover {
+                background-color: #1d4ed8;
+                border-color: #1e40af;
+            }
+            QPushButton:pressed {
+                background-color: #1e40af;
+            }
+        """)
+        btn_scan.clicked.connect(lambda checked=False: self.refresh_devices(show_toast=True))
         header_row.addWidget(btn_scan)
         layout.addLayout(header_row)
 
@@ -328,70 +539,148 @@ class DevicesPage(QWidget):
         self.grid_layout.setHorizontalSpacing(12)
         self.grid_layout.setVerticalSpacing(12)
 
-        # 默认 7 台设备数据
-        self.default_devices = [
-            {"type": "USB真机", "udid": "3865BN02GU600000", "port": "http://127.0.0.1:4723", "res": "1080x2400"},
-            {"type": "USB真机", "udid": "nzwcvo9ls87hws7t", "port": "http://127.0.0.1:4724", "res": "1080x2400"},
-            {"type": "模拟器", "udid": "emulator-5562", "port": "http://127.0.0.1:4724", "res": "1080x2400"},
-            {"type": "模拟器", "udid": "emulator-5564", "port": "http://127.0.0.1:4724", "res": "1080x2400"},
-            {"type": "模拟器", "udid": "emulator-5566", "port": "http://127.0.0.1:4724", "res": "1080x2400"},
-            {"type": "模拟器", "udid": "emulator-5568", "port": "http://127.0.0.1:4724", "res": "1080x2400"},
-            {"type": "模拟器", "udid": "emulator-5572", "port": "http://127.0.0.1:4724", "res": "1080x2400"},
-        ]
-
-        self._render_device_grid(self.default_devices)
+        # 初始先进入纯动态设备网格布局
+        self._render_device_grid([])
         layout.addLayout(self.grid_layout)
 
         return card
 
+    @staticmethod
+    def _fetch_device_resolution(adb_bin: str, udid: str, platform: str) -> str:
+        """动态向 ADB 发送指令获取真实设备物理屏幕分辨率"""
+        if platform != "Android":
+            return "自适应"
+        try:
+            no_window = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+            out = subprocess.check_output(
+                [adb_bin, "-s", udid, "shell", "wm", "size"],
+                timeout=1.5,
+                creationflags=no_window
+            ).decode("utf-8", errors="ignore")
+            for line in out.splitlines():
+                if "size:" in line:
+                    return line.split("size:")[-1].strip()
+        except Exception:
+            pass
+        return "自适应"
+
     def _render_device_grid(self, devices: List[Dict[str, str]]):
-        # 清理旧卡片
+        """动态渲染真实在线设备池卡片网格 (无任何写死假数据)"""
         while self.grid_layout.count():
             item = self.grid_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
-        cols = 5  # 宽屏按目标图每行 5 张卡片
+        if not devices:
+            empty_box = QFrame()
+            empty_box.setObjectName("emptyDeviceBox")
+            empty_box.setStyleSheet("""
+                QFrame#emptyDeviceBox {
+                    background-color: #f8fafc;
+                    border: 1px dashed #cbd5e1;
+                    border-radius: 8px;
+                    padding: 36px 20px;
+                }
+            """)
+            e_layout = QVBoxLayout(empty_box)
+            e_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            e_layout.setSpacing(8)
+
+            lbl_empty_icon = QLabel("🔌")
+            lbl_empty_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            lbl_empty_icon.setStyleSheet("font-size: 32px;")
+            e_layout.addWidget(lbl_empty_icon)
+
+            lbl_empty_title = QLabel("当前未检测到已连接的移动设备")
+            lbl_empty_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            lbl_empty_title.setStyleSheet("font-size: 13px; font-weight: 700; color: #475569;")
+            e_layout.addWidget(lbl_empty_title)
+
+            lbl_empty_desc = QLabel("请使用 USB 数据线连接手机并开启【USB 调试】，或启动 Android 模拟器，然后点击右上角【重新扫描 USB 设备】")
+            lbl_empty_desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            lbl_empty_desc.setStyleSheet("font-size: 11px; color: #94a3b8;")
+            e_layout.addWidget(lbl_empty_desc)
+
+            self.grid_layout.addWidget(empty_box, 0, 0, 1, 5)
+            self.lbl_pool_title.setText("📱 在线测试设备池 (0 台在线)")
+            return
+
+        cols = 5  # 宽屏每行 5 张卡片
         for idx, dev in enumerate(devices):
             card = DeviceCard(
                 dev_type=dev["type"],
                 udid=dev["udid"],
+                driver=dev.get("driver", "Android (UIAutomator2)"),
                 port=dev.get("port", "http://127.0.0.1:4724"),
-                res=dev.get("res", "1080x2400")
+                res=dev.get("res", "自适应")
             )
             r = idx // cols
             c = idx % cols
             self.grid_layout.addWidget(card, r, c)
 
-        self.lbl_pool_title.setText(f"📱 在线测试设备池 ({len(devices)} 台)")
+        self.lbl_pool_title.setText(f"📱 在线测试设备池 ({len(devices)} 台在线)")
 
-    def refresh_devices(self):
-        """扫描真实设备，如扫描到真机则无缝融合到设备矩阵中"""
+    def refresh_devices(self, show_toast: bool = False, *args):
+        """动态探测真实在线移动设备 (USB真机与模拟器)，杜绝写死假数据"""
         details = DeviceManager.scan_connected_devices()
-        real_devs = details.get("real_devices", [])
-        all_devs = details.get("all_devices", [])
+        device_items = details.get("device_items", [])
 
-        # 动态合并真实扫描的设备与拓扑
-        merged = []
-        # 先放真实 USB 设备
-        seen_udids: set[str] = set()
-        if real_devs:
-            for r in real_devs:
-                if not r or r in seen_udids:
-                    continue
-                seen_udids.add(r)
-                port = 4723 if not merged else 4724
-                merged.append({
-                    "type": "USB真机",
-                    "udid": r,
-                    "port": f"http://127.0.0.1:{port}",
-                    "res": "1080x2400"
-                })
+        # 获取 ADB 工具以动态读取真实屏幕分辨率
+        tools = SmartPathResolver.discover_mobile_toolchain()
+        adb_bin = tools.get("adb") or "adb"
 
-        # 若真实设备数量不足，补齐图 4 经典展示卡片
-        for d in self.default_devices:
-            if d["udid"] not in seen_udids:
-                merged.append(d)
-                seen_udids.add(d["udid"])
+        online_devices = []
+        for idx, item in enumerate(device_items):
+            udid = item["udid"]
+            is_real = item.get("is_real", True)
+            platform = item.get("platform", "Android")
+            dev_type = "USB真机" if is_real else "模拟器"
+            driver = "HarmonyOS (ArkTS)" if platform == "HarmonyOS" else "Android (UIAutomator2)"
+            port_num = 4723 if idx == 0 else (4724 + (idx - 1))
 
-        self._render_device_grid(merged)
+            res = self._fetch_device_resolution(adb_bin, udid, platform)
+            online_devices.append({
+                "type": dev_type,
+                "udid": udid,
+                "driver": driver,
+                "port": f"http://127.0.0.1:{port_num}",
+                "res": res
+            })
+
+        # 动态渲染设备池网格
+        self._render_device_grid(online_devices)
+
+        # 动态同步更新顶部 Header 药丸
+        total_online = len(online_devices)
+        if total_online > 0:
+            real_count = sum(1 for d in online_devices if d["type"] == "USB真机")
+            self.lbl_dev.setText(f"🟢 设备: {total_online} 台在线 ({real_count} 真机)")
+            self.lbl_dev.setStyleSheet("color: #059669; font-weight: 700; font-size: 12px;")
+        else:
+            self.lbl_dev.setText("⚪ 设备: 0 台在线")
+            self.lbl_dev.setStyleSheet("color: #64748b; font-weight: 700; font-size: 12px;")
+
+        if hasattr(self, "lbl_report_pill"):
+            self.lbl_report_pill.setText(f"📑 报告: {get_reports_count()} 份")
+
+        # 联动刷新一次 Appium 状态
+        self._detect_all_appium_status()
+
+        if show_toast:
+            if total_online > 0:
+                dev_lines = "\n".join(f"  • [{d['type']}] {d['udid']} ({d['res']})" for d in online_devices)
+                QMessageBox.information(
+                    self, "设备扫描完成",
+                    f"🔍 在线设备矩阵扫描完成！\n\n"
+                    f"当前检测到 {total_online} 台物理在线设备：\n{dev_lines}\n\n"
+                    f"• Appium 拓扑与映射端口已同步就绪。"
+                )
+            else:
+                QMessageBox.warning(
+                    self, "未检测到在线设备",
+                    "⚠ 当前未检测到任何已连接的物理真机或模拟器！\n\n"
+                    "请检查：\n"
+                    "1. USB 数据线是否稳定连接电脑；\n"
+                    "2. 手机是否已开启【开发者选项】与【USB 调试】并完成授权；\n"
+                    "3. 若使用模拟器，请确认模拟器已启动并处于运行状态。"
+                )

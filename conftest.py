@@ -1,3 +1,11 @@
+# 防御性自愈：规避 Windows 下 pyreadline3 在精简环境缺失 __version__ 导致的崩溃
+try:
+    import pyreadline3
+    if not hasattr(pyreadline3, '__version__'):
+        pyreadline3.__version__ = '3.5.4'
+except Exception:
+    pass
+
 import os
 import pytest
 import time
@@ -203,10 +211,10 @@ def ensure_driver_session_health(request):
 # --- Driver Fixtures ---
 @pytest.fixture(scope="session")
 def driver_sender():
-    """ 启动发送方设备 (Session 级别，整个测试过程只启动一次) """
+    """ 启动发送方设备 (Session 级别，热启动模式下保持存活) """
     driver = DriverFactory.get_driver('sender')
-    # MainPage(driver).wait_for_main_page_load()
-    time.sleep(5)
+    # 热启动自愈：确保初始状态处于主页面（若已在主页 0s 瞬时放行）
+    MainPage(driver).go_to_main_page(timeout=0.3, max_retries=3)
     try:
         yield driver
     finally:
@@ -220,8 +228,9 @@ def driver_sender():
 
 @pytest.fixture(scope="session")
 def driver_receiver():
-    """ 启动接收方设备 """
+    """ 启动接收方设备 (Session 级别，热启动模式下保持存活) """
     driver = DriverFactory.get_driver('receiver')
+    MainPage(driver).go_to_main_page(timeout=0.3, max_retries=3)
     try:
         yield driver
     finally:

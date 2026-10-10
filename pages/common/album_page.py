@@ -241,38 +241,64 @@ class CommonAlbumPage(BasePage):
         return videos if videos else []
 
     # 相册-仅勾选纯图片按钮
-    def click_only_photo_checkbox_by_index(self, index: int = 0) -> None:
+    def click_only_photo_checkbox_by_index(self, index: int = 0, max_swipes: int = 5) -> None:
         """
-        按照索引仅勾选纯图片按钮
+        按照索引仅勾选纯图片按钮 (支持首屏无纯图片时自动滑动翻页检索)
         Args:
             index: 纯图片索引，0 为第一张
+            max_swipes: 首屏未找到时最大向上滑动查找屏数，默认 5 屏
         """
-        logger.info(f"⚙️ [CommonAlbumPage] 准备勾选纯图片第 {index + 1} 张")
-        check_btns = self.find_elements(CommonAlbumLocator.PHOTO_CHECK_BUTTON_NOT_MEDIA, timeout=3, expect_missing=True)
+        logger.info(f"⚙️ [CommonAlbumPage] 准备勾选纯图片第 {index + 1} 张 (最大滑动探测: {max_swipes} 屏)")
+        check_btns = self.find_elements(CommonAlbumLocator.PHOTO_CHECK_BUTTON_NOT_MEDIA, timeout=2, expect_missing=True)
+
+        swipe_count = 0
+        while not check_btns and swipe_count < max_swipes:
+            swipe_count += 1
+            logger.info(f"🔄 [CommonAlbumPage] 当前页面未检测到纯图片，执行手指上滑翻页检索 (第 {swipe_count}/{max_swipes} 屏)...")
+            self.swipe_page(slid_type="up", duration=600, times=1, toptime=50)
+            time.sleep(0.5)
+            check_btns = self.find_elements(CommonAlbumLocator.PHOTO_CHECK_BUTTON_NOT_MEDIA, timeout=2, expect_missing=True)
+            if check_btns:
+                logger.info(f"✅ [CommonAlbumPage] 滑动后成功检测到 {len(check_btns)} 个纯图片资源！")
+                break
+
         if not check_btns:
-            raise RuntimeError("❌ [CommonAlbumPage] 未能在相册中找到任何仅纯图片勾选圈！")
-            
+            raise RuntimeError(f"❌ [CommonAlbumPage] 检索 {max_swipes} 屏后，相册中仍未找到任何纯图片资源！")
+
         if abs(index) >= len(check_btns):
-            logger.warning(f"⚠️ [CommonAlbumPage] 勾选仅图片索引 {index} 溢出，降级勾选第一张")
+            logger.warning(f"⚠️ [CommonAlbumPage] 勾选仅图片索引 {index} 溢出 (当前可见 {len(check_btns)} 个)，降级勾选第一张")
             index = 0
         logger.info(f"✅ [CommonAlbumPage] 执行勾选第 {index + 1} 张纯图片")
         check_btns[index].click()
         time.sleep(0.1)
 
     # 相册-仅勾选视频按钮
-    def click_only_video_checkbox_by_index(self, index: int = 0) -> None:
+    def click_only_video_checkbox_by_index(self, index: int = 0, max_swipes: int = 6) -> None:
         """
-        按照索引仅勾选视频按钮
+        按照索引仅勾选视频按钮 (支持当前页无视频时自动滑动翻页检索)
         Args:
             index: 视频索引，0 为第一个
+            max_swipes: 当前页面未找到视频时，最大向上滑动检索屏数 (默认 6 屏)
         """
-        logger.info(f"⚙️ [CommonAlbumPage] 准备勾选视频第 {index + 1} 个")
-        check_btns = self.find_elements(CommonAlbumLocator.PHOTO_CHECK_BUTTON_VIDEO, timeout=3, expect_missing=True)
+        logger.info(f"⚙️ [CommonAlbumPage] 准备勾选视频第 {index + 1} 个 (最大滑动探测: {max_swipes} 屏)")
+        check_btns = self.find_elements(CommonAlbumLocator.PHOTO_CHECK_BUTTON_VIDEO, timeout=2, expect_missing=True)
+
+        swipe_count = 0
+        while not check_btns and swipe_count < max_swipes:
+            swipe_count += 1
+            logger.info(f"🔄 [CommonAlbumPage] 当前页面未检测到视频，执行手指上滑翻页检索 (第 {swipe_count}/{max_swipes} 屏)...")
+            self.swipe_page(slid_type="up", duration=600, times=1, toptime=50)
+            time.sleep(0.5)
+            check_btns = self.find_elements(CommonAlbumLocator.PHOTO_CHECK_BUTTON_VIDEO, timeout=2, expect_missing=True)
+            if check_btns:
+                logger.info(f"✅ [CommonAlbumPage] 滑动翻页后成功检测到 {len(check_btns)} 个视频资源！")
+                break
+
         if not check_btns:
-            raise RuntimeError("❌ [CommonAlbumPage] 未能在相册中找到任何仅视频勾选圈！")
-            
+            raise RuntimeError(f"❌ [CommonAlbumPage] 连续检索 {max_swipes} 屏后，相册中仍未找到任何视频资源！请确保设备相册中预置了视频文件。")
+
         if abs(index) >= len(check_btns):
-            logger.warning(f"⚠️ [CommonAlbumPage] 勾选仅视频索引 {index} 溢出，降级勾选第一个")
+            logger.warning(f"⚠️ [CommonAlbumPage] 勾选仅视频索引 {index} 溢出 (当前可见 {len(check_btns)} 个)，降级勾选第 1 个视频")
             index = 0
         logger.info(f"✅ [CommonAlbumPage] 执行勾选第 {index + 1} 个视频")
         check_btns[index].click()

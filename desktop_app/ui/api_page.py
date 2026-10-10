@@ -10,12 +10,23 @@
 4. 中间配置区：WebSocket 长连接配置 (支持建立握手) + Locust 并发消息压力测试 (支持动态压力模拟)
 5. 下方协议套件：IM 专项协议测试套件 (协议鉴权、链路维持、顺序一致性、离线补偿、高并发性能)
 """
+import os
+import sys
 import random
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QFrame, QScrollArea, QSpinBox, QMessageBox
 )
 from PyQt6.QtCore import Qt, QTimer
+_CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(_CURRENT_DIR))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
+try:
+    from ..core.report_scanner import get_reports_count
+except (ImportError, ValueError):
+    from desktop_app.core.report_scanner import get_reports_count
 
 class MetricCard(QFrame):
     """指标展示卡片"""
@@ -185,7 +196,7 @@ class ApiPage(QWidget):
         sep2.setStyleSheet("color: #cbd5e1;")
         pg_layout.addWidget(sep2)
 
-        lbl_rep = QLabel("📑 报告: 5 份")
+        lbl_rep = QLabel(f"📑 报告: {get_reports_count()} 份")
         lbl_rep.setStyleSheet("color: #7c3aed; font-weight: 700; font-size: 12px;")
         pg_layout.addWidget(lbl_rep)
 

@@ -8,8 +8,50 @@
 2. 皇家典雅睿智蓝 (#2563eb)、极光翡翠绿 (#059669)、焦糖琥珀橙 (#d97706)、胭脂霓虹红 (#e11d48)
 3. 细致圆角、精美表单阴影与高对比度极客终端
 """
+import os
+import sys
 
-ELEMENT_PLUS_LIGHT_QSS = """
+_CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+_RESOURCES_DIR = os.path.join(_CURRENT_DIR, "resources")
+
+
+def _get_or_create_arrow_icons() -> tuple[str, str]:
+    """获取或自愈生成下拉箭头高清图标绝对路径 (支持 Windows 正斜杠标准 URL 规范)"""
+    os.makedirs(_RESOURCES_DIR, exist_ok=True)
+    icon_normal = os.path.join(_RESOURCES_DIR, "chevron_down.png").replace("\\", "/")
+    icon_hover = os.path.join(_RESOURCES_DIR, "chevron_down_hover.png").replace("\\", "/")
+
+    # 若资源文件缺失，执行极速自愈生成 (确保打包及各环境下 100% 可用)
+    if not (os.path.exists(icon_normal) and os.path.exists(icon_hover)):
+        try:
+            from PyQt6.QtGui import QImage, QPainter, QPen, QColor, QPainterPath
+            from PyQt6.QtCore import Qt, QPointF
+            for path, hex_col in [(icon_normal, "#64748b"), (icon_hover, "#2563eb")]:
+                img = QImage(32, 32, QImage.Format.Format_ARGB32_Premultiplied)
+                img.fill(Qt.GlobalColor.transparent)
+                p = QPainter(img)
+                p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+                pen = QPen(QColor(hex_col))
+                pen.setWidthF(3.2)
+                pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+                pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+                p.setPen(pen)
+                pth = QPainterPath()
+                pth.moveTo(QPointF(9.0, 12.5))
+                pth.lineTo(QPointF(16.0, 20.0))
+                pth.lineTo(QPointF(23.0, 12.5))
+                p.drawPath(pth)
+                p.end()
+                img.save(path, "PNG")
+        except Exception:
+            pass
+
+    return icon_normal, icon_hover
+
+
+_ARROW_ICON, _ARROW_HOVER_ICON = _get_or_create_arrow_icons()
+
+ELEMENT_PLUS_LIGHT_QSS_RAW = """
 /* 全局基础设置 */
 QWidget {
     background-color: #f1f5f9;
@@ -147,8 +189,8 @@ QFrame.segmented-box {
     padding: 2px 4px;
 }
 
-/* 表单输入与下拉 */
-QLineEdit, QComboBox, QSpinBox {
+/* 表单基础输入与微调框 */
+QLineEdit, QSpinBox {
     background-color: #ffffff;
     border: 1px solid #cbd5e1;
     border-radius: 6px;
@@ -158,26 +200,103 @@ QLineEdit, QComboBox, QSpinBox {
     selection-color: #ffffff;
 }
 
-QLineEdit:focus, QComboBox:focus, QSpinBox:focus {
+QLineEdit:focus, QSpinBox:focus {
     border: 1px solid #2563eb;
     background-color: #ffffff;
 }
 
+/* ==================== 2.2 下拉选择框 QComboBox 深度美化 (Element Plus 原生级质感) ==================== */
+QComboBox {
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 5px 28px 5px 10px;
+    color: #0f172a;
+    font-size: 13px;
+    min-height: 22px;
+}
+
+QComboBox:hover {
+    border-color: #94a3b8;
+}
+
+QComboBox:focus, QComboBox:on {
+    border: 1px solid #2563eb;
+    background-color: #ffffff;
+}
+
+/* 可编辑模式适配：清除内部 QLineEdit 重叠边框并保障文字清晰展示 */
+QComboBox:editable {
+    background-color: #ffffff;
+}
+
+QComboBox:editable QLineEdit {
+    background: transparent;
+    border: none;
+    color: #0f172a;
+    padding: 0px 4px;
+    font-size: 13px;
+}
+
+/* 下拉按钮触发区：高辨识度独立按钮区块，自带精致左分割线与浅灰背景 */
 QComboBox::drop-down {
     subcontrol-origin: padding;
     subcontrol-position: top right;
-    width: 24px;
-    border-left: none;
+    width: 26px;
+    border-left: 1px solid #e2e8f0;
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+    background-color: #f8fafc;
 }
 
+QComboBox::drop-down:hover {
+    background-color: #e2e8f0;
+}
+
+QComboBox::drop-down:pressed, QComboBox::drop-down:on {
+    background-color: #dbeafe;
+}
+
+/* 下拉核心箭头：高清矢量向下 Chevron，悬停/展开时主色蓝高亮反馈 */
+QComboBox::down-arrow {
+    image: url("__ARROW_ICON__");
+    width: 14px;
+    height: 14px;
+}
+
+QComboBox::down-arrow:hover, QComboBox::down-arrow:on {
+    image: url("__ARROW_HOVER_ICON__");
+    width: 14px;
+    height: 14px;
+}
+
+/* 下拉菜单浮层 (Element Plus 浮层卡片设计) */
 QComboBox QAbstractItemView {
     background-color: #ffffff;
     border: 1px solid #cbd5e1;
+    border-radius: 6px;
     selection-background-color: #eff6ff;
     selection-color: #2563eb;
     color: #0f172a;
     padding: 4px;
-    border-radius: 6px;
+    outline: none;
+}
+
+QComboBox QAbstractItemView::item {
+    min-height: 28px;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+QComboBox QAbstractItemView::item:hover {
+    background-color: #f1f5f9;
+    color: #2563eb;
+}
+
+QComboBox QAbstractItemView::item:selected {
+    background-color: #eff6ff;
+    color: #2563eb;
+    font-weight: 600;
 }
 
 /* ==================== 3. 按钮规范 (Element Plus 体系) ==================== */
@@ -309,6 +428,23 @@ QPushButton.tree-pill-btn-class:hover {
     border-color: #fde68a;
 }
 
+QPushButton.tree-pill-btn-doc {
+    background-color: #f8fafc;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    border-radius: 11px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 0px 6px;
+    margin: 0px;
+    text-align: center;
+}
+QPushButton.tree-pill-btn-doc:hover {
+    background-color: #eff6ff;
+    color: #2563eb;
+    border-color: #93c5fd;
+}
+
 QPushButton.tree-pill-btn-file {
     background-color: #ffffff;
     color: #334155;
@@ -433,6 +569,13 @@ QSplitter::handle:pressed {
     background-color: #1d4ed8;
 }
 """
+
+# 动态编译渲染样式表，注入高清矢量箭头图标
+ELEMENT_PLUS_LIGHT_QSS = ELEMENT_PLUS_LIGHT_QSS_RAW.replace(
+    "__ARROW_ICON__", _ARROW_ICON
+).replace(
+    "__ARROW_HOVER_ICON__", _ARROW_HOVER_ICON
+)
 
 # 保持桌面入口与历史主题名称兼容
 LIGHT_LUXURY_QSS = ELEMENT_PLUS_LIGHT_QSS

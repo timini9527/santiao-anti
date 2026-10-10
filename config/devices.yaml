@@ -23,7 +23,7 @@ app:
   "noReset": true                                   # 保持应用状态 (针对 Appium 1.x 兼容)
   "appium:fullReset": false                         # 强制完全重置 (针对 Appium 2.x)
   "fullReset": false                                # 强制完全重置 (针对 Appium 1.x 兼容)
-  "appium:forceAppLaunch": true
+  "appium:forceAppLaunch": false                    # 热启动模式：禁止强杀 App，支持已有会话与进程热附加 (true: 强杀重启, false: 热启动保持)
   "appium:autoGrantPermissions": true               # 自动授予应用所需权限 (true: 自动, false: 手动)
   "appium:dontStopAppOnReset": true                 # 热启动模式 (true: 不停止 App, false: 强杀并重启)
   # --- 启动提速与运行优化 ---

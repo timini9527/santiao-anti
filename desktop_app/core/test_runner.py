@@ -25,7 +25,6 @@ from web_platform.backend.paths import (
     REPORTS_DIR,
     ALLURE_CLI_DIR
 )
-from web_platform.backend.runner import auto_detect_system_java_home
 
 # 国际标准 ANSI / VT100 转义控制序列与不可打印字符匹配正则
 ANSI_ESCAPE_RE = re.compile(
@@ -80,6 +79,8 @@ class TestExecutionWorker(QThread):
         self.log_signal.emit(f"  接收端设备: {self.config.get('remote_udid2')} (Appium: {self.config.get('remote_appium2')})")
         self.log_signal.emit(f"  私聊好友: {self.config.get('private_chat_name')} | 群聊好友: {self.config.get('group_chat_name')}")
         self.log_signal.emit(f"  调试模式: {'开启 (失败保持现场)' if self.config.get('debug_mode') else '关闭'}")
+        if self.config.get("web_receipt_data"):
+            self.log_signal.emit(f"  Web 回执: {self.config.get('web_receipt_data')}")
         self.log_signal.emit(f"==================================================\n")
 
         # 准备 Allure 结果目录
@@ -119,10 +120,12 @@ class TestExecutionWorker(QThread):
             env["DEBUG_MODE"] = "1"
         if self.config.get("env"):
             env["TEST_ENV"] = self.config["env"]
+        if self.config.get("web_receipt_data"):
+            env["WEB_RECEIPT_DATA"] = self.config["web_receipt_data"]
 
-        # 动态定位真实的 Python 解释器（基于 SmartPathResolver 多级雷达扫描：便携运行时/虚拟环境/系统安装/注册表/PATH）
-        runtime_info = SmartPathResolver.discover_python_runtime()
-        py_bin = runtime_info.get("executable") or sys.executable or "python"
+        # 智能动态定位真实的 Python 解释器（基于 SmartPathResolver 多级雷达探测）
+        py_info = SmartPathResolver.discover_python_runtime()
+        py_bin = py_info.get("executable") or (sys.executable if not getattr(sys, 'frozen', False) else "python")
 
         # 若命中内置便携环境，确保将其 Scripts 与根目录注入 PATH 最前列
         py_home = os.path.dirname(os.path.abspath(py_bin))
@@ -200,7 +203,9 @@ class TestExecutionWorker(QThread):
         """自动定位 Java 环境与 Allure CLI 并编译报告"""
         allure_info = SmartPathResolver.discover_allure_cli()
         allure_bin = allure_info.get("executable")
-        java_home = auto_detect_system_java_home()
+        if not allure_bin or not os.path.exists(allure_bin):
+            allure_bin = os.path.join(ALLURE_CLI_DIR, "bin", "allure.bat" if sys.platform == "win32" else "allure")
+        java_home = SmartPathResolver.discover_java_home()
         
         gen_env = os.environ.copy()
         if java_home:
