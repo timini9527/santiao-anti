@@ -2,9 +2,9 @@
   "mobile": {
     "os_type": "Win",
     "remote_appium": "172.18.0.1:4723 (局域网本机)",
-    "remote_udid": "nzwcvo9ls87hws7t",
+    "remote_udid": "",
     "remote_appium2": "172.18.0.1:4724 (局域网本机)",
-    "remote_udid2": "3865BN02GU600000",
+    "remote_udid2": "",
     "private_chat_name": "",
     "group_chat_name": "",
     "env": "dev",

@@ -12,7 +12,6 @@
 import os
 import sys
 import time
-import time
 import shutil
 import subprocess
 
@@ -31,11 +30,6 @@ if PROJECT_ROOT not in sys.path:
 
 from desktop_app.core.path_resolver import SmartPathResolver
 PROJECT_ROOT = SmartPathResolver.get_project_root()
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
-
-from desktop_app.core.path_resolver import SmartPathResolver
-PROJECT_ROOT = SmartPathResolver.get_project_root()
 
 # ==============================================================================
 # 核心打包配置开关
@@ -43,8 +37,8 @@ PROJECT_ROOT = SmartPathResolver.get_project_root()
 # 控制是否编译生成 Inno Setup 单文件安装包 (SetupInstaller/Santiao_IM_Native_Setup_v0.9.9.exe)
 # - True  : 完整全量流水线 (PyInstaller 打包 -> 核心资产加密脱敏 -> Inno Setup 编译生成单文件安装包)
 # - False : 仅执行 PyInstaller 打包 (输出 dist/三条IM自动化测试控制台 绿色运行目录，跳过加密与安装包制作，极速秒级构建)
-BUILD_INSTALLER = False
-# BUILD_INSTALLER = True
+# BUILD_INSTALLER = False
+BUILD_INSTALLER = True
 
 
 def sanitize_build_environment() -> dict:
@@ -98,6 +92,27 @@ def post_build_cleanup(dist_app_dir: str):
             except Exception as e:
                 print(f"[产物净化] 清理 {dll_name} 提示: {e}")
 
+
+def ensure_clean_native_build(dist_app_dir: str):
+    """
+    确保普通 build 绿色产物目录极致纯净：严格仅保留 `_internal` 运行时文件夹与主程序 `三条IM自动化测试控制台.exe`。
+    若存在任何历史遗留的测试业务文件夹（tests、pages 等）或配置文件，自动清空，完全契合纯净应用分发标准。
+    """
+    if not os.path.isdir(dist_app_dir):
+        return
+    allowed_items = {"_internal", "三条IM自动化测试控制台.exe"}
+    for item in os.listdir(dist_app_dir):
+        if item in allowed_items:
+            continue
+        target_path = os.path.join(dist_app_dir, item)
+        try:
+            if os.path.isdir(target_path):
+                shutil.rmtree(target_path, ignore_errors=True)
+            else:
+                os.remove(target_path)
+            print(f"[纯净净化] 已自动剔除多余文件/目录: {item}")
+        except Exception as e:
+            print(f"[纯净提示] 清理 {item} 提示: {e}")
 
 
 def generate_inno_setup_script(output_dir: str, encrypted_dir: str = None, install_password: str = ""):
@@ -154,7 +169,7 @@ OutputDir={output_dir}\\SetupInstaller
 OutputBaseFilename=Santiao_IM_Native_Setup_v0.9.9
 Compression=lzma2/fast
 SolidCompression=yes
-ArchitecturesInstallIn64BitMode=x64
+ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=lowest
 ; 显式开启路径选择页面，允许用户在安装向导中点击【浏览】自由选择安装到任意磁盘目录
 DisableDirPage=no
@@ -391,20 +406,28 @@ def build(build_installer: bool = BUILD_INSTALLER):
         print(f" 主程序文件: {os.path.join(app_output_dir, '三条IM自动化测试控制台.exe')}")
         print(f" 安装包配置脚本: {os.path.join(CURRENT_DIR, 'installer.iss')}")
         if installer_built and os.path.isfile(setup_exe):
-            print(f" 终极单文件安装包: {setup_exe}")
+            size_mb = round(os.path.getsize(setup_exe) / (1024 * 1024), 2)
+            print(f" 终极单文件安装包: {setup_exe} (体积: {size_mb} MB)")
+            # 同时在 dist/ 根目录生成一份直达副本，方便用户直接获取与分发
+            root_setup_exe = os.path.join(dist_dir, "Santiao_IM_Native_Setup_v0.9.9.exe")
+            try:
+                shutil.copy2(setup_exe, root_setup_exe)
+                print(f" 便捷安装包直达: {root_setup_exe}")
+            except Exception:
+                pass
         else:
             print(" 终极单文件安装包: 未生成 (请检查 Inno Setup 编译器环境)")
         print("==================================================")
     else:
-        # 4. 同步测试用例、配置、数据与业务层至本地绿色运行目录，并生成索引
-        sync_portable_assets(app_output_dir)
+        # 4. 纯净应用编译模式：严格仅保留主程序与 _internal 运行时，杜绝多余业务目录
+        ensure_clean_native_build(app_output_dir)
 
         print("\n==================================================")
-        print(" [成功] 本地桌面端核心程序编译完成！")
+        print(" [成功] 本地桌面端纯净独立版编译完成！")
         print(f" 输出目录: {app_output_dir}")
         print(f" 主程序文件: {os.path.join(app_output_dir, '三条IM自动化测试控制台.exe')}")
-        print(" 说明: 当前为纯净应用编译模式 (仅生成主程序与 _internal 运行时，未平铺解压测试业务库)")
-        print(" 提示: 如需将测试业务库打入单文件安装包，可追加参数 --installer")
+        print(" 目录结构: 仅包含 '_internal' 文件夹与 '三条IM自动化测试控制台.exe' (极致精简无多余文件)")
+        print(" 安装提示: 完整的测试业务库与执行环境将在生成 Setup 安装包后通过安装向导自动释放")
         print("==================================================")
 
     # 深度清理打包过程中的临时工作目录与 .spec 临时文件，彻底根除根目录多余文件
@@ -412,7 +435,7 @@ def build(build_installer: bool = BUILD_INSTALLER):
 
 
 def clean_temp_build_artifacts(build_dir: str):
-    """自动清理 PyInstaller 产生的临时中间目录 (build_native) 与临时 .spec 文件"""
+    """自动清理 PyInstaller 产生的临时中间目录 (build_native)、加密暂存目录与临时 .spec 文件"""
     if os.path.exists(build_dir):
         try:
             shutil.rmtree(build_dir, ignore_errors=True)
@@ -427,6 +450,15 @@ def clean_temp_build_artifacts(build_dir: str):
                 os.remove(spec_path)
             except Exception:
                 pass
+
+    # 清理加密资产暂存目录
+    enc_dir = os.path.join(PROJECT_ROOT, "dist", "encrypted_release")
+    if os.path.exists(enc_dir):
+        try:
+            shutil.rmtree(enc_dir, ignore_errors=True)
+            print("[环境净化] 已自动清理加密资产编译暂存目录: encrypted_release")
+        except Exception:
+            pass
 
     waste_temp = os.path.join(PROJECT_ROOT, "temp_dist_core")
     if os.path.exists(waste_temp):
