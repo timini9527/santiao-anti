@@ -207,11 +207,11 @@ class OtherPage(PersonalPage, CommonPage):
         """点击列表中的某一项，选择地区"""
         logger.info(f"[Action] 准备选择地区: {area_name}")
         uiautomator = (AppiumBy.ANDROID_UIAUTOMATOR, f'new UiSelector().text("{area_name}")')
-        ele = self.find_element(uiautomator)
+        ele = self.find_element(uiautomator, timeout=1.5)
         if ele is None:
             while max_retry > 0:
                 self.swipe_page(slid_type='up', duration=500)
-                are = self.find_element(uiautomator)
+                are = self.find_element(uiautomator, timeout=1.5)
                 if are is not None:
                     logger.info(f"[Action] 在列表已找到地区并点击: {area_name}")
                     are.click()
@@ -224,6 +224,19 @@ class OtherPage(PersonalPage, CommonPage):
             logger.info(f"[Action] 点击当前可视区地区: {area_name}")
             ele.click()
         time.sleep(0.5)
+
+    # 完整设置所在地业务闭环
+    def set_location(self, province: str, city: str) -> None:
+        """
+        设置所在地完整业务闭环：
+        点击进入所在地 -> 级联选择省份 -> 级联选择城市 (保存) -> 智能等待平滑回退至个人主页
+        """
+        logger.info(f"⚙️ [Action] 设置所在地为: {province} {city}")
+        self.click_location()
+        self.select_area(province)
+        self.select_area(city)
+        # 智能等待平滑回退到个人信息主页，确保服务端落盘与主页元素就绪
+        self.back_to_personal_info(max_retry=3)
 
     # 获取地区名称
     def get_area_name(self) -> str:

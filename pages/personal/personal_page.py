@@ -95,7 +95,7 @@ class PersonalPage(BasePage):
         """ 获取详细值 0-手机号，1-三条ID，2-二维码，3-性别，4-邮箱，5-所在地 """
         logger.info(f"🧐 [Action - Personal] 获取详细值 [index={index}]")
         try:
-            values = self.find_elements(PersonalLocator.DETAIL_VALUE)
+            values = self.find_elements(PersonalLocator.DETAIL_VALUE, timeout=1.5)
 
             if not values:
                 logger.error("[Assert - Personal] 未找到任何详细值元素")

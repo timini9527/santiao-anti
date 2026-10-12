@@ -212,28 +212,52 @@ class TestOther:
                     current_email = self.otherPage.get_email()
                     assert current_email == pre_email, f"非法数据被写入！原始邮箱 '{pre_email}' 被篡改为 '{current_email}'"
 
-    # 需要改善
-    @allure.step("地区")
-    @pytest.mark.skip("待完善")
+    @allure.story("修改所在地")
     @pytest.mark.parametrize(
         "area_cases",
-        load_csv_data('personal/area_data.csv'),
-        ids=lambda x: f"{x.get('id', '')}_{x.get('expected', '')}",
+        # 典型场景抽样：覆盖常规省市(安徽)、省会(合肥)、直辖市(北京/重庆)等核心场景，避免全量穷举导致超时与Flaky
+        [row for row in load_csv_data('personal/area_data.csv') if row.get('id') in ('1', '9', '25', '32', '40', '50')],
+        ids=lambda x: f"{x.get('id', '')}_{x.get('province', '')}_{x.get('city', '')}",
     )
     def test_area(self, area_cases):
-        logger.info(f"🚀 邮箱测试用例：{area_cases['id']} - {area_cases['expected']}")
-        self.otherPage.click_location()
-        self.otherPage.select_area(area_cases['province'])
-        self.otherPage.select_area(area_cases['city'])
-        area = self.otherPage.get_area_name()
-        assert area == area_cases['expected'], f"❌ 测试用例：期望值为：{area_cases['expected']} - 实际值为：{area}"
+        case_id = area_cases['id']
+        province = area_cases['province']
+        city = area_cases['city']
+        expected_area = area_cases['expected']
 
-    # 抽样测试
-    # self.otherPage.select_area('浙江')
-    # self.otherPage.select_area('杭州')
-    # self.otherPage.select_area('四川')
-    # self.otherPage.select_area('遂宁')
-    # self.otherPage.select_area('重庆')
-    # self.otherPage.select_area('丰都')
-    # self.otherPage.select_area('重庆1')
-    # self.otherPage.select_area('丰都1')
+        allure.dynamic.title(f"[{case_id}] 验证设置所在地为: {expected_area}")
+        logger.info(f"🚀 开始执行所在地测试用例：[{case_id}] {province} -> {city} | 期望值: '{expected_area}'")
+
+        with allure.step(f"1. 进入所在地并级联选择: {province} -> {city} (触发保存闭环)"):
+            self.otherPage.set_location(province, city)
+
+        with allure.step(f"2. 校验个人信息主页所在地正确保存并展示: '{expected_area}'"):
+            actual_area = self.otherPage.get_area_name()
+            assert actual_area == expected_area, (
+                f"❌ 所在地保存后数据不一致！期望值: '{expected_area}', 实际值: '{actual_area}'"
+            )
+
+    @allure.story("地区数据抓取与归档")
+    @allure.title("从APP端自动爬取全部省市数据并导出保存至CSV文件")
+    # @pytest.mark.skip(reason="手工与数据维护用例：用于从APP端全量抓取省市字典并归档到CSV，常规自动化测试默认跳过")
+    def test_crawl_and_save_area_to_csv(self):
+        """
+        地区数据抓取归档专项用例：
+        自动遍历 APP 个人资料所在地中的全部省市级联列表，生成并导出最新的 area_data.csv
+        """
+        import os
+        from utils.file_reader.csv_handler import RegionCrawler
+
+        logger.info("🚀 启动地区字典数据全量抓取与归档任务...")
+        with allure.step("1. 点击进入所在地选择页面"):
+            self.otherPage.click_location()
+
+        with allure.step("2. 执行级联遍历并写入保存至 CSV 文件"):
+            crawler = RegionCrawler(self.otherPage.driver)
+            output_file = crawler.crawl()
+            self.otherPage.back_to_personal_info()
+
+        with allure.step("3. 校验导出的 CSV 文件有效性与数据落盘"):
+            assert os.path.exists(output_file), f"CSV 导出文件不存在: {output_file}"
+            assert os.path.getsize(output_file) > 0, "导出的 CSV 文件为空！"
+            logger.info(f"✅ 地区数据成功抓取并保存至文件: {output_file}")

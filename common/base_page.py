@@ -61,7 +61,7 @@ class BasePage:
         return element
 
     @catch_elements_exception
-    def find_elements(self, locator: tuple, condition: str = 'visibility', timeout: int = 10,
+    def find_elements(self, locator: tuple, condition: str = 'visibility', timeout: int | float = 10,
                       raise_exception: bool = True, expect_missing: bool = False) -> list[WebElement]:
         """
         查找并返回元素，用于后续查询判断
