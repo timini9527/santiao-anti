@@ -2,9 +2,9 @@
   "mobile": {
     "os_type": "Win",
     "remote_appium": "172.18.0.1:4723 (局域网本机)",
-    "remote_udid": "",
+    "remote_udid": "nzwcvo9ls87hws7t",
     "remote_appium2": "172.18.0.1:4724 (局域网本机)",
-    "remote_udid2": "",
+    "remote_udid2": "3B65BN02GU600000",
     "private_chat_name": "",
     "group_chat_name": "",
     "env": "dev",
@@ -13,12 +13,12 @@
     "selected_test_file": "",
     "auto_scroll_log": false,
     "splitter_h_sizes": [
-      611,
-      1209
+      638,
+      1182
     ],
     "splitter_v_sizes": [
-      513,
-      400
+      512,
+      401
     ],
     "log_collapsed": false,
     "last_log_height": 400,
@@ -57,7 +57,7 @@
   },
   "window": {
     "x": 326,
-    "y": 117,
+    "y": 427,
     "width": 1406,
     "height": 864,
     "maximized": true

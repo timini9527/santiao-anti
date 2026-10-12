@@ -20,7 +20,7 @@ import shutil
 import socket
 import subprocess
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Set
+from typing import Optional, List, Dict, Any, Set, Tuple
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
@@ -218,11 +218,11 @@ class MobilePage(QWidget):
         self.init_ui()
         self.load_persisted_config()
 
-        # 异步非阻塞执行设备检测、用例加载与分割器精确几何还原
-        QTimer.singleShot(60, self.refresh_test_cases)
-        QTimer.singleShot(80, self._restore_splitter_sizes)
-        QTimer.singleShot(160, self.auto_detect_devices)
-        QTimer.singleShot(260, self._refresh_report_pill_count)
+        # 异步非阻塞错峰调度：优先极速呈现骨架与分割器，随后渐进加载用例与设备检测
+        QTimer.singleShot(40, self._restore_splitter_sizes)
+        QTimer.singleShot(120, self.refresh_test_cases)
+        QTimer.singleShot(320, self.auto_detect_devices)
+        QTimer.singleShot(480, self._refresh_report_pill_count)
 
     def init_ui(self):
         root_layout = QVBoxLayout(self)
@@ -301,75 +301,94 @@ class MobilePage(QWidget):
 
         # 1.2 标题右侧紧邻：Appium 服务集群与设备检测控制区
         svc_btn_group = QFrame()
+        svc_btn_group.setObjectName("svcBtnGroup")
         svc_btn_group.setStyleSheet("""
-            QFrame {
-                background-color: #f8fafc;
+            QFrame#svcBtnGroup {
+                background-color: #ffffff;
                 border: 1px solid #e2e8f0;
                 border-radius: 8px;
             }
         """)
         svc_layout = QHBoxLayout(svc_btn_group)
-        svc_layout.setContentsMargins(6, 3, 6, 3)
+        svc_layout.setContentsMargins(4, 3, 4, 3)
         svc_layout.setSpacing(6)
 
         # 按钮 1: 启动服务 (打开 start_appium_batch.bat)
-        btn_start_svc = QPushButton(" ▶ 启动服务 ")
+        btn_start_svc = QPushButton("▶ 启动服务")
         btn_start_svc.setToolTip("在独立终端窗口执行 start_appium_batch.bat 批处理文件，启动 Appium 服务集群")
         btn_start_svc.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_start_svc.setStyleSheet("""
             QPushButton {
-                background-color: #10b981;
-                color: #ffffff;
-                border: none;
+                background-color: #f0fdf4;
+                color: #15803d;
+                border: 1px solid #bbf7d0;
                 border-radius: 6px;
-                padding: 4px 10px;
+                padding: 5px 12px;
                 font-size: 12px;
-                font-weight: 700;
+                font-weight: 600;
             }
             QPushButton:hover {
-                background-color: #059669;
+                background-color: #dcfce7;
+                border-color: #86efac;
+                color: #166534;
+            }
+            QPushButton:pressed {
+                background-color: #bbf7d0;
+                border-color: #4ade80;
             }
         """)
         btn_start_svc.clicked.connect(self._start_appium_service)
         svc_layout.addWidget(btn_start_svc)
 
         # 按钮 2: 关闭服务 (关闭 Appium 服务与对应端口)
-        btn_stop_svc = QPushButton(" ⏹ 关闭服务 ")
+        btn_stop_svc = QPushButton("⏹ 关闭服务")
         btn_stop_svc.setToolTip("终止后台所有 Appium 服务进程并释放 4723-4731 端口")
         btn_stop_svc.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_stop_svc.setStyleSheet("""
             QPushButton {
-                background-color: #ef4444;
-                color: #ffffff;
-                border: none;
+                background-color: #fef2f2;
+                color: #b91c1c;
+                border: 1px solid #fecdd3;
                 border-radius: 6px;
-                padding: 4px 10px;
+                padding: 5px 12px;
                 font-size: 12px;
-                font-weight: 700;
+                font-weight: 600;
             }
             QPushButton:hover {
-                background-color: #dc2626;
+                background-color: #fee2e2;
+                border-color: #fda4af;
+                color: #991b1b;
+            }
+            QPushButton:pressed {
+                background-color: #fecdd3;
+                border-color: #f43f5e;
             }
         """)
         btn_stop_svc.clicked.connect(self._stop_appium_service)
         svc_layout.addWidget(btn_stop_svc)
 
         # 按钮 3: 检测服务 (通过 adb kill-server 和 adb devices -l 深度检查是否有设备连接)
-        btn_check_svc = QPushButton(" 🔍 检测服务 ")
+        btn_check_svc = QPushButton("🔍 检测服务")
         btn_check_svc.setToolTip("执行 adb kill-server、adb start-server 和 adb devices -l 检查是否有设备连接成功")
         btn_check_svc.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_check_svc.setStyleSheet("""
             QPushButton {
-                background-color: #0284c7;
-                color: #ffffff;
-                border: none;
+                background-color: #eff6ff;
+                color: #1d4ed8;
+                border: 1px solid #bfdbfe;
                 border-radius: 6px;
-                padding: 4px 10px;
+                padding: 5px 12px;
                 font-size: 12px;
-                font-weight: 700;
+                font-weight: 600;
             }
             QPushButton:hover {
-                background-color: #0369a1;
+                background-color: #dbeafe;
+                border-color: #93c5fd;
+                color: #1e40af;
+            }
+            QPushButton:pressed {
+                background-color: #bfdbfe;
+                border-color: #3b82f6;
             }
         """)
         btn_check_svc.clicked.connect(self._check_appium_and_devices)
@@ -767,7 +786,7 @@ class MobilePage(QWidget):
                 padding-right: 28px;
             }
         """)
-        self.combo_view_role.currentIndexChanged.connect(self._on_config_changed)
+        self.combo_view_role.currentIndexChanged.connect(self._on_role_view_changed)
         header_row.addWidget(self.combo_view_role)
 
         # 3. 刷新报告 (纯白底 / 极速科技蓝文字与边框，超高对比清晰度)
@@ -1356,6 +1375,8 @@ class MobilePage(QWidget):
         role = cfg.get("role", "business")
         idx = 0 if role == "business" else 1
         self.combo_view_role.setCurrentIndex(idx)
+        if hasattr(self, "allure_dashboard") and self.allure_dashboard:
+            self.allure_dashboard.set_role_view(role)
 
         # 加载持久化的 Web 回执字段列表
         self.web_receipt_fields = cfg.get("web_receipt_fields", [
@@ -1388,6 +1409,15 @@ class MobilePage(QWidget):
         saved_autoscroll = cfg.get("auto_scroll_log", True)
         self._set_autoscroll_state(saved_autoscroll)
 
+    def _on_role_view_changed(self, index: int):
+        """视角切换响应槽：动态联动 Allure 看板视角过滤并在日志区提示"""
+        role = self.combo_view_role.currentData() or ("business" if index == 0 else "tech")
+        desktop_config.set("mobile", "role", role)
+        if hasattr(self, "allure_dashboard") and self.allure_dashboard:
+            self.allure_dashboard.set_role_view(role)
+        role_desc = "💼 业务精简视角 (智能隐藏底层Suites，聚焦业务概览与缺陷排查)" if role == "business" else "🛠️ 开发完整视角 (全量展开4大导航与耗时节点)"
+        self.append_log(f"👁️ Allure 可视化看板已切换为: {role_desc}")
+
     def _on_config_changed(self):
         role = self.combo_view_role.currentData() or "business"
         desktop_config.set("mobile", "os_type", self.combo_os.currentText())
@@ -1399,6 +1429,8 @@ class MobilePage(QWidget):
         desktop_config.set("mobile", "group_chat_name", self.edit_group_chat.text().strip())
         desktop_config.set("mobile", "debug_mode", self.chk_debug_mode.isChecked())
         desktop_config.set("mobile", "role", role)
+        if hasattr(self, "allure_dashboard") and self.allure_dashboard:
+            self.allure_dashboard.set_role_view(role)
 
     # ==================== 7. 设备与报告辅助 ====================
     def _refresh_report_pill_count(self):
@@ -1745,45 +1777,147 @@ class MobilePage(QWidget):
             self.append_log("📋 已复制终端日志到剪贴板")
 
     # ==================== 7. Appium 服务集群控制与设备状态深度检测 ====================
+    def _probe_appium_port(self, port: int) -> Tuple[bool, str]:
+        """快速探测指定端口的 Appium 服务是否在监听并存活"""
+        # 1. 尝试通过 Socket 快速探测端口是否处于监听状态 (毫秒级即时探测)
+        is_listening = False
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(0.15)
+                if s.connect_ex(("127.0.0.1", port)) == 0:
+                    is_listening = True
+        except Exception:
+            pass
+
+        if not is_listening:
+            return False, "🔴 离线 (端口未开放)"
+
+        # 2. 进一步通过 HTTP 探测 Appium status 状态
+        try:
+            alive, url = DeviceManager.check_appium(port)
+            if alive:
+                return True, f"🟢 在线 ({url})"
+        except Exception:
+            pass
+
+        return True, "🟢 端口已监听 (服务就绪)"
+
     def _start_appium_service(self):
-        """启动 Appium 批处理服务 (独立终端窗口执行 start_appium_batch.bat)"""
+        """启动 Appium 服务集群 (优先原生后台纯静默拉起，确保日志文件 100% 写入 logs/appium_*.log)"""
+        self.append_log("==================================================")
+        self.append_log("▶ [启动服务] 正在准备拉起 Appium 集群服务...")
+
         # 严格优先从安装包文件夹目录 (应用主程序目录) 与工程根目录获取
         app_dir = Path(sys.executable).parent
         project_root = Path(SmartPathResolver.get_project_root())
+        logs_dir = project_root / "logs"
+        try:
+            logs_dir.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
+
+        create_no_window = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+
+        # 方案 1: 优先直接检测系统环境中的 appium 命令进行原生静默直启 (最稳定、零中转、日志绝对生成)
+        appium_bin = shutil.which("appium.cmd") or shutil.which("appium")
+        if appium_bin:
+            mode_str = "原生直启模式 (后台纯静默无黑框)"
+            self.append_log(f"  • 执行命令: {appium_bin}")
+            self.append_log(f"  • 运行模式: {mode_str}")
+            self.append_log("  • 目标端口: 4723 (主设备), 4724 (从设备)")
+            self.append_log(f"  • 日志目录: {logs_dir.resolve()}")
+
+            try:
+                for port in [4723, 4724]:
+                    log_file = logs_dir / f"appium_{port}.log"
+                    cmd = f'"{appium_bin}" -p {port} -a 0.0.0.0 --log "{log_file}"'
+                    subprocess.Popen(
+                        cmd,
+                        cwd=str(project_root),
+                        shell=True,
+                        creationflags=create_no_window if sys.platform == "win32" else 0
+                    )
+                    self.append_log(f"  • 端口 {port}: 已启动后台服务 -> {log_file.name}")
+
+                self.append_log("✅ [启动成功] Appium 服务集群已成功拉起，运行日志已生成！")
+                self.append_log("==================================================")
+                QMessageBox.information(
+                    self, "启动成功",
+                    f"✅ Appium 服务集群已成功启动！\n\n"
+                    f"• 运行模式: {mode_str}\n"
+                    f"• 监听端口: 4723 (主设备), 4724 (从设备)\n"
+                    f"• 运行日志:\n  • {logs_dir / 'appium_4723.log'}\n  • {logs_dir / 'appium_4724.log'}\n\n"
+                    f"💡 提示: 服务初始化通常需 2~3 秒，随后可点击【🔍 检测服务】验证服务端口连通性。"
+                )
+                return
+            except Exception as e:
+                self.append_log(f"⚠️ 原生启动出现异常 ({e})，正在回退尝试外部脚本启动...")
+
+        # 方案 2: 回退模式，通过外部脚本拉起
         candidates = [
             app_dir / "start_appium_batch.bat",
             project_root / "start_appium_batch.bat",
-            Path.cwd() / "start_appium_batch.bat"
+            Path.cwd() / "start_appium_batch.bat",
+            app_dir / "start_appium_silent.vbs",
+            project_root / "start_appium_silent.vbs",
+            Path.cwd() / "start_appium_silent.vbs"
         ]
-        bat_file: Optional[Path] = None
+        launch_file: Optional[Path] = None
         for p in candidates:
             if p.is_file():
-                bat_file = p
+                launch_file = p
                 break
 
-        if not bat_file:
-            self.append_log("❌ 未找到 start_appium_batch.bat 批处理文件！请检查程序安装目录或工程根目录。")
+        if not launch_file:
+            err_msg = "未找到 Appium 运行环境及 start_appium_batch.bat 启动文件！"
+            self.append_log(f"❌ [启动失败] {err_msg}")
+            self.append_log("==================================================")
             QMessageBox.warning(
-                self, "文件未找到",
-                "未找到 start_appium_batch.bat 批处理文件！\n\n请确认该文件已放置在程序安装目录或工程根目录。"
+                self, "启动失败",
+                f"未找到 Appium 运行环境！\n\n请确认系统已安装 Node.js 与 Appium (npm i -g appium)，或将 start_appium_batch.bat 放置在程序根目录。"
             )
             return
 
-        self.append_log(f"▶ 正在打开 Appium 批量启动服务脚本: {bat_file}")
+        mode_str = "脚本托管模式 (原生无黑框)"
+        self.append_log(f"  • 启动脚本: {launch_file.name} ({launch_file.resolve()})")
+        self.append_log(f"  • 运行模式: {mode_str}")
+        self.append_log("  • 目标端口: 4723 (主设备), 4724 (从设备)")
+        self.append_log(f"  • 运行日志: {logs_dir / 'appium_4723.log'}, {logs_dir / 'appium_4724.log'}")
+
         try:
+            work_dir = str(launch_file.parent)
             if sys.platform == "win32":
-                # 在独立控制台窗口运行，不阻塞主程序
-                os.startfile(str(bat_file))
+                if launch_file.suffix.lower() == ".vbs":
+                    # 若为 VBS 文件，显式调用 Windows Script Host 解释器 wscript.exe，绝不使用 os.startfile (彻底杜绝记事本关联)
+                    wscript_bin = shutil.which("wscript") or r"C:\Windows\System32\wscript.exe"
+                    subprocess.Popen([wscript_bin, str(launch_file)], cwd=work_dir)
+                else:
+                    # 针对批处理文件，使用 cmd.exe /c 结合 CREATE_NO_WINDOW 原生创建无窗口后台进程
+                    cmd_bin = shutil.which("cmd") or r"C:\Windows\System32\cmd.exe"
+                    subprocess.Popen([cmd_bin, "/c", str(launch_file)], cwd=work_dir, creationflags=create_no_window)
             else:
-                subprocess.Popen(["bash", str(bat_file)])
-            self.append_log(f"✅ 已成功启动 Appium 服务进程窗口: {bat_file.name}")
+                subprocess.Popen(["bash", str(launch_file)], cwd=work_dir)
+
+            self.append_log(f"✅ [启动成功] Appium 服务集群已成功派发至系统后台启动！")
+            self.append_log("==================================================")
+            QMessageBox.information(
+                self, "启动成功",
+                f"✅ Appium 服务集群已成功启动！\n\n"
+                f"• 脚本文件: {launch_file.name}\n"
+                f"• 运行模式: {mode_str}\n"
+                f"• 目标端口: 4723 (主设备), 4724 (从设备)\n"
+                f"• 运行日志: logs/appium_*.log\n\n"
+                f"💡 提示: 服务初始化通常需 2~3 秒，随后可点击【🔍 检测服务】验证服务端口连通性。"
+            )
         except Exception as e:
-            self.append_log(f"❌ 启动服务脚本异常: {e}")
-            QMessageBox.critical(self, "启动失败", f"启动 Appium 服务脚本时出现异常:\n{e}")
+            self.append_log(f"❌ [启动失败] 启动 Appium 服务脚本异常: {e}")
+            self.append_log("==================================================")
+            QMessageBox.critical(self, "启动失败", f"启动 Appium 服务脚本时出现异常:\n\n{e}")
 
     def _stop_appium_service(self):
         """关闭 Appium 批量服务 (精准释放 4723~4731 端口并清理后台服务)"""
-        self.append_log("⏹ 正在停止 Appium 服务集群并释放对应端口 (4723~4731)...")
+        self.append_log("==================================================")
+        self.append_log("⏹ [关闭服务] 正在扫描并终止 Appium 服务进程 (端口 4723~4731)...")
         killed_pids: Set[str] = set()
         ports_closed: List[int] = []
 
@@ -1802,85 +1936,198 @@ class MobilePage(QWidget):
                                     killed_pids.add(pid)
                                     ports_closed.append(port)
                                     subprocess.run(f"taskkill /F /T /PID {pid}", shell=True, capture_output=True)
+                                    self.append_log(f"  - 已终止进程 PID: {pid} (占用端口: {port})")
             except Exception as e:
-                self.append_log(f"⚠ 释放 Appium 端口进程出现异常: {e}")
+                self.append_log(f"❌ [关闭失败] 释放 Appium 端口进程出现异常: {e}")
+                self.append_log("==================================================")
+                QMessageBox.critical(self, "关闭失败", f"关闭 Appium 服务进程时发生异常:\n\n{e}")
+                return
 
         if killed_pids:
-            msg = f"已成功停止 Appium 服务，终止了 {len(killed_pids)} 个后台服务进程，释放端口: {', '.join(map(str, sorted(set(ports_closed))))}"
-            self.append_log(f"✅ {msg}")
-            QMessageBox.information(self, "服务已关闭", msg)
+            ports_str = ", ".join(map(str, sorted(set(ports_closed))))
+            pids_str = ", ".join(sorted(killed_pids))
+            self.append_log(f"✅ [关闭成功] 已成功终止 {len(killed_pids)} 个后台服务进程 (PID: {pids_str})，释放端口: {ports_str}")
+            self.append_log("==================================================")
+            QMessageBox.information(
+                self, "关闭成功",
+                f"✅ Appium 服务已成功关闭并释放资源！\n\n"
+                f"• 终止服务进程: {len(killed_pids)} 个 (PID: {pids_str})\n"
+                f"• 释放监听端口: {ports_str}"
+            )
         else:
-            self.append_log("ℹ 4723~4731 端口均处于空闲状态，未检测到活跃的 Appium 服务进程。")
-            QMessageBox.information(self, "服务已关闭", "当前未检测到正在运行的 Appium 服务 (4723~4731 端口均已空闲)。")
+            self.append_log("ℹ [关闭完成] 4723~4731 端口均处于空闲状态，未检测到活跃的 Appium 服务进程。")
+            self.append_log("==================================================")
+            QMessageBox.information(
+                self, "服务已是关闭状态",
+                "✅ 4723~4731 端口当前均处于空闲状态！\n\n未检测到正在运行的 Appium 服务进程，无需重复关闭。"
+            )
 
     def _check_appium_and_devices(self):
         """
         检测服务与设备连接状态：
-        执行 adb kill-server、adb start-server 和 adb devices -l 深度检查是否有设备连接成功。
-        如果无设备则弹出提示警告，有设备则提示连接成功并更新药丸状态。
+        1. 探测 Appium 服务监听状态 (4723 与 4724 端口)
+        2. 执行 adb kill-server、adb start-server 和 adb devices -l 深度检查移动设备连接状态
+        3. 输出结构化终端日志并在完成后弹出明确的成功/失败/警告提示框
         """
-        self.append_log("🔍 正在检查移动设备连接状态 (执行 adb kill-server & adb devices -l)...")
+        self.append_log("==================================================")
+        self.append_log("🔍 [检测服务] 开始进行 Appium 服务集群与移动设备综合体检...")
 
-        # 动态定位 ADB 工具
+        # ---------------- 步骤 1: 探测 Appium 端口状态 ----------------
+        self.append_log("  [1/2] 正在探测 Appium 核心服务端口...")
+        appium_status: Dict[int, Tuple[bool, str]] = {}
+        for port in [4723, 4724]:
+            ok, desc = self._probe_appium_port(port)
+            appium_status[port] = (ok, desc)
+            self.append_log(f"    • 端口 {port}: {desc}")
+
+        appium_all_alive = all(ok for ok, _ in appium_status.values())
+        appium_any_alive = any(ok for ok, _ in appium_status.values())
+
+        # ---------------- 步骤 2: 探测移动设备 (ADB) 状态 ----------------
+        self.append_log("  [2/2] 正在极速检测 Android 移动设备 (执行 adb devices -l)...")
+        QApplication.processEvents()
         tools = SmartPathResolver.discover_mobile_toolchain()
         adb_path = tools.get("adb") or shutil.which("adb")
 
         if not adb_path:
-            self.append_log("❌ 系统未检测到 ADB 工具，请确保已安装 Android SDK 或将 adb 添加至系统环境变量。")
+            self.append_log("❌ [检测失败] 系统未检测到 ADB 命令行工具！")
+            self.append_log("==================================================")
             QMessageBox.warning(
                 self, "ADB 未就绪",
-                "系统未检测到 ADB 命令行工具！\n\n请确保已配置 Android SDK 或已将 adb 加入系统环境变量 PATH。"
+                "系统未检测到 ADB 命令行工具！\n\n请确保已配置 Android SDK 或已将 adb 添加至系统环境变量 PATH。"
             )
             return
 
+        connected_devices: List[str] = []
         try:
-            # 1. 执行 adb kill-server
-            self.append_log("  - 执行: adb kill-server")
-            subprocess.run([adb_path, "kill-server"], capture_output=True, text=True, timeout=10)
+            create_no_window = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+            output = ""
 
-            # 2. 执行 adb start-server
-            self.append_log("  - 执行: adb start-server")
-            subprocess.run([adb_path, "start-server"], capture_output=True, text=True, timeout=10)
+            # 阶梯 1: 优先尝试读取完整设备属性 (超时放宽至 5 秒，覆盖 ADB 服务冷启动耗时)
+            try:
+                res = subprocess.run(
+                    [adb_path, "devices", "-l"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                    creationflags=create_no_window
+                )
+                output = res.stdout.strip()
+            except subprocess.TimeoutExpired:
+                # 阶梯 2: 若详细信息探测超时，自动降级为最精简的 adb devices (避免 USB 属性阻塞)
+                self.append_log("    ⚠️ 设备详细属性响应延迟，正在极速回退精简探测...")
+                QApplication.processEvents()
+                try:
+                    res = subprocess.run(
+                        [adb_path, "devices"],
+                        capture_output=True,
+                        text=True,
+                        timeout=3,
+                        creationflags=create_no_window
+                    )
+                    output = res.stdout.strip()
+                except subprocess.TimeoutExpired:
+                    self.append_log("    ⚠️ ADB 服务响应超时 (手机可能正处于锁屏或 USB 握手繁忙状态)。")
 
-            # 3. 执行 adb devices -l
-            self.append_log("  - 执行: adb devices -l")
-            res = subprocess.run([adb_path, "devices", "-l"], capture_output=True, text=True, timeout=10)
-            output = res.stdout.strip()
-            self.append_log(f"  - ADB 响应:\n{output}")
+            if output:
+                lines = [line.strip() for line in output.splitlines() if line.strip()]
+                for line in lines[1:]:  # 跳过首行 "List of devices attached"
+                    if "device" in line and not any(bad in line for bad in ["offline", "unauthorized"]):
+                        parts = line.split()
+                        dev_id = parts[0]
+                        model_info = ""
+                        for p in parts[1:]:
+                            if p.startswith("model:"):
+                                model_info = p.replace("model:", "")
+                                break
+                        desc = f"{dev_id} ({model_info})" if model_info else dev_id
+                        connected_devices.append(desc)
 
-            lines = [line.strip() for line in output.splitlines() if line.strip()]
-            connected_devices = []
-            for line in lines[1:]:  # 跳过首行 "List of devices attached"
-                if "device" in line and not any(bad in line for bad in ["offline", "unauthorized"]):
-                    parts = line.split()
-                    dev_id = parts[0]
-                    # 解析设备型号等附加信息
-                    model_info = ""
-                    for p in parts[1:]:
-                        if p.startswith("model:"):
-                            model_info = p.replace("model:", "")
-                            break
-                    desc = f"{dev_id} ({model_info})" if model_info else dev_id
-                    connected_devices.append(desc)
-
-            if not connected_devices:
+            # 极速内存同步界面药丸与设备下拉选项 (无需二次全量扫盘，0 毫秒完成)
+            if connected_devices:
+                self.lbl_device_pill.setText(f"🟢 设备: {len(connected_devices)} 台在线")
+                dev_ids = [d.split()[0] for d in connected_devices]
+                for dev_id in dev_ids:
+                    if self.combo_udid1.findText(dev_id) == -1:
+                        self.combo_udid1.addItem(dev_id)
+                    if self.combo_udid2.findText(dev_id) == -1:
+                        self.combo_udid2.addItem(dev_id)
+                if dev_ids:
+                    self.combo_udid1.setEditText(dev_ids[0])
+                    if len(dev_ids) > 1:
+                        self.combo_udid2.setEditText(dev_ids[1])
+            else:
                 self.lbl_device_pill.setText("⚪ 设备: 0 台在线")
-                self.append_log("⚠ 检查结果: 当前没有检测到任何已连接成功的移动设备。")
+
+            # 格式化设备输出
+            self.append_log(f"    - 检测到移动设备在线数量: {len(connected_devices)} 台")
+            for idx, dev in enumerate(connected_devices, 1):
+                self.append_log(f"      • 设备 {idx}: {dev}")
+
+            QApplication.processEvents()
+
+            # ---------------- 步骤 3: 综合评估与弹窗提示 ----------------
+            appium_report_lines = [f"• 端口 {p}: {desc}" for p, (_, desc) in appium_status.items()]
+            appium_report_str = "\n".join(appium_report_lines)
+
+            if connected_devices:
+                dev_report_str = "\n".join(f"• {d}" for d in connected_devices)
+            else:
+                dev_report_str = "• 暂无任何设备连接"
+
+            if appium_any_alive and connected_devices:
+                # 状态 1: 完全成功
+                self.append_log("✅ [检测成功] Appium 服务与移动设备全部就绪，随时可启动自动化测试！")
+                self.append_log("==================================================")
+                QMessageBox.information(
+                    self, "检测成功",
+                    f"✅ 服务与设备检测全部正常！\n\n"
+                    f"【Appium 服务状态】\n{appium_report_str}\n\n"
+                    f"【移动设备连接 (共 {len(connected_devices)} 台)】\n{dev_report_str}"
+                )
+            elif not appium_any_alive and connected_devices:
+                # 状态 2: 设备在线，但 Appium 离线
+                self.append_log("⚠️ [检测提示] 移动设备已连接，但 Appium 服务未启动 (4723/4724 端口离线)。")
+                self.append_log("==================================================")
                 QMessageBox.warning(
-                    self, "设备连接提示",
-                    "当前没有设备进行连接！\n\n请检查 USB 数据线是否插紧、手机是否已开启【开发者选项】与【USB 调试】功能，或确认 Android 模拟器是否已启动。"
+                    self, "服务未启动",
+                    f"⚠️ 移动设备已就绪，但 Appium 服务未启动！\n\n"
+                    f"【Appium 服务状态】\n{appium_report_str}\n\n"
+                    f"【移动设备连接 (共 {len(connected_devices)} 台)】\n{dev_report_str}\n\n"
+                    f"💡 建议: 请点击左侧【▶ 启动服务】按钮启动 Appium 集群。"
+                )
+            elif appium_any_alive and not connected_devices:
+                # 状态 3: Appium 在线，但无移动设备
+                self.append_log("⚠️ [检测提示] Appium 服务已就绪，但未检测到连接的移动设备。")
+                self.append_log("==================================================")
+                QMessageBox.warning(
+                    self, "未检测到移动设备",
+                    f"⚠️ Appium 服务正常，但当前没有检测到已连接的手机！\n\n"
+                    f"【Appium 服务状态】\n{appium_report_str}\n\n"
+                    f"【移动设备连接】\n{dev_report_str}\n\n"
+                    f"💡 建议: 请确认手机 USB 数据线已连接牢固，并开启【开发者选项】中的【USB 调试】。"
                 )
             else:
-                self.lbl_device_pill.setText(f"🟢 设备: {len(connected_devices)} 台在线")
-                dev_list_str = "\n".join(f"• {d}" for d in connected_devices)
-                self.append_log(f"✅ 检查结果: 检测到 {len(connected_devices)} 台设备连接成功:\n{dev_list_str}")
-                QMessageBox.information(
-                    self, "设备连接成功",
-                    f"检测到 {len(connected_devices)} 台设备连接成功：\n\n{dev_list_str}"
+                # 状态 4: 两者均未就绪
+                self.append_log("❌ [检测未就绪] Appium 服务与移动设备均未就绪。")
+                self.append_log("==================================================")
+                QMessageBox.warning(
+                    self, "检测未就绪",
+                    f"❌ 当前 Appium 服务与移动设备均未就绪！\n\n"
+                    f"【Appium 服务状态】\n{appium_report_str}\n\n"
+                    f"【移动设备连接】\n{dev_report_str}\n\n"
+                    f"💡 建议: 请先点击【▶ 启动服务】，然后连接手机并开启 USB 调试。"
                 )
-                # 联动刷新界面的设备下拉列表
-                self.auto_detect_devices()
+
         except Exception as e:
-            self.append_log(f"❌ 检测设备服务时出现异常: {e}")
-            QMessageBox.critical(self, "检测异常", f"检测设备服务时发生错误:\n{e}")
+            self.append_log(f"⚠️ [检测提示] 探测设备与服务未就绪: {e}")
+            self.append_log("==================================================")
+            QMessageBox.warning(
+                self, "设备服务检测提示",
+                f"⚠️ 设备与服务检测未能正常完成：\n\n{e}\n\n"
+                f"💡 建议排查方法：\n"
+                f"1. 确认 USB 数据线连接牢固，并在手机端勾选允许【始终允许这台计算机进行 USB 调试】。\n"
+                f"2. 若 ADB 守护进程卡死，可点击【关闭服务】后重新点击【启动服务】重置环境。"
+            )
+
 

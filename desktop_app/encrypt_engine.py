@@ -20,22 +20,63 @@ from typing import List, Tuple
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
 
-# 核心受保护业务模块（必须二进制机器码化，不留任何 .py 源码）
-PROTECTED_MODULES = ["core", "pages", "locators", "common", "utils"]
+# 核心受保护业务模块（必须二进制机器码化，彻底抹除所有 .py 源码）
+PROTECTED_MODULES = [
+    "core", "pages", "locators", "common", "utils",
+    "business_helpers", "apis", "IOS", "strategy", "performance"
+]
 
 # 业务开放模块与数据（保留原始格式以支持现场配置与数据驱动）
-PASSTHROUGH_DIRS = ["config", "data"]
+PASSTHROUGH_DIRS = ["config", "data", "resources"]
+
+
+def encrypt_single_file(src_file: str, dest_file: str):
+    """
+    将单个 Python 核心代码或用例脚本深度脱敏编译为不可逆二进制执行外壳：
+    1. compile 为 Python 优化字节码对象
+    2. marshal 序列化 + zlib 最高级别压缩 + base85 编码
+    3. 生成脱敏自执行包装外壳，彻底销毁明文源码与注释
+    """
+    import zlib
+    import marshal
+    import base64
+
+    os.makedirs(os.path.dirname(dest_file), exist_ok=True)
+    with open(src_file, "r", encoding="utf-8") as sf:
+        source_text = sf.read()
+
+    rel_source_path = os.path.relpath(src_file, PROJECT_ROOT).replace("\\", "/")
+    code_obj = compile(source_text, rel_source_path, 'exec', optimize=0)
+
+    serialized = marshal.dumps(code_obj)
+    compressed = zlib.compress(serialized, level=9)
+    encoded_payload = base64.b85encode(compressed).decode('ascii')
+
+    wrapper_code = f'''# -*- coding: utf-8 -*-
+"""
+======================================================================
+三条 IM 自动化测试系统 - 资产保护模块 (Binary Protected)
+======================================================================
+模块: {rel_source_path}
+保护状态: 核心代码逻辑已深度编译为不可逆二进制执行码，杜绝明文源码泄露。
+======================================================================
+"""
+import zlib
+import marshal
+import base64
+
+exec(marshal.loads(zlib.decompress(base64.b85decode({repr(encoded_payload)}))))
+'''
+    with open(dest_file, "w", encoding="utf-8") as df:
+        df.write(wrapper_code)
 
 
 def encrypt_test_suite(src_tests_dir: str, target_tests_dir: str):
     """
     深度加密测试用例层：
     1. 预提取全量元数据生成 tests_catalog.json 索引，确保客户端 UI 依然能完整显示用例树与参数
-    2. 将全部 67 个 test_*.py 源码及 conftest.py 深度编译为不可逆二进制执行码，彻底销毁所有明文业务源码
+    2. 将全部 test_*.py 源码及子用例深度编译为不可逆二进制执行码，彻底销毁所有明文业务源码
     """
-    import zlib
-    import marshal
-    import base64
     import json
     from web_platform.backend.collector import collect_all_tests
 
@@ -65,44 +106,13 @@ def encrypt_test_suite(src_tests_dir: str, target_tests_dir: str):
 
             if f.endswith(".py"):
                 try:
-                    with open(src_file, "r", encoding="utf-8") as sf:
-                        source_text = sf.read()
-
-                    # 标准 posix 相对路径作为文件名元数据
-                    rel_source_path = os.path.relpath(src_file, PROJECT_ROOT).replace("\\", "/")
-
-                    # 编译为 Python 3.13 原生 Code Object (optimize=0 确保保留 assert 断言)
-                    code_obj = compile(source_text, rel_source_path, 'exec', optimize=0)
-
-                    # 序列化 + zlib 最大压缩 + base85 紧凑编码
-                    serialized = marshal.dumps(code_obj)
-                    compressed = zlib.compress(serialized, level=9)
-                    encoded_payload = base64.b85encode(compressed).decode('ascii')
-
-                    # 构造完全脱敏的二进制执行外壳，不留任何真实业务代码
-                    wrapper_code = f'''# -*- coding: utf-8 -*-
-"""
-======================================================================
-三条 IM 自动化测试系统 - 资产保护模块 (Binary Protected)
-======================================================================
-模块: {rel_source_path}
-保护状态: 核心用例逻辑已深度编译为不可逆二进制执行码，杜绝明文源码泄露。
-======================================================================
-"""
-import zlib
-import marshal
-import base64
-
-exec(marshal.loads(zlib.decompress(base64.b85decode({repr(encoded_payload)}))))
-'''
-                    with open(dest_file, "w", encoding="utf-8") as df:
-                        df.write(wrapper_code)
+                    encrypt_single_file(src_file, dest_file)
                     encrypted_count += 1
                 except Exception as e:
                     print(f"  [加密异常] {f}: {e}")
                     shutil.copy2(src_file, dest_file)
             else:
-                # 非 .py 文件 (如 yaml、json、txt 等辅助文件) 直接复制
+                # 非 .py 文件直接复制
                 shutil.copy2(src_file, dest_file)
 
     print(f"  [用例深度脱敏] tests 模块全部加密：已脱敏封装 {encrypted_count} 个用例脚本，彻底消除明文源码！")
@@ -279,10 +289,17 @@ def stage_encrypted_assets(dest_root: str):
             shutil.copytree(src_dir, target_dir, dirs_exist_ok=True)
             print(f"  [资产复制] 开放业务层: {pass_dir} 已同步至发布区")
 
-    # 4. 复制根目录必要配置
-    req_file = os.path.join(PROJECT_ROOT, "requirements.txt")
-    if os.path.exists(req_file):
-        shutil.copy2(req_file, os.path.join(dest_root, "requirements.txt"))
+    # 4. 对根目录核心总控 conftest.py 进行二进制脱敏保护 (彻底消除全局 fixture 与驱动调度源码泄露)
+    conftest_src = os.path.join(PROJECT_ROOT, "conftest.py")
+    if os.path.exists(conftest_src):
+        encrypt_single_file(conftest_src, os.path.join(dest_root, "conftest.py"))
+        print("  [核心总控脱敏] conftest.py 全局调度中心已完成二进制加密封装！")
+
+    # 5. 复制根目录必要运行配置 (保留明文以确保 pytest 引擎正常识别与运行)
+    for conf_name in ["pytest.ini", "requirements.txt"]:
+        conf_file = os.path.join(PROJECT_ROOT, conf_name)
+        if os.path.exists(conf_file):
+            shutil.copy2(conf_file, os.path.join(dest_root, conf_name))
 
     elapsed = time.time() - start_time
     print(f"\n [成功] 核心资产与测试用例全量加密完成！耗时: {elapsed:.2f} 秒")

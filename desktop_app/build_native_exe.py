@@ -37,8 +37,8 @@ PROJECT_ROOT = SmartPathResolver.get_project_root()
 # 控制是否编译生成 Inno Setup 单文件安装包 (SetupInstaller/Santiao_IM_Native_Setup_v0.9.9.exe)
 # - True  : 完整全量流水线 (PyInstaller 打包 -> 核心资产加密脱敏 -> Inno Setup 编译生成单文件安装包)
 # - False : 仅执行 PyInstaller 打包 (输出 dist/三条IM自动化测试控制台 绿色运行目录，跳过加密与安装包制作，极速秒级构建)
-# BUILD_INSTALLER = False
-BUILD_INSTALLER = True
+BUILD_INSTALLER = False
+# BUILD_INSTALLER = True
 
 
 def sanitize_build_environment() -> dict:
@@ -157,8 +157,9 @@ Source: "{py_runtime_src}\\*"; DestDir: "{{app}}\\python_runtime"; Flags: ignore
 Source: "{allure_info['home_dir']}\\*"; DestDir: "{{app}}\\allure-cli"; Flags: ignoreversion recursesubdirs createallsubdirs
 """
 
-    # Appium 批处理启动脚本源路径 (严格以工程根目录为准)
+    # Appium 批处理与静默启动脚本源路径 (严格以工程根目录为准)
     bat_src = os.path.join(PROJECT_ROOT, "start_appium_batch.bat")
+    vbs_src = os.path.join(PROJECT_ROOT, "start_appium_silent.vbs")
 
     iss_content = f"""[Setup]
 AppName=三条IM自动化测试控制台
@@ -192,8 +193,9 @@ Source: "{output_dir}\\三条IM自动化测试控制台\\*"; DestDir: "{{app}}";
 ; 2. 核心自动化测试工程（动态收纳所有业务目录与核心配置，二进制加密/机器码发布）
 {business_files_section}
 
-; 3. Appium 批处理启动脚本与测试说明文档 (安装释放至程序安装目录 {{app}})
+; 3. Appium 批处理启动脚本、静默启动器与测试说明文档 (安装释放至程序安装目录 {{app}})
 Source: "{bat_src}"; DestDir: "{{app}}"; DestName: "start_appium_batch.bat"; Flags: ignoreversion
+Source: "{vbs_src}"; DestDir: "{{app}}"; DestName: "start_appium_silent.vbs"; Flags: ignoreversion
 Source: "{PROJECT_ROOT}\\test_docs\\*"; DestDir: "{{app}}\\test_docs"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 {python_section}
@@ -386,6 +388,12 @@ def build(build_installer: bool = BUILD_INSTALLER):
     # 3. 产物后处理与清理自愈
     app_output_dir = os.path.join(dist_dir, "三条IM自动化测试控制台")
     post_build_cleanup(app_output_dir)
+
+    # 同步最新 Appium 服务启动脚本至绿色免安装目录
+    for script_name in ["start_appium_batch.bat", "start_appium_silent.vbs"]:
+        src_path = os.path.join(PROJECT_ROOT, script_name)
+        if os.path.isfile(src_path):
+            shutil.copy2(src_path, os.path.join(app_output_dir, script_name))
 
     if build_installer:
         # 4. 执行方案 4 核心资产全量加密编译 (抹除 .py 源码，生成机器码/二进制发布包)

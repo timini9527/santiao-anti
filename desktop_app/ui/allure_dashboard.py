@@ -444,6 +444,7 @@ class AllureDashboardWidget(QFrame):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.current_role: str = "business"
         self.current_data: Dict[str, Any] = {}
         self.init_ui()
         self.reset_to_ready_state()
@@ -675,6 +676,18 @@ class AllureDashboardWidget(QFrame):
             border: 1px solid #e2e8f0;
         """)
         title_box.addWidget(self.lbl_task_badge)
+
+        self.lbl_role_badge = QLabel("💼 业务精简视角")
+        self.lbl_role_badge.setStyleSheet("""
+            background-color: #eff6ff;
+            color: #2563eb;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 4px;
+            border: 1px solid #bfdbfe;
+        """)
+        title_box.addWidget(self.lbl_role_badge)
         title_box.addStretch()
         mid_col.addLayout(title_box)
 
@@ -902,6 +915,189 @@ class AllureDashboardWidget(QFrame):
         layout.addWidget(scroll, stretch=1)
         return page
 
+    # ================= 视角切换与精细化渲染 =================
+    def set_role_view(self, role: str):
+        """
+        切换看板角色视角：
+        - business: 业务精简视角 (面向产品/交付，聚焦业务验收概览与缺陷结论，隐藏底层开发 Suites 套件)
+        - tech: 开发完整视角 (面向测试开发，全量开放 4 大导航与所有用例节点耗时明细)
+        """
+        role_key = "tech" if role in ("tech", "完整视角") else "business"
+        self.current_role = role_key
+
+        # 1. 侧边栏 Suites 导航显隐控制 (精简视角隐藏底层功能 Suites 套件)
+        if len(self.nav_btns) > 3:
+            is_tech = (role_key == "tech")
+            self.nav_btns[3].setVisible(is_tech)
+            # 若切到精简视角且当前停留在 Suites 视图，平滑切回总览页
+            if not is_tech and self.stack.currentIndex() == 3:
+                self.switch_nav_page(0)
+
+        # 2. 标题角色徽章更新
+        if hasattr(self, "lbl_role_badge"):
+            if role_key == "tech":
+                self.lbl_role_badge.setText("🛠️ 开发完整视角")
+                self.lbl_role_badge.setStyleSheet("""
+                    background-color: #f5f3ff;
+                    color: #7c3aed;
+                    font-size: 10px;
+                    font-weight: 700;
+                    padding: 2px 8px;
+                    border-radius: 4px;
+                    border: 1px solid #ddd6fe;
+                """)
+            else:
+                self.lbl_role_badge.setText("💼 业务精简视角")
+                self.lbl_role_badge.setStyleSheet("""
+                    background-color: #eff6ff;
+                    color: #2563eb;
+                    font-size: 10px;
+                    font-weight: 700;
+                    padding: 2px 8px;
+                    border-radius: 4px;
+                    border: 1px solid #bfdbfe;
+                """)
+
+        # 3. 动态按新视角重绘当前用例明细列表
+        self._render_cases_detail_list(self.current_data)
+
+    def _render_cases_detail_list(self, data: Optional[Dict[str, Any]] = None):
+        """根据当前激活视角 (业务精简视角 / 开发完整视角) 动态精细化渲染用例明细清单"""
+        target_data = data if data is not None else self.current_data
+        cases = target_data.get("cases", [])
+
+        while self.cases_list_layout.count() > 0:
+            item = self.cases_list_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        if not cases:
+            lbl_empty = QLabel("💡 暂无测试执行数据，请在左侧选择测试用例并点击运行，测试完成后将实时在此呈现")
+            lbl_empty.setStyleSheet("color: #94a3b8; font-size: 11px; padding: 4px;")
+            self.cases_list_layout.addWidget(lbl_empty)
+            return
+
+        is_business = (self.current_role == "business")
+
+        if is_business:
+            # ================= 业务精简视角 =================
+            # 智能聚焦：业务验收结论，优先高亮失败/异常缺陷，弱化底层琐碎耗时
+            defects = [c for c in cases if c.get("status") in ("failed", "broken")]
+            passed_cases = [c for c in cases if c.get("status") == "passed"]
+            skipped_cases = [c for c in cases if c.get("status") == "skipped"]
+
+            if defects:
+                # 顶部警示条
+                warn_card = QFrame()
+                warn_card.setStyleSheet("background-color: #fef2f2; border: 1px solid #fecdd3; border-radius: 6px; padding: 6px 10px;")
+                warn_l = QHBoxLayout(warn_card)
+                warn_l.setContentsMargins(0, 0, 0, 0)
+                lbl_warn = QLabel(f"⚠️ 发现 {len(defects)} 项业务阻断/异常缺陷，请优先验收排查：")
+                lbl_warn.setStyleSheet("color: #e11d48; font-size: 11px; font-weight: 700;")
+                warn_l.addWidget(lbl_warn)
+                self.cases_list_layout.addWidget(warn_card)
+
+                # 优先罗列缺陷用例
+                for c in defects:
+                    row = QHBoxLayout()
+                    row.setSpacing(6)
+                    st = c.get("status", "failed")
+                    dot = "🔴" if st == "failed" else "🟠"
+                    lbl_c_name = QLabel(f"{dot} 【缺陷】{c.get('name')}")
+                    lbl_c_name.setStyleSheet("color: #e11d48; font-size: 11px; font-weight: 700;")
+                    row.addWidget(lbl_c_name)
+                    row.addStretch()
+
+                    lbl_tag = QLabel("需修复" if st == "failed" else "异常中断")
+                    lbl_tag.setStyleSheet("background: #fee2e2; color: #b91c1c; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 3px;")
+                    row.addWidget(lbl_tag)
+
+                    container = QWidget()
+                    container.setLayout(row)
+                    self.cases_list_layout.addWidget(container)
+
+                # 其余通过用例
+                if passed_cases:
+                    lbl_other = QLabel(f"✅ 其余 {len(passed_cases)} 项常规业务用例均验证通过：")
+                    lbl_other.setStyleSheet("color: #059669; font-size: 11px; font-weight: 600; margin-top: 4px;")
+                    self.cases_list_layout.addWidget(lbl_other)
+                    for c in passed_cases:
+                        row = QHBoxLayout()
+                        row.setSpacing(6)
+                        lbl_c_name = QLabel(f"🟢 {c.get('name')}")
+                        lbl_c_name.setStyleSheet("color: #334155; font-size: 11px;")
+                        row.addWidget(lbl_c_name)
+                        row.addStretch()
+                        lbl_st = QLabel("通过")
+                        lbl_st.setStyleSheet("color: #059669; font-size: 10px; font-weight: 600;")
+                        row.addWidget(lbl_st)
+                        container = QWidget()
+                        container.setLayout(row)
+                        self.cases_list_layout.addWidget(container)
+            else:
+                # 全部通过的大横幅卡片
+                ok_card = QFrame()
+                ok_card.setStyleSheet("background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px; padding: 6px 10px;")
+                ok_l = QHBoxLayout(ok_card)
+                ok_l.setContentsMargins(0, 0, 0, 0)
+                lbl_ok = QLabel(f"🎉 业务验收全部通过！共验证 {len(cases)} 项核心业务功能")
+                lbl_ok.setStyleSheet("color: #059669; font-size: 11px; font-weight: 700;")
+                ok_l.addWidget(lbl_ok)
+                self.cases_list_layout.addWidget(ok_card)
+
+                for c in cases:
+                    row = QHBoxLayout()
+                    row.setSpacing(6)
+                    status = c.get("status", "unknown").lower()
+                    dot = "🟢" if status == "passed" else "⚪"
+                    lbl_c_name = QLabel(f"{dot} {c.get('name')}")
+                    lbl_c_name.setStyleSheet("color: #0f172a; font-size: 11px;")
+                    row.addWidget(lbl_c_name)
+                    row.addStretch()
+                    lbl_st = QLabel("已验证" if status == "passed" else "跳过")
+                    st_col = "#059669" if status == "passed" else "#94a3b8"
+                    lbl_st.setStyleSheet(f"color: {st_col}; font-size: 10px; font-weight: 600;")
+                    row.addWidget(lbl_st)
+                    container = QWidget()
+                    container.setLayout(row)
+                    self.cases_list_layout.addWidget(container)
+        else:
+            # ================= 开发完整视角 =================
+            # 面向测试开发：全量用例节点、毫秒级执行耗时、底层状态全开
+            top_tech = QLabel(f"🧪 全量用例节点清单 ({len(cases)} items | 毫秒级耗时追踪)")
+            top_tech.setStyleSheet("color: #475569; font-size: 11px; font-weight: 700; margin-bottom: 2px;")
+            self.cases_list_layout.addWidget(top_tech)
+
+            for c in cases:
+                row = QHBoxLayout()
+                row.setSpacing(6)
+                status = c.get("status", "unknown").lower()
+                if status == "passed":
+                    dot = "🟢"
+                    st_color = "#059669"
+                elif status == "failed":
+                    dot = "🔴"
+                    st_color = "#e11d48"
+                elif status == "broken":
+                    dot = "🟠"
+                    st_color = "#d97706"
+                else:
+                    dot = "⚪"
+                    st_color = "#64748b"
+
+                lbl_c_name = QLabel(f"{dot} {c.get('name')}")
+                lbl_c_name.setStyleSheet("color: #0f172a; font-size: 11px; font-family: monospace;")
+                row.addWidget(lbl_c_name)
+                row.addStretch()
+
+                lbl_c_dur = QLabel(f"{c.get('duration', '')}")
+                lbl_c_dur.setStyleSheet(f"color: {st_color}; font-size: 10px; font-weight: 700;")
+                row.addWidget(lbl_c_dur)
+
+                container = QWidget()
+                container.setLayout(row)
+                self.cases_list_layout.addWidget(container)
+
     # ================= 动态数据加载接口 =================
     def load_latest_report(self):
         """扫描本地最新的测试报告并动态渲染 (仅限主动刷新或显式调用)"""
@@ -963,51 +1159,8 @@ class AllureDashboardWidget(QFrame):
         self.pill_broken.setText(f"🟠 异常: {broken} ({b_pct}%)")
         self.pill_skipped.setText(f"⚪ 跳过: {skipped} ({s_pct}%)")
 
-        # 4. 红框区域：动态清空并重新填入真实用例明细列表
-        while self.cases_list_layout.count() > 0:
-            item = self.cases_list_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-
-        cases = data.get("cases", [])
-        if cases:
-            for c in cases:
-                row = QHBoxLayout()
-                row.setSpacing(6)
-                status = c.get("status", "unknown").lower()
-                if status == "passed":
-                    dot = "🟢"
-                    st_text = "Passed"
-                    st_color = "#059669"
-                elif status == "failed":
-                    dot = "🔴"
-                    st_text = "Failed"
-                    st_color = "#e11d48"
-                elif status == "broken":
-                    dot = "🟠"
-                    st_text = "Broken"
-                    st_color = "#d97706"
-                else:
-                    dot = "⚪"
-                    st_text = "Skipped"
-                    st_color = "#64748b"
-
-                lbl_c_name = QLabel(f"{dot} {c.get('name')}")
-                lbl_c_name.setStyleSheet("color: #0f172a; font-size: 11px;")
-                row.addWidget(lbl_c_name)
-                row.addStretch()
-
-                lbl_c_dur = QLabel(f"{c.get('duration', '')}")
-                lbl_c_dur.setStyleSheet(f"color: {st_color}; font-size: 10px; font-weight: 700;")
-                row.addWidget(lbl_c_dur)
-
-                container = QWidget()
-                container.setLayout(row)
-                self.cases_list_layout.addWidget(container)
-        else:
-            lbl_empty = QLabel("💡 暂无测试执行数据，请在左侧选择测试用例并点击运行，测试完成后将实时在此呈现")
-            lbl_empty.setStyleSheet("color: #94a3b8; font-size: 11px; padding: 4px;")
-            self.cases_list_layout.addWidget(lbl_empty)
+        # 4. 红框区域：根据当前视角 (精简/完整) 动态精细化渲染用例明细列表
+        self._render_cases_detail_list(data)
 
         # 5. 动态渲染类别缺陷卡片
         while self.cat_items_layout.count() > 0:

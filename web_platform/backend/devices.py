@@ -79,10 +79,9 @@ def detect_raw_connected_devices() -> list[tuple[str, str, bool]]:
     adb_bin = toolchain.get("adb") or "adb"
     hdc_bin = toolchain.get("hdc") or "hdc"
 
-    # 1. 尝试使用 adb 探测安卓设备
+    # 1. 尝试使用 adb 探测安卓设备 (直接执行 adb devices，按需自启 daemon，杜绝 5 秒超时卡顿)
     try:
-        subprocess.run([adb_bin, "start-server"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5, creationflags=no_window)
-        out = subprocess.check_output([adb_bin, "devices"], timeout=10, creationflags=no_window).decode('utf-8')
+        out = subprocess.check_output([adb_bin, "devices"], timeout=4, creationflags=no_window).decode('utf-8')
         lines = out.strip().split('\n')
         for line in lines[1:]:
             if '\tdevice' in line:

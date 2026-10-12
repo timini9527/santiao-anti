@@ -425,19 +425,22 @@ class MainWindow(QMainWindow):
         # 优化主窗口标题：简洁大气、专业高端
         self.setWindowTitle("三条 IM 自动化测试控制台")
 
-        # 绑定专属高清品牌窗口图标
+        # 绑定专属高清品牌窗口图标 (优先选择 Windows 原生多分辨率 .ico 格式)
         base_dir = getattr(sys, '_MEIPASS', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         icon_candidates = [
-            os.path.join(base_dir, "desktop_app", "resources", "sant_logo_hd.png"),
-            os.path.join(base_dir, "desktop_app", "resources", "app_icon.png"),
             os.path.join(base_dir, "desktop_app", "resources", "app_icon.ico"),
-            os.path.join(os.path.dirname(__file__), "..", "resources", "sant_logo_hd.png"),
-            os.path.join(os.path.dirname(__file__), "..", "resources", "app_icon.png"),
+            os.path.join(base_dir, "resources", "app_icon.ico"),
             os.path.join(os.path.dirname(__file__), "..", "resources", "app_icon.ico"),
+            os.path.join(base_dir, "desktop_app", "resources", "app_icon.png"),
+            os.path.join(base_dir, "resources", "app_icon.png"),
+            os.path.join(os.path.dirname(__file__), "..", "resources", "app_icon.png"),
+            os.path.join(base_dir, "desktop_app", "resources", "sant_logo_hd.png"),
         ]
+        self._app_ico_path = None
         for ic_p in icon_candidates:
             if os.path.exists(ic_p):
                 self.setWindowIcon(QIcon(ic_p))
+                self._app_ico_path = ic_p
                 break
 
         # 恢复窗口尺寸与位置记忆
@@ -503,6 +506,36 @@ class MainWindow(QMainWindow):
             self.page_devices.refresh_devices()
         elif index == 4 and hasattr(self.page_reports, "refresh_reports"):
             self.page_reports.refresh_reports()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        # Windows 原生任务栏图标强化注入 (确保任务栏 100% 呈现专属高清图标)
+        if sys.platform == "win32" and getattr(self, "_app_ico_path", None) and self._app_ico_path.endswith(".ico"):
+            try:
+                import ctypes
+                user32 = ctypes.windll.user32
+                WM_SETICON = 0x0080
+                ICON_SMALL = 0
+                ICON_BIG = 1
+                IMAGE_ICON = 1
+                LR_LOADFROMFILE = 0x00000010
+                LR_DEFAULTSIZE = 0x00000040
+
+                h_icon_big = user32.LoadImageW(
+                    None, self._app_ico_path, IMAGE_ICON,
+                    0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE
+                )
+                h_icon_small = user32.LoadImageW(
+                    None, self._app_ico_path, IMAGE_ICON,
+                    16, 16, LR_LOADFROMFILE
+                )
+                hwnd = int(self.winId())
+                if h_icon_big:
+                    user32.SendMessageW(hwnd, WM_SETICON, ICON_BIG, h_icon_big)
+                if h_icon_small:
+                    user32.SendMessageW(hwnd, WM_SETICON, ICON_SMALL, h_icon_small)
+            except Exception:
+                pass
 
     def closeEvent(self, event):
         is_max = self.isMaximized()

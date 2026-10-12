@@ -22,7 +22,8 @@ from PyQt6.QtWidgets import (
     QPushButton, QFrame, QScrollArea, QSplitter,
     QComboBox, QMessageBox, QMenu
 )
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer
+from .widgets import RedTrashButton, create_red_trash_icon
 _CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(_CURRENT_DIR))
 if _PROJECT_ROOT not in sys.path:
@@ -69,25 +70,10 @@ class ReportHistoryItem(QFrame):
         top_row.addWidget(self.lbl_id)
         top_row.addStretch()
 
-        # 卡片快捷微型删除按钮
-        btn_del_item = QPushButton("✕")
-        btn_del_item.setFixedSize(16, 16)
-        btn_del_item.setCursor(Qt.CursorShape.PointingHandCursor)
+        # 卡片快捷微型红色矢量垃圾桶删除按钮
+        btn_del_item = RedTrashButton(parent=self, is_circle=True)
+        btn_del_item.setFixedSize(18, 18)
         btn_del_item.setToolTip("删除此条测试报告")
-        btn_del_item.setStyleSheet("""
-            QPushButton {
-                background: transparent;
-                border: none;
-                color: #94a3b8;
-                font-size: 11px;
-                font-weight: bold;
-                border-radius: 8px;
-            }
-            QPushButton:hover {
-                background-color: #fee2e2;
-                color: #e11d48;
-            }
-        """)
         btn_del_item.clicked.connect(lambda: self.delete_requested.emit(self.data))
         top_row.addWidget(btn_del_item)
 
@@ -138,7 +124,8 @@ class ReportsPage(QWidget):
         self.history_items: List[ReportHistoryItem] = []
 
         self.init_ui()
-        self.refresh_reports()
+        # 懒加载策略：推迟至首屏呈现后异步扫描历史报告，杜绝启动期磁盘 I/O 阻塞主线程
+        QTimer.singleShot(500, self.refresh_reports)
 
     def init_ui(self):
         root_layout = QVBoxLayout(self)
@@ -293,22 +280,10 @@ class ReportsPage(QWidget):
         head_row.addWidget(lbl_head)
         head_row.addStretch()
 
-        # 垃圾桶删除操作按钮
-        btn_del = QPushButton("🗑️")
-        btn_del.setFixedSize(22, 22)
-        btn_del.setCursor(Qt.CursorShape.PointingHandCursor)
+        # 红色高亮圆形矢量垃圾桶删除操作按钮
+        btn_del = RedTrashButton(parent=card, is_circle=True)
+        btn_del.setFixedSize(24, 24)
         btn_del.setToolTip("删除报告 (支持删除当前 / 一键清空全部)")
-        btn_del.setStyleSheet("""
-            QPushButton {
-                background: transparent;
-                border: none;
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background: #fee2e2;
-                border-radius: 11px;
-            }
-        """)
         btn_del.clicked.connect(self._on_click_delete_menu)
         head_row.addWidget(btn_del)
 
@@ -450,7 +425,7 @@ class ReportsPage(QWidget):
 
         curr_id = self.selected_task.get("task_id", "")
         short_id = (curr_id[:16] + "...") if len(curr_id) > 18 else curr_id
-        action_del_curr = menu.addAction(f"🗑️ 删除当前报告 ({short_id or '未选择'})")
+        action_del_curr = menu.addAction(create_red_trash_icon(14), f"删除当前报告 ({short_id or '未选择'})")
         action_del_curr.triggered.connect(self._delete_current_selected_report)
         if not curr_id:
             action_del_curr.setEnabled(False)
@@ -501,6 +476,8 @@ class ReportsPage(QWidget):
                     results_dir = cand_tmp
 
         self.allure_dashboard.load_report_from_path(report_dir=report_dir, results_dir=results_dir)
+        role = self.combo_role.currentData() or "business"
+        self.allure_dashboard.set_role_view(role)
 
     # ================= 4. 右侧 Allure 看板详情面板 =================
     def _create_report_detail_panel(self) -> QWidget:
@@ -523,9 +500,11 @@ class ReportsPage(QWidget):
         top_bar.addStretch()
 
         self.combo_role = QComboBox()
-        self.combo_role.addItems(["精简视角", "完整视角"])
+        self.combo_role.addItem("精简视角", "business")
+        self.combo_role.addItem("完整视角", "tech")
         self.combo_role.setFixedWidth(130)
         self.combo_role.setFixedHeight(28)
+        self.combo_role.currentIndexChanged.connect(self._on_role_changed)
         top_bar.addWidget(self.combo_role)
 
         btn_open_external = QPushButton("新窗口全屏打开")
@@ -541,8 +520,15 @@ class ReportsPage(QWidget):
         # 核心：直接嵌入功能完备、与实际运行完全统一的 Allure 原生看板组件
         self.allure_dashboard = AllureDashboardWidget(parent=self)
         layout.addWidget(self.allure_dashboard, stretch=1)
+        self._on_role_changed()
 
         return panel
+
+    def _on_role_changed(self):
+        """报告中心角色视角切换响应槽"""
+        role = self.combo_role.currentData() or "business"
+        if hasattr(self, "allure_dashboard") and self.allure_dashboard:
+            self.allure_dashboard.set_role_view(role)
 
     def _open_selected_in_browser(self):
         curr_task = getattr(self, "selected_task", {})

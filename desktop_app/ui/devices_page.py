@@ -172,9 +172,10 @@ class DevicesPage(QWidget):
         self.lan_ip = _get_lan_ip()
         self.appium_status_labels: Dict[int, QLabel] = {}
         self.init_ui()
-        self.refresh_devices(show_toast=False)
+        # 懒加载策略：推迟至首屏呈现后异步非阻塞探测设备池，绝不阻塞应用启动首屏
+        QTimer.singleShot(400, lambda: self.refresh_devices(show_toast=False))
         # 延时自动异步检测一次两个 Appium 端口的真实连通状态
-        QTimer.singleShot(300, self._detect_all_appium_status)
+        QTimer.singleShot(650, self._detect_all_appium_status)
 
     def init_ui(self):
         root_layout = QVBoxLayout(self)

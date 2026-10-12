@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QFont, QColor
+from .widgets import RedTrashButton
 
 
 class WebReceiptDialog(QDialog):
@@ -69,7 +70,7 @@ class WebReceiptDialog(QDialog):
         main_layout.addLayout(title_row)
 
         # 2. 副标题说明文案
-        lbl_desc = QLabel("配置本次回归测试结束后自动生成的归档报告回执单内容（可用于通知非开发团队汇报）。")
+        lbl_desc = QLabel("配置其他测试的数据列表回执内容：")
         lbl_desc.setWordWrap(True)
         lbl_desc.setStyleSheet("font-size: 12px; color: #64748b; line-height: 1.4;")
         main_layout.addWidget(lbl_desc)
@@ -292,28 +293,10 @@ class WebReceiptDialog(QDialog):
             }
         """)
 
-        # 3. 红色高亮圆形垃圾桶删除按钮
-        btn_delete = QPushButton("🗑️")
+        # 3. 红色高亮圆形矢量垃圾桶删除按钮 (纯原生矢量渲染，彻底杜绝 Emoji 灰色铁丝网)
+        btn_delete = RedTrashButton(parent=row_widget, is_circle=True)
         btn_delete.setFixedSize(30, 30)
-        btn_delete.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_delete.setToolTip("删除该项配置")
-        btn_delete.setStyleSheet("""
-            QPushButton {
-                background-color: #fef2f2;
-                color: #ef4444;
-                border: 1px solid #fecdd3;
-                border-radius: 15px;
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background-color: #fee2e2;
-                border-color: #fca5a5;
-                color: #dc2626;
-            }
-            QPushButton:pressed {
-                background-color: #fecdd3;
-            }
-        """)
 
         tuple_ref = (edit_key, edit_val, row_widget)
         self.row_widgets.append(tuple_ref)
