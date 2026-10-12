@@ -289,11 +289,12 @@ class MobilePage(QWidget):
         self.load_persisted_config()
         self._is_loading_config = False
 
-        # 异步非阻塞错峰调度：优先极速呈现骨架与分割器，随后渐进加载用例与设备检测
+        # 异步非阻塞错峰调度：优先极速呈现骨架与分割器，随后渐进加载用例、历史执行状态与设备检测
         QTimer.singleShot(40, self._restore_splitter_sizes)
         QTimer.singleShot(120, self.refresh_test_cases)
-        QTimer.singleShot(320, self.auto_detect_devices)
-        QTimer.singleShot(480, self._refresh_report_pill_count)
+        QTimer.singleShot(260, self._restore_last_run_state)
+        QTimer.singleShot(380, self.auto_detect_devices)
+        QTimer.singleShot(520, self._refresh_report_pill_count)
 
     def init_ui(self):
         root_layout = QVBoxLayout(self)
@@ -584,6 +585,7 @@ class MobilePage(QWidget):
         self.tree.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.tree.itemClicked.connect(self._on_tree_item_clicked)
         self.tree.itemExpanded.connect(self._on_tree_item_expanded)
+        self.tree.itemCollapsed.connect(self._on_tree_item_collapsed)
         self.tree.itemDoubleClicked.connect(self._on_tree_item_double_clicked)
         layout.addWidget(self.tree, stretch=1)
 
@@ -1168,6 +1170,11 @@ class MobilePage(QWidget):
             desktop_config.set("mobile", "private_chat_name", self.edit_private_chat.text().strip())
             desktop_config.set("mobile", "group_chat_name", self.edit_group_chat.text().strip())
 
+        if hasattr(self, 'params_body'):
+            desktop_config.set("mobile", "params_collapsed", not self.params_body.isVisible())
+
+        self._save_tree_state()
+
     def _set_autoscroll_state(self, enabled: bool):
         """设置自动滚屏（向下滚动）状态与 UI 展现 (True: 启动向下滚动, False: 停止向下滚动)"""
         self._auto_scroll = bool(enabled)
@@ -1349,59 +1356,74 @@ class MobilePage(QWidget):
         if force_refresh:
             self.append_log("🔄 已完成 tests/ 本地用例目录实时全量扫描，用例目录树已同步至最新！")
 
-        for c_idx, cat in enumerate(self.hierarchy_data):
-            # 1. 一级目录节点 (📖) - 纯净目录导航，无需运行按钮与状态球
-            cat_item = QTreeWidgetItem(self.tree)
-            cat_name = cat["display_name"]
-            cat_count = cat["count"]
-            total_collected += cat_count
+        has_memory = bool(getattr(self, "expanded_targets", None))
+        self._is_batch_expanding = True
 
-            cat_item.setText(0, f"📖  {cat_name} [{cat_count}]")
-            cat_item.setToolTip(0, f"一级测试目录: {cat['target']}\n包含 {cat_count} 个测试用例")
-            cat_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "category", "target": cat["target"], "name": cat_name, "count": cat_count})
+        try:
+            for c_idx, cat in enumerate(self.hierarchy_data):
+                # 1. 一级目录节点 (📖) - 挂载【运行目录】操作按钮，前缀纯净无状态球
+                cat_item = QTreeWidgetItem(self.tree)
+                cat_name = cat["display_name"]
+                cat_count = cat["count"]
+                total_collected += cat_count
 
-            is_first_cat = (c_idx == 0)
-            cat_item.setExpanded(is_first_cat)
+                cat_item.setText(0, f"📖  {cat_name} [{cat_count}]")
+                cat_item.setToolTip(0, f"一级测试目录: {cat['target']}\n包含 {cat_count} 个测试用例")
+                cat_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "category", "target": cat["target"], "name": cat_name, "count": cat_count})
 
-            # 2. 二级文件节点 (👾) - 纯净文件导航，无需操作按钮与状态球
-            for f_idx, file_obj in enumerate(cat.get("files", [])):
-                file_item = QTreeWidgetItem(cat_item)
-                file_name = file_obj.get('display_name', file_obj['file'])
-                file_count = file_obj.get("count", 0)
+                action_cat = self._create_tree_action_widget(
+                    "运行目录", "tree-pill-btn-dir", 66,
+                    lambda ch, t=cat["target"], n=cat_name: self._run_target_node(t, n)
+                )
+                self.tree.setItemWidget(cat_item, 1, action_cat)
 
-                file_item.setText(0, f"👾  {file_name} [{file_count}]")
-                file_item.setToolTip(0, f"二级测试文件: {file_obj['file']}\n包含 {file_count} 个测试用例")
-                file_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "file", "target": file_obj["file"], "name": file_name, "count": file_count})
+                cat_expanded = (cat["target"] in self.expanded_targets) if has_memory else (c_idx == 0)
+                cat_item.setExpanded(cat_expanded)
 
-                is_first_file = (is_first_cat and f_idx == 0)
-                file_item.setExpanded(is_first_file)
+                # 2. 二级文件节点 (👾) - 挂载【📄 文档】与【运行文件】双按钮，前缀纯净无状态球
+                for f_idx, file_obj in enumerate(cat.get("files", [])):
+                    file_item = QTreeWidgetItem(cat_item)
+                    file_name = file_obj.get('display_name', file_obj['file'])
+                    file_count = file_obj.get("count", 0)
 
-                # 3. 三级类节点 (🧱)
-                for cl_idx, cls in enumerate(file_obj.get("classes", [])):
-                    cls_item = QTreeWidgetItem(file_item)
-                    cls_name = cls.get('display_name', cls['name'])
-                    cls_nodeid = f"{file_obj['file']}::{cls['name']}"
+                    file_item.setText(0, f"👾  {file_name} [{file_count}]")
+                    file_item.setToolTip(0, f"二级测试文件: {file_obj['file']}\n包含 {file_count} 个测试用例")
+                    file_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "file", "target": file_obj["file"], "name": file_name, "count": file_count})
 
-                    cls_item.setText(0, f"🧱  {cls_name}")
-                    cls_item.setToolTip(0, f"三级测试类: {cls_nodeid}")
-                    cls_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "class", "target": cls_nodeid, "name": cls_name, "count": 0})
+                    action_file = self._create_file_node_actions(file_obj["file"], file_name)
+                    self.tree.setItemWidget(file_item, 1, action_file)
 
-                    action_cls = self._create_tree_action_widget(
-                        "运行类", "tree-pill-btn-class", 56,
-                        lambda ch, node=cls_nodeid, n=cls_name: self._run_target_node(node, n)
-                    )
-                    self.tree.setItemWidget(cls_item, 1, action_cls)
+                    file_expanded = (file_obj["file"] in self.expanded_targets) if has_memory else (c_idx == 0 and f_idx == 0)
+                    file_item.setExpanded(file_expanded)
 
-                    # 默认展开检索类，与截图完全对齐
-                    is_search_class = "检索" in cls_name
-                    cls_item.setExpanded(is_first_file and (cl_idx == 0 or is_search_class))
+                    # 3. 三级类节点 (🧱)
+                    for cl_idx, cls in enumerate(file_obj.get("classes", [])):
+                        cls_item = QTreeWidgetItem(file_item)
+                        cls_name = cls.get('display_name', cls['name'])
+                        cls_nodeid = f"{file_obj['file']}::{cls['name']}"
 
-                    # 4. 四级测试用例 (带失败红点 🔴 / 正常 ⚙️，与用户红框完全对齐)
-                    for test in cls.get("tests", []):
-                        self._add_leaf_item(cls_item, file_obj["file"], cls["name"], test)
+                        cls_item.setText(0, f"🧱  {cls_name}")
+                        cls_item.setToolTip(0, f"三级测试类: {cls_nodeid}")
+                        cls_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "class", "target": cls_nodeid, "name": cls_name, "count": 0})
 
-                for test in file_obj.get("tests", []):
-                    self._add_leaf_item(file_item, file_obj["file"], "", test)
+                        action_cls = self._create_tree_action_widget(
+                            "运行类", "tree-pill-btn-class", 56,
+                            lambda ch, node=cls_nodeid, n=cls_name: self._run_target_node(node, n)
+                        )
+                        self.tree.setItemWidget(cls_item, 1, action_cls)
+
+                        is_search_class = "检索" in cls_name
+                        cls_expanded = (cls_nodeid in self.expanded_targets) if has_memory else (c_idx == 0 and f_idx == 0 and (cl_idx == 0 or is_search_class))
+                        cls_item.setExpanded(cls_expanded)
+
+                        # 4. 四级测试用例 (带失败红点 🔴 / 正常 ⚙️，与用户红框完全对齐)
+                        for test in cls.get("tests", []):
+                            self._add_leaf_item(cls_item, file_obj["file"], cls["name"], test)
+
+                    for test in file_obj.get("tests", []):
+                        self._add_leaf_item(file_item, file_obj["file"], "", test)
+        finally:
+            self._is_batch_expanding = False
 
         if total_collected > 0:
             self.total_case_count = total_collected
@@ -1482,7 +1504,8 @@ class MobilePage(QWidget):
                     lambda ch, node=sub_node, n=str(p): self._run_target_node(node, n)
                 )
                 self.tree.setItemWidget(sub_item, 1, action_param)
-            test_item.setExpanded(False)
+            test_expanded = (node_id in self.expanded_targets) if getattr(self, "expanded_targets", None) else False
+            test_item.setExpanded(test_expanded)
 
     def _on_tree_item_clicked(self, item: QTreeWidgetItem, column: int):
         """点击目录或节点标题 (第0列) 时即可直接切换展开与折叠，无需瞄准小箭头"""
@@ -1490,14 +1513,20 @@ class MobilePage(QWidget):
             item.setExpanded(not item.isExpanded())
 
     def _on_tree_item_expanded(self, item: QTreeWidgetItem):
-        """当展开一个一级目录时，其他一级目录自动折叠收起 (手风琴单开模式)"""
+        """当节点展开时，记录展开记忆并在非批量时执行手风琴模式"""
+        data = item.data(0, Qt.ItemDataRole.UserRole)
+        if data and "target" in data:
+            if not hasattr(self, "expanded_targets"):
+                self.expanded_targets = set()
+            self.expanded_targets.add(data["target"])
+
         if getattr(self, "_is_batch_expanding", False):
             return
         # 搜索过滤中不干扰全局匹配结果
         if self.edit_search.text().strip():
             return
 
-        # 仅针对一级目录 (顶级节点，parent 为 None)
+        # 针对一级目录 (顶级节点，parent 为 None) 执行手风琴单开模式
         if item.parent() is None:
             self.tree.blockSignals(True)
             try:
@@ -1505,8 +1534,47 @@ class MobilePage(QWidget):
                     top = self.tree.topLevelItem(i)
                     if top is not item and top.isExpanded():
                         top.setExpanded(False)
+                        top_data = top.data(0, Qt.ItemDataRole.UserRole)
+                        if top_data and "target" in top_data and top_data["target"] in self.expanded_targets:
+                            self.expanded_targets.discard(top_data["target"])
             finally:
                 self.tree.blockSignals(False)
+
+    def _on_tree_item_collapsed(self, item: QTreeWidgetItem):
+        """当节点折叠时，同步移除展开记忆"""
+        if getattr(self, "_is_batch_expanding", False):
+            return
+        data = item.data(0, Qt.ItemDataRole.UserRole)
+        if data and "target" in data and hasattr(self, "expanded_targets"):
+            self.expanded_targets.discard(data["target"])
+
+    def _collect_expanded_targets(self) -> List[str]:
+        """递归遍历整棵测试树，收集当前所有处于展开状态的节点 target"""
+        expanded_list = []
+        def visit(item: QTreeWidgetItem):
+            if item.isExpanded():
+                data = item.data(0, Qt.ItemDataRole.UserRole)
+                if data and "target" in data:
+                    expanded_list.append(data["target"])
+                for i in range(item.childCount()):
+                    visit(item.child(i))
+        for i in range(self.tree.topLevelItemCount()):
+            visit(self.tree.topLevelItem(i))
+        return expanded_list
+
+    def _save_tree_state(self):
+        """持久化保存用例执行状态映射与树节点展开记忆，实现全局记忆模式"""
+        try:
+            # 1. 持久化用例状态映射 (⚪/🟢/🔴)
+            if hasattr(self, "node_status_map") and self.node_status_map:
+                desktop_config.set("mobile", "node_status_map", dict(self.node_status_map))
+            # 2. 持久化树节点展开状态
+            expanded = self._collect_expanded_targets()
+            if expanded:
+                desktop_config.set("mobile", "expanded_targets", expanded)
+            desktop_config.save()
+        except Exception:
+            pass
 
     def _on_tree_item_double_clicked(self, item: QTreeWidgetItem, col: int):
         """双击叶子测试用例启动运行，双击目录/文件/类切换折叠"""
@@ -1544,9 +1612,13 @@ class MobilePage(QWidget):
         self.tree.collapseAll()
 
     def _toggle_params_collapse(self):
+        """一键展开/收起远程测试与参数配置面板，并持久化状态记忆"""
         is_visible = self.params_body.isVisible()
-        self.params_body.setVisible(not is_visible)
-        self.btn_toggle_collapse.setText("展开" if is_visible else "收起")
+        new_visible = not is_visible
+        self.params_body.setVisible(new_visible)
+        self.btn_toggle_collapse.setText("收起" if new_visible else "展开")
+        desktop_config.set("mobile", "params_collapsed", not new_visible)
+        desktop_config.save()
 
     def _reset_params(self):
         self.combo_appium1.setEditText(f"{self.lan_ip}:4723 (局域网本机)")
@@ -1559,6 +1631,9 @@ class MobilePage(QWidget):
         self.combo_view_role.setCurrentIndex(0)
         self._set_autoscroll_state(True)
         desktop_config.set("mobile", "auto_scroll_log", True)
+        self.params_body.setVisible(True)
+        self.btn_toggle_collapse.setText("收起")
+        desktop_config.set("mobile", "params_collapsed", False)
         self._on_config_changed()
         QMessageBox.information(self, "提示", "参数配置已恢复为默认值！")
 
@@ -1596,6 +1671,10 @@ class MobilePage(QWidget):
             {"key": "群聊名称2", "val": ""},
         ])
 
+        # 恢复用例执行状态记忆与树节点展开记忆
+        self.node_status_map = dict(cfg.get("node_status_map", {}))
+        self.expanded_targets = set(cfg.get("expanded_targets", []))
+
         # 恢复左右与上下分割器布局尺寸记忆
         h_sizes = cfg.get("splitter_h_sizes", None)
         if h_sizes and isinstance(h_sizes, list) and len(h_sizes) == 2 and sum(h_sizes) > 0:
@@ -1617,6 +1696,12 @@ class MobilePage(QWidget):
         # 恢复自动向下滚屏记忆 (启动为 True，未启动为 False，默认 True)
         saved_autoscroll = cfg.get("auto_scroll_log", True)
         self._set_autoscroll_state(saved_autoscroll)
+
+        # 恢复远程测试与参数配置面板的折叠/展开记忆
+        params_collapsed = bool(cfg.get("params_collapsed", False))
+        if hasattr(self, 'params_body') and hasattr(self, 'btn_toggle_collapse'):
+            self.params_body.setVisible(not params_collapsed)
+            self.btn_toggle_collapse.setText("展开" if params_collapsed else "收起")
 
     def _on_role_view_changed(self, index: int):
         """视角切换响应槽：动态联动 Allure 看板视角过滤并在日志区提示"""
@@ -2021,6 +2106,9 @@ class MobilePage(QWidget):
         # 4. 立即刷新树上所有用例的球形与齿轮状态 (含父子层级聚合，通过变绿球，失败变红球)
         self._update_tree_node_icons()
 
+        # 实时持久化各用例执行状态与树展开记忆，实现全局记忆模式
+        self._save_tree_state()
+
         # 根据真实执行指标更新状态胶囊
         total = stat.get("total", 0)
         passed = stat.get("passed", 0)
@@ -2102,6 +2190,51 @@ class MobilePage(QWidget):
 
         for i in range(self.tree.topLevelItemCount()):
             visit(self.tree.topLevelItem(i))
+
+    def _restore_last_run_state(self):
+        """
+        启动时自愈与状态恢复：
+        1. 载入本地最新的 Allure 测试报告与指标；
+        2. 若 node_status_map 已从本地配置恢复，全树自底向上刷新节点球形状态；
+        3. 若 node_status_map 尚未初始化，则从 Allure 报告中的执行用例智能对齐并补全；
+        4. 同步更新状态胶囊药丸 (🎉 全部通过 / 🔴 测试失败)。
+        """
+        try:
+            if hasattr(self, 'allure_dashboard') and self.allure_dashboard:
+                self.allure_dashboard.load_latest_report()
+                stat = getattr(self.allure_dashboard, "current_data", {})
+                cases = stat.get("cases", [])
+                total = stat.get("total", 0)
+                passed = stat.get("passed", 0)
+                failed = stat.get("failed", 0)
+                broken = stat.get("broken", 0)
+                bad_count = failed + broken
+
+                # 若本地未缓存 node_status_map 但报告存在，根据报告结果自动回补
+                if (not hasattr(self, "node_status_map") or not self.node_status_map) and cases:
+                    self.node_status_map = {}
+                    for c in cases:
+                        st = c.get("status", "")
+                        fn = c.get("fullName", "")
+                        name = c.get("name", "")
+                        if fn and st:
+                            norm_fn = fn.replace(".", "/").replace("#", "::")
+                            self.node_status_map[norm_fn] = st
+                        elif name and st:
+                            self.node_status_map[name] = st
+
+                if total > 0:
+                    if bad_count == 0:
+                        self.lbl_status_pill.setText(f"🎉 全部通过 ({passed}/{total})")
+                        self.lbl_status_pill.setStyleSheet("background-color: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; border-radius: 12px; padding: 3px 10px; font-weight: 700; font-size: 11px;")
+                    else:
+                        self.lbl_status_pill.setText(f"🔴 测试失败 ({bad_count}/{total} 异常)")
+                        self.lbl_status_pill.setStyleSheet("background-color: #fef2f2; color: #e11d48; border: 1px solid #fecdd3; border-radius: 12px; padding: 3px 10px; font-weight: 700; font-size: 11px;")
+
+            # 刷新整棵树的状态球显示 (使上次跑通过的变绿球 🟢，失败的变红球 🔴)
+            self._update_tree_node_icons()
+        except Exception:
+            pass
 
     def open_allure_report(self):
         self.allure_dashboard.load_latest_report()

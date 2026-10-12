@@ -4,17 +4,17 @@
     "remote_appium": "172.18.0.1:4723 (局域网本机)",
     "remote_udid": "nzwcvo9ls87hws7t",
     "remote_appium2": "172.18.0.1:4724 (局域网本机)",
-    "remote_udid2": "3B65BN02GU600000",
+    "remote_udid2": "3865BN02GU600000",
     "private_chat_name": "",
     "group_chat_name": "",
     "env": "dev",
     "debug_mode": false,
     "role": "business",
     "selected_test_file": "",
-    "auto_scroll_log": false,
+    "auto_scroll_log": true,
     "splitter_h_sizes": [
-      635,
-      1185
+      670,
+      1150
     ],
     "splitter_v_sizes": [
       512,
@@ -35,7 +35,27 @@
         "key": "群聊名称1",
         "val": "测试群bbbbb"
       }
-    ]
+    ],
+    "node_status_map": {
+      "tests/chat/core/test_chat/TestChat::test_send_text_message": "passed"
+    },
+    "expanded_targets": [
+      "tests/chat",
+      "tests/chat/core/test_chat.py",
+      "tests/chat/core/test_chat.py::TestChat",
+      "tests/chat/core/test_chat.py::TestChat::test_send_text_message",
+      "tests/chat/core/test_chat_double.py",
+      "tests/chat/core/test_chat_double.py::TestChatDouble",
+      "tests/chat/core/test_chat_double.py::TestChatDouble::test_send_and_receive_text_message",
+      "tests/chat/core/test_chat_multi_device.py",
+      "tests/chat/core/test_chat_multi_device.py::TestChatMultiDevice",
+      "tests/chat/list/test_chat_list.py",
+      "tests/chat/list/test_chat_list_double.py",
+      "tests/chat/long_press/test_chat_long_press.py",
+      "tests/chat/search/test_chat_search.py",
+      "tests/chat/setting/test_chat_setting.py"
+    ],
+    "params_collapsed": true
   },
   "web": {
     "browser": "chromium",
@@ -49,7 +69,7 @@
   },
   "window": {
     "x": 280,
-    "y": 535,
+    "y": 690,
     "width": 1406,
     "height": 864,
     "maximized": true

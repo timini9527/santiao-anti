@@ -45,6 +45,9 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
         "splitter_v_sizes": [450, 230],   # 上下报告与日志分割器尺寸记忆 (上方看板 : 下方日志)
         "log_collapsed": False,           # 日志控制台吸底折叠状态
         "last_log_height": 230,           # 折叠前日志高度记忆
+        "params_collapsed": False,        # 远程测试与设备配置面板折叠状态记忆
+        "node_status_map": {},            # 用例执行状态映射记忆
+        "expanded_targets": [],           # 用例树展开节点记忆
         # 默认 Web 回执表单结构
         "web_receipt_fields": [
             {"key": "设备1", "val": ""},
