@@ -21,13 +21,48 @@ class TestCollectorService:
     """提供用例目录树扫描服务"""
 
     @staticmethod
-    def _get_catalog_data() -> List[Dict[str, Any]]:
+    def _is_cache_stale(tests_dir: str, cache_file: str) -> bool:
+        """检查 tests/ 目录下的测试文件是否发生了新增、修改或删除（毫秒级文件修改时间对比）"""
+        if not os.path.exists(cache_file):
+            return True
+        try:
+            cache_mtime = os.path.getmtime(cache_file)
+            for root, dirs, files in os.walk(tests_dir):
+                dirs[:] = [d for d in dirs if d not in ('__pycache__', '.pytest_cache')]
+                for f in files:
+                    if (f.startswith("test_") or f.endswith("_test.py")) and f.endswith(".py"):
+                        f_path = os.path.join(root, f)
+                        if os.path.getmtime(f_path) > cache_mtime:
+                            return True
+            return False
+        except Exception:
+            return False
+
+    @staticmethod
+    def _get_catalog_data(force_refresh: bool = False) -> List[Dict[str, Any]]:
         """
         自适应获取测试用例目录清单：
-        1. 优先加载 tests/tests_catalog.json (方案4深度加密发布包专用的预提取索引，0 源码依赖，毫秒级响应)
-        2. 源码开发状态下动态实时扫描 tests/
+        1. 若处于源码环境（存在 tests/ 目录），智能检测文件变动或请求强制刷新；
+           若有变动，0.1秒内极速全量重新扫描并自动写回 tests_catalog.json，零打包、秒级同步！
+        2. 若无变动或无源码环境（纯打包运行态），毫秒级优先读取 tests_catalog.json 静态索引。
         """
         cached_json = os.path.join(PROJECT_ROOT, "tests", "tests_catalog.json")
+        src_tests = os.path.join(PROJECT_ROOT, "tests")
+
+        # 源码存在时的热更新感知：文件变更或强制刷新时自动重扫并写回缓存
+        if os.path.exists(src_tests) and (force_refresh or TestCollectorService._is_cache_stale(src_tests, cached_json)):
+            try:
+                catalog = collect_all_tests(src_tests)
+                if catalog:
+                    try:
+                        with open(cached_json, "w", encoding="utf-8") as f:
+                            json.dump(catalog, f, ensure_ascii=False, indent=2)
+                    except Exception:
+                        pass
+                    return catalog
+            except Exception:
+                pass
+
         if os.path.exists(cached_json):
             try:
                 with open(cached_json, "r", encoding="utf-8") as f:
@@ -36,15 +71,16 @@ class TestCollectorService:
                         return data
             except Exception:
                 pass
-        return collect_all_tests(os.path.join(PROJECT_ROOT, "tests"))
+
+        return collect_all_tests(src_tests)
 
     @staticmethod
-    def get_test_hierarchy(category: str = "mobile") -> List[Dict[str, Any]]:
+    def get_test_hierarchy(category: str = "mobile", force_refresh: bool = False) -> List[Dict[str, Any]]:
         """
         按 一级目录(Category) -> 二级文件(File) -> 三级类(Class) -> 四级用例(Test) -> 五级参数(Param)
         组织全量多级测试用例树结构
         """
-        all_catalog = TestCollectorService._get_catalog_data()
+        all_catalog = TestCollectorService._get_catalog_data(force_refresh=force_refresh)
         categories: Dict[str, List[Dict[str, Any]]] = {}
         direct_files: List[Dict[str, Any]] = []
 
@@ -111,9 +147,9 @@ class TestCollectorService:
         return final_hierarchy
 
     @staticmethod
-    def get_test_catalog(category: str = "mobile") -> List[Dict[str, Any]]:
+    def get_test_catalog(category: str = "mobile", force_refresh: bool = False) -> List[Dict[str, Any]]:
         """保留扁平文件列表兼容接口"""
-        all_catalog = TestCollectorService._get_catalog_data()
+        all_catalog = TestCollectorService._get_catalog_data(force_refresh=force_refresh)
         if category == "mobile":
             mobile_catalog = []
             for item in all_catalog:

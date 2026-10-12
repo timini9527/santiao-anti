@@ -21,7 +21,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPointF, QLineF
 from PyQt6.QtGui import (
     QPainter, QColor, QPen, QBrush, QLinearGradient, QRadialGradient,
-    QFont, QPainterPath, QMouseEvent, QPixmap, QIcon
+    QFont, QPainterPath, QMouseEvent, QPixmap, QIcon, QKeySequence, QShortcut
 )
 
 from ..config import desktop_config
@@ -497,6 +497,35 @@ class MainWindow(QMainWindow):
         self.stacked_widget.addWidget(self.page_reports)  # index 4
 
         root_layout.addWidget(self.stacked_widget, stretch=1)
+
+        # 3. 注册全局热键：F5 (全量热同步与刷新) / Ctrl+R (0.3秒极速热重启应用)
+        self._shortcut_f5 = QShortcut(QKeySequence("F5"), self)
+        self._shortcut_f5.activated.connect(self._on_hotkey_f5)
+
+        self._shortcut_ctrl_r = QShortcut(QKeySequence("Ctrl+R"), self)
+        self._shortcut_ctrl_r.activated.connect(self._on_hotkey_restart)
+
+    def _on_hotkey_f5(self):
+        """F5 快捷键：触发当前页与全量测试用例实时热同步"""
+        if hasattr(self, "page_mobile") and hasattr(self.page_mobile, "_trigger_live_sync"):
+            self.page_mobile._trigger_live_sync()
+        if hasattr(self, "page_devices") and hasattr(self.page_devices, "refresh_devices"):
+            self.page_devices.refresh_devices()
+
+    def _on_hotkey_restart(self):
+        """Ctrl+R 快捷键：极速热重启当前桌面应用进程 (0.3 秒无缝重载全量 UI 源码)"""
+        try:
+            from PyQt6.QtCore import QProcess
+            from PyQt6.QtWidgets import QApplication
+            if hasattr(self, "page_mobile") and hasattr(self.page_mobile, "save_layout_state"):
+                self.page_mobile.save_layout_state()
+            desktop_config.save()
+
+            # 以相同命令参数在外部独立拉起新进程，随后退出当前进程
+            QProcess.startDetached(sys.executable, sys.argv)
+            QApplication.quit()
+        except Exception:
+            pass
 
     def _switch_page(self, index: int):
         self.stacked_widget.setCurrentIndex(index)

@@ -13,8 +13,8 @@
     "selected_test_file": "",
     "auto_scroll_log": false,
     "splitter_h_sizes": [
-      638,
-      1182
+      635,
+      1185
     ],
     "splitter_v_sizes": [
       512,
@@ -29,19 +29,11 @@
       },
       {
         "key": "私聊用户1",
-        "val": ""
-      },
-      {
-        "key": "私聊用户2",
-        "val": ""
+        "val": "测试0224"
       },
       {
         "key": "群聊名称1",
-        "val": ""
-      },
-      {
-        "key": "群聊名称2",
-        "val": ""
+        "val": "测试群bbbbb"
       }
     ]
   },
@@ -56,8 +48,8 @@
     "concurrency": 1
   },
   "window": {
-    "x": 326,
-    "y": 427,
+    "x": 280,
+    "y": 535,
     "width": 1406,
     "height": 864,
     "maximized": true

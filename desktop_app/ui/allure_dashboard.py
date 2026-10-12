@@ -249,6 +249,7 @@ class AllureReportParser:
                     dur_str = f"{dur}ms" if dur < 1000 else f"{dur/1000.0:.1f}s"
                     data["cases"].append({
                         "name": cd.get("name", "未命名用例"),
+                        "fullName": cd.get("fullName", ""),
                         "status": cd.get("status", "unknown"),
                         "duration": dur_str
                     })
@@ -320,6 +321,7 @@ class AllureReportParser:
 
                 data["cases"].append({
                     "name": cd.get("name", "未命名用例"),
+                    "fullName": cd.get("fullName", ""),
                     "status": status,
                     "duration": dur_str
                 })

@@ -27,7 +27,7 @@ from PyQt6.QtWidgets import (
     QLineEdit, QComboBox, QCheckBox, QPushButton, QRadioButton,
     QButtonGroup, QTreeWidget, QTreeWidgetItem, QSplitter,
     QPlainTextEdit, QMessageBox, QFrame, QScrollArea, QApplication,
-    QHeaderView, QSizePolicy, QDialog, QTextBrowser
+    QHeaderView, QSizePolicy, QDialog, QTextBrowser, QProgressBar
 )
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QTextCursor, QFont
@@ -195,6 +195,75 @@ class MarkdownDocDialog(QDialog):
             QMessageBox.warning(self, "打开失败", f"调用系统程序打开文档失败:\n{e}")
 
 
+class SyncProgressDialog(QDialog):
+    """测试用例同步专属 Loading 进度模态弹窗 (极简科技轻奢风)"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setFixedSize(390, 160)
+
+        # 核心纯白卡片容器
+        card = QFrame(self)
+        card.setGeometry(0, 0, 390, 160)
+        card.setStyleSheet("""
+            QFrame {
+                background-color: #ffffff;
+                border: 1px solid #cbd5e1;
+                border-radius: 12px;
+            }
+        """)
+
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(24, 22, 24, 20)
+        layout.setSpacing(12)
+
+        # 顶部标题与百分比行
+        title_row = QHBoxLayout()
+        title_row.setContentsMargins(0, 0, 0, 0)
+        self.lbl_title = QLabel("🔄 正在同步测试用例...")
+        self.lbl_title.setStyleSheet("font-size: 14px; font-weight: 700; color: #0f172a; border: none;")
+        self.lbl_pct = QLabel("0%")
+        self.lbl_pct.setStyleSheet("font-size: 13px; font-weight: 700; color: #2563eb; border: none;")
+        title_row.addWidget(self.lbl_title)
+        title_row.addStretch()
+        title_row.addWidget(self.lbl_pct)
+        layout.addLayout(title_row)
+
+        # 状态描述文案
+        self.lbl_status = QLabel("🔍 检索 tests/ 目录测试文件结构...")
+        self.lbl_status.setStyleSheet("font-size: 12px; color: #64748b; font-weight: 500; border: none;")
+        layout.addWidget(self.lbl_status)
+
+        # 科技蓝双色渐变进度条
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setFixedHeight(6)
+        self.progress_bar.setTextVisible(False)
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setStyleSheet("""
+            QProgressBar {
+                background-color: #f1f5f9;
+                border-radius: 3px;
+                border: none;
+            }
+            QProgressBar::chunk {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #3b82f6, stop:1 #06b6d4);
+                border-radius: 3px;
+            }
+        """)
+        layout.addWidget(self.progress_bar)
+
+    def set_progress(self, val: int, status_text: str, title_text: Optional[str] = None):
+        """实时更新弹窗状态与进度百分比"""
+        self.progress_bar.setValue(val)
+        self.lbl_pct.setText(f"{val}%")
+        self.lbl_status.setText(status_text)
+        if title_text:
+            self.lbl_title.setText(title_text)
+        QApplication.processEvents()
+
 
 class MobilePage(QWidget):
     """移动端自动化测试核心工作台 (1:1 像素级复刻 Web 端)"""
@@ -215,8 +284,10 @@ class MobilePage(QWidget):
         self._auto_scroll = True
         self.web_receipt_fields: List[Dict[str, str]] = []
 
+        self._is_loading_config = True
         self.init_ui()
         self.load_persisted_config()
+        self._is_loading_config = False
 
         # 异步非阻塞错峰调度：优先极速呈现骨架与分割器，随后渐进加载用例与设备检测
         QTimer.singleShot(40, self._restore_splitter_sizes)
@@ -488,6 +559,17 @@ class MobilePage(QWidget):
         btn_collapse.clicked.connect(self._collapse_all)
         search_box.addWidget(btn_collapse)
 
+        lbl_slash2 = QLabel("/")
+        lbl_slash2.setStyleSheet("color: #94a3b8;")
+        search_box.addWidget(lbl_slash2)
+
+        self.btn_sync = QPushButton("同步")
+        self.btn_sync.setProperty("class", "btn-mini")
+        self.btn_sync.setToolTip("强制全量扫描本地 tests 目录，实时同步新增或修改的测试用例（无需重新打包编译）")
+        self.btn_sync.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_sync.clicked.connect(self._trigger_live_sync)
+        search_box.addWidget(self.btn_sync)
+
         layout.addLayout(search_box)
 
         # 2.2 四级用例树 (隐藏头部，简洁纯净)
@@ -497,7 +579,7 @@ class MobilePage(QWidget):
         self.tree.header().setStretchLastSection(False)
         self.tree.header().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.tree.header().setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
-        self.tree.setColumnWidth(1, 136)
+        self.tree.setColumnWidth(1, 142)
         self.tree.setTextElideMode(Qt.TextElideMode.ElideRight)
         self.tree.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.tree.itemClicked.connect(self._on_tree_item_clicked)
@@ -660,16 +742,75 @@ class MobilePage(QWidget):
         self.combo_udid2.currentTextChanged.connect(self._on_config_changed)
         body_layout.addWidget(self.combo_udid2, 8, 0, 1, 2)
 
-        # 5. 业务调试变量 (私聊 / 群聊)
-        body_layout.addWidget(QLabel("业务调试变量 (私聊 / 群聊):"), 9, 0, 1, 2)
+        # 5. 业务调试变量 (私聊 / 群聊) - 配备保存与清空操作按钮，支持全局记忆模式
+        lbl_box_chat = QHBoxLayout()
+        lbl_box_chat.setSpacing(8)
+        lbl_box_chat.addWidget(QLabel("业务调试变量 (私聊 / 群聊):"))
+        lbl_box_chat.addStretch()
+
+        self.btn_save_chat = QPushButton("保存")
+        self.btn_save_chat.setProperty("class", "btn-mini")
+        self.btn_save_chat.setToolTip("保存当前私聊用户与群聊名称，开启持久化记忆模式")
+        self.btn_save_chat.setStyleSheet("""
+            QPushButton {
+                background-color: #2563eb;
+                color: #ffffff;
+                border: 1px solid #1d4ed8;
+                border-radius: 4px;
+                padding: 2px 10px;
+                font-size: 11px;
+                font-weight: 700;
+            }
+            QPushButton:hover {
+                background-color: #1d4ed8;
+            }
+            QPushButton:pressed {
+                background-color: #1e40af;
+            }
+        """)
+        self.btn_save_chat.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_save_chat.clicked.connect(self._save_chat_vars)
+
+        self.btn_clear_chat = QPushButton("清空")
+        self.btn_clear_chat.setProperty("class", "btn-mini")
+        self.btn_clear_chat.setToolTip("清空输入框内容并同步重置持久化数据")
+        self.btn_clear_chat.setStyleSheet("""
+            QPushButton {
+                background-color: #f1f5f9;
+                color: #64748b;
+                border: 1px solid #cbd5e1;
+                border-radius: 4px;
+                padding: 2px 10px;
+                font-size: 11px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background-color: #fee2e2;
+                border-color: #fca5a5;
+                color: #b91c1c;
+            }
+            QPushButton:pressed {
+                background-color: #fecdd3;
+            }
+        """)
+        self.btn_clear_chat.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_clear_chat.clicked.connect(self._clear_chat_vars)
+
+        lbl_box_chat.addWidget(self.btn_save_chat)
+        lbl_box_chat.addSpacing(6)
+        lbl_box_chat.addWidget(self.btn_clear_chat)
+        body_layout.addLayout(lbl_box_chat, 9, 0, 1, 2)
+
         chat_vars_row = QHBoxLayout()
         self.edit_private_chat = QLineEdit()
         self.edit_private_chat.setPlaceholderText("私聊用户 (如: test209-11)")
         self.edit_private_chat.textChanged.connect(self._on_config_changed)
+        self.edit_private_chat.returnPressed.connect(self._save_chat_vars)
 
         self.edit_group_chat = QLineEdit()
         self.edit_group_chat.setPlaceholderText("群聊名称 (如: 测试交流群)")
         self.edit_group_chat.textChanged.connect(self._on_config_changed)
+        self.edit_group_chat.returnPressed.connect(self._save_chat_vars)
 
         chat_vars_row.addWidget(self.edit_private_chat)
         chat_vars_row.addWidget(self.edit_group_chat)
@@ -1013,7 +1154,7 @@ class MobilePage(QWidget):
                 self.right_v_splitter.setSizes(v_sizes)
 
     def save_layout_state(self):
-        """退出应用时完整同步分割器尺寸"""
+        """退出应用时完整同步分割器尺寸与调试变量"""
         h_sizes = self.main_h_splitter.sizes()
         if len(h_sizes) == 2 and sum(h_sizes) > 0:
             desktop_config.set("mobile", "splitter_h_sizes", h_sizes)
@@ -1022,6 +1163,10 @@ class MobilePage(QWidget):
             desktop_config.set("mobile", "splitter_v_sizes", v_sizes)
             desktop_config.set("mobile", "log_collapsed", self._is_log_collapsed)
             desktop_config.set("mobile", "last_log_height", self._last_log_height)
+
+        if hasattr(self, 'edit_private_chat') and hasattr(self, 'edit_group_chat'):
+            desktop_config.set("mobile", "private_chat_name", self.edit_private_chat.text().strip())
+            desktop_config.set("mobile", "group_chat_name", self.edit_group_chat.text().strip())
 
     def _set_autoscroll_state(self, enabled: bool):
         """设置自动滚屏（向下滚动）状态与 UI 展现 (True: 启动向下滚动, False: 停止向下滚动)"""
@@ -1150,14 +1295,62 @@ class MobilePage(QWidget):
         dialog = MarkdownDocDialog(str(doc_path), display_name, self)
         dialog.exec()
 
-    def refresh_test_cases(self):
+    def _trigger_live_sync(self):
+        """触发用例实时同步，弹出专属 Loading 进度模态弹窗"""
+        # 1. 禁用同步按钮防抖
+        if hasattr(self, 'btn_sync'):
+            self.btn_sync.setEnabled(False)
+            self.btn_sync.setText("同步中...")
+
+        # 2. 居中展示专属 Loading 进度弹窗
+        dialog = SyncProgressDialog(self)
+        if self.window():
+            geo = self.window().geometry()
+            x = geo.x() + (geo.width() - dialog.width()) // 2
+            y = geo.y() + (geo.height() - dialog.height()) // 2
+            dialog.move(max(0, x), max(0, y))
+        dialog.show()
+        dialog.set_progress(15, "🔍 检索 tests/ 目录测试文件结构...", "🔄 正在同步测试用例...")
+        self.append_log("🚀 [Sync] 正在启动测试用例实时同步...")
+
+        # 3. 阶段 2 (45%): AST 语法分析
+        def step_ast():
+            dialog.set_progress(45, "🧩 运行 AST 引擎提取用例类、方法与参数...")
+            QTimer.singleShot(70, step_collect)
+
+        # 4. 阶段 3 (80%): 写入索引并重构树视图
+        def step_collect():
+            dialog.set_progress(80, "📊 写入 tests_catalog.json 索引并重构树视图...")
+            self.refresh_test_cases(force_refresh=True)
+            QTimer.singleShot(80, step_done)
+
+        # 5. 阶段 4 (100%): 完成反馈与自动关闭弹窗
+        def step_done():
+            dialog.set_progress(100, f"✅ 已成功收录 {self.total_case_count} 条测试用例", "✅ 测试用例同步完成！")
+            if hasattr(self, 'btn_sync'):
+                self.btn_sync.setText("已同步")
+            self.append_log(f"✨ [Sync] 用例全量同步完成！目录树已更新就绪（共收录 {self.total_case_count} 条测试用例）")
+            # 600ms 后自动关闭弹窗并复位按钮
+            QTimer.singleShot(600, step_finish)
+
+        def step_finish():
+            dialog.accept()
+            if hasattr(self, 'btn_sync'):
+                self.btn_sync.setText("同步")
+                self.btn_sync.setEnabled(True)
+
+        QTimer.singleShot(60, step_ast)
+
+    def refresh_test_cases(self, force_refresh: bool = False):
         self.tree.clear()
-        self.hierarchy_data = TestCollectorService.get_test_hierarchy("mobile")
+        self.hierarchy_data = TestCollectorService.get_test_hierarchy("mobile", force_refresh=force_refresh)
 
         total_collected = 0
+        if force_refresh:
+            self.append_log("🔄 已完成 tests/ 本地用例目录实时全量扫描，用例目录树已同步至最新！")
 
         for c_idx, cat in enumerate(self.hierarchy_data):
-            # 1. 一级目录节点 (📖)
+            # 1. 一级目录节点 (📖) - 纯净目录导航，无需运行按钮与状态球
             cat_item = QTreeWidgetItem(self.tree)
             cat_name = cat["display_name"]
             cat_count = cat["count"]
@@ -1165,18 +1358,12 @@ class MobilePage(QWidget):
 
             cat_item.setText(0, f"📖  {cat_name} [{cat_count}]")
             cat_item.setToolTip(0, f"一级测试目录: {cat['target']}\n包含 {cat_count} 个测试用例")
-            cat_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "category", "target": cat["target"], "name": cat_name})
-
-            action_cat = self._create_tree_action_widget(
-                "运行目录", "tree-pill-btn-dir", 66,
-                lambda ch, t=cat["target"], n=cat_name: self._run_target_node(t, n)
-            )
-            self.tree.setItemWidget(cat_item, 1, action_cat)
+            cat_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "category", "target": cat["target"], "name": cat_name, "count": cat_count})
 
             is_first_cat = (c_idx == 0)
             cat_item.setExpanded(is_first_cat)
 
-            # 2. 二级文件节点 (👾) - 完美挂载【📄 文档】与【运行文件】双按钮
+            # 2. 二级文件节点 (👾) - 纯净文件导航，无需操作按钮与状态球
             for f_idx, file_obj in enumerate(cat.get("files", [])):
                 file_item = QTreeWidgetItem(cat_item)
                 file_name = file_obj.get('display_name', file_obj['file'])
@@ -1184,10 +1371,7 @@ class MobilePage(QWidget):
 
                 file_item.setText(0, f"👾  {file_name} [{file_count}]")
                 file_item.setToolTip(0, f"二级测试文件: {file_obj['file']}\n包含 {file_count} 个测试用例")
-                file_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "file", "target": file_obj["file"], "name": file_name})
-
-                action_file = self._create_file_node_actions(file_obj["file"], file_name)
-                self.tree.setItemWidget(file_item, 1, action_file)
+                file_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "file", "target": file_obj["file"], "name": file_name, "count": file_count})
 
                 is_first_file = (is_first_cat and f_idx == 0)
                 file_item.setExpanded(is_first_file)
@@ -1200,7 +1384,7 @@ class MobilePage(QWidget):
 
                     cls_item.setText(0, f"🧱  {cls_name}")
                     cls_item.setToolTip(0, f"三级测试类: {cls_nodeid}")
-                    cls_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "class", "target": cls_nodeid, "name": cls_name})
+                    cls_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "class", "target": cls_nodeid, "name": cls_name, "count": 0})
 
                     action_cls = self._create_tree_action_widget(
                         "运行类", "tree-pill-btn-class", 56,
@@ -1223,14 +1407,18 @@ class MobilePage(QWidget):
             self.total_case_count = total_collected
             self.lbl_case_pill.setText(f"✏️ 用例: {self.total_case_count} 条")
 
+        # 初始化应用全树自底向上状态球
+        self._update_tree_node_icons()
+
     @staticmethod
-    def _format_test_node_text(status: str, display_name: str) -> str:
+    def _format_node_display_text(status: str, node_type: str, name: str, count: int = 0) -> str:
         """
-        根据执行状态格式化测试用例节点文本：
-        确保球形按钮与齿轮按钮始终同时存在：
-        - 默认未执行：⚪ ⚙️ (默认空心球形按钮 + 齿轮按钮)
-        - 通过 (passed)：🟢 ⚙️ (绿色球形按钮 + 齿轮按钮)
-        - 失败/异常 (failed/broken/error)：🔴 ⚙️ (红色球形按钮 + 齿轮按钮)
+        统一格式化各级节点的文本：
+        - param (参数项)：  ⚪/🟢/🔴 ⚙️  [私聊模式]
+        - test (测试函数)：⚪/🟢/🔴 ⚙️  发送基础 Text 消息
+        - class (测试类)：⚪/🟢/🔴 🧱  聊天模块-文本消息收发
+        - file (测试文件)：👾  聊天模块-文本消息收发 [13] (纯净导航，无状态球)
+        - category (目录)：📖  chat [13] (纯净导航，无状态球)
         """
         if status == "passed":
             ball = "🟢"
@@ -1238,7 +1426,25 @@ class MobilePage(QWidget):
             ball = "🔴"
         else:
             ball = "⚪"
-        return f"{ball} ⚙️  {display_name}"
+
+        if node_type == "param":
+            return f"  {ball} ⚙️  [{name}]"
+        elif node_type == "test":
+            return f"{ball} ⚙️  {name}"
+        elif node_type == "class":
+            return f"{ball} 🧱  {name}"
+        elif node_type == "file":
+            cnt_str = f" [{count}]" if count else ""
+            return f"👾  {name}{cnt_str}"
+        elif node_type == "category":
+            cnt_str = f" [{count}]" if count else ""
+            return f"📖  {name}{cnt_str}"
+        return f"{name}"
+
+    @staticmethod
+    def _format_test_node_text(status: str, display_name: str) -> str:
+        """保持原有测试函数格式化方法兼容"""
+        return MobilePage._format_node_display_text(status, "test", display_name)
 
     def _add_leaf_item(self, parent: QTreeWidgetItem, file_path: str, cls_name: str, test: Dict[str, Any]):
         node_id = f"{file_path}::{cls_name}::{test['name']}" if cls_name else f"{file_path}::{test['name']}"
@@ -1253,8 +1459,11 @@ class MobilePage(QWidget):
         test_item.setToolTip(0, f"用例: {test_display}\n节点: {node_id}\n状态: {status or '未执行'}")
         test_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "test", "target": node_id, "name": test_display})
 
+        # 区分层级：若该测试节点包含参数化子项(孙子用例)，按钮文字显示为 "运行函数"
+        btn_test_label = "运行函数" if params else "运行"
+        btn_test_width = 58 if params else 46
         action_test = self._create_tree_action_widget(
-            "运行", "tree-pill-btn", 46,
+            btn_test_label, "tree-pill-btn", btn_test_width,
             lambda ch, node=node_id, n=test_display: self._run_target_node(node, n)
         )
         self.tree.setItemWidget(test_item, 1, action_test)
@@ -1419,6 +1628,8 @@ class MobilePage(QWidget):
         self.append_log(f"👁️ Allure 可视化看板已切换为: {role_desc}")
 
     def _on_config_changed(self):
+        if getattr(self, "_is_loading_config", False):
+            return
         role = self.combo_view_role.currentData() or "business"
         desktop_config.set("mobile", "os_type", self.combo_os.currentText())
         desktop_config.set("mobile", "remote_appium", self.combo_appium1.currentText().strip())
@@ -1432,6 +1643,70 @@ class MobilePage(QWidget):
         if hasattr(self, "allure_dashboard") and self.allure_dashboard:
             self.allure_dashboard.set_role_view(role)
 
+    def _save_chat_vars(self):
+        """保存私聊和群聊变量至本地配置，确保再次启动后数据完整恢复（记忆模式）"""
+        pri = self.edit_private_chat.text().strip()
+        grp = self.edit_group_chat.text().strip()
+        desktop_config.set("mobile", "private_chat_name", pri)
+        desktop_config.set("mobile", "group_chat_name", grp)
+        desktop_config.save()
+
+        pri_desc = pri if pri else "<未设置>"
+        grp_desc = grp if grp else "<未设置>"
+        self.append_log(f"💾 [记忆模式] 业务调试变量已保存：私聊=[{pri_desc}], 群聊=[{grp_desc}]，下次启动将自动还原！")
+
+        # 按钮即时变绿高亮反馈 1.5 秒
+        self.btn_save_chat.setText("✅ 已保存")
+        self.btn_save_chat.setStyleSheet("""
+            QPushButton {
+                background-color: #059669;
+                color: #ffffff;
+                border: 1px solid #047857;
+                border-radius: 4px;
+                padding: 2px 10px;
+                font-size: 11px;
+                font-weight: 700;
+            }
+        """)
+        QTimer.singleShot(1500, self._restore_save_chat_btn_style)
+
+    def _restore_save_chat_btn_style(self):
+        if hasattr(self, 'btn_save_chat') and self.btn_save_chat:
+            self.btn_save_chat.setText("保存")
+            self.btn_save_chat.setStyleSheet("""
+                QPushButton {
+                    background-color: #2563eb;
+                    color: #ffffff;
+                    border: 1px solid #1d4ed8;
+                    border-radius: 4px;
+                    padding: 2px 10px;
+                    font-size: 11px;
+                    font-weight: 700;
+                }
+                QPushButton:hover {
+                    background-color: #1d4ed8;
+                }
+                QPushButton:pressed {
+                    background-color: #1e40af;
+                }
+            """)
+
+    def _clear_chat_vars(self):
+        """清空私聊和群聊输入框，并同步清空持久化存储"""
+        self.edit_private_chat.blockSignals(True)
+        self.edit_group_chat.blockSignals(True)
+        try:
+            self.edit_private_chat.clear()
+            self.edit_group_chat.clear()
+        finally:
+            self.edit_private_chat.blockSignals(False)
+            self.edit_group_chat.blockSignals(False)
+
+        desktop_config.set("mobile", "private_chat_name", "")
+        desktop_config.set("mobile", "group_chat_name", "")
+        desktop_config.save()
+        self.append_log("🗑️ 业务调试变量 (私聊 / 群聊) 已清空，持久化配置已同步重置！")
+
     # ==================== 7. 设备与报告辅助 ====================
     def _refresh_report_pill_count(self):
         """实时同步报告中心当前实际存在的有效测试报告总份数"""
@@ -1442,7 +1717,7 @@ class MobilePage(QWidget):
             pass
 
     def _on_top_refresh_clicked(self):
-        self.refresh_test_cases()
+        self._trigger_live_sync()
         self.auto_detect_devices()
         self._refresh_report_pill_count()
         self.allure_dashboard.load_latest_report()
@@ -1661,35 +1936,89 @@ class MobilePage(QWidget):
 
         self.allure_dashboard.load_report_from_path(report_dir=target_report, results_dir=results_dir)
 
-        # 3. 同步本次测试中所有实际执行完成的各用例状态到树节点映射表
+        # 3. 工业级多维归一化同步本次测试中实际执行完成的各用例状态
         stat = getattr(self.allure_dashboard, "current_data", {})
         cases = stat.get("cases", [])
+
+        # 提取 Allure 结果中的多维特征映射表
+        case_methods: Dict[str, str] = {}
+        case_full_names: Dict[str, str] = {}
+        case_titles: Dict[str, str] = {}
+
         if cases:
-            status_by_name = {}
             for c in cases:
                 st = c.get("status", "")
-                if st:
-                    if c.get("fullName"):
-                        status_by_name[c["fullName"]] = st
-                    if c.get("name"):
-                        status_by_name[c["name"]] = st
+                if not st:
+                    continue
+                fn = c.get("fullName", "")
+                nm = c.get("name", "")
+                if fn:
+                    case_full_names[fn] = st
+                    # 从 fullName 提取测试函数名 (去除类名与参数中括号)
+                    clean_fn = fn.split("#")[-1].split("[")[0].strip()
+                    if clean_fn:
+                        case_methods[clean_fn] = st
+                if nm:
+                    case_titles[nm] = st
+                    clean_nm = nm.split("[")[0].strip()
+                    case_titles[clean_nm] = st
 
-            def sync_status(item: QTreeWidgetItem):
-                data = item.data(0, Qt.ItemDataRole.UserRole)
-                if data and data.get("type") in ("test", "param"):
-                    target = data.get("target", "")
-                    name = data.get("name", "")
-                    for match_key, matched_st in status_by_name.items():
-                        if match_key in target or (name and name in match_key):
-                            self.node_status_map[target] = matched_st
+        def is_in_scope(node_target: str) -> bool:
+            """判断目标节点是否落在本次测试任务的真实执行作用域内"""
+            if not curr_node:
+                # 全量测试：整棵用例树均在执行作用域内
+                return True
+            if node_target == curr_node:
+                return True
+            # 参数化子用例属于函数：curr_node="...::func", node_target="...::func[p]"
+            if node_target.startswith(f"{curr_node}["):
+                return True
+            # 类下的函数属于类：curr_node="...::Class", node_target="...::Class::func"
+            if node_target.startswith(f"{curr_node}::"):
+                return True
+            # 文件下的类与函数属于文件：curr_node="tests/.../test_xxx.py", node_target="tests/.../test_xxx.py::..."
+            if node_target.startswith(f"{curr_node}::") or node_target.startswith(f"{curr_node}/"):
+                return True
+            return False
+
+        def sync_status(item: QTreeWidgetItem):
+            data = item.data(0, Qt.ItemDataRole.UserRole)
+            if data and data.get("type") in ("test", "param"):
+                target = data.get("target", "")
+
+                # 🛑 核心作用域物理隔离：非本次执行目标的节点，绝对保持原有状态，严禁跨函数/跨文件污染！
+                if is_in_scope(target):
+                    matched = None
+                    # 策略 1：根据 fullName 精确路径归一化匹配
+                    for fn, st in case_full_names.items():
+                        norm_fn = fn.replace(".", "/").replace("#", "::")
+                        if norm_fn == target or norm_fn.startswith(f"{target}[") or target.startswith(f"{norm_fn}["):
+                            matched = st
                             break
-                for i in range(item.childCount()):
-                    sync_status(item.child(i))
 
-            for i in range(self.tree.topLevelItemCount()):
-                sync_status(self.tree.topLevelItem(i))
+                    # 策略 2：提取精确测试方法名与参数对应
+                    if not matched:
+                        target_func = target.split("::")[-1].split("[")[0].strip()
+                        if target_func in case_methods:
+                            matched = case_methods[target_func]
 
-        # 4. 立即刷新树上所有用例的球形与齿轮状态 (通过变绿球，失败/异常变红球，齿轮始终保留)
+                    # 策略 3：在严格限定的作用域内兜底继承执行结果
+                    if not matched:
+                        if exit_code == 0 and bad_count == 0:
+                            matched = "passed"
+                        elif exit_code != 0:
+                            matched = "failed"
+
+                    if matched:
+                        self.node_status_map[target] = matched
+
+            for i in range(item.childCount()):
+                sync_status(item.child(i))
+
+        for i in range(self.tree.topLevelItemCount()):
+            sync_status(self.tree.topLevelItem(i))
+
+        # 4. 立即刷新树上所有用例的球形与齿轮状态 (含父子层级聚合，通过变绿球，失败变红球)
         self._update_tree_node_icons()
 
         # 根据真实执行指标更新状态胶囊
@@ -1721,20 +2050,55 @@ class MobilePage(QWidget):
         self._refresh_report_pill_count()
 
     def _update_tree_node_icons(self):
-        """递归遍历用例树更新叶子节点的球形状态与齿轮图标 (齿轮前必有球，默认空心球，通过绿球，失败/异常红球)"""
-        def visit(item: QTreeWidgetItem):
-            data = item.data(0, Qt.ItemDataRole.UserRole)
-            if data and data.get("type") in ("test", "param"):
-                target = data.get("target")
-                status = self.node_status_map.get(target, "")
-                orig_name = data.get("name", "")
-                is_param = (data.get("type") == "param")
-                prefix = "  " if is_param else ""
-                display_text = f"[{orig_name}]" if is_param else orig_name
-                item.setText(0, f"{prefix}{self._format_test_node_text(status, display_text)}")
-                item.setToolTip(0, f"用例: {orig_name}\n节点: {target}\n状态: {status or '未执行'}")
+        """
+        递归遍历整棵测试树，自底向上全链路聚合并更新各级节点 (目录/文件/类/函数/参数) 的球形状态：
+        1. 叶子节点 (单测或具体参数) 保持其独立状态；
+        2. 拥有子节点的层级 (函数/类/文件/目录) 自动自底向上聚合所有子节点状态 (Rollup)：
+           - 包含任一失败/异常 -> 聚合为失败 🔴；
+           - 已执行子项全通过 -> 聚合为通过 🟢；
+           - 未执行 -> 聚合为未执行 ⚪。
+        """
+        def visit(item: QTreeWidgetItem) -> str:
+            # 1. 递归优先后序遍历所有子节点，收集各子节点状态
+            child_statuses = []
             for i in range(item.childCount()):
-                visit(item.child(i))
+                c_st = visit(item.child(i))
+                if c_st:
+                    child_statuses.append(c_st)
+
+            data = item.data(0, Qt.ItemDataRole.UserRole)
+            if not data:
+                return ""
+
+            node_type = data.get("type", "")
+            target = data.get("target", "")
+            name = data.get("name", "")
+            count = data.get("count", 0)
+
+            # 2. 计算当前节点状态：若有子节点，由子节点状态精准聚合
+            if item.childCount() > 0:
+                if child_statuses:
+                    if any(s in ("failed", "broken", "error") for s in child_statuses):
+                        curr_status = "failed"
+                    elif all(s == "passed" for s in child_statuses):
+                        curr_status = "passed"
+                    else:
+                        curr_status = ""
+                    self.node_status_map[target] = curr_status
+                else:
+                    curr_status = self.node_status_map.get(target, "")
+            else:
+                curr_status = self.node_status_map.get(target, "")
+
+            # 3. 统一应用各层级节点文本与提示：目录与文件保持纯净导航，类/函数/参数展示状态球与状态提示
+            item.setText(0, self._format_node_display_text(curr_status, node_type, name, count))
+            if node_type in ("category", "file"):
+                item.setToolTip(0, f"类型: {node_type}\n名称: {name}\n节点: {target}\n包含 {count} 个测试用例")
+            else:
+                status_desc = "通过" if curr_status == "passed" else ("失败" if curr_status == "failed" else "未执行")
+                item.setToolTip(0, f"类型: {node_type}\n名称: {name}\n节点: {target}\n状态: {status_desc}")
+
+            return curr_status
 
         for i in range(self.tree.topLevelItemCount()):
             visit(self.tree.topLevelItem(i))

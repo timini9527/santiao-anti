@@ -321,6 +321,20 @@ def build(build_installer: bool = BUILD_INSTALLER):
     print(f" [模式] 是否编译生成安装包 (BUILD_INSTALLER): {build_installer}")
     print("==================================================")
 
+    # 0. 自动预提取最新全量用例元数据并同步刷新 tests_catalog.json 静态索引
+    try:
+        import json
+        from web_platform.backend.collector import collect_all_tests
+        src_tests = os.path.join(PROJECT_ROOT, "tests")
+        if os.path.exists(src_tests):
+            catalog = collect_all_tests(src_tests)
+            catalog_file = os.path.join(src_tests, "tests_catalog.json")
+            with open(catalog_file, "w", encoding="utf-8") as f:
+                json.dump(catalog, f, ensure_ascii=False, indent=2)
+            print(f"[用例索引] 已自动同步刷新测试用例索引: {catalog_file} (收录 {len(catalog)} 个测试文件)")
+    except Exception as e:
+        print(f"[用例警告] 自动刷新 tests_catalog.json 提示: {e}")
+
     main_entry = os.path.join(CURRENT_DIR, "main.py")
     dist_dir = os.path.join(PROJECT_ROOT, "dist")
     build_dir = os.path.join(PROJECT_ROOT, "build_native")

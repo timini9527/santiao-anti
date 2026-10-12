@@ -97,7 +97,17 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     print(err_msg, file=sys.stderr)
     try:
         from PyQt6.QtWidgets import QMessageBox
-        QMessageBox.critical(None, "程序运行异常", f"检测到启动错误:\n\n{err_msg}")
+        from PyQt6.QtCore import Qt
+        msg_box = QMessageBox()
+        msg_box.setIcon(QMessageBox.Icon.Critical)
+        msg_box.setWindowTitle("程序运行异常")
+        msg_box.setText(f"检测到启动错误:\n\n{err_msg}")
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        # 强制设置置顶窗口标志，确保异常弹窗始终置于所有窗口最上层，避免被编辑器或后台窗口遮挡
+        msg_box.setWindowFlags(msg_box.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
+        msg_box.raise_()
+        msg_box.activateWindow()
+        msg_box.exec()
     except Exception:
         pass
 
