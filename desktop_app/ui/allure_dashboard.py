@@ -251,7 +251,8 @@ class AllureReportParser:
                         "name": cd.get("name", "未命名用例"),
                         "fullName": cd.get("fullName", ""),
                         "status": cd.get("status", "unknown"),
-                        "duration": dur_str
+                        "duration": dur_str,
+                        "parameters": cd.get("parameters", [])
                     })
                 except Exception:
                     pass
@@ -323,7 +324,8 @@ class AllureReportParser:
                     "name": cd.get("name", "未命名用例"),
                     "fullName": cd.get("fullName", ""),
                     "status": status,
-                    "duration": dur_str
+                    "duration": dur_str,
+                    "parameters": cd.get("parameters", [])
                 })
             except Exception:
                 pass

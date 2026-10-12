@@ -250,3 +250,32 @@ class ChatListPage(ChatPage):
         """设置会话置顶状态"""
         logger.info(f"⚙️ 设置会话置顶状态: 【{session_name}】...")
         return self.common_set_left_menu(session_name, slider_locator)
+
+    # 侧滑置顶会话 (业务级封装，屏蔽 Locator)
+    def slide_top_session(self, session_name: str, action: str = "置顶") -> str:
+        """
+        侧滑指定会话并执行置顶或取消置顶，对用例层完全屏蔽底层 Locator
+        :param session_name: 目标会话名称
+        :param action: 操作文案 ('置顶' 或 '取消置顶')
+        :return: 侧滑按钮实际显示的文案
+        """
+        logger.info(f"⚙️ 对会话【{session_name}】执行侧滑【{action}】操作...")
+        return self.common_set_left_menu(session_name, HL.CONVERSATION_TOP_TEXT, slide_action=action)
+
+    # 轮询等待顶部首项会话
+    def wait_for_first_session_name(self, expect_name: str, timeout: float = 5.0) -> bool:
+        """
+        轮询等待列表顶部首个会话成为目标会话，解决滑动惯性与置顶重排动画延迟
+        :param expect_name: 预期置顶后的会话名称
+        :param timeout: 超时时间 (秒)
+        :return: bool 是否匹配成功
+        """
+        end_time = time.time() + timeout
+        while time.time() < end_time:
+            elements = self.find_elements(HL.CONVERSATION_NAME, timeout=1, raise_exception=False)
+            if elements:
+                names = self.clean_ui_text([e.get_attribute("text") for e in elements if e])
+                if names and names[0] == expect_name:
+                    return True
+            time.sleep(0.3)
+        return False

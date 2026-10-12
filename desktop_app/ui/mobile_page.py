@@ -20,7 +20,7 @@ import shutil
 import socket
 import subprocess
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Set, Tuple
+from typing import Optional, List, Dict, Any, Set, Tuple, Callable
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
@@ -1998,6 +1998,150 @@ class MobilePage(QWidget):
     def _on_worker_status(self, status: str, msg: str):
         self.status_bar.setText(f"状态: {msg}")
 
+    @staticmethod
+    def _match_single_case_status(
+        target: str,
+        node_type: str,
+        node_name: str,
+        cases: List[Dict[str, Any]],
+        has_children: bool = False
+    ) -> str:
+        """
+        工业级多维精准对齐算法：
+        将测试用例树节点 (target / node_name) 与 Allure 报告中的真实执行用例进行多维特征映射，
+        精准提取其独立运行状态 (passed / failed / broken 等)，杜绝参数化子用例相互覆盖与污染。
+        """
+        if not cases:
+            return ""
+
+        # 1. 拥有子项的父测试函数节点：其状态由子项在 _update_tree_node_icons 中自底向上精准聚合
+        if node_type == "test" and has_children:
+            return ""
+
+        # 2. 提取 target 的函数名与核心标识
+        raw_target = target.split("[")[0].strip()
+        func_name = raw_target.split("::")[-1].strip()
+
+        # 3. 候选 cases 过滤：必须归属于同一个测试函数
+        candidates = []
+        for c in cases:
+            fn = c.get("fullName", "")
+            c_func = fn.split("#")[-1].split("[")[0].strip()
+            if c_func == func_name:
+                candidates.append(c)
+
+        if not candidates:
+            # 容错降级：按函数名模糊包含过滤
+            candidates = [c for c in cases if func_name in c.get("fullName", "") or func_name in c.get("name", "")]
+
+        if not candidates:
+            return ""
+
+        # 4. 独立单测函数节点 (无参数化子项)
+        if node_type == "test" and not has_children:
+            for c in candidates:
+                if c.get("name") == node_name:
+                    return c.get("status", "")
+            if len(candidates) == 1:
+                return candidates[0].get("status", "")
+
+        # 5. 参数化子节点精准映射 (node_type == 'param' 或 target 携带参数方括号)
+        param_str = ""
+        if "[" in target and target.endswith("]"):
+            param_str = target[target.find("[") + 1 : -1].strip()
+        elif node_type == "param":
+            param_str = node_name.strip()
+
+        if param_str:
+            tokens = [t.strip() for t in re.split(r"[-_,/ ]+", param_str) if t.strip()]
+            best_case = None
+            best_score = -999.0
+
+            for c in candidates:
+                c_name = c.get("name", "")
+                c_segments = [s.strip() for s in re.split(r"[|\-_/, ]+", c_name) if s.strip()]
+                c_params_text = " ".join([str(p.get("value", "")) for p in c.get("parameters", [])])
+
+                score = 0.0
+                all_tokens_found = True
+
+                for token in tokens:
+                    token_found = False
+                    # A. 分段精确全等匹配 (权重 10.0)
+                    if token in c_segments:
+                        score += 10.0
+                        token_found = True
+                    # B. 参数属性精确值匹配 (权重 8.0)
+                    elif f"='{token}'" in c_params_text or f"=\"{token}\"" in c_params_text:
+                        score += 8.0
+                        token_found = True
+                    # C. 标题字符串包含 (降权并防子串歧义，如 '取消置顶状态' 与 '置顶状态')
+                    elif token in c_name:
+                        if f"取消{token}" in c_name and "取消" not in token:
+                            score += 0.2
+                        else:
+                            score += 3.0
+                        token_found = True
+                    # D. 参数文本包含
+                    elif token in c_params_text:
+                        if f"取消{token}" in c_params_text and "取消" not in token:
+                            score += 0.2
+                        else:
+                            score += 2.0
+                        token_found = True
+
+                    if not token_found:
+                        all_tokens_found = False
+
+                if not all_tokens_found:
+                    score -= 50.0
+
+                matched_seg_count = sum(1 for seg in c_segments if seg in tokens)
+                score += matched_seg_count * 2.0
+
+                if score > best_score:
+                    best_score = score
+                    best_case = c
+
+            if best_case and best_score > 0:
+                return best_case.get("status", "")
+
+        return ""
+
+    def _sync_cases_to_tree_status(
+        self,
+        cases: List[Dict[str, Any]],
+        scope_checker: Optional[Callable[[str], bool]] = None
+    ):
+        """
+        遍历整棵用例树，将 Allure 报告中的真实执行结果多维精准对齐并同步到树节点的 node_status_map 中：
+        :param cases: Allure 测试报告中的用例列表
+        :param scope_checker: 可选的作用域判断函数，传入 target 返回 bool；若为 None 则全量对齐
+        """
+        if not cases:
+            return
+
+        def sync_item(item: QTreeWidgetItem):
+            data = item.data(0, Qt.ItemDataRole.UserRole)
+            if data and data.get("type") in ("test", "param"):
+                target = data.get("target", "")
+                node_type = data.get("type", "")
+                node_name = data.get("name", "")
+                has_children = item.childCount() > 0
+
+                if scope_checker is None or scope_checker(target):
+                    matched = self._match_single_case_status(
+                        target, node_type, node_name, cases, has_children=has_children
+                    )
+                    if matched:
+                        self.node_status_map[target] = matched
+
+            for i in range(item.childCount()):
+                sync_item(item.child(i))
+
+        for i in range(self.tree.topLevelItemCount()):
+            sync_item(self.tree.topLevelItem(i))
+
     def _on_worker_finished(self, exit_code: int, report_dir: str):
         self.btn_run.setEnabled(True)
         self.btn_stop.setEnabled(False)
@@ -2008,11 +2152,8 @@ class MobilePage(QWidget):
             self.status_bar.setText("状态: 就绪 (测试已终止)")
             return
 
-        # 1. 更新当前目标节点
+        # 1. 记录当前目标节点
         curr_node = getattr(self, "current_target_nodeid", None)
-        if curr_node:
-            self.node_status_map[curr_node] = "passed" if exit_code == 0 else "failed"
-
         self.lbl_running_case.setText(f"执行完毕 (退出码: {exit_code})")
 
         # 2. 核心：全动态解析本次测试任务的真实报告与原始结果
@@ -2024,29 +2165,6 @@ class MobilePage(QWidget):
         # 3. 工业级多维归一化同步本次测试中实际执行完成的各用例状态
         stat = getattr(self.allure_dashboard, "current_data", {})
         cases = stat.get("cases", [])
-
-        # 提取 Allure 结果中的多维特征映射表
-        case_methods: Dict[str, str] = {}
-        case_full_names: Dict[str, str] = {}
-        case_titles: Dict[str, str] = {}
-
-        if cases:
-            for c in cases:
-                st = c.get("status", "")
-                if not st:
-                    continue
-                fn = c.get("fullName", "")
-                nm = c.get("name", "")
-                if fn:
-                    case_full_names[fn] = st
-                    # 从 fullName 提取测试函数名 (去除类名与参数中括号)
-                    clean_fn = fn.split("#")[-1].split("[")[0].strip()
-                    if clean_fn:
-                        case_methods[clean_fn] = st
-                if nm:
-                    case_titles[nm] = st
-                    clean_nm = nm.split("[")[0].strip()
-                    case_titles[clean_nm] = st
 
         def is_in_scope(node_target: str) -> bool:
             """判断目标节点是否落在本次测试任务的真实执行作用域内"""
@@ -2066,42 +2184,11 @@ class MobilePage(QWidget):
                 return True
             return False
 
-        def sync_status(item: QTreeWidgetItem):
-            data = item.data(0, Qt.ItemDataRole.UserRole)
-            if data and data.get("type") in ("test", "param"):
-                target = data.get("target", "")
-
-                # 🛑 核心作用域物理隔离：非本次执行目标的节点，绝对保持原有状态，严禁跨函数/跨文件污染！
-                if is_in_scope(target):
-                    matched = None
-                    # 策略 1：根据 fullName 精确路径归一化匹配
-                    for fn, st in case_full_names.items():
-                        norm_fn = fn.replace(".", "/").replace("#", "::")
-                        if norm_fn == target or norm_fn.startswith(f"{target}[") or target.startswith(f"{norm_fn}["):
-                            matched = st
-                            break
-
-                    # 策略 2：提取精确测试方法名与参数对应
-                    if not matched:
-                        target_func = target.split("::")[-1].split("[")[0].strip()
-                        if target_func in case_methods:
-                            matched = case_methods[target_func]
-
-                    # 策略 3：在严格限定的作用域内兜底继承执行结果
-                    if not matched:
-                        if exit_code == 0 and bad_count == 0:
-                            matched = "passed"
-                        elif exit_code != 0:
-                            matched = "failed"
-
-                    if matched:
-                        self.node_status_map[target] = matched
-
-            for i in range(item.childCount()):
-                sync_status(item.child(i))
-
-        for i in range(self.tree.topLevelItemCount()):
-            sync_status(self.tree.topLevelItem(i))
+        if cases:
+            self._sync_cases_to_tree_status(cases, scope_checker=is_in_scope)
+        elif curr_node:
+            # 仅在完全没有生成测试报告 (如用例收集阶段语法崩溃) 时兜底标记目标
+            self.node_status_map[curr_node] = "passed" if exit_code == 0 else "failed"
 
         # 4. 立即刷新树上所有用例的球形与齿轮状态 (含父子层级聚合，通过变绿球，失败变红球)
         self._update_tree_node_icons()
@@ -2195,8 +2282,8 @@ class MobilePage(QWidget):
         """
         启动时自愈与状态恢复：
         1. 载入本地最新的 Allure 测试报告与指标；
-        2. 若 node_status_map 已从本地配置恢复，全树自底向上刷新节点球形状态；
-        3. 若 node_status_map 尚未初始化，则从 Allure 报告中的执行用例智能对齐并补全；
+        2. 若 Allure 报告中存在 cases，全树自底向上进行多维精准对齐并纠偏 node_status_map；
+        3. 刷新全树节点球形状态；
         4. 同步更新状态胶囊药丸 (🎉 全部通过 / 🔴 测试失败)。
         """
         try:
@@ -2210,18 +2297,9 @@ class MobilePage(QWidget):
                 broken = stat.get("broken", 0)
                 bad_count = failed + broken
 
-                # 若本地未缓存 node_status_map 但报告存在，根据报告结果自动回补
-                if (not hasattr(self, "node_status_map") or not self.node_status_map) and cases:
-                    self.node_status_map = {}
-                    for c in cases:
-                        st = c.get("status", "")
-                        fn = c.get("fullName", "")
-                        name = c.get("name", "")
-                        if fn and st:
-                            norm_fn = fn.replace(".", "/").replace("#", "::")
-                            self.node_status_map[norm_fn] = st
-                        elif name and st:
-                            self.node_status_map[name] = st
+                # 启动时根据本地最新 Allure 报告对全树进行精准自愈与同步
+                if cases:
+                    self._sync_cases_to_tree_status(cases)
 
                 if total > 0:
                     if bad_count == 0:
@@ -2240,11 +2318,17 @@ class MobilePage(QWidget):
         self.allure_dashboard.load_latest_report()
         stat = getattr(self.allure_dashboard, "current_data", {})
         task_id = stat.get("task_id", "就绪")
+        cases = stat.get("cases", [])
         total = stat.get("total", 0)
         passed = stat.get("passed", 0)
         failed = stat.get("failed", 0)
         broken = stat.get("broken", 0)
         bad_count = failed + broken
+
+        if cases:
+            self._sync_cases_to_tree_status(cases)
+            self._update_tree_node_icons()
+            self._save_tree_state()
 
         if total > 0:
             if bad_count == 0:

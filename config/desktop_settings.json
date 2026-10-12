@@ -11,17 +11,17 @@
     "debug_mode": false,
     "role": "business",
     "selected_test_file": "",
-    "auto_scroll_log": true,
+    "auto_scroll_log": false,
     "splitter_h_sizes": [
-      670,
-      1150
+      732,
+      1088
     ],
     "splitter_v_sizes": [
-      512,
-      401
+      491,
+      422
     ],
     "log_collapsed": false,
-    "last_log_height": 400,
+    "last_log_height": 422,
     "web_receipt_fields": [
       {
         "key": "设备1",
@@ -37,19 +37,41 @@
       }
     ],
     "node_status_map": {
-      "tests/chat/core/test_chat/TestChat::test_send_text_message": "passed"
+      "tests/chat/core/test_chat/TestChat::test_send_text_message": "passed",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_enter_chat": "passed",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_enter_chat[私聊模式]": "passed",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_enter_chat[群聊模式]": "passed",
+      "tests/chat/list/test_chat_list.py::TestChatList": "failed",
+      "tests/chat/list/test_chat_list.py": "failed",
+      "tests/chat": "failed",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_slide_settings": "passed",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_slide_settings[打开静音-私聊模式]": "passed",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_slide_settings[打开静音-群聊模式]": "passed",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_slide_settings[关闭静音-私聊模式]": "passed",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_slide_settings[关闭静音-群聊模式]": "passed",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_slide_settings[置顶状态-私聊模式]": "passed",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_slide_settings[置顶状态-群聊模式]": "passed",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_slide_settings[取消置顶状态-私聊模式]": "passed",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_slide_settings[取消置顶状态-群聊模式]": "passed",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_slide_top_last_session[私聊模式]": "failed",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_slide_top_last_session": "failed"
     },
     "expanded_targets": [
       "tests/chat",
-      "tests/chat/core/test_chat.py",
-      "tests/chat/core/test_chat.py::TestChat",
-      "tests/chat/core/test_chat.py::TestChat::test_send_text_message",
-      "tests/chat/core/test_chat_double.py",
-      "tests/chat/core/test_chat_double.py::TestChatDouble",
-      "tests/chat/core/test_chat_double.py::TestChatDouble::test_send_and_receive_text_message",
-      "tests/chat/core/test_chat_multi_device.py",
-      "tests/chat/core/test_chat_multi_device.py::TestChatMultiDevice",
       "tests/chat/list/test_chat_list.py",
+      "tests/chat/list/test_chat_list.py::TestChatList",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_slide_top_last_session",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_batch_slide_top",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_batch_set_top_no_verify",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_top_fold",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_slide_delete",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_draft_mode",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_unread_mode",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_disable_mode",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_ban_mode",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_message_sending_status_under_weak_network",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_message_failed_status_under_offline",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_chat_content_status",
       "tests/chat/list/test_chat_list_double.py",
       "tests/chat/long_press/test_chat_long_press.py",
       "tests/chat/search/test_chat_search.py",
@@ -69,7 +91,7 @@
   },
   "window": {
     "x": 280,
-    "y": 690,
+    "y": 721,
     "width": 1406,
     "height": 864,
     "maximized": true

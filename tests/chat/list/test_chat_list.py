@@ -1,4 +1,5 @@
 import time
+from typing import Optional
 import allure
 import pytest
 import pytest_check as check
@@ -170,24 +171,49 @@ class TestChatList:
 
 
     @allure.story('单个会话侧滑置顶，滑到最底部让最后一个会话置顶并验证')
-    @allure.title('单个会话侧滑置顶，滑到最底部让最后一个会话置顶验证-状态：已完成')
+    @allure.title('单个会话侧滑置顶：底部会话置顶后成功跃升至顶部第一位-状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式')])
     def test_slide_top_last_session(self, strategy):
-        with allure.step('0. 环境清理：彻底取消所有已置顶会话'):
-            self._clear_all_pinned_sessions()
-        with allure.step('1. 快速下滑到底部置顶一个会话'):
-            self.chatListPage._quick_slide_to_bottom()
-            con_names = self.chatListPage.clean_ui_text(self.homePage.get_conversation_names())
-            assert con_names, '❌ 无法获取底部会话列表名称'
-            target_name = con_names[-1]
-            self.chatListPage.set_notice(target_name, strategy.top_locator, slider_action='置顶')
-        with allure.step('2. 快速上滑到顶部并验证置顶状态是否符合预期'):
-            self.chatListPage._quick_slide_to_top()
-            con_names_aft = self.chatListPage.clean_ui_text(self.homePage.get_conversation_names())
-            assert con_names_aft, '❌ 无法获取顶部会话列表名称'
-            check.equal(con_names_aft[0], target_name, f'❌ 置顶失败, 顶部会话不匹配！实际顶部会话为: {con_names_aft[0]}, 预期目标会话为: {target_name}')
-        with allure.step(f'3. 环境自愈：精准还原【{target_name}】的置顶状态'):
-            self.chatListPage.set_notice(target_name, strategy.top_locator, slider_action='取消置顶')
+        target_name: Optional[str] = None
+        need_restore: bool = False
+
+        try:
+            with allure.step('0. 环境初始化：彻底取消所有历史已置顶会话'):
+                self._clear_all_pinned_sessions()
+
+            with allure.step('1. 快速下滑至列表最底部，选取末尾会话执行侧滑置顶'):
+                self.chatListPage._quick_slide_to_bottom()
+                con_names = self.chatListPage.clean_ui_text(self.homePage.get_conversation_names())
+                assert con_names, '❌ 无法获取底部会话列表名称，当前列表为空'
+                target_name = con_names[-1]
+                logger.info(f'🎯 选中末尾待置顶目标会话: 【{target_name}】')
+
+                # 业务方法调用，用例层零 Locator 泄露
+                menu_text = self.chatListPage.slide_top_session(target_name, action='置顶')
+                check.is_in(menu_text, ['置顶', '取消置顶'], f'侧滑置顶文案异常: {menu_text}')
+                need_restore = True
+
+            with allure.step('2. 快速滑回顶部，动态轮询校验置顶会话是否成功跃升为首项'):
+                self.chatListPage._quick_slide_to_top()
+
+                # 状态闭环轮询等待，彻底规避界面滑动惯性与重排延迟
+                is_top_first = self.chatListPage.wait_for_first_session_name(target_name, timeout=5.0)
+                con_names_aft = self.chatListPage.clean_ui_text(self.homePage.get_conversation_names())
+                current_first = con_names_aft[0] if con_names_aft else '无数据'
+                assert is_top_first, (
+                    f'❌ 置顶重排失败！预期顶部首项为【{target_name}】，实际顶部首项为【{current_first}】'
+                )
+
+        finally:
+            if target_name and need_restore:
+                with allure.step(f'3. 环境自愈：精准还原【{target_name}】的置顶状态'):
+                    try:
+                        self.mainPage.go_to_main_page()
+                        self.chatListPage._quick_slide_to_top()
+                        self.chatListPage.slide_top_session(target_name, action='取消置顶')
+                        logger.info(f'✅ 已成功还原【{target_name}】的置顶状态')
+                    except Exception as e:
+                        logger.warning(f'⚠️ 环境自愈取消置顶异常: {e}')
 
 
     @allure.story('批量置顶/取消置顶会话')
