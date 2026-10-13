@@ -59,56 +59,83 @@ class TestChatList:
     def _clear_all_pinned_sessions(self, max_clean: int = 10):
         """
         【工业级环境清理】彻底取消列表所有置顶会话
-        结合折叠条与顶部会话排布拓扑：
-        1. 若存在折叠条 (>=5个置顶)，先按数量快速批量取消；
-        2. 针对 <5 个置顶的场景，逐个探测顶部首项，若为置顶则取消，直到首项不再是置顶。
+        置顶业务场景拓扑处理决策树：
+        • 场景 0 [无置顶状态]：无折叠条且首个会话未置顶 -> 毫秒级极速放行，零额外耗时；
+        • 场景 1 [置顶会话 <= 4，无折叠条]：首项置顶，连续取消这几个置顶会话直至首项未置顶；
+        • 场景 2 [有折叠条且展开态]：直接按折叠条显示的置顶数量批量取消置顶会话；
+        • 场景 3 [有折叠条且折叠态]：首个会话没有置顶，展开折叠条后，按折叠数量批量取消置顶会话。
         """
         self.mainPage.go_to_main_page()
         self.chatListPage._quick_slide_to_top()
-        fold_count = self.homePage.get_fold_count()
-        if fold_count > 0:
-            if self.homePage.get_top_fold_state() == 'collapsed':
+
+        # 检查是否出现置顶折叠入口条 (对应场景 2 与场景 3)
+        has_fold = self.homePage.is_fold_entry_visible(timeout=0.5)
+
+        # ==================== 分支 A：存在折叠条 (场景 2 / 场景 3) ====================
+        if has_fold:
+            fold_count = self.homePage.get_fold_count()
+            fold_state = self.homePage.get_top_fold_state()
+            logger.info(f"📌 [场景 2/3] 检测到置顶折叠条 (数量: {fold_count}, 状态: 【{fold_state}】)")
+            if fold_state == 'collapsed':
+                logger.info("👉 [场景 3] 折叠条处于折叠收起状态，点击展开折叠条...")
                 self.homePage.click_fold_entry()
+            logger.info(f"👉 [场景 2/3] 展开状态下，直接批量取消 {fold_count} 个置顶会话...")
             self._batch_set_top(fold_count, '取消置顶')
             self.mainPage.go_to_main_page()
             self.chatListPage._quick_slide_to_top()
+            logger.info("✅ 折叠条内置顶会话已全部清理完毕！")
+            return
 
-        for _ in range(max_clean):
+        # ==================== 分支 B：无折叠条 (场景 0 / 场景 1) ====================
+        names = self.chatListPage.clean_ui_text(self.homePage.get_conversation_names())
+        if not names:
+            logger.info("ℹ️ 会话列表为空，无需清理置顶项")
+            return
+
+        first_name = names[0]
+        menu_text = self.chatListPage.slide_top_session(first_name, action='取消置顶')
+        if menu_text == '置顶':
+            logger.info(f"✅ [场景 0] 首个会话【{first_name}】未置顶，全列表无任何置顶会话，极速放行！")
+            return
+
+        logger.info(f"🧹 [场景 1] 首个会话【{first_name}】为置顶项且已取消，继续取消剩余置顶会话 (最多4个)...")
+        clean_limit = min(max_clean, 4)
+        for attempt in range(clean_limit):
             names = self.chatListPage.clean_ui_text(self.homePage.get_conversation_names())
             if not names:
                 break
-            first_name = names[0]
-            menu_text = self.chatListPage.set_notice(first_name, PRIVATE_USER1.top_locator, slider_action='取消置顶')
+            current_first = names[0]
+            menu_text = self.chatListPage.slide_top_session(current_first, action='取消置顶')
             if menu_text == '置顶':
-                logger.info(f"✅ 列表已无任何置顶项，清理完毕")
+                logger.info(f"✅ [场景 1] 顶部首项【{current_first}】已为非置顶状态，全部置顶会话清理完毕")
                 break
+            logger.info(f"  • 已清理置顶会话: 【{current_first}】")
 
-    def _batch_set_top(self, count: int, action: str = '置顶', locator: tuple = None) -> int:
+    def _batch_set_top(self, count: int, action: str = '置顶') -> int:
         """
-        辅助方法：安全地对前 count 个会话执行置顶/取消置顶 (支持跨多屏自动翻页扫描与按需首屏复位)
-        :param count: 需要操作的目标数量
-        :param action: 操作文案 ('置顶' 或 '取消置顶')
-        :param locator: 侧滑置顶按钮定位符（不传则默认使用私聊置顶定位符）
+        批量对列表前 count 个会话执行置顶/取消置顶
+        1. 业务解耦：调用 slide_top_session，完全屏蔽底层 Locator，符合分层规范；
+        2. 极速连续作业：剔除循环内无效的 go_to_main_page 开销，就地连续侧滑；
+        3. 自适应可视区：安全支持微调滑动，彻底解决翻页后边缘项被跳过的问题；
+        4. 状态复位：发生跨屏翻页加载后，操作完毕自动极速滑回顶部。
         """
         if count <= 0:
             return 0
-        target_locator = locator or PRIVATE_USER1.top_locator
         top_count = 0
-        processed_names = set()
+        processed_names: set[str] = set()
         has_scrolled = False
         max_scroll_attempts = 5
 
         while top_count < count:
-            self.mainPage.go_to_main_page()
             names = self.chatListPage.clean_ui_text(self.homePage.get_conversation_names())
             remaining_names = [n for n in names if n not in processed_names]
+
             if not remaining_names:
                 if max_scroll_attempts <= 0:
                     logger.warning(f"⚠️ 已达最大滑屏尝试上限，列表会话已全部扫描完毕 (已处理: {top_count}/{count})")
                     break
-                logger.info(f"⏳ 当前可视会话已全部处理，向上平滑滚动加载更多 (当前已处理: {top_count}/{count})...")
+                logger.info(f"⏳ 当前可视会话已全部处理，平滑上滑加载更多 (当前已处理: {top_count}/{count})...")
                 self.chatListPage.swipe_page(slid_type='up', duration=500, times=1)
-                time.sleep(0.5)
                 has_scrolled = True
                 max_scroll_attempts -= 1
                 new_names = self.chatListPage.clean_ui_text(self.homePage.get_conversation_names())
@@ -119,17 +146,19 @@ class TestChatList:
                 remaining_names = new_remaining
 
             name = remaining_names[0]
-            if not self.homePage.ensure_item_safe_visible(name, allow_swipe=False):
+            if not self.homePage.ensure_item_safe_visible(name, allow_swipe=True):
+                logger.warning(f"⚠️ 会话【{name}】在当前屏无法安全可见，跳过")
                 processed_names.add(name)
                 continue
-            menu_text = self.chatListPage.set_notice(name, target_locator, slider_action=action)
+
+            menu_text = self.chatListPage.slide_top_session(name, action=action)
             processed_names.add(name)
             if menu_text == action:
                 top_count += 1
+                logger.info(f"  • [{top_count}/{count}] 已成功对【{name}】执行【{action}】")
 
         if has_scrolled:
             self.chatListPage._quick_slide_to_top()
-            time.sleep(0.5)
         return top_count
 
 
@@ -188,22 +217,18 @@ class TestChatList:
                 target_name = con_names[-1]
                 logger.info(f'🎯 选中末尾待置顶目标会话: 【{target_name}】')
 
-                # 业务方法调用，用例层零 Locator 泄露
                 menu_text = self.chatListPage.slide_top_session(target_name, action='置顶')
                 check.is_in(menu_text, ['置顶', '取消置顶'], f'侧滑置顶文案异常: {menu_text}')
                 need_restore = True
 
             with allure.step('2. 快速滑回顶部，动态轮询校验置顶会话是否成功跃升为首项'):
                 self.chatListPage._quick_slide_to_top()
-
-                # 状态闭环轮询等待，彻底规避界面滑动惯性与重排延迟
                 is_top_first = self.chatListPage.wait_for_first_session_name(target_name, timeout=5.0)
                 con_names_aft = self.chatListPage.clean_ui_text(self.homePage.get_conversation_names())
                 current_first = con_names_aft[0] if con_names_aft else '无数据'
                 assert is_top_first, (
                     f'❌ 置顶重排失败！预期顶部首项为【{target_name}】，实际顶部首项为【{current_first}】'
                 )
-
         finally:
             if target_name and need_restore:
                 with allure.step(f'3. 环境自愈：精准还原【{target_name}】的置顶状态'):
@@ -217,55 +242,69 @@ class TestChatList:
 
 
     @allure.story('批量置顶/取消置顶会话')
-    @allure.title('批量置顶/取消置顶会话-状态：已完成')
+    @allure.title('批量置顶与取消置顶会话（穿透校验底层状态）-状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(SLIDE_STRATEGY, id='侧滑模式')])
-    @pytest.mark.parametrize('is_top_action', [pytest.param(True, id='批量置顶'), pytest.param(False, id='批量取消置顶')])
-    def test_batch_slide_top(self, strategy, is_top_action):
-        action_name = '置顶' if is_top_action else '取消置顶'
-        expected_status = 'true' if is_top_action else 'false'
-        allure.dynamic.title(f'批量{action_name}页面上所有可见会话')
-        with allure.step(f'1. {action_name}页面上所有可见会话'):
-            pre_con_names = self.homePage.get_conversation_names()
-            con_names = self.chatListPage.clean_ui_text(pre_con_names)
-            for con_name in con_names:
+    def test_batch_slide_top(self, strategy):
+        """ 批量置顶与取消置顶全生命周期闭环流转测试 """
+        target_batch: list[str] = []
+        batch_limit = 3
+
+        try:
+            with allure.step('0. 环境初始化与基线对齐：彻底清除历史置顶干扰'):
                 self.mainPage.go_to_main_page()
-                if not self.homePage.ensure_item_safe_visible(con_name, allow_swipe=False):
-                    logger.info(f'跳过处理: {con_name} (因列表变化，已不在安全可视区域)')
-                    continue
-                current_menu_text = self.chatListPage.set_notice(con_name, strategy.top_locator, slider_action=action_name)
-                check.is_in(current_menu_text, ['置顶', '取消置顶'], f'侧滑文案异常: {current_menu_text}')
-                with allure.step(f'2. 进入会话【{con_name}】并校验底层 {action_name} 状态'):
-                    assert self.chatListPage.enter_session(con_name), f'进入会话失败: {con_name}'
+                self.chatListPage._quick_slide_to_top()
+                self._clear_all_pinned_sessions()
+                names = self.chatListPage.clean_ui_text(self.homePage.get_conversation_names())
+                assert names, '❌ 会话列表为空，无法执行批量置顶测试'
+                target_batch = names[:batch_limit]
+                logger.info(f'🎯 本次批量测试目标样本集: {target_batch}')
+
+            with allure.step('1. 阶段一：批量对目标会话执行侧滑【置顶】'):
+                for con_name in target_batch:
+                    self.mainPage.go_to_main_page()
+                    if not self.homePage.ensure_item_safe_visible(con_name, allow_swipe=True):
+                        self.chatListPage._quick_slide_to_top()
+                        if not self.homePage.ensure_item_safe_visible(con_name, allow_swipe=False):
+                            continue
+                    menu_text = self.chatListPage.slide_top_session(con_name, action='置顶')
+                    check.is_in(menu_text, ['置顶', '取消置顶'], f'侧滑置顶文案异常: {menu_text}')
+
+            with allure.step('2. 穿透校验底层状态：确认置顶开关已开启 (true)'):
+                for con_name in target_batch:
+                    self.mainPage.go_to_main_page()
+                    assert self.homePage.ensure_item_safe_visible(con_name, allow_swipe=True), f'❌ 主页未找到会话: 【{con_name}】'
+                    assert self.chatListPage.enter_session(con_name), f'进入会话失败: 【{con_name}】'
                     self.chatListPage.click_more_button()
-                with allure.step('3. 校验最终设置状态是否符合预期'):
-                    actual_status = self.chatSettingPage.get_switch_top_status()
-                    assert actual_status == expected_status, f'会话【{con_name}】{action_name}状态校验失败'
+                    status = self.chatSettingPage.get_switch_top_status()
+                    check.equal(status, 'true', f'会话【{con_name}】置顶状态校验失败！预期: true, 实际: {status}')
 
+            with allure.step('3. 阶段二：连贯执行批量【取消置顶】'):
+                for con_name in target_batch:
+                    self.mainPage.go_to_main_page()
+                    if not self.homePage.ensure_item_safe_visible(con_name, allow_swipe=True):
+                        self.chatListPage._quick_slide_to_top()
+                        if not self.homePage.ensure_item_safe_visible(con_name, allow_swipe=False):
+                            continue
+                    menu_text = self.chatListPage.slide_top_session(con_name, action='取消置顶')
+                    check.is_in(menu_text, ['置顶', '取消置顶'], f'侧滑取消置顶文案异常: {menu_text}')
 
-    @allure.story('当前页面一键批量置顶和取消置顶，不需要验证')
-    @allure.title('当前页面一键批量置顶和取消置顶，不需要验证-状态：已完成')
-    @pytest.mark.parametrize('strategy', [pytest.param(SLIDE_STRATEGY, id='侧滑模式')])
-    @pytest.mark.parametrize('is_top_action', [pytest.param(True, id='批量置顶'), pytest.param(False, id='批量取消置顶')])
-    def test_batch_set_top_no_verify(self, strategy, is_top_action):
-        action_name = '置顶' if is_top_action else '取消置顶'
-        with allure.step(f'执行批量{action_name}操作'):
-            pre_con_names = self.homePage.get_conversation_names()
-            con_names = self.chatListPage.clean_ui_text(pre_con_names)
-            top_count = 0
-            for con_name in con_names:
-                if not self.homePage.ensure_item_safe_visible(con_name, allow_swipe=False):
-                    logger.info(f'跳过处理: {con_name} (因列表变化，已不在安全可视区域)')
-                    continue
-                current_menu_text = self.chatListPage.set_notice(con_name, strategy.top_locator, slider_action=action_name)
-                check.is_in(current_menu_text, ['置顶', '取消置顶'], f'侧滑文案异常: {current_menu_text}')
-                top_count += 1
-        with allure.step(f'校验批量 {action_name} 操作结果'):
-            fold_count = self.homePage.get_fold_count()
-            if is_top_action:
-                expected_fold = top_count if top_count >= 5 else 0
-                check.equal(fold_count, expected_fold, f'折叠数量校验失败！预期: {expected_fold}, 实际: {fold_count}')
-            else:
-                check.equal(fold_count, 0, f'折叠数量校验失败！预期: 0, 折叠数量: {fold_count}')
+            with allure.step('4. 穿透校验底层状态：确认置顶开关已还原 (false)'):
+                for con_name in target_batch:
+                    self.mainPage.go_to_main_page()
+                    assert self.homePage.ensure_item_safe_visible(con_name, allow_swipe=True), f'❌ 主页未找到会话: 【{con_name}】'
+                    assert self.chatListPage.enter_session(con_name), f'进入会话失败: 【{con_name}】'
+                    self.chatListPage.click_more_button()
+                    status = self.chatSettingPage.get_switch_top_status()
+                    check.equal(status, 'false', f'会话【{con_name}】取消置顶状态校验失败！预期: false, 实际: {status}')
+
+        finally:
+            with allure.step('5. 环境自愈：彻底清理残留置顶会话'):
+                try:
+                    self.mainPage.go_to_main_page()
+                    self._clear_all_pinned_sessions()
+                    logger.info('✅ 批量测试环境自愈完成')
+                except Exception as e:
+                    logger.warning(f'⚠️ 环境清理异常: {e}')
 
 
     @allure.story('置顶会话折叠验证')
@@ -316,18 +355,19 @@ class TestChatList:
         allure.dynamic.story(action.story)
         allure.dynamic.title(f'侧滑删除 | {strategy.desc} - {action.action_desc}')
 
-        if action.expected_session_exists is None:
-            with allure.step(f'0. 前置基准注入：确保【{strategy.name}】有可被清空的聊天记录'):
-                current_msg = self.homePage.get_message_by_name(strategy.name)
-                if not current_msg:
-                    self.chatListPage.common_enter_chat(strategy.name)
-                    self.chatListPage.send_message(f'[{strategy.name}] 侧滑清空前基准消息')
-                    self.mainPage.go_to_main_page()
+        with allure.step(f'0. 前置基准注入：确保【{strategy.name}】处于会话列表且状态就绪'):
+            is_in_list = self.chatListPage.is_session_exist_in_list(strategy.name, timeout=1)
+            current_msg = self.homePage.get_message_by_name(strategy.name, timeout=2) if is_in_list else ""
+            if not is_in_list or (action.expected_session_exists is None and not current_msg):
+                self.chatListPage.common_enter_chat(strategy.name)
+                self.chatListPage.send_message(f'[{strategy.name}] 侧滑测试基准消息')
+                self.mainPage.go_to_main_page()
+                self.homePage.exit_search_if_present()
 
         with allure.step(f'1. 确保【{strategy.desc}】处于安全可视区并侧滑点击删除'):
             is_visible = self.homePage.ensure_item_safe_visible(strategy.name, allow_swipe=True)
             assert is_visible, f'❌ 会话【{strategy.name}】无法安全呈现在可视区，中止侧滑'
-            menu_text = self.chatListPage.set_notice(strategy.name, strategy.delete_locator)
+            menu_text = self.chatListPage.slide_delete_session(strategy.name)
             assert menu_text == '删除', f'❌ 侧滑按钮文案不匹配, 期望: 删除, 实际为: {menu_text}'
 
         with allure.step(f'2. 在二次确认弹窗中选择【{action.action_desc}】'):
@@ -336,29 +376,23 @@ class TestChatList:
         try:
             with allure.step('3. 校验最终列表与聊天记录状态'):
                 if action.expected_session_exists is None:
-                    msg_preview = self.homePage.get_message_by_name(strategy.name)
+                    msg_preview = self.homePage.get_message_by_name(strategy.name, timeout=1)
                     assert not msg_preview, f'❌ 聊天记录预览未被清空，实际显示为: {msg_preview}'
 
                     self.chatListPage.common_enter_chat(strategy.name)
                     bubble_num = self.chatListPage.get_total_message_count()
                     assert bubble_num == 0, f'❌ 会话内仍残留聊天气泡，实际数量: {bubble_num}'
-                    self.mainPage.go_to_main_page()
                 else:
                     is_exist = self.chatListPage.is_session_exist_in_list(strategy.name)
                     assert is_exist == action.expected_session_exists, (
                         f'❌ 会话列表状态不匹配! 期望存在: {action.expected_session_exists}, 实际存在: {is_exist}'
                     )
         finally:
-            needs_heal = (action.expected_session_exists is False) or (
-                action.expected_session_exists is None and 
-                not self.chatListPage.is_session_exist_in_list(strategy.name)
-            )
-            if needs_heal:
-                with allure.step(f'4. 环境自愈：重新唤起【{strategy.name}】恢复会话列表展示'):
-                    self.mainPage.go_to_main_page()
-                    self.chatListPage.common_enter_chat(strategy.name)
-                    self.chatListPage.send_message(f'[{strategy.name}] 会话删除/隐藏后自愈恢复')
-                    self.mainPage.go_to_main_page()
+            with allure.step(f'4. 环境自愈：重新唤起【{strategy.name}】恢复会话列表展示'):
+                self.chatListPage.common_enter_chat(strategy.name)
+                self.chatListPage.send_message(f'[{strategy.name}] 会话删除/隐藏后自愈恢复')
+                self.mainPage.go_to_main_page()
+                self.homePage.exit_search_if_present()
 
 
     @allure.story('验证会话草稿模式状态')

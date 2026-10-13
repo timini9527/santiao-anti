@@ -77,6 +77,21 @@ class HomePage(BasePage):
         logger.info("[Action-Home] 主页 - 点击清理搜索")
         self.click(HomeLocator.SEARCH_CLEAR, force_wait=True, timeout=timeout)
 
+    # 主页 - 点击搜索取消/关闭
+    def click_search_cancel(self, timeout: int = 2) -> None:
+        """ 主页 - 点击搜索栏右侧取消/关闭按钮 (大圆形 X) 退出搜索 """
+        logger.info("[Action-Home] 主页 - 点击取消按钮退出搜索")
+        self.click(HomeLocator.SEARCH_CANCEL, force_wait=True, timeout=timeout)
+
+    # 主页 - 检查并在存在时安全退出搜索覆盖层
+    def exit_search_if_present(self, timeout: int = 1) -> bool:
+        """ 主页 - 若当前停留在搜索结果覆盖层，主动点击右侧取消按钮退出搜索回到主会话列表 """
+        if self.is_element_exist(HomeLocator.SEARCH_CANCEL, timeout=timeout):
+            logger.info("[Action-Home] 检测到搜索结果覆盖层，点击右侧取消按钮退出搜索回到主页...")
+            self.click(HomeLocator.SEARCH_CANCEL, force_wait=True)
+            return True
+        return False
+
     # 主页 - 点击底部展开按钮
     def click_bottom_expand_button(self, timeout: int = 2) -> None:
         """ 主页 - 点击底部展开按钮 """
@@ -362,13 +377,13 @@ class HomePage(BasePage):
         logger.info(f"[Action-Home] 获取指定会话 [{name}] 停用状态: {is_disabled}")
         return is_disabled
 
-    # 主页 - 会话安全点击列表项，防止被底部悬浮栏遮挡
+    # 主页 - 会话安全点击列表项，防止被底部悬浮栏或顶部遮挡
     def ensure_item_safe_visible(self, session_name: str, allow_swipe: bool = True) -> bool:
         """
-        检测列表项是否完全在可视区域内（未被底部菜单遮挡）。
+        检测列表项是否完全在可视区域内（未被顶部栏或底部悬浮菜单遮挡）。
         如果被遮挡或不在当前页：
-            - allow_swipe = True: 自动向上滑动直到元素完全露出。
-            - allow_swipe = False: 直接返回 False，不执行任何滑动操作。
+            - allow_swipe = True: 自动平滑滑动直至元素完全暴露在安全区域内。
+            - allow_swipe = False: 瞬时探测，若不在当前屏或被遮挡直接返回 False。
 
         :param session_name: 会话名称
         :param allow_swipe: 是否允许滑动查找/微调
@@ -378,43 +393,65 @@ class HomePage(BasePage):
         locator = HomeLocator.get_session_by_name(session_name)
         max_attempts = 5 if allow_swipe else 1
 
+        # 1. 预先计算上下安全边界与屏幕中轴（单次探测，避免循环内重复开销）
+        try:
+            window_size = self.driver.get_window_size()
+            screen_width = window_size.get('width', 1080)
+            screen_height = window_size.get('height', 2000)
+        except Exception:
+            screen_width = 1080
+            screen_height = 2000
+
+        center_x = int(screen_width * 0.5)
+
+        # 底部安全边界：底部 EXPAND_MENU 的顶部 Y 坐标；若无则兜底为屏幕高度
+        bottom_item = self.find_element(HomeLocator.EXPAND_MENU, timeout=1, raise_exception=False)
+        safe_bottom_boundary = bottom_item.rect['y'] if bottom_item else screen_height
+
+        # 顶部安全边界：顶部导航标题的底部 Y 坐标，防止顶部遮挡误判
+        top_item = self.find_element(HomeLocator.MIDDLE_TITLE, timeout=1, raise_exception=False)
+        safe_top_boundary = (top_item.rect['y'] + top_item.rect['height']) if top_item else 0
+
+        # 2. 动态探查与智能自适应微调
         for attempt in range(max_attempts):
-            session_item = self.find_element(locator, timeout=5)
+            session_item = self.find_element(locator, timeout=1.5, raise_exception=False)
 
             if not session_item:
                 if allow_swipe:
                     logger.info(f"未找到会话【{session_name}】，向上滑动查找... (尝试 {attempt + 1}/{max_attempts})")
-                    self.swipe_page('up', duration=500)
+                    self.swipe_page('up', duration=500, times=1)
                     continue
 
                 logger.info(f"当前页未找到会话【{session_name}】，且已限制滑动，跳过。")
                 return False
 
-            # 2. 获取底部悬浮窗的位置来计算安全边界
-            bottom_item = self.find_element(HomeLocator.EXPAND_MENU, timeout=2)
-            if bottom_item:
-                # 存在底部菜单：取其顶部 Y 坐标作为“安全边界”
-                safe_bottom_boundary = bottom_item.rect['y']
-            else:
-                # 不存在底部菜单：取屏幕总高度作为“安全边界”
-                safe_bottom_boundary = self.driver.get_window_size()['height']
-
-            # 3. 计算目标元素的底部位置
             element_rect = session_item.rect
-            element_bottom_y = element_rect['y'] + element_rect['height']
+            element_top_y = element_rect['y']
+            element_bottom_y = element_top_y + element_rect['height']
 
-            # 4. 判断是否被遮挡
-            if element_bottom_y > safe_bottom_boundary:
-                logger.info(f"会话【{session_name}】被底部悬浮栏遮挡。")
+            # 3. 校验顶部遮挡（被顶部导航栏截断）：执行向下滑动半屏微调 (0.25 -> 0.75 跨度 50%)
+            if element_top_y < safe_top_boundary:
+                logger.info(f"会话【{session_name}】被顶部导航栏遮挡 (Top: {element_top_y} < Safe: {safe_top_boundary})。")
                 if allow_swipe:
-                    logger.info("执行微调滑动以露出元素...")
-                    self.swipe_page('up', duration=500)
+                    logger.info("执行向下滑动半屏微调以露出元素顶部...")
+                    self.swipe(center_x, int(screen_height * 0.25), center_x, int(screen_height * 0.75), duration=500)
+                    continue
+                return False
+
+            # 4. 校验底部遮挡（被底部悬浮菜单遮挡）：执行向上滑动半屏微调 (0.75 -> 0.25 跨度 50%)
+            if element_bottom_y > safe_bottom_boundary:
+                logger.info(f"会话【{session_name}】被底部悬浮栏遮挡 (Bottom: {element_bottom_y} > Safe: {safe_bottom_boundary})。")
+                if allow_swipe:
+                    logger.info("执行向上滑动半屏微调以露出元素底部...")
+                    self.swipe(center_x, int(screen_height * 0.75), center_x, int(screen_height * 0.25), duration=500)
                     continue
 
                 logger.info("已限制滑动，放弃操作被遮挡的会话。")
                 return False
+
             logger.info(f"✅ 会话【{session_name}】在安全可视区域内。")
             return True
+
         logger.warning(f"❌ 超过最大尝试次数 ({max_attempts})，仍未能使会话【{session_name}】安全暴露。")
         return False 
 

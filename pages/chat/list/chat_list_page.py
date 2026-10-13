@@ -71,7 +71,7 @@ class ChatListPage(ChatPage):
         return None
 
     # 判断指定会话是否存在于当前列表中
-    def is_session_exist_in_list(self, target_name: str, match_type: str = "exact", timeout: int = 3) -> bool:
+    def is_session_exist_in_list(self, target_name: str, match_type: str = "exact", timeout: int = 2) -> bool:
         """
         判断指定会话是否存在于当前列表中
         :param target_name: 目标会话名称
@@ -207,36 +207,47 @@ class ChatListPage(ChatPage):
         侧滑会话并点击指定菜单 (支持智能校验与盲点)
         :param session_name: 目标会话名称
         :param menu_locator: 侧滑后要点击的元素定位符 (如: 置顶、删除、静音)
-        :param slide_action: (可选) 如果传入此值，则只有 menu_text == slide_action 时才点击；否则收起菜单。
+        :param slide_action: (可选) 如果传入此值，则只有 menu_text == slide_action 时才点击；否则安全收起菜单。
         :return: 返回侧滑菜单上实际显示的按钮文案
         """
         logger.info(f"👉 准备对会话【{session_name}】执行左滑操作...")
         session_row = self._get_row_element_by_name(session_name)
         if not session_row:
             raise ValueError(f"❌ 在列表中未找到会话: {session_name}，无法执行侧滑操作")
-        self.swipe_on_element(session_row, slid_type='left', duration=300, toptime=500)
 
-        # 2. 获取侧滑按钮文案并点击
-        menu_text = self.get_attribute(menu_locator, 'text')
+        # 1. 执行左滑手势并自适应容错
+        self.swipe_on_element(session_row, slid_type='left', duration=300, toptime=500)
+        menu_text = (self.get_attribute(menu_locator, 'text') or "").strip()
+
+        # 滑动未成功暴露菜单时的轻量补偿重试
+        if not menu_text:
+            logger.warning(f"⚠️ 首次左滑未获取到菜单文案，尝试补偿左滑...")
+            refreshed_row = self._get_row_element_by_name(session_name) or session_row
+            self.swipe_on_element(refreshed_row, slid_type='left', duration=300, toptime=500)
+            menu_text = (self.get_attribute(menu_locator, 'text') or "").strip()
+
         if not menu_text:
             raise RuntimeError(f"侧滑会话【{session_name}】后，未能获取到菜单按钮的文案！")
         logger.info(f"👉 侧滑【{session_name}】获取到按钮文案: [{menu_text}]")
 
+        # 2. 根据目标动作执行点击或安全收起
         if slide_action:
             if menu_text == slide_action:
                 logger.info(f"👉 准备执行点击动作: 【{slide_action}】...")
                 self.click(menu_locator, force_wait=True)
                 logger.info(f"✅ 执行点击动作完成: 【{slide_action}】")
-                time.sleep(0.5)
             else:
-                logger.info(f"🚫 当前按钮为[{menu_text}]，不需要执行[{slide_action}]，点击行取消侧滑。")
-                session_row.click()
+                logger.info(f"🚫 当前按钮为[{menu_text}]，无需执行[{slide_action}]，安全右滑收起侧滑菜单。")
+                try:
+                    row_to_close = self._get_row_element_by_name(session_name) or session_row
+                    self.swipe_on_element(row_to_close, slid_type='right', duration=200, toptime=50)
+                except Exception as e:
+                    logger.debug(f"右滑收起侧滑异常 (忽略): {e}")
         else:
-            # 盲点模式（不传 slide_action 时，无脑点）
+            # 盲点模式（不传 slide_action 时直接点击）
             logger.info(f"👉 准备执行侧滑菜单点击: [{menu_text}] (盲点模式)...")
             self.click(menu_locator, force_wait=True)
             logger.info(f"✅ (盲点模式) 对 {session_name} 点击了侧滑菜单完成: [{menu_text}]")
-            time.sleep(0.8)
         return menu_text
 
     # 设置通知
@@ -261,6 +272,16 @@ class ChatListPage(ChatPage):
         """
         logger.info(f"⚙️ 对会话【{session_name}】执行侧滑【{action}】操作...")
         return self.common_set_left_menu(session_name, HL.CONVERSATION_TOP_TEXT, slide_action=action)
+
+    # 侧滑删除会话 (业务级封装，屏蔽 Locator)
+    def slide_delete_session(self, session_name: str) -> str:
+        """
+        侧滑指定会话并点击删除按钮，唤起二次确认弹窗，对用例层完全屏蔽底层 Locator
+        :param session_name: 目标会话名称
+        :return: 侧滑按钮实际显示的文案 (如: '删除')
+        """
+        logger.info(f"🗑️ 对会话【{session_name}】执行侧滑删除操作...")
+        return self.common_set_left_menu(session_name, HL.CONVERSATION_DELETE_TEXT)
 
     # 轮询等待顶部首项会话
     def wait_for_first_session_name(self, expect_name: str, timeout: float = 5.0) -> bool:

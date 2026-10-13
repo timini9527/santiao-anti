@@ -2,9 +2,9 @@
   "mobile": {
     "os_type": "Win",
     "remote_appium": "172.18.0.1:4723 (局域网本机)",
-    "remote_udid": "nzwcvo9ls87hws7t",
+    "remote_udid": "3B65BN02GU600000",
     "remote_appium2": "172.18.0.1:4724 (局域网本机)",
-    "remote_udid2": "3865BN02GU600000",
+    "remote_udid2": "3B65BN02GU600000",
     "private_chat_name": "",
     "group_chat_name": "",
     "env": "dev",
@@ -41,9 +41,9 @@
       "tests/chat/list/test_chat_list.py::TestChatList::test_enter_chat": "passed",
       "tests/chat/list/test_chat_list.py::TestChatList::test_enter_chat[私聊模式]": "passed",
       "tests/chat/list/test_chat_list.py::TestChatList::test_enter_chat[群聊模式]": "passed",
-      "tests/chat/list/test_chat_list.py::TestChatList": "failed",
-      "tests/chat/list/test_chat_list.py": "failed",
-      "tests/chat": "failed",
+      "tests/chat/list/test_chat_list.py::TestChatList": "passed",
+      "tests/chat/list/test_chat_list.py": "passed",
+      "tests/chat": "passed",
       "tests/chat/list/test_chat_list.py::TestChatList::test_slide_settings": "passed",
       "tests/chat/list/test_chat_list.py::TestChatList::test_slide_settings[打开静音-私聊模式]": "passed",
       "tests/chat/list/test_chat_list.py::TestChatList::test_slide_settings[打开静音-群聊模式]": "passed",
@@ -53,8 +53,8 @@
       "tests/chat/list/test_chat_list.py::TestChatList::test_slide_settings[置顶状态-群聊模式]": "passed",
       "tests/chat/list/test_chat_list.py::TestChatList::test_slide_settings[取消置顶状态-私聊模式]": "passed",
       "tests/chat/list/test_chat_list.py::TestChatList::test_slide_settings[取消置顶状态-群聊模式]": "passed",
-      "tests/chat/list/test_chat_list.py::TestChatList::test_slide_top_last_session[私聊模式]": "failed",
-      "tests/chat/list/test_chat_list.py::TestChatList::test_slide_top_last_session": "failed"
+      "tests/chat/list/test_chat_list.py::TestChatList::test_slide_top_last_session[私聊模式]": "passed",
+      "tests/chat/list/test_chat_list.py::TestChatList::test_slide_top_last_session": "passed"
     },
     "expanded_targets": [
       "tests/chat",

@@ -12,40 +12,12 @@ class MainPage(BasePage):
     MAIN_ACTIVITY = "com.vvchat.vcapp.activity.MainActivity"
 
     def is_in_search_page(self, timeout: float = 0.1) -> bool:
-        """检测当前是否正处于搜索覆盖层页面（瞬时探查，零超时开销）"""
-        try:
-            elems = self.driver.find_elements(*HomeLocator.SEARCH_CLEAR)
-            return len(elems) > 0 and elems[0].is_displayed()
-        except Exception:
-            return False
+        """检测当前是否正处于搜索覆盖层页面（基于右下角取消按钮精准探查，静默零异常）"""
+        return bool(self.find_elements(HomeLocator.SEARCH_CANCEL, timeout=timeout, raise_exception=False, expect_missing=True))
 
     def is_in_main_page(self, timeout: float = 0.2, raise_exception: bool = False) -> bool:
-        """判断当前是否已处于主页面（瞬时探测主页核心特征，开销近似 0ms）"""
-        try:
-            # 1. 特征一：顶部会话标题（如包含“三条”）
-            title_elems = self.driver.find_elements(*HomeLocator.MIDDLE_TITLE)
-            if title_elems and title_elems[0].is_displayed():
-                title_text = title_elems[0].text or title_elems[0].get_attribute('text') or ''
-                if '三条' in title_text:
-                    logger.debug(f"🍏 [StateHealer] 当前已处于主页面 (Title: {title_text})")
-                    return True
-
-            # 2. 特征二：顶部加号与菜单导航按钮同时存在，且非搜索覆盖层
-            plus_elems = self.driver.find_elements(*HomeLocator.RIGHT_MENU)
-            menu_elems = self.driver.find_elements(*HomeLocator.LEFT_MENU)
-            if plus_elems and plus_elems[0].is_displayed() and menu_elems and menu_elems[0].is_displayed():
-                if not self.is_in_search_page():
-                    logger.debug("🍏 [StateHealer] 当前已处于主页面 (检测到 Home 专属导航图标)")
-                    return True
-
-            # 3. 特征三：会话列表控件存在
-            conv_elems = self.driver.find_elements(*MainLocator.CONVERSATION_LIST)
-            if conv_elems and conv_elems[0].is_displayed() and plus_elems and plus_elems[0].is_displayed():
-                logger.debug("🍏 [StateHealer] 当前已处于主页面 (检测到会话列表容器)")
-                return True
-        except Exception:
-            pass
-        return False
+        """判断当前是否已处于主页面（单次高效网络请求，严格对齐 HomePage.wait_home_page 黄金基准）"""
+        return bool(self.find_elements(HomeLocator.LEFT_MENU, timeout=timeout, raise_exception=raise_exception, expect_missing=True))
 
     def is_app_in_foreground(self) -> bool:
         """检查当前被测应用是否处于前台运行状态"""
