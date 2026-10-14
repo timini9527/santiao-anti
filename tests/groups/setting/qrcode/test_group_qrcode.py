@@ -152,9 +152,10 @@ class TestGroupQrCode:
                     break
             check.is_true(time_matched, f"❌ 时间 '{hour:02d}:{minute:02d}' 不在有效期文案 '{validity_text}' 中")
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('群二维码功能')
     @allure.title('保存与分享群二维码功能-状态：已完成')
-    @allure.severity('Normal')
     def test_group_qrcode_save_and_share(self):
         with allure.step('1. 进入临时群'):
             self._enter_group()
@@ -190,9 +191,10 @@ class TestGroupQrCode:
             image_data = self.groupQrCodePage.get_image_data()
             check.is_in(group_name, image_data, '❌ 群聊消息列表最后一条消息不是邀请二维码')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('群二维码功能')
     @allure.title('更改群二维码有效期功能-状态：已完成')
-    @allure.severity('Normal')
     @pytest.mark.parametrize('validity_type, validity_text', [pytest.param('30m', '30分钟', id='30分钟'), pytest.param('2h', '2小时', id='2小时'), pytest.param('24h', '24小时', id='24小时'), pytest.param('7d', '7天', id='7天'), pytest.param('30d', '30天', id='30天'), pytest.param('90d', '90天', id='90天'), pytest.param('forever', '永久', id='永久')])
     @pytest.mark.usefixtures('restore_qrcode_validity')
     def test_group_qrcode_change_validity(self, validity_type, validity_text):

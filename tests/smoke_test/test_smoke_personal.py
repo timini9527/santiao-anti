@@ -59,9 +59,11 @@ class BaseSmokePersonal:
 class TestSmokePersonal(BaseSmokePersonal):
     """个人资料与设置模块冒烟用例集"""
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('个人昵称修改')
     @allure.title('修改个人昵称并验证修改成功-状态：已完成')
-    @pytest.mark.smoke
     def test_smoke_modify_nickname(self):
         """测试修改个人昵称的核心链路，包含动态时间戳防撞与 finally 强闭环环境还原"""
         unique_suffix = int(time.time() * 1000) % 100000
@@ -90,9 +92,11 @@ class TestSmokePersonal(BaseSmokePersonal):
                 except Exception as e:
                     logger.error(f'⚠️ [Teardown] 还原原始昵称异常: {e}')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
+    @pytest.mark.smoke
     @allure.story('手机号隐私切换')
     @allure.title('手机号显示与隐藏（明文/密文）状态切换校验-状态：已完成')
-    @pytest.mark.smoke
     def test_smoke_phone_toggle_display(self):
         """测试手机号明文与掩码密文切换展示，包含 finally 状态对称性恢复"""
         with allure.step('1. 获取手机号初始状态'):
@@ -118,9 +122,11 @@ class TestSmokePersonal(BaseSmokePersonal):
                 except Exception as e:
                     logger.error(f'⚠️ [Teardown] 恢复手机号初始显示状态异常: {e}')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
+    @pytest.mark.smoke
     @allure.story('我的二维码')
     @allure.title('查看我的二维码界面并保存到手机相册-状态：已完成')
-    @pytest.mark.smoke
     def test_smoke_qrcode_and_save(self):
         """测试查看个人二维码及保存相册功能，验证页面元素完整性及自闭环退出"""
         expected_nickname = self.otherPage.get_nickname()

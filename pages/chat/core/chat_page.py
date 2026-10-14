@@ -291,6 +291,30 @@ class ChatPage(BasePage):
             else:
                 logger.info("🚀[Action-chat] - chat + 号按钮已处于关闭状态，无需重复点击")
 
+    # 聊天输入-关闭软键盘或底部面板
+    def close_keyboard_or_panel(self) -> None:
+        """
+        聊天输入-若软键盘或底部扩展面板 (加号面板/表情面板) 处于打开状态，则进行关闭收起
+        """
+        logger.info("🚀[Action-chat] - 检查并收起可能打开的软键盘或底部面板...")
+        # 1. 软键盘检测与收起 (采用 BasePage 工业级双重保障收起策略)
+        try:
+            self.hide_keyboard_robust()
+        except Exception as e:
+            logger.warning(f"⚠️ [Action-chat] 收起软键盘异常: {e}")
+
+        # 2. 加号更多面板检测与收起
+        try:
+            self.click_add_button(is_open=False)
+        except Exception as e:
+            logger.debug(f"收起加号面板异常忽略: {e}")
+
+        # 3. 表情面板检测与收起
+        try:
+            self.click_emoji_button(is_open=False)
+        except Exception as e:
+            logger.debug(f"收起表情面板异常忽略: {e}")
+
     # 快捷功能-检测快捷功能面板是否可左右滑动
     def has_input_more_scrollable_indicator(self) -> bool:
         """快捷功能-检测快捷功能面板是否可左右滑动"""
@@ -361,6 +385,15 @@ class ChatPage(BasePage):
     # ==============================================================================
     # 三、消息发送与状态监控相关 (Message Sending & Status Monitoring)
     # ==============================================================================
+    # 聊天列表-点击“导航到底部新消息”指示器按钮
+    def click_new_message_indicator(self) -> None:
+        """点击‘导航到底部新消息’指示器按钮，滚动到底部新消息处"""
+        logger.info("🚀[Action-chat] - 点击‘导航到底部新消息’指示器按钮")
+        if not self.is_element_exist(ChatLocator.NEW_MESSAGE_INDICATOR, timeout=1, expect_missing=True):
+            logger.info("🚀[Action-chat] - 没有‘导航到底部新消息’指示器按钮")
+            return
+        self.click(ChatLocator.NEW_MESSAGE_INDICATOR)
+
     # 消息发送-发送一条文本消息并等待
     def send_message(self, message: str, fast: bool = False, wait_time: float = 0.5) -> None:
         """

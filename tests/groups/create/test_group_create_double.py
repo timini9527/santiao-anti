@@ -48,6 +48,8 @@ class TestGroupCreateDouble:
         except Exception as e:
             logger.warning(f'⚠️ [Teardown] B 端返回首页失败: {e}')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('双端群聊协同测试-并发')
     @allure.title('双端建群协同 - A和B两端同时创建群聊并交叉收信校验-状态：已完成')
     def test_simultaneous_group_creation_double(self):
@@ -193,6 +195,8 @@ class TestGroupCreateDouble:
                 self.groupSettingPageR.click_tv_confirm_button()
             run_parallel(second_cleanup_a, second_cleanup_b)
 
+    @pytest.mark.p0
+    @allure.severity(allure.severity_level.BLOCKER)
     @allure.title('双端建群协同 - A端拉B端建群并发送首发消息，B端查收并双端退群-状态：已完成')
     def test_create_group_and_receive_message_double(self):
         """

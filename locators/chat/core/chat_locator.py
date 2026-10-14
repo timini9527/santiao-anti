@@ -130,6 +130,7 @@ class ChatLocator:
     TEXT_INPUT = (AppiumBy.ID, f'{PACKAGE_ID}/text_input')                              # 输入框
     EMOJI_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/input_expression_bnt')                  # 表情按钮
     SEND_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/input_send_bnt')                         # 发送按钮
+    NEW_MESSAGE_INDICATOR = (AppiumBy.ID, f'{PACKAGE_ID}/new_message_indicator')        # 导航到底部新消息提示
 
     # 禁言状态输入框
     NOT_IN_INPUT_BOX = (AppiumBy.ID, f'{PACKAGE_ID}/not_in')                            # 禁言状态输入框

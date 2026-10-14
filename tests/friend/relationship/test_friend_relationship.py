@@ -150,6 +150,8 @@ class TestFriendRelationship:
             chat_page.click_back_button()
         return notification
 
+    @pytest.mark.p0
+    @allure.severity(allure.severity_level.BLOCKER)
     @allure.story('好友申请与验证')
     @allure.title('同意好友申请并建立双向好友关系-状态：已完成')
     def test_relationship_flow_agree(self):
@@ -174,6 +176,8 @@ class TestFriendRelationship:
         with allure.step('6. S端删除好友以进行后置清理'):
             self._sender_delete_friend()
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('好友申请与验证')
     @allure.title('左滑删除好友申请记录-状态：已完成')
     def test_relationship_flow_swipe_delete_apply(self):
@@ -192,6 +196,8 @@ class TestFriendRelationship:
             check.is_none(aft_item, f'❌ R端在新朋友列表中仍然能找到 {SENDER_NAME} 的申请条目')
             self.newFriendPageR.click_iv_back()
 
+    @pytest.mark.p0
+    @allure.severity(allure.severity_level.BLOCKER)
     @allure.story('删除好友')
     @allure.title('删除好友关系与单向删除验证及重加恢复-状态：已完成')
     def test_relationship_flow_delete(self):
@@ -228,6 +234,8 @@ class TestFriendRelationship:
         with allure.step('7. S端删除好友进行环境清理'):
             self._sender_delete_friend()
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('黑名单隐私')
     @allure.title('拉黑好友消息拒收与移出黑名单聊天恢复-状态：已完成')
     def test_relationship_flow_block_and_unblock(self):
@@ -258,6 +266,8 @@ class TestFriendRelationship:
         with allure.step('6. S端删除好友进行环境清理'):
             self._sender_delete_friend()
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('拉黑与删除组合')
     @allure.title('先拉黑后删除的好友状态流转校验-状态：已完成')
     def test_relationship_flow_block_and_delete(self):

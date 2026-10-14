@@ -93,6 +93,8 @@ class TestChatCollection:
         result = self.collectionPage.verify_collection_time(now_time, coll_time)
         check.is_true(result, f'校验失败：收藏时间不匹配 {now_time} | {coll_time}')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('聊天页面收藏一条的文本消息')
     @allure.title('聊天页面收藏一条({strategy.name})的文本消息，状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
@@ -108,6 +110,8 @@ class TestChatCollection:
             self._verify_latest_text(text)
             self._verify_latest_collection_time()
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('聊天页面收藏一张图片消息')
     @allure.title('聊天页面收藏一张图片消息，状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
@@ -121,6 +125,8 @@ class TestChatCollection:
         with allure.step('4. 校验收藏列表数据及时间'):
             self._verify_latest_collection_time()
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('聊天页面收藏一条文本和一张图片消息')
     @allure.title('聊天页面收藏一条文本和一张图片消息，状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
@@ -138,6 +144,8 @@ class TestChatCollection:
             self._verify_latest_text(text)
             self._verify_latest_collection_time()
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('聊天页面批量收藏多条文本消息')
     @allure.title('聊天页面批量收藏多条文本消息，状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])

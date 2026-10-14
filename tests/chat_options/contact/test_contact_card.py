@@ -41,6 +41,8 @@ class TestContactCard:
 
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('发送好友名片-正向流程')
     @allure.title('发送好友名片-正向流程-状态：已完成')
     @pytest.mark.parametrize('cardName', [pytest.param('测试0222', id='测试0222'), pytest.param('0223OiO', id='0223OiO')])
@@ -70,6 +72,8 @@ class TestContactCard:
             check.equal(chat_object_title, cardName, f'❌ 返回聊天页面后，聊天对象名称与预期不匹配 {chat_object_title}')
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('发送好友名片-搜索无结果')
     @allure.title('发送好友名片-搜索无结果-状态：已完成')
     @pytest.mark.parametrize('cardName', [pytest.param('不存在的神秘人999', id='不存在的神秘人999')])
@@ -90,6 +94,8 @@ class TestContactCard:
             check.is_true(result, '❌ 退出搜索后未正确返回聊天页面')
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('发送好友名片-取消操作')
     @allure.title('发送好友名片-取消操作-状态：已完成')
     @pytest.mark.parametrize('cardName', [pytest.param('测试0222', id='测试0222')])
@@ -109,6 +115,8 @@ class TestContactCard:
             check.is_true(result, '❌ 点击取消退出后未正确返回聊天页面')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('发送群聊名片-正向流程')
     @allure.title('发送群聊名片-正向流程-状态：已完成')
     @pytest.mark.parametrize('group_card_name', [pytest.param('测试群aaaaa', id='测试群aaaaa')])
@@ -144,6 +152,8 @@ class TestContactCard:
             check.is_in(group_card_name, chat_object_title, f'❌ 返回聊天页面后，聊天对象名称与预期不匹配，{chat_object_title}')
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('分享群聊名片-取消操作')
     @allure.title('分享群聊名片-取消操作-状态：已完成')
     @pytest.mark.parametrize('group_card_name', [pytest.param('测试群aaaaa', id='测试群aaaaa')])

@@ -169,6 +169,8 @@ class TestGroupBotKeyword:
 
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story("禁发关键词-添加关键词验证-单词合规录入")
     @allure.title("校验单个关键词合规录入与10字上限: {title}-状态：已完成")
     @pytest.mark.usefixtures("cleanup_keyword_settings")
@@ -192,6 +194,8 @@ class TestGroupBotKeyword:
             check.is_true(expected_word in keyword_list, f"关键词列表未包含预期词: {expected_word}，实际列表: {keyword_list}")
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story("禁发关键词-添加关键词验证-空格批量分词")
     @allure.title("校验空格分隔批量添加关键词: {title}-状态：已完成")
     @pytest.mark.usefixtures("cleanup_keyword_settings")
@@ -213,6 +217,8 @@ class TestGroupBotKeyword:
                 check.is_true(word in keyword_list, f"批量添加分词失败，列表缺失词: {word}，实际列表: {keyword_list}")
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story("禁发关键词-输入规则限制-长度限制")
     @allure.title("校验超过10字超长拦截与截断录入规则: {title}-状态：已完成")
     @pytest.mark.usefixtures("cleanup_keyword_settings")
@@ -243,6 +249,8 @@ class TestGroupBotKeyword:
             self.botS.clear_all_keywords()
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story("禁发关键词-输入规则限制-非法字符拦截")
     @allure.title("校验非法字符拦截规则: {title}-状态：已完成")
     @pytest.mark.usefixtures("cleanup_keyword_settings")
@@ -271,6 +279,8 @@ class TestGroupBotKeyword:
                 self.botS.click_cancel_btn()
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story("禁发关键词-添加关键词验证")
     @allure.title("校验最多添加 50 个关键词上限-状态：已完成")
     @pytest.mark.parametrize(
@@ -319,6 +329,8 @@ class TestGroupBotKeyword:
             self.botS.clear_all_keywords()
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story("禁发关键词-删除/清空关键词")
     @allure.title("校验删除关键词成功-状态：已完成: {title}")
     @pytest.mark.usefixtures("cleanup_keyword_settings")
@@ -357,6 +369,8 @@ class TestGroupBotKeyword:
                 self.botS.clear_all_keywords()
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story("禁发关键词-输入规则限制")
     @allure.title("校验删除关键词二次确认流程-状态：已完成: {confirm_action}")
     @pytest.mark.usefixtures("cleanup_keyword_settings")
@@ -400,6 +414,8 @@ class TestGroupBotKeyword:
         with allure.step("5. 清理本次测试数据"):
             self.botS.clear_all_keywords()
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story("禁发关键词-警告语设置-添加")
     @allure.title("自定义警告语 - 配置校验与上限测试-状态：已完成: {title}")
     @pytest.mark.usefixtures("cleanup_warning_settings")
@@ -457,6 +473,8 @@ class TestGroupBotKeyword:
                 check.equal(self.botS.get_warning_msg_count(), 10, "添加至上限后总数未达到 10 条")
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story("禁发关键词-警告语设置 - 删除")
     @allure.title("删除自定义警告语-状态：已完成: {id_title}")
     @pytest.mark.usefixtures("cleanup_warning_settings")

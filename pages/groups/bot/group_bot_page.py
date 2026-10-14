@@ -960,6 +960,10 @@ class GroupBotPage(BasePage):
         logger.info("⚙️ [Action-GroupBotPage] 点击【完成】保存欢迎语")
         self.click(GroupBotLocator.WELCOME_FINISH_BTN)
 
+    def is_welcome_edit_btn_visible(self, timeout: int = 5) -> bool:
+        """检查【修改欢迎语】按钮是否可见"""
+        return bool(self.is_element_exist(GroupBotLocator.WELCOME_EDIT_BTN, timeout=timeout, raise_exception=False))
+
     # ============================================================================
     # 定时消息页面操作
     # ============================================================================
@@ -1003,3 +1007,10 @@ class GroupBotPage(BasePage):
             logger.info("⚙️ [Action-GroupBotPage] 成功删除定时消息")
         except Exception as e:
             logger.warning(f"⚠️ [Action-GroupBotPage] 删除定时消息异常: {e}")
+
+    # 检查列表中是否存在指定内容的定时消息
+    def is_timed_msg_present(self, content_pattern: str, timeout: int = 5) -> bool:
+        """检查列表中是否存在包含指定内容的定时消息条目"""
+        locator = (AppiumBy.ANDROID_UIAUTOMATOR, f'new UiSelector().textContains("{content_pattern}")')
+        elements = self.find_elements(locator, timeout=timeout)
+        return len(elements) > 0

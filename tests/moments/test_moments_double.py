@@ -106,6 +106,8 @@ class TestMomentsDouble:
             time.sleep(0.3)
         return actual_content
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('好友动态可见性与更新同步')
     @allure.title('好友发布朋友圈动态后接收端同步可见-状态：已完成')
     def test_friend_moment_visibility(self, request):
@@ -120,6 +122,8 @@ class TestMomentsDouble:
         with allure.step('4. 后置清理：删除测试动态'):
             self._delete_test_moment(test_content)
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('动态管理')
     @allure.title('发送端删除自己动态，接收端同步不可见-状态：已完成')
     def test_delete_moment_sync_double(self, request):
@@ -137,6 +141,8 @@ class TestMomentsDouble:
             found = self.momentsR.has_moment_with_text(test_content)
             check.is_false(found, f'❌ 发送端删除朋友圈后，接收端仍然能查看到 [{test_content}]')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('发布朋友圈')
     @allure.title('富媒体发布双端校验-状态：已完成')
     @pytest.mark.parametrize('media_type, count, motype, desc', [pytest.param('image', 3, 1, '多图朋友圈发布', id='发布多图朋友圈'), pytest.param('video', 1, 2, '视频朋友圈发布', id='发布视频朋友圈')])
@@ -171,6 +177,8 @@ class TestMomentsDouble:
         with allure.step(f'4. 后置清理：发送端删除该 {desc} 动态'):
             self._delete_test_moment(test_content)
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('社交可见性与互为好友规则')
     @allure.title('发送端发布私密朋友圈，接收端不可见-状态：已完成')
     def test_private_moment_visibility_double(self, request):
@@ -186,6 +194,8 @@ class TestMomentsDouble:
         with allure.step('4. 后置清理：删除测试动态'):
             self._delete_test_moment(private_content)
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('社交可见性与互为好友规则')
     @allure.title('发送端发布部分可见/不给谁看朋友圈，接收端可见/不可见-状态：已完成')
     @pytest.mark.parametrize('visibility, target_type, expect_visible, desc', [pytest.param('partial', 'friend', True, '部分可见-指定好友', id='部分可见-指定好友'), pytest.param('partial', 'tag', True, '部分可见-按标签', id='部分可见-按标签'), pytest.param('exclude', 'friend', False, '不给谁看-指定好友', id='不给谁看-指定好友'), pytest.param('exclude', 'tag', False, '不给谁看-按标签', id='不给谁看-按标签')])
@@ -237,6 +247,8 @@ class TestMomentsDouble:
         with allure.step('5. 后置清理：发送端删除该测试动态'):
             self._delete_test_moment(post_content)
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('社交互动与反馈')
     @allure.title('给好友朋友圈点赞和评论多端同步校验-状态：已完成')
     def test_moment_interaction_double(self, request):
@@ -262,6 +274,8 @@ class TestMomentsDouble:
         with allure.step('4. 后置清理：删除测试动态'):
             self._delete_test_moment(test_content)
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('点赞与评论')
     @allure.title('双端同步校验：接收端取消点赞，发送端同步更新-状态：已完成')
     def test_like_cancel_sync_double(self, request):
@@ -288,6 +302,8 @@ class TestMomentsDouble:
         with allure.step('6. 后置清理：发送端删除用于测试的动态'):
             self._delete_test_moment(test_content)
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('朋友圈通知与发现红点')
     @allure.title('社交互动新通知与主页发现红点清除同步校验-状态：已完成')
     def test_moment_notification_red_dot(self, request):
@@ -322,6 +338,8 @@ class TestMomentsDouble:
         with allure.step('5. 后置清理：删除测试动态'):
             self._delete_test_moment(test_content)
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('朋友圈通知与发现红点')
     @allure.title('收到回复通知：发送端回复接收端评论，接收端收到新消息提醒-状态：已完成')
     def test_comment_reply_notification_double(self, request):

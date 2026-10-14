@@ -41,6 +41,8 @@ class TestCollectionDouble:
             except Exception as e:
                 logger.warning(f'⚠️ [Cleanup] 双端清理返回首页失败: {e}')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('双端协同-收藏对方发送的消息')
     @allure.title('收藏对方发送的文本消息-双端实时状态校验-状态：已完成')
     def test_collect_received_text_message_double(self):
@@ -72,6 +74,8 @@ class TestCollectionDouble:
         with allure.step('4. 环境清理：发送端(Sender)删除该条测试产生的收藏记录'):
             self.collS.del_collection_item(del_type='text', index=0)
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('双端协同-从收藏夹中选择并发送消息给对方')
     @allure.title('在会话中发送收藏消息-双端上屏与接收实时校验-状态：已完成')
     def test_send_collection_message_to_friend_double(self):

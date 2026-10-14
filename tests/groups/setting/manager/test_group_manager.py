@@ -71,6 +71,8 @@ class TestGroupManager:
         with allure.step('3. 返回群管理'):
             self.groupManagerPage.click_iv_back_button()
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群管理-管理员')
     @allure.title('【群管理员】功能正常使用校验-状态：已完成')
     def test_group_manager_functionality(self):
@@ -126,6 +128,8 @@ class TestGroupManager:
             final_state = self.groupManagerPage.get_group_id_search_state()
             check.equal(init_state, final_state, '❌ 【群ID搜索】开关恢复初始状态失败')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群管理-进群验证开关')
     @allure.title('切换【进群验证】开关状态校验-状态：已完成')
     def test_join_group_verify_toggle(self):
@@ -146,6 +150,8 @@ class TestGroupManager:
             cmd_texts = self.chatPage.get_cmd_notification_texts(index=-1)
             check.is_in('已恢复默认进群模式', cmd_texts, '❌ [Action-groupManagerPage] 进群验证开关未关闭')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群管理-全员禁言开关')
     @allure.title('切换【全员禁言】开关状态校验-状态：已完成')
     def test_all_member_mute_toggle(self):
@@ -166,6 +172,8 @@ class TestGroupManager:
             cmd_texts = self.chatPage.get_cmd_notification_texts(index=-1)
             check.is_in('关闭全员禁言', cmd_texts, '❌ [Action-groupManagerPage] 全员禁言开关未关闭')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群管理-指定成员禁言')
     @allure.title('指定成员禁言页面初始状态校验-状态：已完成')
     @pytest.mark.parametrize('mute_type, duration', [pytest.param(0, 0, id='永久禁言'), pytest.param(1, '10分钟', id='临时禁言-10分钟'), pytest.param(1, '30分钟', id='临时禁言-30分钟'), pytest.param(1, '2小时', id='临时禁言-2小时'), pytest.param(1, '1天', id='临时禁言-1天'), pytest.param(1, '3天', id='临时禁言-3天'), pytest.param(1, '7天', id='临时禁言-7天'), pytest.param(1, '30天', id='临时禁言-30天')])
@@ -218,6 +226,8 @@ class TestGroupManager:
             self.groupManagerPage.click_iv_back_button()
             self.groupManagerPage.click_iv_back_button()
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群管理-禁止群成员互相加好友开关')
     @allure.title('切换【禁止群成员互相加好友】开关状态校验-状态：已完成')
     def test_un_add_friend_each_other_toggle(self):
@@ -238,6 +248,8 @@ class TestGroupManager:
             cmd_texts = self.chatPage.get_cmd_notification_texts(index=-1)
             check.is_in('关闭群内禁止添加好友', cmd_texts, '❌ [Action-groupManagerPage] 禁止群成员互相加好友开关未关闭')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群管理-群主transfer')
     @allure.title('转让群主功能校验-状态：已完成')
     def test_transfer_group_owner(self):

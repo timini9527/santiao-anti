@@ -225,6 +225,8 @@ class TestGroupManagerDouble:
 
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群管理-管理员分配')
     @allure.title('【管理员】是否是管理员身份的分配验证-分配所有权限-状态：已完成')
     @pytest.mark.keep_env('admin')
@@ -240,6 +242,8 @@ class TestGroupManagerDouble:
             check.is_true(is_visible, '❌ 接收端被设为管理员后，群设置中没有显示【群管理】入口')
             self.groupManagerR.click_iv_back_button()
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群申请-进群验证')
     @allure.title('【进群验证】是否是管理员的多重场景-状态：已完成')
     @pytest.mark.keep_env('admin')
@@ -255,6 +259,8 @@ class TestGroupManagerDouble:
             self.groupManagerR.click_iv_back_button()
             self.groupManagerR.click_iv_back_button()
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群申请-进群申请双端校验')
     @allure.title('【进群申请】管理员=是，可以看到进群申请横幅；管理员=否，看不到进群申请横幅-状态：已完成')
     @pytest.mark.keep_env('admin')
@@ -278,6 +284,8 @@ class TestGroupManagerDouble:
             self.groupManagerR.click_iv_back_button()
             self.groupManagerR.click_iv_back_button()
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群禁言-全员禁言双端校验')
     @allure.title('【全员禁言】开关开启与关闭 - 接收端输入框禁言状态实时同步校验-状态：已完成')
     def test_all_member_mute_double_validation(self):
@@ -299,6 +307,8 @@ class TestGroupManagerDouble:
             check.is_false(is_disabled, '❌ 移除禁言后，普通群成员的输入框仍处于禁用状态')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群禁言-指定群成员禁言双端校验')
     @allure.title('【指定群成员禁言】群主开启指定禁言-状态：已完成')
     @pytest.mark.keep_env
@@ -344,6 +354,8 @@ class TestGroupManagerDouble:
             is_disabled = self.chatR.is_input_disabled()
             check.is_false(is_disabled, '❌ 移除禁言后，普通群成员的输入框仍处于禁用状态')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群管理-添加好友双端校验')
     @allure.title('【禁止添加好友】开关开启与关闭 - 接收端没有添加好友按钮-状态：已完成')
     def test_forbid_add_friend_double_validation(self):
@@ -369,6 +381,8 @@ class TestGroupManagerDouble:
             res = self.chatR.is_cmd_notification_matching('.*关闭群禁止加好友')
             check.is_true(res, '❌ 禁止群成员互相加好友开关未关闭')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群管理-群黑名单双端校验')
     @allure.title('【群黑名单】页面加载与返回校验-状态：已完成')
     def test_group_blacklist_double_validation(self):
@@ -411,6 +425,8 @@ class TestGroupManagerDouble:
             res2 = self.chatR.is_cmd_notification_matching('.*把您加入了群聊')
             check.is_true(res2, '❌ 接收端入群cmd消息不匹配')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群管理-转让群主双端校验')
     @allure.title('【转让群主】双端转让与权限移交校验-状态：已完成')
     def test_transfer_group_owner_double_validation(self):
@@ -443,6 +459,8 @@ class TestGroupManagerDouble:
             check.is_true(is_visible, '❌ 原群主(发送端)未重获群管理权限')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群管理-解散群聊双端校验')
     @allure.title('【解散群聊】群主正常解散群聊-成员端同步被移出并接收失效通知-状态：已完成')
     @pytest.mark.skip_env_setup
@@ -473,6 +491,8 @@ class TestGroupManagerDouble:
             self.groupSettingR.click_delete_and_out()
             self.groupSettingR.click_tv_confirm_button()
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('群管理-解散群聊双端校验')
     @allure.title('【解散群聊】群主取消解散群聊-群聊依然保持健在-状态：已完成')
     @pytest.mark.skip_env_setup
@@ -490,6 +510,8 @@ class TestGroupManagerDouble:
             check.is_true(total_msg > 0, '❌ 取消解散后，群成员无法正常发送聊天消息')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群管理-群ID搜索双端联动')
     @allure.title('【群ID搜索】群主关闭群ID搜索后成员端搜索可见性校验-状态：未完成')
     @pytest.mark.enter_manager(False)
@@ -525,6 +547,8 @@ class TestGroupManagerDouble:
         with allure.step('4. 环境复原：群主端关闭【群ID搜索】开关'):
             self.groupManagerS.click_group_id_search_switch(checked_str='false')
             
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群管理-新成员进群自动禁言双端联动')
     @allure.title('【新成员进群自动禁言】开启后新成员入群发言权限及禁言时长双端校验-状态：已完成')
     @pytest.mark.keep_env('admin')
@@ -594,6 +618,8 @@ class TestGroupManagerDouble:
             check.is_false(is_disabled_after, '❌ 环境复原解除禁言后，接收端输入框仍处于禁用状态')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群管理-进群申请双端联动')
     @allure.title('【进群申请】新成员申请入群后群主端红点数与审批流程双端校验-状态：已完成')
     @pytest.mark.enter_manager

@@ -50,6 +50,8 @@ class TestPublicGroup:
 
     
     pub = False
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.title('频繁从公开群加入群聊与退出群聊异常流程-状态：已完成')
     def test_frequent_join_and_exit_public_group(self):
         """
@@ -127,6 +129,8 @@ class TestPublicGroup:
                 #     logger.info(f'✅ 第 {i} 轮公开群加群并退群流程执行完成')
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.title('【界面展示】公开群聊区域标题及列表元素完整性校验-状态：未完成')
     def test_public_group_display_and_elements(self):
         """验证公开群聊区域标题、换一批按钮、规则入口及首屏公开群卡片基本要素完整展示"""
@@ -151,6 +155,8 @@ class TestPublicGroup:
                 check.is_true(bool(info.get('member_num')), f'❌ 公开群【{first_group}】成员数量为空')
                 check.is_true('ID' in info.get('group_id', ''), f'❌ 公开群【{first_group}】群ID格式异常: {info.get("group_id")}')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.title('【功能交互】点击换一批功能刷新公开群列表校验-状态：未完成')
     def test_public_group_change_batch(self):
         """验证点击【换一批】后公开群列表成功触发刷新"""
@@ -172,6 +178,8 @@ class TestPublicGroup:
             is_changed = initial_groups != refreshed_groups
             logger.info(f"换一批前后群列表是否发生变化: {is_changed}")
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.title('【功能交互】点击复制群ID按钮功能校验-状态：未完成')
     def test_public_group_copy_id(self):
         """验证点击公开群卡片上的复制群ID按钮"""
@@ -188,6 +196,8 @@ class TestPublicGroup:
                 time.sleep(0.5)
                 logger.info(f"已成功点击公开群【{target_group}】复制群ID按钮")
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.title('【功能交互】点击加入公开群按钮流程触发校验-状态：未完成')
     def test_public_group_click_join(self):
         """验证点击公开群卡片上的【加入】按钮能够正常响应并触发加群流程"""
@@ -204,6 +214,8 @@ class TestPublicGroup:
                 time.sleep(1)
                 logger.info(f"已成功触发公开群【{target_group}】加入动作")
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.title('【导航流转】从添加朋友与公开群页面安全返回主页-状态：未完成')
     def test_public_group_back_to_home(self):
         """验证从公开群宿主页面（添加朋友）点击返回能够正常回退至首页会话列表"""

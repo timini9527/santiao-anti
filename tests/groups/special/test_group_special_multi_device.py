@@ -257,6 +257,8 @@ class TestGroupSpecialMultiDevice:
     # =========================================================================
     # 特殊用例 1：5台设备同时进入群聊并高频并发进出【更多/群设置】详情页
     # =========================================================================
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群聊高频进出群设置详情')
     @allure.title('5台设备同时进入群聊并高频并发进出【更多/群设置】详情页压测-状态：未完成')
     def test_group_simultaneous_toggle_detail_multi_device(self, setup_special_env):

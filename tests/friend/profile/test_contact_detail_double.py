@@ -121,6 +121,8 @@ class TestContactDetailDouble:
     
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story("好友关系与权限")
     @allure.title("FD_REL_002 - 删除好友后，校验两端非好友状态及消息限制")
     def test_non_friend_interaction_restrictions(self):

@@ -199,6 +199,8 @@ class TestSpeechManagementDouble:
 
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('场景1：普通成员受限拦截')
     @allure.title('【普通成员拦截】群主开启全部限制后普通成员主动发送与长按传播全量拦截校验-状态：已完成')
     def test_member_speech_restrictions_blocked(self):
@@ -302,6 +304,8 @@ class TestSpeechManagementDouble:
             self._assert_last_message_text(self.chatR, test_msg, "接收端")
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('场景2：管理员白名单豁免校验')
     @allure.title('【管理员豁免】群主开启发言限制后管理员发送消息不受限制放行校验-状态：已完成')
     def test_admin_speech_restrictions_exemption(self):
@@ -338,6 +342,8 @@ class TestSpeechManagementDouble:
             self._remove_admin()
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('场景3：身份降级即时受限校验')
     @allure.title('【身份降级即时受限】管理员被撤职降为普通成员后发言限制立即生效校验-状态：已完成')
     def test_admin_demotion_instant_restriction(self):
@@ -370,6 +376,8 @@ class TestSpeechManagementDouble:
             check.is_true(expected_toast in toast, f"❌ 降级为普通成员后未触发预期发言拦截提示，实际 Toast: '{toast}'")
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('场景4：群主超级特权自发校验')
     @allure.title('【群主超级特权】开启发言限制后群主自身发消息畅通无阻校验-状态：已完成')
     def test_owner_speech_restrictions_exemption(self):
@@ -395,6 +403,8 @@ class TestSpeechManagementDouble:
             self._assert_last_message_text(self.chatR, owner_msg, "接收端", msg_type='text')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('场景5：总开关一键放行校验')
     @allure.title('【总开关一键放行】子项开启但总开关关闭时普通成员正常发言放行校验-状态：已完成')
     def test_speech_manage_master_switch_bypass(self):

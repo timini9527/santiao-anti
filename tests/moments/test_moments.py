@@ -107,6 +107,8 @@ class TestMoments:
 
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story("入口与信息流")
     @allure.title("从首页动态入口进入朋友圈校验页面-状态-已完成")
     def test_enter_group_moments(self):
@@ -117,8 +119,10 @@ class TestMoments:
             check.is_true(is_loaded, "❌ 未成功进入朋友圈页面")
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story("入口与信息流")
-    @allure.title("朋友圈信息流-下拉刷新")
+    @allure.title("朋友圈信息流-下拉刷新-状态：已完成")
     def test_refresh_moments_feed(self):
         """测试朋友圈下拉刷新后，能够成功同步并展示最新发布的动态"""
         new_moment_content = f"用于刷新验证的动态"
@@ -139,6 +143,8 @@ class TestMoments:
             check.is_in(new_moment_content, first_moment_after, f"❌ 下拉刷新未能成功同步最新动态。期望首条为: [{new_moment_content}], 实际首条: [{first_moment_after}]")
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story("入口与信息流")
     @allure.title("快速上滑加载最后一条朋友圈动态-状态：已完成")
     def test_load_more_moments_feed(self):
@@ -153,6 +159,8 @@ class TestMoments:
             check.is_true(is_loaded, "❌ 上滑加载后朋友圈页面未正常展示")
         
         
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story("发布朋友圈")
     @allure.title("发布纯文字朋友圈-状态：已完成")
     @pytest.mark.parametrize(
@@ -234,6 +242,8 @@ class TestMoments:
                     self.momentsPage.wait_for_moments_page_load()
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story("发布朋友圈")
     @allure.title("取消发布朋友圈-二次确认弹窗校验-状态：已完成")
     def test_cancel_post_moment_dialog_validation(self):
@@ -249,6 +259,8 @@ class TestMoments:
             check.is_true(self.momentsPage.wait_for_moments_page_load(), "❌ 退出编辑页后应返回朋友圈列表页面")
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story("发布朋友圈")
     @allure.title("朋友圈图片发布-状态：已完成")
     @pytest.mark.parametrize(
@@ -309,6 +321,8 @@ class TestMoments:
             self._delete_test_moment(actual_content)
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story("发布朋友圈")
     @allure.title("朋友圈视频发布-状态：已完成")
     @pytest.mark.parametrize(
@@ -353,6 +367,8 @@ class TestMoments:
             self._delete_test_moment(test_content)
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story("发布朋友圈")
     @allure.title("朋友圈图片+视频发布限制-不支持图视频混选-状态：已完成")
     def test_post_video_moment_mixed_block(self):
@@ -389,6 +405,8 @@ class TestMoments:
             self.momentsPage.wait_for_moments_page_load()
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story("删除朋友圈")
     @allure.title("删除朋友圈-状态：已完成")
     def test_delete_moment(self):

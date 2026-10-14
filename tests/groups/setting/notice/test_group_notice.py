@@ -13,7 +13,6 @@ from pages.chat.list.chat_list_page import ChatListPage
 from pages.common.contact_select_page import ContactSelectPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, GROUP_STRATEGY
 from utils.file_reader.data_loader import load_yaml_data
-from locators.common.common_locator import CommonLocator
 
 
 
@@ -113,6 +112,8 @@ class TestGroupNotice:
             self.chatPage.wait_for_chat_page_load()
     
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story("群公告功能")
     @allure.title("发布群公告限制校验 - {test_id}-状态：已完成")
     @pytest.mark.parametrize("test_id, content, should_success, expected_toast, truncate", notice_params, ids=notice_ids)
@@ -154,6 +155,8 @@ class TestGroupNotice:
                 check.equal(banner_text, expected_content, f"❌ 群公告内容发布后校验不一致 {banner_text}")
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story("群公告功能")
     @allure.title("发布新群公告 - 取消发布流程-状态：已完成")
     def test_publish_group_notice_cancel(self):

@@ -39,6 +39,8 @@ class TestFriendList:
             logger.error(f"⚠️ [Teardown] 返回主页失败: {error}")
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.title("好友列表入口与基础内容展示-状态：已完成")
     def test_friend_list_entry_display(self):
         with allure.step("1. 校验好友列表固定入口"):
@@ -50,6 +52,8 @@ class TestFriendList:
             check.is_true(contact_names, "❌ 好友列表没有展示任何联系人")
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.title("从好友列表点击联系人进入资料详情-状态：已完成")
     def test_friend_list_click_contact_opens_profile(self):
         with allure.step(f"1. 点击好友列表中的联系人 {PRIVATE_USER1.name}"):

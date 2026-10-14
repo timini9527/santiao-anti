@@ -1083,6 +1083,55 @@ class MobilePage(QWidget):
         self.console.setReadOnly(True)
         self.console.setMinimumHeight(40)
         self.console.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        self.console.setStyleSheet("""
+            QScrollBar:horizontal {
+                border: none;
+                background: transparent;
+                height: 6px;
+                margin: 0px;
+            }
+            QScrollBar::handle:horizontal {
+                background: #cbd5e1;
+                min-width: 24px;
+                border-radius: 3px;
+            }
+            QScrollBar::handle:horizontal:hover {
+                background: #94a3b8;
+            }
+            QScrollBar::handle:horizontal:pressed {
+                background: #64748b;
+            }
+            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+                width: 0px;
+                height: 0px;
+                background: transparent;
+            }
+            QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
+                background: transparent;
+            }
+            QScrollBar:vertical {
+                border: none;
+                background: transparent;
+                width: 6px;
+                margin: 0px;
+            }
+            QScrollBar::handle:vertical {
+                background: #cbd5e1;
+                min-height: 24px;
+                border-radius: 3px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #94a3b8;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+                width: 0px;
+                background: transparent;
+            }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+                background: transparent;
+            }
+        """)
         
         # 默认展示专业的引擎就绪日志提示
         default_log_text = (
@@ -1217,6 +1266,19 @@ class MobilePage(QWidget):
 
         layout.addWidget(btn)
         return container
+
+    def _update_node_action_button(self, item: QTreeWidgetItem, status: str):
+        """
+        右侧操作按钮保持全局统一的空心透明胶囊风格，不随测试用例执行结果改变颜色；
+        悬浮 (hover) 态统一在全局 QSS 中高亮为翡翠绿，不需要区分对待。
+        """
+        widget = self.tree.itemWidget(item, 1)
+        if not widget:
+            return
+        buttons = widget.findChildren(QPushButton)
+        for btn in buttons:
+            if btn.styleSheet():
+                btn.setStyleSheet("")
 
     def _create_file_node_actions(self, file_path: str, display_name: str) -> QWidget:
         """为二级文件节点创建【📄 文档】与【运行文件】双胶囊按钮组件"""
@@ -1433,11 +1495,23 @@ class MobilePage(QWidget):
         self._update_tree_node_icons()
 
     @staticmethod
-    def _format_node_display_text(status: str, node_type: str, name: str, count: int = 0) -> str:
+    def _get_priority_desc(priority: str) -> str:
+        """获取用例优先级的业务标准语义说明"""
+        mapping = {
+            "P0": "P0 (核心阻断 / 冒烟用例，MR/PR 门禁必跑)",
+            "P1": "P1 (关键业务 / 核心功能用例)",
+            "P2": "P2 (常规验证 / 基础功能用例)",
+            "P3": "P3 (次要边缘 / 异常容错用例)",
+            "P4": "P4 (轻微琐碎 / 辅助提示用例)",
+        }
+        return mapping.get(priority.upper(), f"{priority} (未定义级别)") if priority else "P2 (默认常规)"
+
+    @staticmethod
+    def _format_node_display_text(status: str, node_type: str, name: str, count: int = 0, priority: str = "") -> str:
         """
         统一格式化各级节点的文本：
-        - param (参数项)：  ⚪/🟢/🔴 ⚙️  [私聊模式]
-        - test (测试函数)：⚪/🟢/🔴 ⚙️  发送基础 Text 消息
+        - param (参数项)：  ⚪/🟢/🔴 ⚙️  [P0] [私聊模式]
+        - test (测试函数)：⚪/🟢/🔴 ⚙️  [P0] 发送基础 Text 消息
         - class (测试类)：⚪/🟢/🔴 🧱  聊天模块-文本消息收发
         - file (测试文件)：👾  聊天模块-文本消息收发 [13] (纯净导航，无状态球)
         - category (目录)：📖  chat [13] (纯净导航，无状态球)
@@ -1449,37 +1523,47 @@ class MobilePage(QWidget):
         else:
             ball = "⚪"
 
+        p_tag = f"[{priority.upper()}] " if priority else ""
+
         if node_type == "param":
-            return f"  {ball} ⚙️  [{name}]"
+            return f"  {ball} ⚙️  {p_tag}[{name}]"
         elif node_type == "test":
-            return f"{ball} ⚙️  {name}"
+            return f"{ball} ⚙️  {p_tag}{name}"
         elif node_type == "class":
             return f"{ball} 🧱  {name}"
         elif node_type == "file":
             cnt_str = f" [{count}]" if count else ""
-            return f"👾  {name}{cnt_str}"
+            return f"{ball} 👾  {name}{cnt_str}"
         elif node_type == "category":
             cnt_str = f" [{count}]" if count else ""
             return f"📖  {name}{cnt_str}"
         return f"{name}"
 
     @staticmethod
-    def _format_test_node_text(status: str, display_name: str) -> str:
+    def _format_test_node_text(status: str, display_name: str, priority: str = "") -> str:
         """保持原有测试函数格式化方法兼容"""
-        return MobilePage._format_node_display_text(status, "test", display_name)
+        return MobilePage._format_node_display_text(status, "test", display_name, priority=priority)
 
     def _add_leaf_item(self, parent: QTreeWidgetItem, file_path: str, cls_name: str, test: Dict[str, Any]):
         node_id = f"{file_path}::{cls_name}::{test['name']}" if cls_name else f"{file_path}::{test['name']}"
         test_display = test.get('display_name', test['name'])
+        priority = test.get("priority", "P2")
         params = test.get("params", [])
 
         # 状态匹配：默认空心球 ⚪ ⚙️，通过 🟢 ⚙️，失败/异常 🔴 ⚙️
         status = self.node_status_map.get(node_id, "")
 
         test_item = QTreeWidgetItem(parent)
-        test_item.setText(0, self._format_test_node_text(status, test_display))
-        test_item.setToolTip(0, f"用例: {test_display}\n节点: {node_id}\n状态: {status or '未执行'}")
-        test_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "test", "target": node_id, "name": test_display})
+        test_item.setText(0, self._format_test_node_text(status, test_display, priority=priority))
+        p_desc = self._get_priority_desc(priority)
+        status_desc = "通过" if status == "passed" else ("失败" if status in ("failed", "broken", "error") else "未执行")
+        test_item.setToolTip(0, f"用例: {test_display}\n节点: {node_id}\n优先级: {p_desc}\n状态: {status_desc}")
+        test_item.setData(0, Qt.ItemDataRole.UserRole, {
+            "type": "test",
+            "target": node_id,
+            "name": test_display,
+            "priority": priority
+        })
 
         # 区分层级：若该测试节点包含参数化子项(孙子用例)，按钮文字显示为 "运行函数"
         btn_test_label = "运行函数" if params else "运行"
@@ -1495,9 +1579,16 @@ class MobilePage(QWidget):
                 sub_item = QTreeWidgetItem(test_item)
                 sub_node = f"{node_id}[{p}]"
                 sub_status = self.node_status_map.get(sub_node, "")
+                sub_status_desc = "通过" if sub_status == "passed" else ("失败" if sub_status in ("failed", "broken", "error") else "未执行")
 
-                sub_item.setText(0, f"  {self._format_test_node_text(sub_status, f'[{p}]')}")
-                sub_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "param", "target": sub_node, "name": str(p)})
+                sub_item.setText(0, self._format_node_display_text(sub_status, "param", str(p), priority=priority))
+                sub_item.setToolTip(0, f"参数项: {p}\n父用例: {test_display}\n节点: {sub_node}\n优先级: {p_desc}\n状态: {sub_status_desc}")
+                sub_item.setData(0, Qt.ItemDataRole.UserRole, {
+                    "type": "param",
+                    "target": sub_node,
+                    "name": str(p),
+                    "priority": priority
+                })
 
                 action_param = self._create_tree_action_widget(
                     "运行", "tree-pill-btn", 46,
@@ -1577,17 +1668,19 @@ class MobilePage(QWidget):
             pass
 
     def _on_tree_item_double_clicked(self, item: QTreeWidgetItem, col: int):
-        """双击叶子测试用例启动运行，双击目录/文件/类切换折叠"""
-        data = item.data(0, Qt.ItemDataRole.UserRole)
-        if data and data.get("type") in ("test", "param"):
-            self._run_target_node(data["target"], data["name"])
-        elif item.childCount() > 0:
+        """
+        双击树节点仅用于展开/折叠，不直接触发运行测试用例 (防误触设计)；
+        运行操作统一由右侧对应的操作按钮触发。
+        """
+        if item.childCount() > 0:
             item.setExpanded(not item.isExpanded())
 
     def _filter_test_cases(self, text: str):
         q = text.strip().lower()
         def filter_item(item: QTreeWidgetItem) -> bool:
-            self_match = q in item.text(0).lower() if q else True
+            data = item.data(0, Qt.ItemDataRole.UserRole) or {}
+            item_priority = str(data.get("priority", "")).lower()
+            self_match = (q in item.text(0).lower() or (item_priority and q == item_priority)) if q else True
             child_match = False
             for i in range(item.childCount()):
                 if filter_item(item.child(i)):
@@ -1806,6 +1899,14 @@ class MobilePage(QWidget):
         self.auto_detect_devices()
         self._refresh_report_pill_count()
         self.allure_dashboard.load_latest_report()
+        stat = getattr(self.allure_dashboard, "current_data", {})
+        cases = stat.get("cases", [])
+        if cases:
+            self._sync_cases_to_tree_status(cases, scope_checker=None)
+            self._update_tree_node_icons()
+            self._save_tree_state()
+            if hasattr(self, 'allure_dashboard') and self.allure_dashboard:
+                self.allure_dashboard._render_cases_detail_list()
         self.append_log("🔄 顶栏已完成全量设备、用例集与报告指标的实时同步！")
 
     def auto_detect_devices(self):
@@ -1980,6 +2081,18 @@ class MobilePage(QWidget):
         self.status_bar.setText(f"🚀 正在运行: {display_name}")
 
         self.current_target_nodeid = target_nodeid
+        if target_nodeid and "[" in target_nodeid and target_nodeid.endswith("]"):
+            self.current_run_type = "single_param"
+            self.current_parent_func_node = target_nodeid[:target_nodeid.find("[")]
+        elif target_nodeid and "::" in target_nodeid:
+            self.current_run_type = "run_func"
+            self.current_parent_func_node = None
+        elif target_nodeid and target_nodeid.endswith(".py"):
+            self.current_run_type = "run_file"
+            self.current_parent_func_node = None
+        else:
+            self.current_run_type = "run_all" if not target_nodeid else "run_other"
+            self.current_parent_func_node = None
 
         # 看板展示动态实时运行中状态
         self.allure_dashboard.set_running_state(display_name)
@@ -2053,57 +2166,47 @@ class MobilePage(QWidget):
             param_str = node_name.strip()
 
         if param_str:
-            tokens = [t.strip() for t in re.split(r"[-_,/ ]+", param_str) if t.strip()]
+            tokens = [t.strip().lower() for t in re.split(r"[-_,/ \[\]]+", param_str) if t.strip()]
             best_case = None
             best_score = -999.0
 
             for c in candidates:
-                c_name = c.get("name", "")
-                c_segments = [s.strip() for s in re.split(r"[|\-_/, ]+", c_name) if s.strip()]
-                c_params_text = " ".join([str(p.get("value", "")) for p in c.get("parameters", [])])
+                c_name = c.get("name", "").lower()
+                c_segments = [s.strip().lower() for s in re.split(r"[|\-_/, \[\]]+", c_name) if s.strip()]
+                p_items = [
+                    (
+                        p.get("name", "").lower(),
+                        str(p.get("value", "")).strip("'\"").lower(),
+                        str(p.get("value", "")).lower(),
+                    )
+                    for p in c.get("parameters", [])
+                ]
+                clean_vals = [item[1] for item in p_items]
+                all_p_text = " ".join([item[2] for item in p_items])
+
+                # 互斥特征校验：防止私聊与群聊混淆
+                if ("私聊" in param_str or "private" in param_str.lower()) and "群聊" in all_p_text and "私聊" not in all_p_text:
+                    continue
+                if ("群聊" in param_str or "group" in param_str.lower()) and "私聊" in all_p_text and "群聊" not in all_p_text:
+                    continue
 
                 score = 0.0
-                all_tokens_found = True
-
-                for token in tokens:
-                    token_found = False
-                    # A. 分段精确全等匹配 (权重 10.0)
-                    if token in c_segments:
+                for t in tokens:
+                    if t in clean_vals:
+                        score += 25.0
+                    elif t in c_segments:
+                        score += 15.0
+                    elif t in all_p_text:
                         score += 10.0
-                        token_found = True
-                    # B. 参数属性精确值匹配 (权重 8.0)
-                    elif f"='{token}'" in c_params_text or f"=\"{token}\"" in c_params_text:
-                        score += 8.0
-                        token_found = True
-                    # C. 标题字符串包含 (降权并防子串歧义，如 '取消置顶状态' 与 '置顶状态')
-                    elif token in c_name:
-                        if f"取消{token}" in c_name and "取消" not in token:
-                            score += 0.2
-                        else:
-                            score += 3.0
-                        token_found = True
-                    # D. 参数文本包含
-                    elif token in c_params_text:
-                        if f"取消{token}" in c_params_text and "取消" not in token:
-                            score += 0.2
-                        else:
-                            score += 2.0
-                        token_found = True
-
-                    if not token_found:
-                        all_tokens_found = False
-
-                if not all_tokens_found:
-                    score -= 50.0
-
-                matched_seg_count = sum(1 for seg in c_segments if seg in tokens)
-                score += matched_seg_count * 2.0
+                    elif t in c_name:
+                        score += 2.0
 
                 if score > best_score:
                     best_score = score
                     best_case = c
 
             if best_case and best_score > 0:
+                best_case["sub_name"] = node_name
                 return best_case.get("status", "")
 
         return ""
@@ -2184,13 +2287,34 @@ class MobilePage(QWidget):
                 return True
             return False
 
-        if cases:
-            self._sync_cases_to_tree_status(cases, scope_checker=is_in_scope)
-        elif curr_node:
-            # 仅在完全没有生成测试报告 (如用例收集阶段语法崩溃) 时兜底标记目标
-            self.node_status_map[curr_node] = "passed" if exit_code == 0 else "failed"
+        run_type = getattr(self, "current_run_type", "")
+        parent_func = getattr(self, "current_parent_func_node", None)
 
-        # 4. 立即刷新树上所有用例的球形与齿轮状态 (含父子层级聚合，通过变绿球，失败变红球)
+        if run_type == "single_param" and curr_node:
+            # 规则 1：运行单个测试用例时，运行结果状态只需要修改当前运行的用例是否通过的状态，运行函数按钮颜色就是运行单个测试用例颜色
+            single_st = ""
+            if cases:
+                single_st = self._match_single_case_status(curr_node, "param", "", cases)
+            if not single_st:
+                single_st = "passed" if exit_code == 0 else "failed"
+
+            self.node_status_map[curr_node] = single_st
+            if parent_func:
+                self.node_status_map[parent_func] = single_st
+
+            if hasattr(self, 'allure_dashboard') and self.allure_dashboard:
+                self.allure_dashboard._render_cases_detail_list()
+        else:
+            # 规则 2 & 规则 3：运行函数、运行文件或全量运行时，清除单跑锁定，全量对齐报告中的全部用例
+            self.current_parent_func_node = None
+            if cases:
+                self._sync_cases_to_tree_status(cases, scope_checker=None)
+                if hasattr(self, 'allure_dashboard') and self.allure_dashboard:
+                    self.allure_dashboard._render_cases_detail_list()
+            elif curr_node:
+                self.node_status_map[curr_node] = "passed" if exit_code == 0 else "failed"
+
+        # 4. 立即刷新树上所有用例的球形与操作按钮状态 (含自底向上精准聚合与按钮颜色联动)
         self._update_tree_node_icons()
 
         # 实时持久化各用例执行状态与树展开记忆，实现全局记忆模式
@@ -2226,12 +2350,13 @@ class MobilePage(QWidget):
 
     def _update_tree_node_icons(self):
         """
-        递归遍历整棵测试树，自底向上全链路聚合并更新各级节点 (目录/文件/类/函数/参数) 的球形状态：
+        递归遍历整棵测试树，自底向上全链路聚合并更新各级节点 (目录/文件/类/函数/参数) 的球形状态与操作按钮颜色：
         1. 叶子节点 (单测或具体参数) 保持其独立状态；
         2. 拥有子节点的层级 (函数/类/文件/目录) 自动自底向上聚合所有子节点状态 (Rollup)：
-           - 包含任一失败/异常 -> 聚合为失败 🔴；
-           - 已执行子项全通过 -> 聚合为通过 🟢；
-           - 未执行 -> 聚合为未执行 ⚪。
+           - 包含任一未通过 (failed / broken / error) -> 聚合为失败 🔴 (按钮显示红色，绝非绿色)；
+           - 只有全部子项已执行且全部通过 -> 聚合为通过 🟢 (按钮显示绿色)；
+           - 存在未执行用例 -> 聚合为未执行 ⚪ (按钮恢复默认中立状态)。
+        3. 特殊规则：运行单个测试用例时，运行函数按钮颜色直接等于运行单个测试用例颜色。
         """
         def visit(item: QTreeWidgetItem) -> str:
             # 1. 递归优先后序遍历所有子节点，收集各子节点状态
@@ -2249,13 +2374,21 @@ class MobilePage(QWidget):
             target = data.get("target", "")
             name = data.get("name", "")
             count = data.get("count", 0)
+            priority = data.get("priority", "")
 
             # 2. 计算当前节点状态：若有子节点，由子节点状态精准聚合
             if item.childCount() > 0:
-                if child_statuses:
+                # 规则 1：若当前是单跑单个测试用例，且当前节点是该用例所属的父函数节点，直接采纳该单用例状态
+                locked_parent = getattr(self, "current_parent_func_node", None)
+                run_type = getattr(self, "current_run_type", "")
+                if run_type == "single_param" and locked_parent and target == locked_parent:
+                    curr_status = self.node_status_map.get(target, "")
+                elif child_statuses:
+                    # 规则 2 & 规则 3：只要里面有一个测试用例不通过，就不会是绿色 (failed)
                     if any(s in ("failed", "broken", "error") for s in child_statuses):
                         curr_status = "failed"
-                    elif all(s == "passed" for s in child_statuses):
+                    # 规则 2 & 规则 3：只有全部用例通过才能显示绿色 (所有子项已执行且全部为 passed)
+                    elif len(child_statuses) == item.childCount() and all(s == "passed" for s in child_statuses):
                         curr_status = "passed"
                     else:
                         curr_status = ""
@@ -2265,13 +2398,20 @@ class MobilePage(QWidget):
             else:
                 curr_status = self.node_status_map.get(target, "")
 
-            # 3. 统一应用各层级节点文本与提示：目录与文件保持纯净导航，类/函数/参数展示状态球与状态提示
-            item.setText(0, self._format_node_display_text(curr_status, node_type, name, count))
-            if node_type in ("category", "file"):
-                item.setToolTip(0, f"类型: {node_type}\n名称: {name}\n节点: {target}\n包含 {count} 个测试用例")
+            # 3. 统一应用各层级节点文本与提示
+            item.setText(0, self._format_node_display_text(curr_status, node_type, name, count, priority=priority))
+            if node_type == "category":
+                item.setToolTip(0, f"一级测试目录: {target}\n包含 {count} 个测试用例")
+            elif node_type == "file":
+                status_desc = "通过" if curr_status == "passed" else ("失败" if curr_status in ("failed", "broken", "error") else "未执行")
+                item.setToolTip(0, f"二级测试文件: {target}\n名称: {name}\n包含 {count} 个测试用例\n状态: {status_desc}")
             else:
-                status_desc = "通过" if curr_status == "passed" else ("失败" if curr_status == "failed" else "未执行")
-                item.setToolTip(0, f"类型: {node_type}\n名称: {name}\n节点: {target}\n状态: {status_desc}")
+                status_desc = "通过" if curr_status == "passed" else ("失败" if curr_status in ("failed", "broken", "error") else "未执行")
+                p_desc_str = f"\n优先级: {self._get_priority_desc(priority)}" if priority else ""
+                item.setToolTip(0, f"类型: {node_type}\n名称: {name}\n节点: {target}{p_desc_str}\n状态: {status_desc}")
+
+            # 4. 确保右侧操作按钮保持空心透明胶囊风格，悬浮统一为绿色
+            self._update_node_action_button(item, curr_status)
 
             return curr_status
 
@@ -2299,7 +2439,9 @@ class MobilePage(QWidget):
 
                 # 启动时根据本地最新 Allure 报告对全树进行精准自愈与同步
                 if cases:
-                    self._sync_cases_to_tree_status(cases)
+                    self._sync_cases_to_tree_status(cases, scope_checker=None)
+                    if hasattr(self, 'allure_dashboard') and self.allure_dashboard:
+                        self.allure_dashboard._render_cases_detail_list()
 
                 if total > 0:
                     if bad_count == 0:
@@ -2326,9 +2468,11 @@ class MobilePage(QWidget):
         bad_count = failed + broken
 
         if cases:
-            self._sync_cases_to_tree_status(cases)
+            self._sync_cases_to_tree_status(cases, scope_checker=None)
             self._update_tree_node_icons()
             self._save_tree_state()
+            if hasattr(self, 'allure_dashboard') and self.allure_dashboard:
+                self.allure_dashboard._render_cases_detail_list()
 
         if total > 0:
             if bad_count == 0:

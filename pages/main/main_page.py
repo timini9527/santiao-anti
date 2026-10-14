@@ -15,9 +15,14 @@ class MainPage(BasePage):
         """检测当前是否正处于搜索覆盖层页面（基于右下角取消按钮精准探查，静默零异常）"""
         return bool(self.find_elements(HomeLocator.SEARCH_CANCEL, timeout=timeout, raise_exception=False, expect_missing=True))
 
-    def is_in_main_page(self, timeout: float = 0.2, raise_exception: bool = False) -> bool:
-        """判断当前是否已处于主页面（单次高效网络请求，严格对齐 HomePage.wait_home_page 黄金基准）"""
-        return bool(self.find_elements(HomeLocator.LEFT_MENU, timeout=timeout, raise_exception=raise_exception, expect_missing=True))
+    def is_in_main_page(self, timeout: float = 0.8, raise_exception: bool = False) -> bool:
+        """
+        判断当前是否已处于主页面：
+        双特征精准识别（左上角抽屉按钮 或 底部主导航栏），确保 100% 不漏判、不误判。
+        """
+        if bool(self.find_elements(HomeLocator.LEFT_MENU, timeout=timeout, raise_exception=raise_exception, expect_missing=True)):
+            return True
+        return bool(self.find_elements(HomeLocator.BOTTOM, timeout=0.1, raise_exception=False, expect_missing=True))
 
     def is_app_in_foreground(self) -> bool:
         """检查当前被测应用是否处于前台运行状态"""
@@ -35,7 +40,7 @@ class MainPage(BasePage):
         """等待主页面加载就绪"""
         start_time = time.time()
         while time.time() - start_time < timeout:
-            if self.is_in_main_page(timeout=0.1):
+            if self.is_in_main_page(timeout=0.2):
                 return True
             time.sleep(0.1)
         return False
@@ -55,8 +60,8 @@ class MainPage(BasePage):
                     "flags": 0x24000000
                 }
             )
-            time.sleep(0.25)
-            if self.is_in_main_page(timeout=0.2):
+            time.sleep(0.2)
+            if self.is_in_main_page(timeout=0.3):
                 logger.info("✅ [StateHealer] Intent 栈顶清空归位成功！")
                 return True
         except Exception as e:
@@ -66,7 +71,7 @@ class MainPage(BasePage):
         try:
             self.driver.activate_app(self.APP_PACKAGE)
             time.sleep(0.25)
-            if self.is_in_main_page(timeout=0.2):
+            if self.is_in_main_page(timeout=0.3):
                 logger.info("✅ [StateHealer] activate_app 备用通道归位成功！")
                 return True
         except Exception as e:
@@ -93,64 +98,65 @@ class MainPage(BasePage):
                 pass
         return True
 
-    def go_to_main_page(self, timeout: float = 0.2, raise_exception: bool = False, max_retries: int = 10) -> bool:
+    def go_to_main_page(self, timeout: float = 0.8, raise_exception: bool = False, max_retries: int = 5) -> bool:
         """
-        工业级状态自愈引擎（极简高效，杜绝一切冗余开销）：
-        1. 瞬时探针：若当前已处于主页面，0ms 直接放行。
-        2. 前置存活守卫：若 App 未运行或处于后台/系统桌面，严禁在桌面上盲目按 Back，直接热拉起应用并就绪！
-        3. 极速平滑回退：若 App 确实在前台，仅在子页面时执行纯粹的系统/UI Back；若回退到达桌面立即停止按键。
-        4. Intent 栈顶恢复：若回退达到上限仍未归位，无损将 MainActivity 推回栈顶清空子页面。
+        [工业级完美] 全局主页无损直达引擎 (平滑微回退优先 + Intent 栈恢复兜底)：
+        1. 瞬时前置守卫：严守“先查后动”铁律，若当前已处于主页面且不在搜索层，0ms 直接放行，绝不执行任何返回动作！
+        2. 受控平滑微退栈：仅在确信不在主页时，逐次轻柔退栈并即时刹车；
+        3. 栈顶直达兜底：若平滑返回后仍未归位，启用 FLAG_ACTIVITY_CLEAR_TOP 瞬间斩断。
         """
-        # 1. 瞬时探针：已在主页直接放行，零额外网络请求与性能损耗
+        # 1. 瞬时前置守卫：已在主页 100% 绝对拦截放行，严禁触碰任何返回动作！
         if self.is_in_main_page(timeout=timeout, raise_exception=raise_exception):
-            logger.debug("🍏 [StateHealer] 当前已处于主页面")
+            logger.debug("🍏 [StateHealer] 当前已处于纯净主页面，0 操作安全放行")
             return True
 
-        logger.info("🔄 [StateHealer] 开始执行热启动状态自愈归位...")
+        logger.info("🔄 [StateHealer] 检测到不在主页面，开始归位主页面...")
 
-        # 2. 前置存活守卫：若应用未启动或处于后台/系统桌面，严禁盲目按 Back 打在桌面上！
-        if not self.is_app_in_foreground():
-            logger.warning("🚨 [StateHealer] 检测到 App 未在前台运行（未启动或处于桌面/后台），直接执行无损热拉起...")
-            self.ensure_app_alive_and_ready()
-            if self.is_in_main_page(timeout=0.3):
-                logger.info("🍏 [StateHealer] 热拉起后已成功归位主页面")
-                return True
-            # 若拉起后停留在历史深层页面，直接通过 Intent 栈清空瞬间推回主页
-            if self.reset_activity_stack_to_main():
-                return True
-
-        # 3. 极速连续回退（确认当前正处于 App 内部前台子页面时，才安全退栈）
-        retries = max_retries
-        while retries > 0:
-            try:
-                self.back(timeout=0.1)
-            except Exception as e:
-                logger.debug(f"⚠️ [StateHealer] 退回操作捕获异常: {e}")
-
-            if self.is_in_main_page(timeout=0.1):
-                logger.info("🍏 [StateHealer] 快速退回已成功归位主页面")
-                return True
-
-            # 核心安全阻断：若退回过程中意外退出了前台（到达了系统桌面），立即停止继续按 Back，避免在桌面乱按
+        for step in range(max_retries):
             if not self.is_app_in_foreground():
-                logger.warning("🔙 [StateHealer] 退回过程已到达系统桌面，立即终止按 Back，切入 Intent 栈恢复...")
+                logger.warning("🔙 [StateHealer] 检测到已不在应用前台，终止按 Back，切入 Intent 恢复...")
                 break
+            try:
+                if self.is_in_main_page(timeout=0.3):
+                    logger.info(f"🍏 [StateHealer] 平滑第 {step + 1} 次退回已成功归位主页面 (零闪烁)")
+                    return True
+                self.back(timeout=0.2)
+            except Exception:
+                pass
 
-            retries -= 1
-
-        # 4. 栈顶清空与无损热拉起（深层页面或返回受阻时直接一键推回主页）
+        # 3. 核心栈顶直达 (仅在前几轮平滑返回仍未归位的深层未知异常下，才启用的终极重武器兜底)
         if self.reset_activity_stack_to_main():
             return True
 
-        # 5. 兜底判定
-        self.ensure_app_alive_and_ready()
+        # 4. 异常容错自愈 (如存在搜索覆盖层、展开抽屉遮挡)
+        if self.is_in_search_page(timeout=0.1):
+            logger.info("🧹 [StateHealer] 检测到残留搜索覆盖层，正在退出搜索...")
+            try:
+                self.click(HomeLocator.SEARCH_CANCEL, timeout=1.0)
+            except Exception:
+                self.press_keycode(4)
 
-        success = self.is_in_main_page(timeout=0.3)
+        if not self.is_in_main_page(timeout=0.1):
+            try:
+                # 针对可能展开的侧滑抽屉或弹窗轻触一次系统返回收起
+                self.press_keycode(4)
+                time.sleep(0.15)
+            except Exception:
+                pass
+
+        # 5. 状态校验
+        if self.is_in_main_page(timeout=0.3):
+            logger.info("🍏 [StateHealer] 状态自愈完成，已确保停留在主页面")
+            return True
+
+        # 6. 进程存活终极兜底
+        self.ensure_app_alive_and_ready()
+        success = self.is_in_main_page(timeout=0.5)
         if success:
             logger.info("🍏 [StateHealer] 状态自愈完成，已确保停留在主页面")
             return True
 
         if raise_exception:
-            raise RuntimeError("❌ [StateHealer] 经过自愈后仍未能恢复至主页面！")
-        logger.error("❌ [StateHealer] 经过自愈后仍未能恢复至主页面")
+            raise RuntimeError("❌ [StateHealer] 经过终极自愈后仍未能恢复至主页面！")
+        logger.error("❌ [StateHealer] 经过终极自愈后仍未能恢复至主页面")
         return False

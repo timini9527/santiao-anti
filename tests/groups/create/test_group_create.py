@@ -112,6 +112,8 @@ class TestGroupCreate:
                 self.groupCreatePage.back()
         return actual_group_count
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('发起群聊')
     @allure.title('选择 1 个正常好友时进入单聊页面-状态：已完成')
     def test_create_group_with_one_normal_friend(self):
@@ -129,6 +131,8 @@ class TestGroupCreate:
             title = self.chatPage.get_top_name()
             check.is_in(PRIVATE_USER1.name, title, f'❌ 单聊标题不正确，实际标题: {title}')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('发起群聊')
     @allure.title('选择 1 或 2 个已停用/已注销好友时提示异常-状态：已完成')
     @pytest.mark.parametrize('invalid_friends', [pytest.param([PRIVATE_DISABLE1], id='1个停用'), pytest.param([PRIVATE_DISABLE1, PRIVATE_DISABLE2], id='2个停用'), pytest.param([PRIVATE_USER1, PRIVATE_DISABLE1], id='1个正常+1个停用')])
@@ -149,6 +153,8 @@ class TestGroupCreate:
             is_in_chat = self.chatPage.wait_for_chat_page_load(2, False)
             check.is_false(is_in_chat, '❌ 选择非正常好友后不应进入聊天页面')
 
+    @pytest.mark.p0
+    @allure.severity(allure.severity_level.BLOCKER)
     @allure.story('发起群聊')
     @allure.title('通过首页右上角发起群聊 (小群:2人) - 正常建群流程-状态：已完成')
     def test_create_group_success(self):
@@ -168,6 +174,8 @@ class TestGroupCreate:
             title = self.chatPage.get_top_name()
             check.is_in('(3)', title, f'❌ 群聊标题不包含：(3)')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('发起群聊')
     @allure.title('通过好友发起群聊 (小群:2人) - 正常建群流程-状态：已完成')
     def test_create_group_success_by_friend(self):
@@ -190,6 +198,8 @@ class TestGroupCreate:
             title = self.chatPage.get_top_name()
             check.is_in('(3)', title, f'❌ 群聊标题不包含：(3)')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('发起群聊')
     @allure.title('通过首页发起群聊 - 取消建群-状态：已完成')
     def test_create_group_cancel_from_home(self):
@@ -207,6 +217,8 @@ class TestGroupCreate:
             middle_title = self.homePage.get_top_middle_title()
             check.is_in('三条', middle_title, f'❌ 未返回到首页')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('发起群聊')
     @allure.title('通过好友发起群聊 - 取消建群流程-状态：已完成')
     def test_create_group_cancel(self):
@@ -230,6 +242,8 @@ class TestGroupCreate:
             check.is_in(PRIVATE_USER1.name, title, f'❌ 取消建群后聊天标题不正确，实际标题: {title}')
             check.is_false(self.groupCreatePage.is_chat_group(title), f'❌ 取消建群后不应进入群聊，实际标题: {title}')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('发起群聊')
     @allure.title('通过首页右上角发起群聊 - <= 50 - 选择x个好友进行建群-状态：已完成')
     @pytest.mark.parametrize('num_friends', [pytest.param(0, id='0人'), pytest.param(10, id='10人'), pytest.param(49, id='49人'), pytest.param(50, id='50人'), pytest.param(51, id='51人')])
@@ -273,6 +287,8 @@ class TestGroupCreate:
                     is_back = self.contactSelectPage.wait_for_contact_and_group_select_page_load()
                     check.is_true(is_back, '❌ 建群后未能返回会话选择页')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('发起群聊')
     @allure.title('通过首页右上角发起群聊 - > 200+ - 选择x个好友分批次选择好友建群-状态：已完成')
     @pytest.mark.parametrize('num_friends', [pytest.param(200, id='200人'), pytest.param(201, id='201人'), pytest.param(499, id='499人'), pytest.param(500, id='500人'), pytest.param(501, id='501人')])

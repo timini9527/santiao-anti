@@ -107,6 +107,8 @@ class TestGroupSetting:
             self.groupSettingPage.wait_for_setting_page_load()
             self.__class__._has_entered_setting_page = True
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('群聊详情设置')
     @allure.title('切换显示群成员昵称开关并校验状态-状态：已完成')
     def test_group_show_member_nickname_toggle(self):
@@ -126,6 +128,8 @@ class TestGroupSetting:
             final_state = self.groupSettingPage.get_show_member_name_switch_state()
             check.equal(init_state, final_state, '❌ 显示群成员昵称开关恢复初始状态失败')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群聊详情设置')
     @allure.title('修改‘我在本群昵称’并校验修改成功-状态：已完成')
     def test_modify_my_group_nickname(self):
@@ -147,6 +151,8 @@ class TestGroupSetting:
             self.groupSettingPage.change_my_group_nickname(restore_nickname)
             check.equal(self.groupSettingPage.get_my_group_nickname(), old_nickname, '❌ 我在本群昵称恢复值不一致')
 
+    @pytest.mark.p0
+    @allure.severity(allure.severity_level.BLOCKER)
     @allure.story('解散群聊')
     @allure.title('通过群聊聊天页面解散群聊 - 正常解散流程-状态：已完成')
     def test_delete_group_success(self):
@@ -156,6 +162,8 @@ class TestGroupSetting:
         with allure.step('3. 确认弹窗'):
             self._dismiss_and_cleanup_group(group_name)
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('解散群聊')
     @allure.title('通过群聊聊天页面解散群聊 - 取消解散流程-状态：已完成')
     def test_delete_group_cancel(self):
@@ -183,6 +191,8 @@ class TestGroupSetting:
                 self._dismiss_and_cleanup_group(group_name)
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群聊设置 - 清空聊天记录')
     @allure.title('清空群聊聊天记录并校验记录归零-状态：已完成')
     @pytest.mark.parametrize('chat_strategy', [pytest.param(GROUP_STRATEGY2, id='群聊-清空聊天记录')])
@@ -209,6 +219,8 @@ class TestGroupSetting:
             new_msg_count = self.chatPage.get_total_message_count()
             check.equal(new_msg_count, 0, f'❌ 清空聊天记录后，消息数量应为 0，实际为 {new_msg_count}')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群备注功能')
     @allure.title('群备注修改校验 - {test_id}-状态：已完成')
     @pytest.mark.parametrize('test_id, input_content, action, expected_toast, expect_truncated, should_change, last_case', [
@@ -252,6 +264,8 @@ class TestGroupSetting:
                 self.groupSettingPage.input_remark_content('')
                 self.groupSettingPage.click_tv_confirm_button()
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群名称功能')
     @allure.title('群聊名称修改校验 - {scenario}-状态：已完成')
     @pytest.mark.parametrize('scenario, input_name, action, expected_toast, expected_result, should_change, last_case', [
@@ -296,6 +310,8 @@ class TestGroupSetting:
                 self.groupSettingPage.input_remark_content(chat_strategy.name)
                 self.groupSettingPage.click_tv_confirm_button()
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('群设置-群头像')
     @allure.title('通过群聊聊天页面修改群头像-状态：已完成')
     def test_change_group_avatar(self):
@@ -332,6 +348,8 @@ class TestGroupSetting:
                 self.groupManagerPage.click_dismiss_group()
                 self._dismiss_and_cleanup_group(group_name)
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群设置-我在本群昵称')
     @allure.title('我在本群昵称修改校验 - {scenario}-状态：已完成')
     @pytest.mark.parametrize('scenario, input_nickname, action, expected_result, should_change, last_case', [
@@ -365,6 +383,8 @@ class TestGroupSetting:
                 self.groupSettingPage.change_my_group_nickname(restore_val)
                 self.__class__._initial_my_group_nickname = "__UNSET__"
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('群设置-显示群成员昵称')
     @allure.title('开启显示群成员昵称并校验聊天页昵称展示-状态：已完成')
     def test_group_display_member_nickname(self):

@@ -31,6 +31,8 @@ class TestLoginAgreement:
         self.ocr_utils = OcrUtils(driver_sender)
         yield
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('验证用户协议、隐私协议和未成年协议三个协议是否正常展示')
     @allure.title('验证用户协议、隐私协议和未成年协议三个协议是否正常展示-状态：已完成')
     def test_verify_agreements_exist(self):
@@ -41,6 +43,8 @@ class TestLoginAgreement:
             assert '《隐私协议》' in full_text, '缺少隐私协议'
             assert '《未成年人个人信息保护规则》' in full_text, '缺少未成年人保护规则'
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('验证用户协议、隐私协议和未成年协议文本展现及跳转逻辑')
     @allure.title('验证用户协议、隐私协议和未成年协议文本展现及跳转逻辑-状态：已完成')
     @pytest.mark.parametrize('agreement_name, expected_title, is_popup, click_login_btn', [pytest.param('《用户协议》', '三条软件许可及服务协议', False, False, id='Main_UserAgreement'), pytest.param('《隐私协议》', '三条软件 隐私政策', False, False, id='Main_PrivacyPolicy'), pytest.param('《未成年人个人信息保护规则》', '三条未成年人及儿童隐私保护政策', False, False, id='Main_ChildrenPrivacy'), pytest.param('《用户协议》', '三条软件许可及服务协议', True, True, id='Popup_UserAgreement'), pytest.param('《隐私协议》', '三条软件 隐私政策', True, False, id='Popup_PrivacyPolicy'), pytest.param('《未成年人个人信息保护规则》', '三条未成年人及儿童隐私保护政策', True, False, id='Popup_ChildrenPrivacy')])

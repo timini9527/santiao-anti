@@ -55,6 +55,8 @@ class TestChatBasicEmoji:
 
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('发送全部表情消息并验证')
     @allure.title('发送全部表情消息并验证-状态：已完成')
     def test_send_all_emoji_message(self):
@@ -68,6 +70,8 @@ class TestChatBasicEmoji:
             check.equal(active_text, input_text, f'消息 actual: {active_text}, expected: {input_text} 不匹配')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('发送所有表情中的单个表情消息，验证1，8，当前页面随机一个，当前页面最后一个，最后一个')
     @allure.title('发送所有表情中的单个表情消息，验证1，8，当前页面随机一个，当前页面最后一个，最后一个-状态：已完成')
     @pytest.mark.parametrize('emoji_type, desc', [
@@ -90,6 +94,8 @@ class TestChatBasicEmoji:
             check.equal(active_text, input_text, f'消息 actual: {active_text}, expected: {input_text} 不匹配')
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('从所有发送新的表情消息，验证最近使用的表情是否添加上：1/8/16')
     @allure.title('从所有发送新的表情消息，验证最近使用的表情是否添加上：1/8/16-状态：已完成')
     @pytest.mark.parametrize('emoji_type, count, desc', [

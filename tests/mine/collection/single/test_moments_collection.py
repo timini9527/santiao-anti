@@ -24,10 +24,16 @@ class TestCollection:
             self.collPage.back_to_main()
             self.collPage.enter_my_collection()
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('朋友圈页面收藏文本消息')
+    @allure.title('朋友圈页面收藏文本消息-状态：未完成')
     def test_collection_friend_text(self):
         pass
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('朋友圈页面收藏图片消息')
+    @allure.title('朋友圈页面收藏图片消息-状态：未完成')
     def test_collection_friend_image(self):
         pass

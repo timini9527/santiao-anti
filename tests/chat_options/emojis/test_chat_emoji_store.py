@@ -43,6 +43,8 @@ class TestChatEmojiStore:
         except Exception as e:
             logger.error(f'Teardown 失败，未能返回首页: {e}')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('表情包商店：添加表情包')
     @allure.title('表情包商店：添加表情包-状态：已完成')
     @pytest.mark.parametrize('emoji_type, count, desc', [pytest.param('sequential', 1, '按顺序添加 1 个表情包', id='按顺序添加 1 个表情包'), pytest.param('sequential', 4, '连续添加 4 个表情包', id='连续添加 4 个表情包'), pytest.param('current_last', 1, '添加屏幕可见的最后一个表情包', id='添加屏幕可见的最后一个表情包'), pytest.param('all_in_page', 0, '连续添加当前页面所有表情包', id='连续添加当前页面所有表情包'), pytest.param('random', 3, '随机添加当前页面 3 个表情包', id='随机添加当前页面 3 个表情包'), pytest.param('last_page', 1, '表情商店中最后一个表情', id='表情商店中最后一个表情')])
@@ -65,6 +67,8 @@ class TestChatEmojiStore:
             verify_status = self.emojiStorePage.verify_added_packages(added_pkg_names)
             check.is_true(verify_status, f'添加的表情包未成功显示在表情面板中！添加的表情包: {added_pkg_names}')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('发送表情包消息及业务流转验证')
     @allure.title('发送表情包消息及业务流转验证-状态：已完成')
     @pytest.mark.parametrize('pkg_index, strategy, count, network, post_action, desc', [pytest.param(*x, id=str(x)) for x in load_emoji_test_cases()])
@@ -91,6 +95,8 @@ class TestChatEmojiStore:
                 verify_status = self.chatPage.get_message_send_fail_status()
             check.is_true(verify_status, f'发送表情包后，聊天消息列表中未成功渲染大表情气泡')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('从表情包商店设置页删除表情包')
     @allure.title('从表情包商店设置页删除表情包-状态：已完成')
     @pytest.mark.parametrize('emoji_type, count, desc', [pytest.param('sequential', 1, '删除列表中的第 1 个表情包', id='删除列表中的第 1 个表情包'), pytest.param('sequential', 3, '连续删除列表前 3 个表情包', id='连续删除列表前 3 个表情包'), pytest.param('all', 0, '清空/删除当前拥有的全部表情包', id='清空/删除当前拥有的全部表情包')])

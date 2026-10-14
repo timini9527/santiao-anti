@@ -82,6 +82,8 @@ class TestChat:
 
 
 
+    @pytest.mark.p0
+    @allure.severity(allure.severity_level.BLOCKER)
     @allure.story('发送基础 Text 消息')
     @pytest.mark.parametrize(
         'text_message',
@@ -108,6 +110,8 @@ class TestChat:
             check.equal(actual_text, expected, f"❌ 消息回显不匹配！期望: '{expected}', 实际: '{actual_text}'")
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('批量发送 CSV 数据集')
     @allure.title('批量极速发送 CSV 文本数据集前 50 条并校验闭环')
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式')])

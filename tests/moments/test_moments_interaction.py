@@ -121,6 +121,8 @@ class TestMomentsInteraction:
 
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story("点赞与评论")
     @allure.title("点赞并取消点赞-状态：已完成")
     def test_like_and_cancel_moment(self, temp_interaction_moment):
@@ -171,6 +173,8 @@ class TestMomentsInteraction:
             check.is_true(cancel_persisted, "❌ 刷新后取消点赞状态未保持")
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story("点赞与评论")
     @allure.title("评论朋友圈-{case_id}-状态：已完成")
     @pytest.mark.parametrize(
@@ -255,6 +259,8 @@ class TestMomentsInteraction:
                         logger.warning(f"⚠️ 清理本条截断评论失败: {e}")
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story("点赞与评论")
     @allure.title("评论为空不可发送-状态：已完成")
     def test_empty_comment_cannot_send(self, temp_interaction_moment):
@@ -271,6 +277,8 @@ class TestMomentsInteraction:
             check.equal(after_comments, before_comments, "❌ 空评论不应被成功发送，评论列表应当保持不变")
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story("点赞与评论")
     @allure.title("评论成功后刷新仍可见-状态：已完成")
     def test_comment_persists_after_refresh(self, temp_interaction_moment):
@@ -297,6 +305,8 @@ class TestMomentsInteraction:
                     logger.warning(f"⚠️ 清理刷新持久化测试评论失败: {e}")
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story("点赞与评论")
     @allure.title("取消删除自己的评论-状态：已完成")
     def test_cancel_delete_own_comment(self, temp_interaction_moment):
@@ -327,6 +337,8 @@ class TestMomentsInteraction:
 
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story("点赞与评论")
     @allure.title("删除自己的评论-状态：已完成")
     def test_delete_own_comment(self, temp_interaction_moment):
@@ -361,6 +373,8 @@ class TestMomentsInteraction:
 
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story("点赞与评论")
     @allure.title("点赞并取消点赞-状态：已完成")
     def test_like_and_cancel_moment(self, temp_like_moment):

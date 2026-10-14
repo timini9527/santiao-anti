@@ -71,6 +71,8 @@ class TestChatFile:
     # =========================================================================
     # 1. 发送文件 - 固定文件名搜索 (强校验模式)
     # =========================================================================
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('发送文件-固定文件名搜索')
     @allure.title('发送文件-固定文件名搜索并精准强断言-状态：已完成')
     @pytest.mark.parametrize('exact_scenario', EXACT_FILE_SCENARIOS, ids=lambda s: s.desc)
@@ -102,6 +104,8 @@ class TestChatFile:
     # =========================================================================
     # 2. 发送文件 - 正向流程 (分类 × 选法 × 聊天策略 矩阵覆盖)
     # =========================================================================
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('发送文件-正向流程')
     @allure.title('发送文件-正向流程-状态：已完成')
     @pytest.mark.parametrize('category', FILE_CATEGORIES, ids=lambda c: c.desc)
@@ -135,6 +139,8 @@ class TestChatFile:
     # =========================================================================
     # 3. 发送文件 - 取消返回流程
     # =========================================================================
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('发送文件-取消操作')
     @allure.title('发送文件-取消操作-状态：已完成')
     @pytest.mark.parametrize('strategy', [

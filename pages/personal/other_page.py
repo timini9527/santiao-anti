@@ -22,10 +22,7 @@ class OtherPage(PersonalPage, CommonPage):
         """修改昵称"""
         logger.info(f"[Action] 修改昵称为: {nickname}")
         self.send_keys(OtherLocator.EDIT_NICKNAME, nickname)
-        try:
-            self.driver.hide_keyboard()
-        except Exception:
-            pass
+        self.hide_keyboard_robust()
 
     # 获取昵称
     def get_nickname(self) -> str:
@@ -74,10 +71,7 @@ class OtherPage(PersonalPage, CommonPage):
         logger.info(f"[Action] 修改三条ID为: {new_id}")
         self.click(OtherLocator.CHANGE_ST_ID)
         self.send_keys(OtherLocator.EDIT_ST_ID, new_id)
-        try:
-            self.driver.hide_keyboard()
-        except Exception:
-            pass
+        self.hide_keyboard_robust()
     
     def get_texts(self) -> list[str]:
         """获取所有文本"""
@@ -197,10 +191,7 @@ class OtherPage(PersonalPage, CommonPage):
         """修改邮箱"""
         logger.info(f"[Action] 修改邮箱为: {email}")
         self.send_keys(OtherLocator.EDIT_EMAIL, email)
-        try:
-            self.driver.hide_keyboard()
-        except Exception:
-            pass
+        self.hide_keyboard_robust()
 
     # 选择地区
     def select_area(self, area_name: str, max_retry: int = 10) -> None:

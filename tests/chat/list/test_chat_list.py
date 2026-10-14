@@ -164,6 +164,8 @@ class TestChatList:
 
 
 
+    @pytest.mark.p0
+    @allure.severity(allure.severity_level.BLOCKER)
     @allure.story('进入私聊/群聊会话')
     @allure.title('进入私聊/群聊会话-状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
@@ -178,6 +180,8 @@ class TestChatList:
         self._send_and_verify_message(f'{strategy.name}要进行测试了')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('单个会话侧滑(静音、取消静音、置顶、取消置顶)功能')
     @allure.title('单个会话侧滑(静音、取消静音、置顶、取消置顶)功能-状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
@@ -199,6 +203,8 @@ class TestChatList:
             assert remind_status == action.expected_status, f'状态校验失败！预期: {action.expected_status}, 实际: {remind_status}'
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('单个会话侧滑置顶，滑到最底部让最后一个会话置顶并验证')
     @allure.title('单个会话侧滑置顶：底部会话置顶后成功跃升至顶部第一位-状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式')])
@@ -241,6 +247,8 @@ class TestChatList:
                         logger.warning(f'⚠️ 环境自愈取消置顶异常: {e}')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('批量置顶/取消置顶会话')
     @allure.title('批量置顶与取消置顶会话（穿透校验底层状态）-状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(SLIDE_STRATEGY, id='侧滑模式')])
@@ -307,6 +315,8 @@ class TestChatList:
                     logger.warning(f'⚠️ 环境清理异常: {e}')
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('置顶会话折叠验证')
     @allure.title('置顶会话折叠验证-状态：已完成')
     @pytest.mark.parametrize('scenario', [pytest.param(x, id=x.desc) for x in TOP_FOLD_SCENARIOS])
@@ -347,6 +357,8 @@ class TestChatList:
                 self._clear_all_pinned_sessions()
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('单个会话侧滑删除功能(清空聊天记录/隐藏会话/取消删除)')
     @allure.title('单个会话侧滑删除功能(清空聊天记录/隐藏会话/取消删除)-状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER2, id='私聊模式'), pytest.param(GROUP_STRATEGY2, id='群聊模式')])
@@ -395,6 +407,8 @@ class TestChatList:
                 self.homePage.exit_search_if_present()
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('验证会话草稿模式状态')
     @allure.title('验证会话草稿模式状态-状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式')])
@@ -417,6 +431,8 @@ class TestChatList:
             self.chatListPage.click_back_button()
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('验证会话未读/已读状态')
     @allure.title('验证会话发送消息后即时呈现【未读】状态-状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式')])
@@ -433,6 +449,8 @@ class TestChatList:
             check.is_in('未读', tip_status, f'未读模式状态不匹配, 实际为: {tip_status}')
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('验证会话停用状态')
     @allure.title('验证会话停用状态-状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_DISABLE1, id='停用账号')])
@@ -498,6 +516,8 @@ class TestChatList:
                 self.homePage.wait_home_page()
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('验证会话内容发送失败状态')
     @allure.title('断网环境-验证消息发送失败(红点感叹号)状态-状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式')])
@@ -529,6 +549,8 @@ class TestChatList:
                     logger.warning(f'网络恢复异常: {e}')
             
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('验证单端会话内容：表情包、图片、视频、语音、位置、文件、个人名片、群名片')
     @allure.title('验证会话内容状态-状态：已完成')
     @pytest.mark.parametrize('session_strategy', [

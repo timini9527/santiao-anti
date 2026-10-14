@@ -9,6 +9,7 @@ from pages.chat.core.chat_page import ChatPage
 from pages.chat.list.chat_list_page import ChatListPage
 from strategy.chat.chat_strategy import GROUP_STRATEGY
 
+
 @allure.epic('IM核心功能测试')
 @allure.feature('群助手-定时消息')
 class TestGroupBotTimedMsg:
@@ -26,6 +27,8 @@ class TestGroupBotTimedMsg:
         self.main_sender.go_to_main_page()
         yield
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('定时消息-增删生命周期')
     @allure.title('定时消息周期管理 - 成功添加一条定时消息并成功删除，校验列表刷新-状态：未完成')
     def test_timed_msg_lifecycle(self):
@@ -41,9 +44,7 @@ class TestGroupBotTimedMsg:
             self.group_bot_sender.enter_timed_msg()
         with allure.step('2. 添加一条新的定时消息'):
             self.group_bot_sender.add_timed_msg(test_content)
-            from appium.webdriver.common.appiumby import AppiumBy
-            list_item = (AppiumBy.ANDROID_UIAUTOMATOR, f'newUiSelector().textContains("{test_content}")')
-            check.is_true(len(self.group_bot_sender.find_elements(list_item, timeout=5)) > 0, '❌ 新增定时消息未在列表中展示')
+            check.is_true(self.group_bot_sender.is_timed_msg_present(test_content, timeout=5), '❌ 新增定时消息未在列表中展示')
         with allure.step('3. 删除刚刚添加的定时消息'):
             self.group_bot_sender.delete_timed_msg(test_content)
-            check.is_true(len(self.group_bot_sender.find_elements(list_item, timeout=3)) == 0, '❌ 删除定时消息后列表中仍存在该内容')
+            check.is_false(self.group_bot_sender.is_timed_msg_present(test_content, timeout=3), '❌ 删除定时消息后列表中仍存在该内容')

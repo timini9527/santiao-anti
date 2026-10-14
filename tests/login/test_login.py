@@ -75,6 +75,8 @@ class TestLogin:
 
 
 
+    @pytest.mark.p0
+    @allure.severity(allure.severity_level.BLOCKER)
     @allure.story("手机账号密码登录场景回归验证")
     @allure.title("手机账号密码登录场景回归验证-状态：已完成")
     @pytest.mark.parametrize("case_dict", load_login_test_cases(), ids=lambda x: x.get('id', 'TC'))
@@ -174,6 +176,8 @@ class TestLogin:
                     check.is_true(is_success, f"❌ 账号 {case.account} 退出登录失败，未回到登录页")
                 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story("登录成功新号，手机账号记住功能")
     @allure.title("连续登录退出不同由于，验证手机号记住功能-状态：已完成")
     def test_login_remember_account(self):

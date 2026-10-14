@@ -16,6 +16,7 @@
 4. 动态测试套列表、动态缺陷类别卡片与真实运行环境卡片
 """
 import os
+import re
 import glob
 import json
 from datetime import datetime
@@ -712,22 +713,35 @@ class AllureDashboardWidget(QFrame):
         cad_layout.setContentsMargins(10, 8, 10, 8)
         cad_layout.setSpacing(16)
 
-        # 左区：环形图
-        self.donut = AllureDonutWidget()
-        cad_layout.addWidget(self.donut)
+        # 左区：环形图 + 用例数量 (上下居中排列，紧凑优雅，为右侧测试结果框释放更多横向空间)
+        left_stat_box = QVBoxLayout()
+        left_stat_box.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        left_stat_box.setSpacing(6)
+        left_stat_box.setContentsMargins(4, 4, 4, 4)
 
-        # 中区：大字用例数
+        # 1. 环形图 (中心自绘 100% 通过率大字)
+        self.donut = AllureDonutWidget()
+        left_stat_box.addWidget(self.donut, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        # 2. 用例数量容器 (大字数字 + 测试用例说明，居中放置在 100% 环形图正下方)
         num_box = QVBoxLayout()
-        num_box.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+        num_box.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        num_box.setSpacing(1)
+
         self.lbl_case_number = QLabel("0")
-        self.lbl_case_number.setStyleSheet("font-size: 32px; font-weight: 800; color: #0f172a;")
+        self.lbl_case_number.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_case_number.setStyleSheet("font-size: 26px; font-weight: 800; color: #0f172a;")
         self.lbl_case_desc = QLabel("测试用例")
+        self.lbl_case_desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_case_desc.setStyleSheet("color: #64748b; font-size: 12px; font-weight: 600;")
+
         num_box.addWidget(self.lbl_case_number)
         num_box.addWidget(self.lbl_case_desc)
-        cad_layout.addLayout(num_box)
+        left_stat_box.addLayout(num_box)
 
-        # 右区：4 状态明细 + 用例清单
+        cad_layout.addLayout(left_stat_box)
+
+        # 右区：4 状态明细 + 用例清单 (更宽敞舒展的测试结果框)
         detail_panel = QFrame()
         detail_panel.setStyleSheet("""
             QFrame {
@@ -767,7 +781,59 @@ class AllureDashboardWidget(QFrame):
         self.cases_scroll.setMinimumHeight(150)
         self.cases_scroll.setWidgetResizable(True)
         self.cases_scroll.setFrameShape(QFrame.Shape.NoFrame)
-        self.cases_scroll.setStyleSheet("background: transparent;")
+        self.cases_scroll.setStyleSheet("""
+            QScrollArea {
+                background: transparent;
+                border: none;
+            }
+            QScrollBar:horizontal {
+                border: none;
+                background: transparent;
+                height: 6px;
+                margin: 0px;
+            }
+            QScrollBar::handle:horizontal {
+                background: #cbd5e1;
+                min-width: 24px;
+                border-radius: 3px;
+            }
+            QScrollBar::handle:horizontal:hover {
+                background: #94a3b8;
+            }
+            QScrollBar::handle:horizontal:pressed {
+                background: #64748b;
+            }
+            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+                width: 0px;
+                height: 0px;
+                background: transparent;
+            }
+            QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
+                background: transparent;
+            }
+            QScrollBar:vertical {
+                border: none;
+                background: transparent;
+                width: 6px;
+                margin: 0px;
+            }
+            QScrollBar::handle:vertical {
+                background: #cbd5e1;
+                min-height: 24px;
+                border-radius: 3px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #94a3b8;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+                width: 0px;
+                background: transparent;
+            }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+                background: transparent;
+            }
+        """)
 
         self.cases_container = QWidget()
         self.cases_list_layout = QVBoxLayout(self.cases_container)
@@ -781,7 +847,7 @@ class AllureDashboardWidget(QFrame):
         mid_col.addWidget(chart_and_detail_card, stretch=1)
         mid_col.addStretch()
 
-        content_layout.addLayout(mid_col, stretch=7)
+        content_layout.addLayout(mid_col, stretch=8)
 
         # 右侧列 (趋势卡片 + 类别卡片)
         right_col = QVBoxLayout()
@@ -819,7 +885,7 @@ class AllureDashboardWidget(QFrame):
         right_col.addWidget(self.cat_box)
         right_col.addStretch()
 
-        content_layout.addLayout(right_col, stretch=3)
+        content_layout.addLayout(right_col, stretch=2)
 
         self.overview_scroll.setWidget(content_area)
         page_layout.addWidget(self.overview_scroll)
@@ -965,6 +1031,48 @@ class AllureDashboardWidget(QFrame):
         # 3. 动态按新视角重绘当前用例明细列表
         self._render_cases_detail_list(self.current_data)
 
+    @staticmethod
+    def _format_case_full_title(c: Dict[str, Any]) -> str:
+        """
+        智能格式化执行用例名称：
+        若包含参数或子用例标识 (sub_name 或 parameters)，自动拼接参数化后缀，
+        与左侧用例树的子用例/孙子用例严格 1:1 保持一致，彻底告别千篇一律的通用函数名。
+        """
+        raw_name = c.get("name", "未命名用例")
+        sub_name = c.get("sub_name")
+        if sub_name:
+            sub_tag = sub_name if sub_name.startswith("[") else f"[{sub_name}]"
+            if sub_tag not in raw_name:
+                return f"{raw_name} {sub_tag}"
+            return raw_name
+
+        parameters = c.get("parameters", [])
+        if parameters:
+            parts = []
+            for p in parameters:
+                val = str(p.get("value", ""))
+                # 1. 优先提取 desc='xxx' (如 ChatSessionStrategy(desc='私聊模式', ...))
+                m_desc = re.search(r"desc=['\"]([^'\"]+)['\"]", val)
+                if m_desc:
+                    parts.append(m_desc.group(1))
+                    continue
+                # 2. 优先提取 title='xxx' 或 'title': 'xxx'
+                m_title = re.search(r"['\"]title['\"]\s*:\s*['\"]([^'\"]+)['\"]", val)
+                if m_title:
+                    parts.append(m_title.group(1))
+                    continue
+                # 3. 基础字符串清理
+                clean_v = val.strip("'\"")
+                if len(clean_v) > 30 and ("(" in clean_v or "{" in clean_v):
+                    continue
+                if clean_v and clean_v != "None":
+                    parts.append(clean_v)
+            if parts:
+                sub_tag = f"[{'-'.join(parts)}]"
+                if sub_tag not in raw_name:
+                    return f"{raw_name} {sub_tag}"
+        return raw_name
+
     def _render_cases_detail_list(self, data: Optional[Dict[str, Any]] = None):
         """根据当前激活视角 (业务精简视角 / 开发完整视角) 动态精细化渲染用例明细清单"""
         target_data = data if data is not None else self.current_data
@@ -1001,13 +1109,14 @@ class AllureDashboardWidget(QFrame):
                 warn_l.addWidget(lbl_warn)
                 self.cases_list_layout.addWidget(warn_card)
 
-                # 优先罗列缺陷用例
+                # 优先罗列缺陷用例 (展示完整的子用例/参数信息)
                 for c in defects:
                     row = QHBoxLayout()
                     row.setSpacing(6)
                     st = c.get("status", "failed")
                     dot = "🔴" if st == "failed" else "🟠"
-                    lbl_c_name = QLabel(f"{dot} 【缺陷】{c.get('name')}")
+                    case_title = self._format_case_full_title(c)
+                    lbl_c_name = QLabel(f"{dot} 【缺陷】{case_title}")
                     lbl_c_name.setStyleSheet("color: #e11d48; font-size: 11px; font-weight: 700;")
                     row.addWidget(lbl_c_name)
                     row.addStretch()
@@ -1028,7 +1137,8 @@ class AllureDashboardWidget(QFrame):
                     for c in passed_cases:
                         row = QHBoxLayout()
                         row.setSpacing(6)
-                        lbl_c_name = QLabel(f"🟢 {c.get('name')}")
+                        case_title = self._format_case_full_title(c)
+                        lbl_c_name = QLabel(f"🟢 {case_title}")
                         lbl_c_name.setStyleSheet("color: #334155; font-size: 11px;")
                         row.addWidget(lbl_c_name)
                         row.addStretch()
@@ -1054,7 +1164,8 @@ class AllureDashboardWidget(QFrame):
                     row.setSpacing(6)
                     status = c.get("status", "unknown").lower()
                     dot = "🟢" if status == "passed" else "⚪"
-                    lbl_c_name = QLabel(f"{dot} {c.get('name')}")
+                    case_title = self._format_case_full_title(c)
+                    lbl_c_name = QLabel(f"{dot} {case_title}")
                     lbl_c_name.setStyleSheet("color: #0f172a; font-size: 11px;")
                     row.addWidget(lbl_c_name)
                     row.addStretch()
@@ -1089,7 +1200,8 @@ class AllureDashboardWidget(QFrame):
                     dot = "⚪"
                     st_color = "#64748b"
 
-                lbl_c_name = QLabel(f"{dot} {c.get('name')}")
+                case_title = self._format_case_full_title(c)
+                lbl_c_name = QLabel(f"{dot} {case_title}")
                 lbl_c_name.setStyleSheet("color: #0f172a; font-size: 11px; font-family: monospace;")
                 row.addWidget(lbl_c_name)
                 row.addStretch()

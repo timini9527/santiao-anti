@@ -11,8 +11,8 @@ from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_long_press_page import ChatLongPressPage
 from pages.groups.bot.group_bot_page import GroupBotPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
-from locators.groups.setting.general.group_setting_locator import GroupSettingLocator
-from appium.webdriver.common.appiumby import AppiumBy
+
+
 
 @allure.epic('IM核心功能测试')
 @allure.feature('群聊模块-群管理员-分配管理员单独权限校验')
@@ -63,6 +63,8 @@ class TestAdminPermissionsDouble:
             except Exception as e:
                 logger.warning(f'⚠️ [Cleanup] 环境复原清理失败: {e}')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('管理员权限集中校验')
     @allure.title('【管理员权限校验】全量权限入口的可见性与可操作状态校验-状态：已完成')
     def test_admin_all_permissions_ui_verification(self):

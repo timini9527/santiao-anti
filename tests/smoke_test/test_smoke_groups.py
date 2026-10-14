@@ -79,6 +79,9 @@ class BaseSmokeGroupSingle:
 class TestSmokeGroupCreate(BaseSmokeGroupSingle):
     """群聊创建与群公告发布冒烟用例"""
 
+    @pytest.mark.p0
+    @allure.severity(allure.severity_level.BLOCKER)
+    @pytest.mark.smoke
     @allure.story('群聊创建')
     @allure.title('通过首页右上角发起群聊 (小群:2人) - 正常建群流程-状态：已完成')
     def test_group_create_success(self):
@@ -106,6 +109,9 @@ class TestSmokeGroupCreate(BaseSmokeGroupSingle):
             count = self.chatPage.get_group_number_count()
             check.equal(count, expected_count, f'❌ 群聊人数不为 {expected_count}，实际人数: {count}')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
+    @pytest.mark.smoke
     @allure.story('群聊创建')
     @allure.title('通过好友发起群聊 - 取消建群流程-状态：已完成')
     def test_create_group_cancel(self):
@@ -133,6 +139,9 @@ class TestSmokeGroupCreate(BaseSmokeGroupSingle):
             check.is_in(PRIVATE_USER1.name, title, f'❌ 取消建群后聊天标题不正确，实际标题: {title}')
             check.is_false(self.groupCreatePage.is_chat_group(title), f'❌ 取消建群后不应进入群聊，实际标题: {title}')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('发布群公告')
     @allure.title('发布新群公告 - 正常发布流程-状态：已完成')
     def test_group_publish_notice_success(self):
@@ -174,6 +183,9 @@ class TestSmokeGroupCreate(BaseSmokeGroupSingle):
                     except Exception:
                         pass
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
+    @pytest.mark.smoke
     @allure.story('发布群公告')
     @allure.title('发布新群公告 - 取消发布流程-状态：已完成')
     def test_group_publish_notice_cancel(self):
@@ -213,6 +225,9 @@ class TestSmokeGroupManage(BaseSmokeGroupSingle):
         self.groupAvatarPage.click_confirm_change_group_avatar()
         self.groupAvatarPage.wait_for_album_dialog()
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
+    @pytest.mark.smoke
     @allure.story('保存二维码')
     @allure.title('保存与分享群二维码功能-状态：已完成')
     def test_save_qrcode_success(self):
@@ -235,6 +250,9 @@ class TestSmokeGroupManage(BaseSmokeGroupSingle):
             toast = self.groupQrCodePage.get_toast()
             check.is_in('已保存到相册', toast, '❌ 保存二维码的提示信息有误')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('修改群名称')
     @allure.title('群聊名称修改校验-状态：已完成')
     def test_change_group_name_success(self):
@@ -269,6 +287,9 @@ class TestSmokeGroupManage(BaseSmokeGroupSingle):
                     except Exception:
                         pass
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
+    @pytest.mark.smoke
     @allure.story('修改群头像')
     @allure.title('从相册修改群聊头像成功-状态：已完成')
     def test_modify_group_avatar_success(self):
@@ -307,6 +328,9 @@ class TestSmokeGroupManage(BaseSmokeGroupSingle):
                     except Exception:
                         pass
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('群成员管理')
     @allure.title('群成员邀请与移除（踢人）流程-状态：已完成')
     def test_group_member_add_and_remove(self):
@@ -343,6 +367,9 @@ class TestSmokeGroupManage(BaseSmokeGroupSingle):
                     except Exception:
                         pass
 
+    @pytest.mark.p0
+    @allure.severity(allure.severity_level.BLOCKER)
+    @pytest.mark.smoke
     @allure.story('解散群聊')
     @allure.title('通过群详情正常解散群聊流程-状态：已完成')
     def test_group_disband_success(self):
@@ -391,6 +418,9 @@ class TestSmokeGroupAdminDouble(BaseSmokeGroupSingle):
         self.chatPage.click_more_button()
         self.groupSettingPage.wait_for_setting_page_load()
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('群管理员增删')
     @allure.title('【群管理员】功能正常使用校验-状态：已完成')
     def test_group_manager_functionality(self):
@@ -414,6 +444,9 @@ class TestSmokeGroupAdminDouble(BaseSmokeGroupSingle):
             member_names = self.groupManagerPage.get_member_names()
             check.is_not_in(PRIVATE_USER1.name, member_names, '❌ [Action-groupManagerPage] 移除管理员失败')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('禁言开关切换')
     @allure.title('切换【全员禁言】开关状态校验-状态：已完成')
     def test_all_member_mute_toggle(self):
@@ -435,6 +468,9 @@ class TestSmokeGroupAdminDouble(BaseSmokeGroupSingle):
             cmd_texts = self.chatPage.get_cmd_notification_texts(index=-1)
             check.is_in('关闭全员禁言', cmd_texts, '❌ [Action-groupManagerPage] 全员禁言开关未关闭')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('群成员限制互加好友')
     @allure.title('切换【禁止群成员互相加好友】开关状态校验-状态：已完成')
     def test_un_add_friend_each_other_toggle(self):
@@ -476,8 +512,11 @@ class TestSmokeGroupBot(BaseSmokeGroupSingle):
         except Exception:
             pass
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('关闭机器人发言限制')
     @allure.title('关闭群机器人发言管理总开关后，普通文本功能不再受限-状态：已完成')
+    @pytest.mark.smoke
     def test_group_bot_disable_speech(self):
         """测试关闭机器人发言管理总开关后消息正常发送，并在 finally 中安全恢复开关"""
         need_restore = False
@@ -510,8 +549,11 @@ class TestSmokeGroupBot(BaseSmokeGroupSingle):
                     except Exception:
                         pass
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('禁发关键词检测')
     @allure.title('开启禁发关键词检测后，发送敏感词被拦截撤回并展示警告-状态：已完成')
+    @pytest.mark.smoke
     def test_group_bot_keyword_interception(self):
         """双端验证：配置禁发关键词后，违规消息被机器人撤回，并实现原地零冗余清理"""
         configured = False

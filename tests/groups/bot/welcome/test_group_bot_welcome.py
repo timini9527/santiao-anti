@@ -46,6 +46,8 @@ class TestGroupBotWelcome:
         except Exception as e:
             logger.warning(f'⚠️ [Cleanup] 清理进群欢迎语发生异常: {e}')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('进群欢迎语-保存与修改状态更新')
     @allure.title('保存进群欢迎语 - 输入带变量的文本并成功保存，校验状态更新-状态：未完成')
     @pytest.mark.usefixtures('cleanup_welcome_settings')
@@ -63,6 +65,5 @@ class TestGroupBotWelcome:
             welcome_text = '欢迎{@新成员}加入{群名称}！祝生活愉快~'
             self.group_bot_sender.configure_welcome(welcome_text)
         with allure.step('3. 校验状态刷新，群助手管理页展示【修改欢迎语】'):
-            from locators.groups.bot.group_bot_locator import GroupBotLocator
-            edit_btn_visible = len(self.group_bot_sender.find_elements(GroupBotLocator.WELCOME_EDIT_BTN, timeout=5))
-            check.is_true(edit_btn_visible > 0, '❌ 保存欢迎语后，入口状态未更新为“修改欢迎语”')
+            is_visible = self.group_bot_sender.is_welcome_edit_btn_visible(timeout=5)
+            check.is_true(is_visible, '❌ 保存欢迎语后，入口状态未更新为“修改欢迎语”')

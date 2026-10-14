@@ -87,8 +87,10 @@ class TestCollection:
         result = self.collectionPage.verify_collection_time(now_time, coll_time)
         check.is_true(result, f'校验失败：收藏时间不匹配 {now_time} | {coll_time}')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('收藏管理-分享')
-    @allure.title('分享收藏条目流程')
+    @allure.title('分享收藏条目流程-状态：已完成')
     @pytest.mark.parametrize('col_type', [pytest.param('text', id='分享第一条文本收藏'), pytest.param('image', id='分享第一条图片收藏')])
     def test_share_collection_success(self, col_type):
         """测试从收藏夹中分享条目的流程（完全自治造数据）"""
@@ -124,6 +126,8 @@ class TestCollection:
                 result = self.chatPage.get_last_message_content_bubble_has_type(msg_type=col_type, index=-1)
                 check.is_true(result, f'校验失败：实际内容不是{col_type}')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('收藏夹管理-删除')
     @allure.title('删除收藏夹中的单个条目流程 - 状态：已完成')
     @pytest.mark.parametrize('col_type', [pytest.param('text', id='删除第一条文本收藏'), pytest.param('image', id='删除第一条图片收藏')])
@@ -154,6 +158,8 @@ class TestCollection:
             else:
                 logger.info('✅ 图片删除成功')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('收藏管理-一键清空')
     @allure.title('清空收藏夹中特定/所有条目流程-状态：已完成')
     @pytest.mark.parametrize('target_type, exp_del', [pytest.param('text', 1, id='仅清空文本收藏'), pytest.param('image', 2, id='仅清空图片收藏'), pytest.param('all', 0, id='一键清空全部收藏')])
@@ -182,8 +188,10 @@ class TestCollection:
                 remaining_count = len(before_items) - deleted_count
                 check.equal(len(after_items), remaining_count, f'❌ 校验失败：删除后剩余卡片数与预期不符 (期望: {remaining_count}, 实际: {len(after_items)})')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('收藏管理-排序')
-    @allure.title('验证收藏列表按时间倒序排列')
+    @allure.title('验证收藏列表按时间倒序排列-状态：已完成')
     def test_collection_sort_by_time(self):
         """测试收藏列表中的条目是否按照时间由新到旧倒序排列"""
         self.common_enter_my_collection()
@@ -198,6 +206,8 @@ class TestCollection:
             logger.info(f'⏳ 期望时间序列: {expected_times}')
             check.equal(actual_times, expected_times, '❌ 收藏列表未按时间倒序排列！')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('从聊天页面中的收藏发送消息')
     @allure.title('从聊天页面中的收藏发送消息-状态：已完成')
     @pytest.mark.parametrize('index', [pytest.param(0, id='First_Item'), pytest.param(-1, id='Absolute_Last_Item')])

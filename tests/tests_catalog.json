@@ -1,13 +1,14 @@
 [
   {
     "file": "tests/test_demo.py",
-    "display_name": "test_full_flow",
+    "display_name": "验证App启动状态与基础会话流转-状态：已完成",
     "classes": [],
     "tests": [
       {
         "name": "test_full_flow",
-        "display_name": "test_full_flow",
-        "params": []
+        "display_name": "验证App启动状态与基础会话流转-状态：已完成",
+        "params": [],
+        "priority": "P2"
       }
     ]
   },
@@ -18,6 +19,7 @@
       {
         "name": "TestChat",
         "display_name": "聊天模块-文本消息收发",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_send_text_message",
@@ -35,14 +37,16 @@
               "群聊模式-msg_Testing 1",
               "群聊模式-msg_https://0",
               "群聊模式-msg_https://1"
-            ]
+            ],
+            "priority": "P0"
           },
           {
             "name": "test_send_text_message_multiple",
             "display_name": "批量极速发送 CSV 文本数据集前 50 条并校验闭环",
             "params": [
               "私聊模式"
-            ]
+            ],
+            "priority": "P1"
           }
         ]
       }
@@ -56,6 +60,7 @@
       {
         "name": "TestChatDouble",
         "display_name": "聊天模块-单聊双端协同",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_send_and_receive_text_message",
@@ -67,7 +72,8 @@
               "msg_Testing 1",
               "msg_https://0",
               "msg_https://1"
-            ]
+            ],
+            "priority": "P0"
           }
         ]
       }
@@ -81,21 +87,25 @@
       {
         "name": "TestChatMultiDevice",
         "display_name": "聊天模块-多设备并发",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_send_text_message_async_multi_device",
             "display_name": "多设备群聊异步并行发送 Text 消息-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_send_text_message_async_multi_device_private",
             "display_name": "多设备单聊异步并行发送 Text 消息-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_send_text_message_async_multi_device_combined",
             "display_name": "多设备群聊与单聊合并异步并行发送 Text 消息-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       }
@@ -109,6 +119,7 @@
       {
         "name": "TestChatList",
         "display_name": "聊天模块-会话列表",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_enter_chat",
@@ -116,7 +127,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P0"
           },
           {
             "name": "test_slide_settings",
@@ -130,30 +142,24 @@
               "置顶状态-群聊模式",
               "取消置顶状态-私聊模式",
               "取消置顶状态-群聊模式"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_slide_top_last_session",
-            "display_name": "单个会话侧滑置顶，滑到最底部让最后一个会话置顶验证-状态：已完成",
+            "display_name": "单个会话侧滑置顶：底部会话置顶后成功跃升至顶部第一位-状态：已完成",
             "params": [
               "私聊模式"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_batch_slide_top",
-            "display_name": "批量置顶/取消置顶会话-状态：已完成",
+            "display_name": "批量置顶与取消置顶会话（穿透校验底层状态）-状态：已完成",
             "params": [
-              "批量置顶-侧滑模式",
-              "批量取消置顶-侧滑模式"
-            ]
-          },
-          {
-            "name": "test_batch_set_top_no_verify",
-            "display_name": "当前页面一键批量置顶和取消置顶，不需要验证-状态：已完成",
-            "params": [
-              "批量置顶-侧滑模式",
-              "批量取消置顶-侧滑模式"
-            ]
+              "侧滑模式"
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_top_fold",
@@ -163,7 +169,8 @@
               "2.置顶+1(达5个)_显示折叠",
               "3.取消1个(降为4个)_折叠消失",
               "4.再置顶4个(达8个)_折叠显示"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_slide_delete",
@@ -175,49 +182,56 @@
               "清空聊天记录-群聊模式",
               "隐藏会话-私聊模式",
               "隐藏会话-群聊模式"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_draft_mode",
             "display_name": "验证会话草稿模式状态-状态：已完成",
             "params": [
               "私聊模式"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_unread_mode",
             "display_name": "验证会话发送消息后即时呈现【未读】状态-状态：已完成",
             "params": [
               "私聊模式"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_disable_mode",
             "display_name": "验证会话停用状态-状态：已完成",
             "params": [
               "停用账号"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_ban_mode",
             "display_name": "验证会话封禁状态-状态：TODO: skip",
             "params": [
               "私聊模式"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_message_sending_status_under_weak_network",
             "display_name": "弱网环境-验证消息发送中(转圈)状态-状态：已完成",
             "params": [
               "私聊模式"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_message_failed_status_under_offline",
             "display_name": "断网环境-验证消息发送失败(红点感叹号)状态-状态：已完成",
             "params": [
               "私聊模式"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_chat_content_status",
@@ -239,7 +253,8 @@
               "个人名片展示-群聊模式",
               "群名片展示-私聊模式",
               "群名片展示-群聊模式"
-            ]
+            ],
+            "priority": "P1"
           }
         ]
       }
@@ -253,11 +268,13 @@
       {
         "name": "TestChatListDouble",
         "display_name": "聊天模块-会话列表双端协同",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_message_read_receipt_lifecycle",
             "display_name": "验证私聊消息阅读回执全生命周期流转 (未读 -> 已读)",
-            "params": []
+            "params": [],
+            "priority": "P0"
           },
           {
             "name": "test_chat_call_double_status",
@@ -273,12 +290,14 @@
               "语音通话-主被超时",
               "视频通话-通话中断",
               "语音通话-通话中断"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_chat_group_invite_double_status",
             "display_name": "双端群聊进群邀请展示-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_chat_group_mention_remind_lifecycle",
@@ -286,17 +305,20 @@
             "params": [
               "有人@我强提醒",
               "@所有人全员强提醒"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_chat_group_join_notify_status",
             "display_name": "双端群聊系统通知展示-新成员加入群聊摘要呈现",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_chat_group_apply_permission_and_composite_status",
             "display_name": "验证进群申请强提醒在不同权限角色下的可见性",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       }
@@ -310,6 +332,7 @@
       {
         "name": "TestChatLongPress",
         "display_name": "聊天模块-长按菜单",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_long_press_display_action",
@@ -331,7 +354,8 @@
               "群聊模式-消息类型-card",
               "群聊模式-消息类型-file",
               "群聊模式-消息类型-package"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_long_press_action_copy",
@@ -341,7 +365,8 @@
               "私聊模式-Emoji消息",
               "群聊模式-文本消息",
               "群聊模式-Emoji消息"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_long_press_action_collection",
@@ -353,7 +378,8 @@
               "群聊模式-文本消息",
               "群聊模式-Emoji消息",
               "群聊模式-图片消息"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_long_press_action_forward",
@@ -375,7 +401,8 @@
               "群聊模式-消息类型-card",
               "群聊模式-消息类型-file",
               "群聊模式-消息类型-package"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_long_press_action_multi_select",
@@ -393,7 +420,8 @@
               "群聊模式-合并转发-1-跟随列表长度-全量消息类型",
               "群聊模式-合并转发-1-选100个边界-全量消息类型",
               "群聊模式-合并转发-1-超限101个-全量消息类型"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_long_press_action_add_emoji",
@@ -401,7 +429,8 @@
             "params": [
               "私聊模式-表情包消息",
               "群聊模式-表情包消息"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_long_press_action_recall",
@@ -425,7 +454,8 @@
               "群聊模式-消息类型-card",
               "群聊模式-消息类型-file",
               "群聊模式-消息类型-package"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_long_press_action_delete",
@@ -433,7 +463,8 @@
             "params": [
               "私聊模式-全量消息类型",
               "群聊模式-全量消息类型"
-            ]
+            ],
+            "priority": "P1"
           }
         ]
       }
@@ -447,6 +478,7 @@
       {
         "name": "TestChatSearch",
         "display_name": "聊天设置",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_search_by_text_content_and_locate",
@@ -454,7 +486,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_search_by_text_content_not_exist",
@@ -462,7 +495,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_search_by_date_calendar",
@@ -474,7 +508,8 @@
               "群聊模式-今天（有消息）",
               "群聊模式-未来某天（无消息）",
               "群聊模式-本月历史无消息日（无消息）"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_search_by_media_category_and_locate",
@@ -482,7 +517,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_search_by_video_category_and_locate",
@@ -490,7 +526,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_search_by_file_category_and_locate",
@@ -498,14 +535,16 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_search_by_group_member_category_and_locate",
             "display_name": "群成员分类过滤定位测试-状态：已完成",
             "params": [
               "群聊模式"
-            ]
+            ],
+            "priority": "P1"
           }
         ]
       }
@@ -519,13 +558,15 @@
       {
         "name": "TestChatSetting",
         "display_name": "聊天模块-单聊设置",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_get_chat_nickname",
             "display_name": "单聊设置 - 获取聊天对象昵称-状态：已完成",
             "params": [
               "param_1"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_chat_password_switch",
@@ -533,7 +574,8 @@
             "params": [
               "单聊-聊天密码开关",
               "群聊-聊天密码开关"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_screenshot_notification_switch",
@@ -541,7 +583,8 @@
             "params": [
               "单聊-截屏通知",
               "群聊-截屏通知"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_recall_notification_switch",
@@ -549,14 +592,16 @@
             "params": [
               "单聊-撤回通知",
               "群聊-撤回通知"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_clear_chat_records",
             "display_name": "单聊设置 - 清空聊天记录-状态：已完成",
             "params": [
               "param_1"
-            ]
+            ],
+            "priority": "P1"
           }
         ]
       }
@@ -570,6 +615,7 @@
       {
         "name": "TestContactCard",
         "display_name": "聊天面板-名片",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_send_contact_card_success",
@@ -579,7 +625,8 @@
               "私聊模式-0223OiO",
               "群聊模式-测试0222",
               "群聊模式-0223OiO"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_search_contact_no_results",
@@ -587,7 +634,8 @@
             "params": [
               "私聊模式-不存在的神秘人999",
               "群聊模式-不存在的神秘人999"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_cancel_send_contact_card",
@@ -595,7 +643,8 @@
             "params": [
               "私聊模式-测试0222",
               "群聊模式-测试0222"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_send_group_card_success",
@@ -603,7 +652,8 @@
             "params": [
               "私聊模式-测试群aaaaa",
               "群聊模式-测试群aaaaa"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_cancel_send_group_card",
@@ -611,7 +661,8 @@
             "params": [
               "私聊模式-测试群aaaaa",
               "群聊模式-测试群aaaaa"
-            ]
+            ],
+            "priority": "P2"
           }
         ]
       }
@@ -625,11 +676,13 @@
       {
         "name": "TestChatBasicEmoji",
         "display_name": "聊天面板-表情",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_send_all_emoji_message",
             "display_name": "发送全部表情消息并验证-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_send_single_emoji_message",
@@ -640,7 +693,8 @@
               "当前页随机表情",
               "当前页最后一个表情",
               "全部表情最后一个"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_send_new_emoji_to_later_message",
@@ -649,7 +703,8 @@
               "发送 1 个表情",
               "连续发送 8 个表情",
               "随机发送 3 个表情"
-            ]
+            ],
+            "priority": "P2"
           }
         ]
       }
@@ -663,6 +718,7 @@
       {
         "name": "TestChatEmojiCollection",
         "display_name": "聊天面板-表情包",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_add_single_emoji_package_to_coll",
@@ -670,7 +726,8 @@
             "params": [
               "长按添加聊天列表中第 1 个表情包到收藏",
               "长按添加聊天列表中所有未收藏的表情包"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_delete_emoji_package_from_manage",
@@ -680,7 +737,8 @@
               "连续删除列表前 3 个表情包",
               "随机删除列表中的 1 个表情包",
               "清空/删除当前拥有的全部收藏表情"
-            ]
+            ],
+            "priority": "P2"
           }
         ]
       }
@@ -694,6 +752,7 @@
       {
         "name": "TestChatEmojiStore",
         "display_name": "聊天面板-表情包",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_add_emoji_store",
@@ -705,7 +764,8 @@
               "连续添加当前页面所有表情包",
               "随机添加当前页面 3 个表情包",
               "表情商店中最后一个表情"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_send_emoji_package_message",
@@ -719,7 +779,8 @@
               "(-1, 'first', 1, 'normal', 'none', '验证底栏 Tab 自动左滑：在最后一个表情包发送首个贴图')",
               "(1, 'spam', 10, 'normal', 'none', '并发抗压测试 (中低负载)：极速连击同一个表情 10 次，验证消息队列与气泡顺序')",
               "(2, 'spam', 100, 'normal', 'none', '并发抗压测试 (超高负载)：极速连击同一个表情 100 次，验证端侧防抖或系统是否 Crash')"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_del_all_emoji_store",
@@ -728,7 +789,8 @@
               "删除列表中的第 1 个表情包",
               "连续删除列表前 3 个表情包",
               "清空/删除当前拥有的全部表情包"
-            ]
+            ],
+            "priority": "P2"
           }
         ]
       }
@@ -742,6 +804,7 @@
       {
         "name": "TestChatFile",
         "display_name": "聊天面板-文件",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_send_file_by_exact_name",
@@ -755,7 +818,8 @@
               "群聊模式-固定视频文件",
               "群聊模式-固定PDF文档",
               "群聊模式-固定音频文件"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_send_file_success",
@@ -793,7 +857,8 @@
               "群聊模式-刷底最后一个文件-视频分类",
               "群聊模式-刷底最后一个文件-音频分类",
               "群聊模式-刷底最后一个文件-文档分类"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_cancel_send_file",
@@ -801,7 +866,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_revoke_file_message_success",
@@ -809,7 +875,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_resend_file_on_fail",
@@ -817,7 +884,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_delete_file_message",
@@ -825,7 +893,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_forward_file_message",
@@ -833,7 +902,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_favorite_file_message",
@@ -841,7 +911,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_reply_file_message",
@@ -849,7 +920,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P2"
           }
         ]
       }
@@ -863,6 +935,7 @@
       {
         "name": "TestChatImages",
         "display_name": "聊天面板-图片",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_default_page_load_status",
@@ -870,7 +943,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_select_then_cancel",
@@ -878,7 +952,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_send_single_image",
@@ -916,7 +991,8 @@
               "群聊模式-选择第9张(不足则下滑查找)-预览后发送",
               "群聊模式-选择第9张(不足则下滑查找)-原图发送",
               "群聊模式-选择第9张(不足则下滑查找)-预览+原图发送"
-            ]
+            ],
+            "priority": "P0"
           },
           {
             "name": "test_send_only_image",
@@ -924,7 +1000,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_max_selection_limit",
@@ -932,7 +1009,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_batch_send_images",
@@ -950,7 +1028,8 @@
               "群聊模式-批量3张-预览+原图发送",
               "群聊模式-批量9张-直接发送",
               "群聊模式-批量9张-预览+原图发送"
-            ]
+            ],
+            "priority": "P1"
           }
         ]
       }
@@ -964,6 +1043,7 @@
       {
         "name": "TestChatPosition",
         "display_name": "聊天面板-位置",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_search_location_no_results",
@@ -971,7 +1051,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_search_and_send_location",
@@ -979,7 +1060,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_cancel_send_location",
@@ -987,7 +1069,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_send_location_message",
@@ -995,7 +1078,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_back_from_map_detail",
@@ -1003,42 +1087,48 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_delete_location_message",
             "display_name": "位置消息-长按删除-状态：未完成",
             "params": [
               "私聊模式"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_forward_location_message",
             "display_name": "位置消息-长按转发-状态：未完成",
             "params": [
               "私聊模式"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_revoke_location_message",
             "display_name": "位置消息-长按撤回-状态：未完成",
             "params": [
               "私聊模式"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_favorite_location_message",
             "display_name": "位置消息-长按收藏-状态：未完成",
             "params": [
               "私聊模式"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_reply_location_message",
             "display_name": "位置消息-引用回复-状态：未完成",
             "params": [
               "私聊模式"
-            ]
+            ],
+            "priority": "P2"
           }
         ]
       }
@@ -1052,6 +1142,7 @@
       {
         "name": "TestChatVideos",
         "display_name": "聊天面板-视频",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_video_page_default_status",
@@ -1059,7 +1150,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_select_then_cancel",
@@ -1067,7 +1159,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_send_single_video_workflow",
@@ -1103,7 +1196,8 @@
               "群聊模式-第9张(不够则下滑寻找，仍不足则选最后一张)-直接发送",
               "群聊模式-第9张(不够则下滑寻找，仍不足则选最后一张)-预览后发送",
               "群聊模式-第9张(不够则下滑寻找，仍不足则选最后一张)-开启高清/原图发送"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_send_only_video",
@@ -1111,7 +1205,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_max_selection_limit",
@@ -1119,7 +1214,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_batch_send_videos",
@@ -1129,7 +1225,8 @@
               "私聊模式-上限测试：批量选 9 条视频",
               "群聊模式-批量选 3 条视频发送",
               "群聊模式-上限测试：批量选 9 条视频"
-            ]
+            ],
+            "priority": "P1"
           }
         ]
       }
@@ -1143,6 +1240,7 @@
       {
         "name": "TestChatVoice",
         "display_name": "聊天面板-语音",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_basic_voice_send",
@@ -1160,7 +1258,8 @@
               "群聊模式-59秒-临界",
               "群聊模式-60秒-上限",
               "群聊模式-61秒-超限"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_voice_record_cancel",
@@ -1168,7 +1267,8 @@
             "params": [
               "私聊模式-悬停5秒-按压1秒",
               "群聊模式-悬停5秒-按压1秒"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_voice_swipe_to_preview_and_action",
@@ -1178,7 +1278,8 @@
               "私聊模式-悬停5秒-按压1秒-取消",
               "群聊模式-悬停5秒-按压1秒-发送",
               "群聊模式-悬停5秒-按压1秒-取消"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_voice_preview_multi_scenarios",
@@ -1200,7 +1301,8 @@
               "群聊模式-听筒模式-最终取消-悬停5秒-按压1秒",
               "群聊模式-扬声器模式-最终发送-悬停5秒-按压1秒",
               "群聊模式-扬声器模式-最终取消-悬停5秒-按压1秒"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_voice_recognize_content",
@@ -1208,7 +1310,8 @@
             "params": [
               "私聊模式-悬停10秒-按压1秒",
               "群聊模式-悬停10秒-按压1秒"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_voice_network_failure",
@@ -1216,7 +1319,8 @@
             "params": [
               "私聊模式-悬停2秒",
               "群聊模式-悬停2秒"
-            ]
+            ],
+            "priority": "P2"
           }
         ]
       }
@@ -1230,16 +1334,19 @@
       {
         "name": "TestFriendList",
         "display_name": "通讯录与好友管理",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_friend_list_entry_display",
             "display_name": "好友列表入口与基础内容展示-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_friend_list_click_contact_opens_profile",
             "display_name": "从好友列表点击联系人进入资料详情-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       }
@@ -1253,11 +1360,13 @@
       {
         "name": "TestAddFriend",
         "display_name": "通讯录与好友管理",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_add_friend_entry_and_back",
             "display_name": "进入添加朋友页校验并点击返回-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_add_friend_search_empty_input",
@@ -1266,12 +1375,14 @@
               "空值",
               "单个空格",
               "多个空格"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_add_friend_search_non_existent_account",
             "display_name": "搜索不存在账号 - 验证未找到好友提示-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_add_friend_search_success_and_view_profile",
@@ -1279,27 +1390,32 @@
             "params": [
               "手机号搜索",
               "三条ID搜索"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_add_friend_search_self",
             "display_name": "搜索当前登录账号时禁止添加自己-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_add_friend_search_existing_friend",
             "display_name": "搜索已有好友时展示发送消息入口-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_add_friend_request_flow",
             "display_name": "发送好友验证申请流-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P0"
           },
           {
             "name": "test_add_friend_repeat_pending_request",
             "display_name": "重复发送待处理好友申请-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       }
@@ -1313,26 +1429,31 @@
       {
         "name": "TestNewFriend",
         "display_name": "通讯录与好友管理",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_new_friend_entry_and_back",
             "display_name": "进入新的朋友页并返回好友列表-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_new_friend_apply_list_display",
             "display_name": "新的朋友申请记录展示完整-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_new_friend_clear_cancel",
             "display_name": "取消清空申请记录后列表保持不变-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_new_friend_clear_confirm",
             "display_name": "确认清空全部申请记录-状态：待显式执行",
-            "params": []
+            "params": [],
+            "priority": "P2"
           }
         ]
       }
@@ -1346,11 +1467,13 @@
       {
         "name": "TestContactDetailDouble",
         "display_name": "好友资料模块",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_non_friend_interaction_restrictions",
             "display_name": "FD_REL_002 - 删除好友后，校验两端非好友状态及消息限制",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       }
@@ -1364,11 +1487,13 @@
       {
         "name": "TestContactDetailSingle",
         "display_name": "好友资料模块",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_entry_and_profile_display",
             "display_name": "从通讯录成功进入好友资料页并校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_modify_contact_remark_and_sync",
@@ -1377,7 +1502,8 @@
               "正常修改备注",
               "30个字符",
               "超过30个字符"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_phone_number_addition_and_limit",
@@ -1386,17 +1512,20 @@
               "限制输入最多3个",
               "只允许输入数字",
               "最多输入15个字符"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_phone_number_deletion_flow",
             "display_name": "删除电话号码及添加按钮重新显露逻辑-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_tag_selection_and_toggle",
             "display_name": "标签点击后选中/取消选中状态切换-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_tag_selection_boundary_limit",
@@ -1406,7 +1535,8 @@
               "选择14个标签",
               "选择15个标签",
               "选择16个标签受阻"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_create_tag_length_and_auto_selected",
@@ -1415,7 +1545,8 @@
               "29字-上限前",
               "30字-正好上限",
               "31字-超限截断"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_create_tag_max_count_limit_toast",
@@ -1425,7 +1556,8 @@
               "新增14个标签",
               "新增15个标签上限",
               "新增16个标签受阻"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_multi_line_description_note",
@@ -1435,12 +1567,14 @@
               "199字-上限前",
               "200字-正好上限",
               "201字-超限截断"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_common_groups_navigation_and_search",
             "display_name": "共同群聊入口展示、点击列表项跳转至群聊窗口校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           }
         ]
       }
@@ -1454,31 +1588,37 @@
       {
         "name": "TestFriendRelationship",
         "display_name": "好友关系管理",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_relationship_flow_agree",
             "display_name": "同意好友申请并建立双向好友关系-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P0"
           },
           {
             "name": "test_relationship_flow_swipe_delete_apply",
             "display_name": "左滑删除好友申请记录-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_relationship_flow_delete",
             "display_name": "删除好友关系与单向删除验证及重加恢复-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P0"
           },
           {
             "name": "test_relationship_flow_block_and_unblock",
             "display_name": "拉黑好友消息拒收与移出黑名单聊天恢复-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_relationship_flow_block_and_delete",
             "display_name": "先拉黑后删除的好友状态流转校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       }
@@ -1492,16 +1632,19 @@
       {
         "name": "TestContactTagGroup",
         "display_name": "好友分组与标签管理",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_create_and_delete_contact_group_normal",
             "display_name": "FD_GROUP_TAG_001 - 正向创建好友分组、校验展示并成功删除闭环-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_delete_all_contact_groups",
             "display_name": "批量清空所有好友分组并校验列表为空-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_group_name_length_limit_parametrize",
@@ -1510,12 +1653,14 @@
               "29字-正常",
               "30字-上限",
               "31字-超限截断"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_duplicate_group_name_interception",
             "display_name": "FD_GROUP_TAG_003 - 尝试创建重复名称分组的拦截校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           }
         ]
       }
@@ -1529,16 +1674,19 @@
       {
         "name": "TestGroupBotAutoClean",
         "display_name": "群助手-自动清理成员",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_auto_clean_switch_toggle",
             "display_name": "开启与关闭定时清理任务 - 触发Toast提醒且状态更新-状态：未完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_auto_clean_rules_configuration",
             "display_name": "配置清理规则 - 包含未发言/封禁条件，手动模式下成功保存规则-状态：未完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           }
         ]
       }
@@ -1552,11 +1700,13 @@
       {
         "name": "TestGroupBotJoinVerify",
         "display_name": "群助手-入群验证",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_join_verify_toggle_and_save",
             "display_name": "开启与关闭入群验证 - 触发Toast提醒且配置保存生效-状态：未完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       }
@@ -1570,16 +1720,19 @@
       {
         "name": "TestGroupBotInteraction",
         "display_name": "群助手-禁言发送关键词-双端交互与拦截",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_keyword_action_revoke",
             "display_name": "命中违规关键词 - 触发群助手仅撤回-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_keyword_action_warn",
             "display_name": "命中违规关键词 - 触发群助手撤回并群内@警告-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_keyword_action_mute",
@@ -1592,12 +1745,14 @@
               "禁言-7天",
               "禁言-30天",
               "禁言-永久禁言"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_keyword_action_kick",
             "display_name": "命中违规关键词 - 触发群助手撤回并移除发送者-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       }
@@ -1611,6 +1766,7 @@
       {
         "name": "TestGroupBotKeyword",
         "display_name": "群助手-禁止发送关键词",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_keyword_add_valid_single",
@@ -1621,7 +1777,8 @@
               "纯数字合规",
               "中英数混合合规",
               "刚好10个中文字符边界"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_keyword_batch_add_by_space",
@@ -1629,14 +1786,16 @@
             "params": [
               "标准空格分隔批量添加",
               "含多重空格及前后空格分词"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_keyword_add_length_truncate",
             "display_name": "校验超过10字超长拦截与截断录入规则: {title}-状态：已完成",
             "params": [
               "超过10字超长违规词截断"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_keyword_add_invalid_characters",
@@ -1645,7 +1804,8 @@
               "包含特殊符号拦截",
               "纯特殊符号拦截",
               "邮箱格式拦截"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_keyword_max_limit",
@@ -1655,7 +1815,8 @@
               "添加第1个关键词",
               "添加第50个关键词",
               "添加第51个关键词"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_keyword_delete",
@@ -1663,7 +1824,8 @@
             "params": [
               "删除单条关键词",
               "清空所有关键词"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_keyword_delete_flow",
@@ -1671,7 +1833,8 @@
             "params": [
               "确认删除",
               "取消删除"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_group_bot_keyword_warning_message_setting",
@@ -1682,7 +1845,8 @@
               "超限10条拦截",
               "添加单条警告语",
               "添加至10条上限"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_group_bot_keyword_delete_warning_msg",
@@ -1691,7 +1855,8 @@
               "删除单条_确认",
               "删除单条_取消",
               "尝试删除最后一条警告语拦截"
-            ]
+            ],
+            "priority": "P2"
           }
         ]
       }
@@ -1705,11 +1870,13 @@
       {
         "name": "TestGroupBotTimedMsg",
         "display_name": "群助手-定时消息",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_timed_msg_lifecycle",
             "display_name": "定时消息周期管理 - 成功添加一条定时消息并成功删除，校验列表刷新-状态：未完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           }
         ]
       }
@@ -1723,11 +1890,13 @@
       {
         "name": "TestGroupBotWelcome",
         "display_name": "群助手-进群欢迎语",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_welcome_message_save_and_edit_status",
             "display_name": "保存进群欢迎语 - 输入带变量的文本并成功保存，校验状态更新-状态：未完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           }
         ]
       }
@@ -1741,11 +1910,13 @@
       {
         "name": "TestGroupCreate",
         "display_name": "群聊模块-发起群聊",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_create_group_with_one_normal_friend",
             "display_name": "选择 1 个正常好友时进入单聊页面-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_create_group_with_one_invalid_friend",
@@ -1754,27 +1925,32 @@
               "1个停用",
               "2个停用",
               "1个正常+1个停用"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_create_group_success",
             "display_name": "通过首页右上角发起群聊 (小群:2人) - 正常建群流程-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P0"
           },
           {
             "name": "test_create_group_success_by_friend",
             "display_name": "通过好友发起群聊 (小群:2人) - 正常建群流程-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_create_group_cancel_from_home",
             "display_name": "通过首页发起群聊 - 取消建群-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_create_group_cancel",
             "display_name": "通过好友发起群聊 - 取消建群流程-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_create_group_success_x",
@@ -1785,7 +1961,8 @@
               "49人",
               "50人",
               "51人"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_create_group_success_x_over_200",
@@ -1796,7 +1973,8 @@
               "499人",
               "500人",
               "501人"
-            ]
+            ],
+            "priority": "P2"
           }
         ]
       }
@@ -1810,16 +1988,19 @@
       {
         "name": "TestGroupCreateDouble",
         "display_name": "群聊模块-发起群聊",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_simultaneous_group_creation_double",
             "display_name": "双端建群协同 - A和B两端同时创建群聊并交叉收信校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_create_group_and_receive_message_double",
             "display_name": "双端建群协同 - A端拉B端建群并发送首发消息，B端查收并双端退群-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P0"
           }
         ]
       }
@@ -1833,36 +2014,43 @@
       {
         "name": "TestPublicGroup",
         "display_name": "群聊功能体系",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_frequent_join_and_exit_public_group",
             "display_name": "频繁从公开群加入群聊与退出群聊异常流程-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_public_group_display_and_elements",
             "display_name": "【界面展示】公开群聊区域标题及列表元素完整性校验-状态：未完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_public_group_change_batch",
             "display_name": "【功能交互】点击换一批功能刷新公开群列表校验-状态：未完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_public_group_copy_id",
             "display_name": "【功能交互】点击复制群ID按钮功能校验-状态：未完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_public_group_click_join",
             "display_name": "【功能交互】点击加入公开群按钮流程触发校验-状态：未完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_public_group_back_to_home",
             "display_name": "【导航流转】从添加朋友与公开群页面安全返回主页-状态：未完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           }
         ]
       }
@@ -1876,6 +2064,7 @@
       {
         "name": "TestGroupAvatar",
         "display_name": "群聊模块-通用设置",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_change_group_avatar_success",
@@ -1883,7 +2072,8 @@
             "params": [
               "从相册选择照片并修改",
               "从相册选择页面取消修改"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_change_group_avatar_by_taking_photo",
@@ -1892,12 +2082,14 @@
               "直接拍照修改头像",
               "切换摄像头后拍照修改头像",
               "拍照后取消修改"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_save_group_avatar_to_album",
             "display_name": "保存群头像到本地相册成功-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           }
         ]
       }
@@ -1911,33 +2103,39 @@
       {
         "name": "TestGroupSetting",
         "display_name": "群聊模块-群管理",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_group_show_member_nickname_toggle",
             "display_name": "切换显示群成员昵称开关并校验状态-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_modify_my_group_nickname",
             "display_name": "修改‘我在本群昵称’并校验修改成功-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_delete_group_success",
             "display_name": "通过群聊聊天页面解散群聊 - 正常解散流程-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P0"
           },
           {
             "name": "test_delete_group_cancel",
             "display_name": "通过群聊聊天页面解散群聊 - 取消解散流程-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_clear_group_chat_records",
             "display_name": "清空群聊聊天记录并校验记录归零-状态：已完成",
             "params": [
               "群聊-清空聊天记录"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_group_remark_validation",
@@ -1947,7 +2145,8 @@
               "群聊-群备注功能-敏感词拦截",
               "群聊-群备注功能-修改并取消",
               "群聊-群备注功能-超长20字限制截断"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_group_name_validation",
@@ -1959,12 +2158,14 @@
               "群聊-群名称功能-群名称上限20个字",
               "群聊-群名称功能-群名称超限20字截断",
               "群聊-群名称功能-群名称包含敏感词"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_change_group_avatar",
             "display_name": "通过群聊聊天页面修改群头像-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_group_nickname_validation",
@@ -1975,17 +2176,20 @@
               "群聊-我在本群昵称-我在本群昵称上限10字",
               "群聊-我在本群昵称-我在本群昵称超限10字截断",
               "群聊-我在本群昵称-我在本群昵称敏感词拦截"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_group_display_member_nickname",
             "display_name": "开启显示群成员昵称并校验聊天页昵称展示-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_group_dnd_toggle",
             "display_name": "切换消息免打扰开关状态并校验-状态：未完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           }
         ]
       }
@@ -1999,11 +2203,13 @@
       {
         "name": "TestAdminPermissionsDouble",
         "display_name": "群聊模块-群管理员-分配管理员单独权限校验",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_admin_all_permissions_ui_verification",
             "display_name": "【管理员权限校验】全量权限入口的可见性与可操作状态校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       }
@@ -2017,41 +2223,49 @@
       {
         "name": "TestGroupManager",
         "display_name": "群聊模块-群管理",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_upgrade_group_functionality",
             "display_name": "【升级群组】功能正常使用校验-状态：未完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_improve_group_activity_functionality",
             "display_name": "【提升群活跃】入口及今日活跃点查看-状态：未完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_group_manager_functionality",
             "display_name": "【群管理员】功能正常使用校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_add_group_assistant_entry",
             "display_name": "【添加群助手】入口及状态显示校验-状态：未完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_group_id_search_toggle",
             "display_name": "切换【群ID搜索】开关状态校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_join_group_verify_toggle",
             "display_name": "切换【进群验证】开关状态校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_all_member_mute_toggle",
             "display_name": "切换【全员禁言】开关状态校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_specify_mute_page_init_state",
@@ -2065,17 +2279,20 @@
               "临时禁言-3天",
               "临时禁言-7天",
               "临时禁言-30天"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_un_add_friend_each_other_toggle",
             "display_name": "切换【禁止群成员互相加好友】开关状态校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_transfer_group_owner",
             "display_name": "转让群主功能校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       }
@@ -2089,26 +2306,31 @@
       {
         "name": "TestGroupManagerDouble",
         "display_name": "群聊模块-群管理双端验证",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_admin_allocation_double_validation",
             "display_name": "【管理员】是否是管理员身份的分配验证-分配所有权限-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_join_verify_admin_scenarios_double_validation",
             "display_name": "【进群验证】是否是管理员的多重场景-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_add_admin_double_validation",
             "display_name": "【进群申请】管理员=是，可以看到进群申请横幅；管理员=否，看不到进群申请横幅-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_all_member_mute_double_validation",
             "display_name": "【全员禁言】开关开启与关闭 - 接收端输入框禁言状态实时同步校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_specify_member_mute_double_validation",
@@ -2122,37 +2344,44 @@
               "临时禁言-3天",
               "临时禁言-7天",
               "临时禁言-30天"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_forbid_add_friend_double_validation",
             "display_name": "【禁止添加好友】开关开启与关闭 - 接收端没有添加好友按钮-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_group_blacklist_double_validation",
             "display_name": "【群黑名单】页面加载与返回校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_transfer_group_owner_double_validation",
             "display_name": "【转让群主】双端转让与权限移交校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_delete_group_success_double_validation",
             "display_name": "【解散群聊】群主正常解散群聊-成员端同步被移出并接收失效通知-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_delete_group_cancel_double_validation",
             "display_name": "【解散群聊】群主取消解散群聊-群聊依然保持健在-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_group_id_search_double_validation",
             "display_name": "【群ID搜索】群主关闭群ID搜索后成员端搜索可见性校验-状态：未完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_new_member_auto_mute_double_validation",
@@ -2162,17 +2391,20 @@
               "自动禁言-30分钟",
               "自动禁言-2小时",
               "自动禁言-24小时"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_join_apply_badge_double_validation",
             "display_name": "【进群申请】新成员申请入群后群主端红点数与审批流程双端校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_public_group_display_double_validation",
             "display_name": "【公开群展示】开关切换及广场搜索可见性双端校验-状态：未完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           }
         ]
       }
@@ -2186,31 +2418,37 @@
       {
         "name": "TestSpeechManagementDouble",
         "display_name": "群聊模块-群管理-发言管理双端验证",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_member_speech_restrictions_blocked",
             "display_name": "【普通成员拦截】群主开启全部限制后普通成员主动发送与长按传播全量拦截校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_admin_speech_restrictions_exemption",
             "display_name": "【管理员豁免】群主开启发言限制后管理员发送消息不受限制放行校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_admin_demotion_instant_restriction",
             "display_name": "【身份降级即时受限】管理员被撤职降为普通成员后发言限制立即生效校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_owner_speech_restrictions_exemption",
             "display_name": "【群主超级特权】开启发言限制后群主自身发消息畅通无阻校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_speech_manage_master_switch_bypass",
             "display_name": "【总开关一键放行】子项开启但总开关关闭时普通成员正常发言放行校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       }
@@ -2224,6 +2462,7 @@
       {
         "name": "TestGroupNotice",
         "display_name": "群聊模块-群公告",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_publish_group_notice_restrictions",
@@ -2236,12 +2475,14 @@
               "长度边界-301字",
               "包含敏感词-习近平",
               "包含敏感词-毛泽东"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_publish_group_notice_cancel",
             "display_name": "发布新群公告 - 取消发布流程-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           }
         ]
       }
@@ -2255,11 +2496,13 @@
       {
         "name": "TestGroupQrCode",
         "display_name": "群聊模块-群二维码",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_group_qrcode_save_and_share",
             "display_name": "保存与分享群二维码功能-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_group_qrcode_change_validity",
@@ -2272,12 +2515,14 @@
               "30天",
               "90天",
               "永久"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_expired_qrcode_tips",
             "display_name": "识别过期群二维码失效提示校验-状态：未完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       }
@@ -2291,26 +2536,31 @@
       {
         "name": "TestGroupSpecialMultiDevice",
         "display_name": "群聊模块-多设备并发特殊场景",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_group_simultaneous_toggle_detail_multi_device",
             "display_name": "5台设备同时进入群聊并高频并发进出【更多/群设置】详情页压测-状态：未完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_group_mute_race_condition_multi_device",
             "display_name": "群主全员禁言瞬间4台成员设备并发尝试发言竞态拦截校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_group_multi_media_storm_multi_device",
             "display_name": "5台设备同群富媒体消息并发混合发送(文本+表情+图片+位置)-状态：未完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_group_multi_target_parallel_broadcast_multi_device",
             "display_name": "5台设备分别对5个不同群聊同时进行持续广播压测-状态：未完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           }
         ]
       }
@@ -2324,6 +2574,7 @@
       {
         "name": "TestLogin",
         "display_name": "登录注册模块-账号密码登录",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_login_scenarios",
@@ -2348,17 +2599,20 @@
               "G7_TC01",
               "G7_TC02",
               "G7_TC03"
-            ]
+            ],
+            "priority": "P0"
           },
           {
             "name": "test_login_remember_account",
             "display_name": "连续登录退出不同由于，验证手机号记住功能-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_login_too_frequent",
             "display_name": "异常行为监控 - 连续多次发起登录请求触发防刷-状态：未完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           }
         ]
       }
@@ -2372,11 +2626,13 @@
       {
         "name": "TestLoginAgreement",
         "display_name": "登录注册模块-协议校验",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_verify_agreements_exist",
             "display_name": "验证用户协议、隐私协议和未成年协议三个协议是否正常展示-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_verify_agreements_jump",
@@ -2388,7 +2644,8 @@
               "Popup_UserAgreement",
               "Popup_PrivacyPolicy",
               "Popup_ChildrenPrivacy"
-            ]
+            ],
+            "priority": "P2"
           }
         ]
       }
@@ -2402,11 +2659,13 @@
       {
         "name": "TestOneLogin",
         "display_name": "登录注册模块-一键登录",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_login_no_card_one_click",
             "display_name": "无卡状态时，首页点击一键登录验证弹窗-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           }
         ]
       }
@@ -2420,6 +2679,7 @@
       {
         "name": "TestVerificationLogin",
         "display_name": "登录注册模块-验证码登录",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_verification_login_scenarios",
@@ -2439,7 +2699,8 @@
               "V4_TC03",
               "V6_TC01",
               "V6_TC02"
-            ]
+            ],
+            "priority": "P0"
           }
         ]
       }
@@ -2453,16 +2714,19 @@
       {
         "name": "TestCollectionDouble",
         "display_name": "我的收藏-收藏夹双端验证",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_collect_received_text_message_double",
             "display_name": "收藏对方发送的文本消息-双端实时状态校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_send_collection_message_to_friend_double",
             "display_name": "在会话中发送收藏消息-双端上屏与接收实时校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       }
@@ -2476,6 +2740,7 @@
       {
         "name": "TestChatCollection",
         "display_name": "我的收藏-聊天页面收藏",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_collection_first_text",
@@ -2483,7 +2748,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_collection_first_image",
@@ -2491,7 +2757,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_collection_text_and_image",
@@ -2499,7 +2766,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_collection_batch_text",
@@ -2507,7 +2775,8 @@
             "params": [
               "私聊模式",
               "群聊模式"
-            ]
+            ],
+            "priority": "P1"
           }
         ]
       }
@@ -2521,14 +2790,16 @@
       {
         "name": "TestCollection",
         "display_name": "我的收藏-收藏夹",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_share_collection_success",
-            "display_name": "分享收藏条目流程",
+            "display_name": "分享收藏条目流程-状态：已完成",
             "params": [
               "分享第一条文本收藏",
               "分享第一条图片收藏"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_delete_collection_success",
@@ -2536,7 +2807,8 @@
             "params": [
               "删除第一条文本收藏",
               "删除第一条图片收藏"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_delete_all_collection_items",
@@ -2545,12 +2817,14 @@
               "仅清空文本收藏",
               "仅清空图片收藏",
               "一键清空全部收藏"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_collection_sort_by_time",
-            "display_name": "验证收藏列表按时间倒序排列",
-            "params": []
+            "display_name": "验证收藏列表按时间倒序排列-状态：已完成",
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_send_collection_message",
@@ -2564,7 +2838,8 @@
               "群聊模式-文本收藏-Absolute_Last_Item",
               "群聊模式-图片收藏-First_Item",
               "群聊模式-图片收藏-Absolute_Last_Item"
-            ]
+            ],
+            "priority": "P1"
           }
         ]
       }
@@ -2578,16 +2853,19 @@
       {
         "name": "TestCollection",
         "display_name": "我的收藏-朋友圈收藏",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_collection_friend_text",
-            "display_name": "朋友圈页面收藏文本消息",
-            "params": []
+            "display_name": "朋友圈页面收藏文本消息-状态：未完成",
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_collection_friend_image",
-            "display_name": "朋友圈页面收藏图片消息",
-            "params": []
+            "display_name": "朋友圈页面收藏图片消息-状态：未完成",
+            "params": [],
+            "priority": "P2"
           }
         ]
       }
@@ -2601,21 +2879,25 @@
       {
         "name": "TestMoments",
         "display_name": "朋友圈模块-发布与互动",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_enter_group_moments",
             "display_name": "从首页动态入口进入朋友圈校验页面-状态-已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_refresh_moments_feed",
-            "display_name": "朋友圈信息流-下拉刷新",
-            "params": []
+            "display_name": "朋友圈信息流-下拉刷新-状态：已完成",
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_load_more_moments_feed",
             "display_name": "快速上滑加载最后一条朋友圈动态-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_post_text_moment",
@@ -2627,12 +2909,14 @@
               "未输入任何字符直接发表，校验空内容发表拦截提示",
               "发布超过999字限制的超长文案，校验Toast提示及999字截断行为",
               "发布包含敏感词词条的文案，校验风控机制拦截及提示"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_cancel_post_moment_dialog_validation",
             "display_name": "取消发布朋友圈-二次确认弹窗校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_post_image_moment_scenarios",
@@ -2642,7 +2926,8 @@
               "发布9张图片朋友圈",
               "选择图片超过上限9张拦截提示",
               "已选择图片少于9张时继续添加"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_post_video_moment",
@@ -2650,17 +2935,20 @@
             "params": [
               "正常发布",
               "超限弹窗处理后发布"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_post_video_moment_mixed_block",
             "display_name": "朋友圈图片+视频发布限制-不支持图视频混选-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_delete_moment",
             "display_name": "删除朋友圈-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       }
@@ -2674,16 +2962,19 @@
       {
         "name": "TestMomentsDouble",
         "display_name": "朋友圈模块-多端与社交互动",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_friend_moment_visibility",
             "display_name": "好友发布朋友圈动态后接收端同步可见-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_delete_moment_sync_double",
             "display_name": "发送端删除自己动态，接收端同步不可见-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_post_media_moment_scenarios_double",
@@ -2691,12 +2982,14 @@
             "params": [
               "发布多图朋友圈",
               "发布视频朋友圈"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_private_moment_visibility_double",
             "display_name": "发送端发布私密朋友圈，接收端不可见-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_privacy_visibility_scenarios_double",
@@ -2706,27 +2999,32 @@
               "部分可见-按标签",
               "不给谁看-指定好友",
               "不给谁看-按标签"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_moment_interaction_double",
             "display_name": "给好友朋友圈点赞和评论多端同步校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_like_cancel_sync_double",
             "display_name": "双端同步校验：接收端取消点赞，发送端同步更新-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_moment_notification_red_dot",
             "display_name": "社交互动新通知与主页发现红点清除同步校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_comment_reply_notification_double",
             "display_name": "收到回复通知：发送端回复接收端评论，接收端收到新消息提醒-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       }
@@ -2740,11 +3038,13 @@
       {
         "name": "TestMomentsInteraction",
         "display_name": "朋友圈模块-互动",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_like_and_cancel_moment",
             "display_name": "点赞并取消点赞-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_comment_moment",
@@ -2754,32 +3054,38 @@
               "评论包含emoji和特殊字符",
               "评论超过999字限制的超长评论，校验999字截断行为",
               "评论包含敏感词，校验风控拦截提示"
-            ]
+            ],
+            "priority": "P1"
           },
           {
             "name": "test_empty_comment_cannot_send",
             "display_name": "评论为空不可发送-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_comment_persists_after_refresh",
             "display_name": "评论成功后刷新仍可见-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_cancel_delete_own_comment",
             "display_name": "取消删除自己的评论-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_delete_own_comment",
             "display_name": "删除自己的评论-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_like_and_cancel_moment",
             "display_name": "点赞并取消点赞-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       }
@@ -2793,46 +3099,55 @@
       {
         "name": "TestAvatar",
         "display_name": "个人信息模块-头像",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_photo_1",
             "display_name": "头像后置拍照",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_photo_2",
             "display_name": "test_photo_2",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_photo_3",
             "display_name": "test_photo_3",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_photo_4",
             "display_name": "test_photo_4",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_photo_5",
             "display_name": "头像前置拍照",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_photo_6",
             "display_name": "test_photo_6",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_photo_7",
             "display_name": "test_photo_7",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_photo_8",
             "display_name": "test_photo_8",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_update_avatar_success_strategies",
@@ -2843,138 +3158,165 @@
               "随机1张",
               "当前最后1张",
               "底端最后1张"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_cancel_in_album_page",
             "display_name": "在相册选择页点击取消，头像未改变",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_cancel_in_crop_page",
             "display_name": "进入剪裁页面后点击取消，退回相册，头像未改变",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_cancel_crop_then_reselect_success",
             "display_name": "在剪裁页取消后，重新选择图片并成功更换",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_select_photo_2",
             "display_name": "test_select_photo_2",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_select_photo_3",
             "display_name": "test_select_photo_3",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_select_photo_4",
             "display_name": "test_select_photo_4",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_select_photo_5",
             "display_name": "test_select_photo_5",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_select_photo_6",
             "display_name": "test_select_photo_6",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_select_photo_7",
             "display_name": "test_select_photo_7",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_select_photo_8",
             "display_name": "test_select_photo_8",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_select_photo_9",
             "display_name": "test_select_photo_9",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_select_photo_10",
             "display_name": "test_select_photo_10",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_select_photo_11",
             "display_name": "test_select_photo_11",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_select_photo_12",
             "display_name": "test_select_photo_12",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_select_photo_13",
             "display_name": "test_select_photo_13",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_select_photo_14",
             "display_name": "test_select_photo_14",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_select_photo_15",
             "display_name": "test_select_photo_15",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_select_photo_16",
             "display_name": "test_select_photo_16",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_select_photo_17",
             "display_name": "test_select_photo_17",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_select_photo_18",
             "display_name": "test_select_photo_18",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_select_photo_19",
             "display_name": "test_select_photo_19",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_select_photo_20",
             "display_name": "test_select_photo_20",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_save_image",
             "display_name": "保存当前头像到本地相册",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_cancel_avatar",
             "display_name": "在头像操作页点击取消，验证页面回退且头像未变",
-            "params": []
+            "params": [],
+            "priority": "P2"
           }
         ]
       },
       {
         "name": "TestUpdateAvatarByFixedAccount",
         "display_name": "个人信息模块-头像",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_update_avatar_by_fixed_account",
             "display_name": "多设备异步并发批量更换固定账号个人头像-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           }
         ]
       }
@@ -2988,6 +3330,7 @@
       {
         "name": "TestOther",
         "display_name": "个人信息模块-基本信息",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_change_nickname",
@@ -3000,27 +3343,32 @@
               "NICKNAME_POS_007_输入11个字符，验证输入框最大长度为10，超过部分不允许输入",
               "NICKNAME_POS_005_不输入数据",
               "NICKNAME_POS_006_输入10个以内空格"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_phone_toggle_display",
             "display_name": "验证点击眼睛图标可正确切换手机号的明文/密文状态",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_phone_num_show",
             "display_name": "多次点击按钮，手机号显示",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_st_id",
             "display_name": "test_st_id",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_qrcode_functionality",
             "display_name": "验证二维码页面元素完整性及保存相册功能",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_change_sex",
@@ -3028,12 +3376,14 @@
             "params": [
               "修改为男",
               "修改为女"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_cancel_change_sex",
             "display_name": "验证点击取消，性别不发生改变",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_email",
@@ -3056,7 +3406,8 @@
               "EMAIL_BDR_002_超出最大长度限制 (256字符)",
               "EMAIL_SEC_001_SQL注入尝试",
               "EMAIL_SEC_002_XSS脚本注入尝试"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_area",
@@ -3068,12 +3419,14 @@
               "32_上海_崇明区",
               "40_天津_西青区",
               "50_重庆_大渡口区"
-            ]
+            ],
+            "priority": "P2"
           },
           {
             "name": "test_crawl_and_save_area_to_csv",
             "display_name": "从APP端自动爬取全部省市数据并导出保存至CSV文件",
-            "params": []
+            "params": [],
+            "priority": "P2"
           }
         ]
       }
@@ -3087,16 +3440,19 @@
       {
         "name": "TestChatReport",
         "display_name": "聊天设置",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_report_categories_layout",
             "display_name": "投诉分类列表结构验证-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_submit_report_smoke",
             "display_name": "投诉流程随机路径冒烟测试-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       }
@@ -3110,11 +3466,13 @@
       {
         "name": "TestExtractReportTree",
         "display_name": "投诉模块提取",
+        "priority": "P2",
         "tests": [
           {
             "name": "test_extract_report_tree",
             "display_name": "自动遍历提取全量投诉树结构-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           }
         ]
       }
@@ -3128,83 +3486,99 @@
       {
         "name": "TestSmokeChatCore",
         "display_name": "冒烟测试-单聊-基础与设置",
+        "priority": "P0",
         "tests": [
           {
             "name": "test_send_text_message",
             "display_name": "发送 Text 消息，状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P0"
           },
           {
             "name": "test_get_chat_nickname",
             "display_name": "单聊设置 - 获取聊天对象昵称-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_chat_password_switch",
             "display_name": "单聊设置 - 聊天密码开关-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_screenshot_notification_switch",
             "display_name": "单聊设置 - 截屏通知开关-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_recall_notification_switch",
             "display_name": "单聊设置 - 撤回通知开关-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_clear_chat_records",
             "display_name": "单聊设置 - 清空聊天记录-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       },
       {
         "name": "TestSmokeChatSearch",
         "display_name": "冒烟测试-单聊-检索",
+        "priority": "P0",
         "tests": [
           {
             "name": "test_search_by_text_content_and_locate",
             "display_name": "文本内容检索 - 消息存在-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_search_text_content_not_exist",
             "display_name": "文本内容检索 - 消息不存在(空边界)-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_search_by_category_entry",
             "display_name": "快速分类检索入口可用性校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           }
         ]
       },
       {
         "name": "TestSmokeChatLongPress",
         "display_name": "冒烟测试-单聊-长按菜单",
+        "priority": "P0",
         "tests": [
           {
             "name": "test_long_press_action_copy",
             "display_name": "长按菜单操作专项：复制-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_long_press_action_collection",
             "display_name": "长按菜单操作专项：收藏-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_long_press_action_delete",
             "display_name": "长按菜单操作专项：删除消息-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_long_press_action_recall",
             "display_name": "长按菜单操作专项：撤回消息-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P0"
           }
         ]
       }
@@ -3218,46 +3592,55 @@
       {
         "name": "TestSmokeChatOptions",
         "display_name": "冒烟测试-单聊-多媒体与附件",
+        "priority": "P0",
         "tests": [
           {
             "name": "test_voice_send_success",
             "display_name": "基础语音发送测试-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_image_send_success",
             "display_name": "单张图片发送-纯发送-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P0"
           },
           {
             "name": "test_video_send_success",
             "display_name": "单条视频发送并校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_position_send_success",
             "display_name": "发送定位消息-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_file_send_success",
             "display_name": "发送文件-固定文件名搜索-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_basic_emoji_send_success",
             "display_name": "发送基础小表情消息-正向流程-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_emoji_send_success",
             "display_name": "发送表情包消息及业务流转验证-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_contact_card_send_success",
             "display_name": "发送好友名片-正向流程-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       }
@@ -3271,48 +3654,57 @@
       {
         "name": "TestSmokeCollectionSingle",
         "display_name": "冒烟测试-我的收藏-管理",
+        "priority": "P0",
         "tests": [
           {
             "name": "test_delete_collection_success",
             "display_name": "删除收藏夹中的单个条目流程 - 状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_delete_created_collection_items",
             "display_name": "连续删除本用例创建的收藏条目-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_send_collection_message",
             "display_name": "从聊天页面中的收藏发送消息-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       },
       {
         "name": "TestSmokeChatCollection",
         "display_name": "冒烟测试-我的收藏-聊天页面收藏",
+        "priority": "P0",
         "tests": [
           {
             "name": "test_collection_first_text",
             "display_name": "聊天页面收藏一条文本消息，状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_collection_first_image",
             "display_name": "聊天页面收藏一条图片消息，状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       },
       {
         "name": "TestSmokeCollectionDouble",
         "display_name": "冒烟测试-我的收藏-双端协同",
+        "priority": "P0",
         "tests": [
           {
             "name": "test_collect_received_text_message_double",
             "display_name": "收藏对方发送的文本消息-双端实时状态校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       }
@@ -3326,16 +3718,19 @@
       {
         "name": "TestSmokeContacts",
         "display_name": "冒烟测试-联系人与好友",
+        "priority": "P0",
         "tests": [
           {
             "name": "test_smoke_search_and_view_friend_external",
             "display_name": "通过右上角加号菜单添加朋友 - 正常搜索跳转与按钮状态校验",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_smoke_view_friend_detail_local",
             "display_name": "在好友列表中搜索并查看好友资料详情-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       }
@@ -3349,36 +3744,43 @@
       {
         "name": "TestSmokeContactDetail",
         "display_name": "冒烟测试-好友资料与备注设置",
+        "priority": "P0",
         "tests": [
           {
             "name": "test_smoke_entry_and_profile_display",
             "display_name": "从通讯录成功进入好友资料页并校验信息-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_smoke_modify_contact_remark_and_sync",
             "display_name": "正常修改备注名并同步，校验后恢复-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_smoke_phone_number_addition_and_deletion",
             "display_name": "新增电话号码回显校验并清空还原-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_smoke_tag_selection_and_sync",
             "display_name": "选择标签并保存同步，校验后环境恢复-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_smoke_memo_description",
             "display_name": "新增备忘描述回显校验与清除还原-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_smoke_common_groups_navigation",
             "display_name": "进入共同群聊列表并点击切入聊天界面-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           }
         ]
       }
@@ -3392,94 +3794,112 @@
       {
         "name": "TestSmokeGroupCreate",
         "display_name": "冒烟测试-群聊模块-创建与公告",
+        "priority": "P0",
         "tests": [
           {
             "name": "test_group_create_success",
             "display_name": "通过首页右上角发起群聊 (小群:2人) - 正常建群流程-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P0"
           },
           {
             "name": "test_create_group_cancel",
             "display_name": "通过好友发起群聊 - 取消建群流程-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_group_publish_notice_success",
             "display_name": "发布新群公告 - 正常发布流程-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_group_publish_notice_cancel",
             "display_name": "发布新群公告 - 取消发布流程-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           }
         ]
       },
       {
         "name": "TestSmokeGroupManage",
         "display_name": "冒烟测试-群聊模块-群管理设置",
+        "priority": "P0",
         "tests": [
           {
             "name": "test_save_qrcode_success",
             "display_name": "保存与分享群二维码功能-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_change_group_name_success",
             "display_name": "群聊名称修改校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_modify_group_avatar_success",
             "display_name": "从相册修改群聊头像成功-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_group_member_add_and_remove",
             "display_name": "群成员邀请与移除（踢人）流程-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_group_disband_success",
             "display_name": "通过群详情正常解散群聊流程-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P0"
           }
         ]
       },
       {
         "name": "TestSmokeGroupAdminDouble",
         "display_name": "冒烟测试-群聊群管理模块-权限验证",
+        "priority": "P0",
         "tests": [
           {
             "name": "test_group_manager_functionality",
             "display_name": "【群管理员】功能正常使用校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_all_member_mute_toggle",
             "display_name": "切换【全员禁言】开关状态校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_un_add_friend_each_other_toggle",
             "display_name": "切换【禁止群成员互相加好友】开关状态校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       },
       {
         "name": "TestSmokeGroupBot",
         "display_name": "冒烟测试-群聊模块-群机器人",
+        "priority": "P0",
         "tests": [
           {
             "name": "test_group_bot_disable_speech",
             "display_name": "关闭群机器人发言管理总开关后，普通文本功能不再受限-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_group_bot_keyword_interception",
             "display_name": "开启禁发关键词检测后，发送敏感词被拦截撤回并展示警告-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       }
@@ -3493,37 +3913,44 @@
       {
         "name": "TestSmokeLoginAgreement",
         "display_name": "冒烟测试-登录注册-协议校验",
+        "priority": "P0",
         "tests": [
           {
             "name": "test_agreement_display",
             "display_name": "验证用户协议、隐私协议和未成年协议三个协议是否正常展示-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_agreement_jump",
             "display_name": "主页-《用户协议》跳转验证-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_login_without_agreement_popup",
             "display_name": "未勾选协议直接点击登录 - 弹出服务协议确认框并可拒绝/同意-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P0"
           }
         ]
       },
       {
         "name": "TestSmokeLoginPwd",
         "display_name": "冒烟测试-登录注册-密码登录",
+        "priority": "P0",
         "tests": [
           {
             "name": "test_pwd_login_success",
             "display_name": "手机账号密码登录场景回归验证-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P0"
           },
           {
             "name": "test_login_remember_account",
             "display_name": "连续登录退出不同由于，验证手机号记住功能-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       }
@@ -3537,46 +3964,55 @@
       {
         "name": "TestSmokeMoments",
         "display_name": "冒烟测试-朋友圈与动态",
+        "priority": "P0",
         "tests": [
           {
             "name": "test_smoke_enter_and_refresh",
             "display_name": "朋友圈基础冒烟-进入与刷新信息流-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_smoke_post_text_moment",
             "display_name": "发布纯文本动态并在列表首位成功展示与删除-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_smoke_empty_text_moment_blocked",
             "display_name": "空内容发布拦截并停留编辑页-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_smoke_post_image_moment",
             "display_name": "发布单图动态并验证与删除-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_smoke_post_video_moment",
             "display_name": "发布单视频动态并验证与删除-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_smoke_cancel_post_moment_dialog",
             "display_name": "取消发布朋友圈-放弃编辑二次确认-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_smoke_like_moment",
             "display_name": "点赞并取消点赞-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_smoke_comment_moment",
             "display_name": "发表评论并删除评论-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           }
         ]
       }
@@ -3590,21 +4026,25 @@
       {
         "name": "TestSmokePersonal",
         "display_name": "冒烟测试-个人资料与设置",
+        "priority": "P0",
         "tests": [
           {
             "name": "test_smoke_modify_nickname",
             "display_name": "修改个人昵称并验证修改成功-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P1"
           },
           {
             "name": "test_smoke_phone_toggle_display",
             "display_name": "手机号显示与隐藏（明文/密文）状态切换校验-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           },
           {
             "name": "test_smoke_qrcode_and_save",
             "display_name": "查看我的二维码界面并保存到手机相册-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P2"
           }
         ]
       }
@@ -3618,16 +4058,19 @@
       {
         "name": "TestSmokeReport",
         "display_name": "冒烟测试-举报模块-聊天举报",
+        "priority": "P0",
         "tests": [
           {
             "name": "test_report_categories_layout",
             "display_name": "投诉分类列表结构验证-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P0"
           },
           {
             "name": "test_submit_report_smoke",
             "display_name": "投诉流程随机路径冒烟测试-状态：已完成",
-            "params": []
+            "params": [],
+            "priority": "P0"
           }
         ]
       }

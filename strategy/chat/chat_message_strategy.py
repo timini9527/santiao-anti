@@ -60,6 +60,8 @@ class ChatMessageBuilder(ChatPage):
     def _prepare_text_msg(self, **kwargs):
         content = kwargs.get("content", "发送收藏消息进行测试‼️⚠️🚀✔️✅♏🧑‍🚀🪲🍎✖️")
         self.send_message(content)
+        # self.click_new_message_indicator()
+        self.close_keyboard_or_panel()
     
     def _prepare_emoji_msg(self, **kwargs):
         """发送/准备 Emoji 表情消息（长按/多选等专项测试数据准备：仅快速发送第一排表情，高效省时）"""
@@ -69,6 +71,8 @@ class ChatMessageBuilder(ChatPage):
         emojiPage.sent_first_row_emoji(count=kwargs.get("count", 8))
         self.click_send_button()
         self.enter_emoji_page(is_open=False)
+        self.click_new_message_indicator()
+        self.close_keyboard_or_panel()
     
     def _prepare_package_msg(self, **kwargs):
         """发送/准备第三方表情包消息"""
@@ -78,6 +82,7 @@ class ChatMessageBuilder(ChatPage):
         emoji_package.switch_to_emoji_package(index=1)
         emoji_package.sent_emoji_package(strategy="first", count=1)
         self.enter_emoji_page(is_open=False)
+        self.close_keyboard_or_panel()
     
     # 收藏表情包专项：用于验证“收藏表情”功能，重置测试环境
     def _prepare_collection_emoji_msg(self, **kwargs) -> bool:
@@ -161,7 +166,8 @@ class ChatMessageBuilder(ChatPage):
         file_page.wait_for_file_page_load()
         file_name = kwargs.get("file_name", "测试-图片")
         file_page.search_and_select_file_by_name(file_name)
-        # self.click_add_button()
+        # 若软键盘或加号/表情面板处于打开状态，执行收起关闭
+        self.close_keyboard_or_panel()
 
     def _prepare_group_card_msg(self, **kwargs):
         from pages.groups.setting.general.group_setting_page import GroupSettingPage

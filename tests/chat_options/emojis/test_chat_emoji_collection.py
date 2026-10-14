@@ -34,6 +34,8 @@ class TestChatEmojiCollection:
         except Exception as e:
             logger.error(f'Teardown 失败，未能返回首页: {e}')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('添加单个表情包/图片到收藏夹')
     @allure.title('添加单个表情包/图片到收藏夹-状态：已完成')
     @pytest.mark.parametrize('pkg_count, add_count, desc', [pytest.param(3, 1, '长按添加聊天列表中第 1 个表情包到收藏', id='长按添加聊天列表中第 1 个表情包到收藏'), pytest.param(3, None, '长按添加聊天列表中所有未收藏的表情包', id='长按添加聊天列表中所有未收藏的表情包')])
@@ -76,6 +78,8 @@ class TestChatEmojiCollection:
             coll_empkg_count_aft = self.emojiManagePage.get_collection_emoji_pkg_all_items()
             check.not_equal(coll_empkg_count_pre, coll_empkg_count_aft, f'收藏夹计数未发生变化！前: {coll_empkg_count_pre}, 后: {coll_empkg_count_aft}')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('从表情管理页面中删除已添加的表情包')
     @allure.title('从表情管理页面中删除已添加的表情包-状态：已完成')
     @pytest.mark.parametrize('emoji_type, count, desc', [pytest.param('sequential', 1, '删除列表中的第一个表情包', id='删除列表中的第一个表情包'), pytest.param('sequential', 3, '连续删除列表前 3 个表情包', id='连续删除列表前 3 个表情包'), pytest.param('random', 1, '随机删除列表中的 1 个表情包', id='随机删除列表中的 1 个表情包'), pytest.param('all', 0, '清空/删除当前拥有的全部收藏表情', id='清空/删除当前拥有的全部收藏表情')])

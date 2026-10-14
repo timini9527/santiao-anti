@@ -54,6 +54,9 @@ class BaseSmokeChatOptions:
 class TestSmokeChatOptions(BaseSmokeChatOptions):
     """单聊发送各种多媒体与附件（语音、图片、视频、位置、文件、表情包、名片）冒烟用例"""
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('发送语音消息')
     @allure.title('基础语音发送测试-状态：已完成')
     def test_voice_send_success(self):
@@ -68,6 +71,9 @@ class TestSmokeChatOptions(BaseSmokeChatOptions):
             is_success = self.voicePage.verify_voice_message_display(expected_time=hold_time, pre_snapshot=pre_snapshot, expect_sent=True)
             check.is_true(is_success, f'语音消息气泡未正常显示')
 
+    @pytest.mark.p0
+    @allure.severity(allure.severity_level.BLOCKER)
+    @pytest.mark.smoke
     @allure.story('发送图片消息')
     @allure.title('单张图片发送-纯发送-状态：已完成')
     def test_image_send_success(self):
@@ -91,6 +97,9 @@ class TestSmokeChatOptions(BaseSmokeChatOptions):
             check.is_true(distance <= 5, f'❌ 大图预览与发送出去的图片不一致 (汉明距离 {distance} > 5)')
             self.imagePage.back()
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('发送视频消息')
     @allure.title('单条视频发送并校验-状态：已完成')
     def test_video_send_success(self):
@@ -113,6 +122,9 @@ class TestSmokeChatOptions(BaseSmokeChatOptions):
             video_duration = self.chatPage.get_chat_video_duration(index=-1)
             check.is_true(bool(video_duration), '❌ 未检测到上屏视频消息的时长特征')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('发送位置消息')
     @allure.title('发送定位消息-状态：已完成')
     def test_position_send_success(self):
@@ -136,6 +148,9 @@ class TestSmokeChatOptions(BaseSmokeChatOptions):
             check.is_true(result, f'发送位置 {poi_title} {poi_detail} 地图显示位置信息不一致')
             self.chatPage.click_top_back_bnt()
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('发送文件消息')
     @allure.title('发送文件-固定文件名搜索-状态：已完成')
     def test_file_send_success(self):
@@ -155,6 +170,9 @@ class TestSmokeChatOptions(BaseSmokeChatOptions):
             is_success = self.chatPage.wait_for_last_message_send_status()
             check.is_true(is_success, '❌ 文件消息未在规定时间内发送完成')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('发送基础小表情消息')
     @allure.title('发送基础小表情消息-正向流程-状态：已完成')
     def test_basic_emoji_send_success(self):
@@ -171,6 +189,9 @@ class TestSmokeChatOptions(BaseSmokeChatOptions):
             active_text = self.chatPage.verify_message_content_by_input(input_text)
             check.equal(active_text, input_text, f'❌ 表情上屏文本不匹配！Act: {active_text}, Exp: {input_text}')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('发送表情包消息')
     @allure.title('发送表情包消息及业务流转验证-状态：已完成')
     def test_emoji_send_success(self):
@@ -205,6 +226,9 @@ class TestSmokeChatOptions(BaseSmokeChatOptions):
             verify_status = self.emojiPackagePage.verify_emoji_message_rendered(send_count)
             check.is_true(verify_status, '❌ 发送表情包后，聊天消息列表中未成功渲染大表情气泡')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('发送好友名片')
     @allure.title('发送好友名片-正向流程-状态：已完成')
     def test_contact_card_send_success(self):

@@ -90,6 +90,8 @@ class TestChatListDouble:
 
 
 
+    @pytest.mark.p0
+    @allure.severity(allure.severity_level.BLOCKER)
     @allure.story('消息阅读回执状态机流转 (未读 -> 已读)')
     @allure.title('验证私聊消息阅读回执全生命周期流转 (未读 -> 已读)')
     def test_message_read_receipt_lifecycle(self):
@@ -124,6 +126,8 @@ class TestChatListDouble:
             self.homeR.wait_home_page()
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('音视频通话双端协同会话列表展示')
     @allure.title('双端音视频通话状态展示-状态：已完成')
     @pytest.mark.parametrize('call_strategy', [pytest.param(x, id=x.desc) for x in CHAT_CALL_DOUBLE_SCENARIOS])
@@ -213,6 +217,8 @@ class TestChatListDouble:
             check.is_true(matched_r, f'❌ 被叫端会话内容展示不匹配, 预期满足 {candidates_r} 之一, 实际为: {actual_content_r}')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群聊进群邀请双端协同展示')
     @allure.title('双端群聊进群邀请展示-状态：已完成')
     def test_chat_group_invite_double_status(self):
@@ -287,6 +293,8 @@ class TestChatListDouble:
             self.privacyProtectionR.click_switch_group_invite_confirm('false')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群聊@强提醒与核销双端协同')
     @allure.title('群聊@强提醒生命周期验证 (有人@我 / @所有人 / 已读核销)')
     @pytest.mark.parametrize('at_type, expected_tag', [
@@ -324,6 +332,8 @@ class TestChatListDouble:
             check.is_not_in(tag_keyword, refreshed_tag, f'❌ 查看消息返回后强提醒未能清除, 依然包含: {expected_tag}')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群聊系统通知双端展示')
     @allure.title('双端群聊系统通知展示-新成员加入群聊摘要呈现')
     def test_chat_group_join_notify_status(self):
@@ -344,6 +354,8 @@ class TestChatListDouble:
             check.is_in(expected_content, actual_content, f'❌ 接收端群会话消息内容不匹配, 预期包含: {expected_content}, 实际为: {actual_content}')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群聊进群申请与权限边界')
     @allure.title('验证进群申请强提醒在不同权限角色下的可见性')
     def test_chat_group_apply_permission_and_composite_status(self):

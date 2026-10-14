@@ -10,9 +10,66 @@ from .paths import PROJECT_ROOT, TEMP_COLLECT_SCRIPT, TESTS_DIR
 class TestCollector(ast.NodeVisitor):
     """使用 AST 静态解析 Python 文件中的测试类和测试函数"""
     
-    def __init__(self):
+    def __init__(self, default_priority: str = "P2"):
         self.classes = []
         self.functions = []
+        self.default_priority = default_priority
+
+    @staticmethod
+    def _extract_priority(decorator_list: List[ast.AST], fallback: str = "P2") -> str:
+        """从装饰器中精准提取优先级 (优先提取 @pytest.mark.p0/p1/p2/p3 及 @allure.severity，其次匹配 @pytest.mark.smoke)"""
+        has_smoke = False
+        explicit_priority = None
+
+        for dec in decorator_list:
+            # 1. 语法形如 @pytest.mark.p0 或 @pytest.mark.p1
+            if isinstance(dec, ast.Attribute):
+                if hasattr(dec.value, 'attr') and dec.value.attr == 'mark':
+                    attr_name = dec.attr.lower()
+                    if attr_name in ('p0', 'p1', 'p2', 'p3', 'p4'):
+                        explicit_priority = attr_name.upper()
+                        break
+                    elif attr_name == 'smoke':
+                        has_smoke = True
+            elif isinstance(dec, ast.Call):
+                func = dec.func
+                if isinstance(func, ast.Attribute):
+                    # @pytest.mark.p0()
+                    if hasattr(func.value, 'attr') and func.value.attr == 'mark':
+                        attr_name = func.attr.lower()
+                        if attr_name in ('p0', 'p1', 'p2', 'p3', 'p4'):
+                            explicit_priority = attr_name.upper()
+                            break
+                        elif attr_name == 'smoke':
+                            has_smoke = True
+                    # @allure.severity(allure.severity_level.BLOCKER)
+                    if func.attr == 'severity' and dec.args:
+                        arg = dec.args[0]
+                        mapping = {
+                            'BLOCKER': 'P0',
+                            'CRITICAL': 'P1',
+                            'NORMAL': 'P2',
+                            'MINOR': 'P3',
+                            'TRIVIAL': 'P4'
+                        }
+                        if isinstance(arg, ast.Attribute):
+                            key = arg.attr.upper()
+                            if key in mapping:
+                                explicit_priority = mapping[key]
+                                break
+                        elif isinstance(arg, (ast.Constant, ast.Str)):
+                            raw_val = arg.value if isinstance(arg, ast.Constant) else arg.s
+                            if isinstance(raw_val, str):
+                                key = raw_val.strip().upper()
+                                if key in mapping:
+                                    explicit_priority = mapping[key]
+                                    break
+
+        if explicit_priority:
+            return explicit_priority
+        if has_smoke:
+            return 'P0'
+        return fallback
 
     def _parse_parametrize(self, node: ast.FunctionDef) -> List[str]:
         """解析函数节点中 pytest.mark.parametrize 携带的 ids 或参数"""
@@ -60,9 +117,10 @@ class TestCollector(ast.NodeVisitor):
                                     params.append("?")
         return params
 
-    def _process_func(self, node: ast.FunctionDef) -> Dict[str, Any]:
-        """提取 Allure 描述或 Docstring 并组装测试用例结构"""
+    def _process_func(self, node: ast.FunctionDef, class_priority: str = "") -> Dict[str, Any]:
+        """提取 Allure 描述、Docstring 以及用例优先级并组装测试用例结构"""
         params = self._parse_parametrize(node)
+        priority = self._extract_priority(node.decorator_list, fallback=class_priority or self.default_priority)
         title = ""
         story = ""
         
@@ -111,11 +169,17 @@ class TestCollector(ast.NodeVisitor):
                 name_desc = doc.strip().split('\n')[0].strip()
         
         display_name = name_desc if name_desc else node.name
-        return {"name": node.name, "display_name": display_name, "params": params}
+        return {
+            "name": node.name,
+            "display_name": display_name,
+            "params": params,
+            "priority": priority
+        }
 
     def visit_ClassDef(self, node: ast.ClassDef):
         """如果类以 Test 开头，则收集其内部的方法"""
         if node.name.startswith("Test"):
+            class_priority = self._extract_priority(node.decorator_list, fallback=self.default_priority)
             feature = ""
             story = ""
             for dec in node.decorator_list:
@@ -166,8 +230,13 @@ class TestCollector(ast.NodeVisitor):
             class_tests = []
             for item in node.body:
                 if isinstance(item, ast.FunctionDef) and item.name.startswith("test_"):
-                    class_tests.append(self._process_func(item))
-            self.classes.append({"name": node.name, "display_name": display_name, "tests": class_tests})
+                    class_tests.append(self._process_func(item, class_priority=class_priority))
+            self.classes.append({
+                "name": node.name,
+                "display_name": display_name,
+                "priority": class_priority,
+                "tests": class_tests
+            })
             return
         self.generic_visit(node)
 
@@ -198,7 +267,8 @@ def collect_all_tests(tests_dir: str = "tests") -> List[Dict[str, Any]]:
                 try:
                     with open(full_path, "r", encoding="utf-8") as f:
                         tree = ast.parse(f.read(), filename=full_path)
-                    collector = TestCollector()
+                    default_p = "P0" if "smoke" in rel_path.lower() else "P2"
+                    collector = TestCollector(default_priority=default_p)
                     collector.visit(tree)
                     
                     if collector.classes or collector.functions:

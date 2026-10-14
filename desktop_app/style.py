@@ -388,11 +388,11 @@ QPushButton.btn-mini:hover {
     border-color: #bfdbfe;
 }
 
-/* ==================== 树内操作按钮 (1:1 像素级复刻 Element Plus 胶囊药丸风格) ==================== */
+/* ==================== 树内操作按钮 (保留空心透明，悬浮统一高亮翡翠绿) ==================== */
 QPushButton.tree-pill-btn {
-    background-color: #ffffff;
+    background-color: transparent;
     color: #334155;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #cbd5e1;
     border-radius: 11px;
     font-size: 11px;
     font-weight: 500;
@@ -401,20 +401,20 @@ QPushButton.tree-pill-btn {
     text-align: center;
 }
 QPushButton.tree-pill-btn:hover {
-    background-color: #eff6ff;
-    color: #2563eb;
-    border-color: #bfdbfe;
+    background-color: #ecfdf5;
+    color: #059669;
+    border-color: #a7f3d0;
 }
 QPushButton.tree-pill-btn:pressed {
-    background-color: #dbeafe;
-    color: #1d4ed8;
-    border-color: #93c5fd;
+    background-color: #d1fae5;
+    color: #047857;
+    border-color: #6ee7b7;
 }
 
 QPushButton.tree-pill-btn-class {
-    background-color: #ffffff;
+    background-color: transparent;
     color: #334155;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #cbd5e1;
     border-radius: 11px;
     font-size: 11px;
     font-weight: 500;
@@ -423,13 +423,18 @@ QPushButton.tree-pill-btn-class {
     text-align: center;
 }
 QPushButton.tree-pill-btn-class:hover {
-    background-color: #fffbeb;
-    color: #d97706;
-    border-color: #fde68a;
+    background-color: #ecfdf5;
+    color: #059669;
+    border-color: #a7f3d0;
+}
+QPushButton.tree-pill-btn-class:pressed {
+    background-color: #d1fae5;
+    color: #047857;
+    border-color: #6ee7b7;
 }
 
 QPushButton.tree-pill-btn-doc {
-    background-color: #f8fafc;
+    background-color: transparent;
     color: #475569;
     border: 1px solid #cbd5e1;
     border-radius: 11px;
@@ -440,15 +445,20 @@ QPushButton.tree-pill-btn-doc {
     text-align: center;
 }
 QPushButton.tree-pill-btn-doc:hover {
-    background-color: #eff6ff;
-    color: #2563eb;
-    border-color: #93c5fd;
+    background-color: #ecfdf5;
+    color: #059669;
+    border-color: #a7f3d0;
+}
+QPushButton.tree-pill-btn-doc:pressed {
+    background-color: #d1fae5;
+    color: #047857;
+    border-color: #6ee7b7;
 }
 
 QPushButton.tree-pill-btn-file {
-    background-color: #ffffff;
+    background-color: transparent;
     color: #334155;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #cbd5e1;
     border-radius: 11px;
     font-size: 11px;
     font-weight: 500;
@@ -461,11 +471,16 @@ QPushButton.tree-pill-btn-file:hover {
     color: #059669;
     border-color: #a7f3d0;
 }
+QPushButton.tree-pill-btn-file:pressed {
+    background-color: #d1fae5;
+    color: #047857;
+    border-color: #6ee7b7;
+}
 
 QPushButton.tree-pill-btn-dir {
-    background-color: #ffffff;
+    background-color: transparent;
     color: #334155;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #cbd5e1;
     border-radius: 11px;
     font-size: 11px;
     font-weight: 500;
@@ -474,9 +489,14 @@ QPushButton.tree-pill-btn-dir {
     text-align: center;
 }
 QPushButton.tree-pill-btn-dir:hover {
-    background-color: #fefce8;
-    color: #ca8a04;
-    border-color: #fef08a;
+    background-color: #ecfdf5;
+    color: #059669;
+    border-color: #a7f3d0;
+}
+QPushButton.tree-pill-btn-dir:pressed {
+    background-color: #d1fae5;
+    color: #047857;
+    border-color: #6ee7b7;
 }
 
 /* ==================== 4. 树状列表控件 ==================== */
@@ -529,7 +549,7 @@ QPlainTextEdit.console-log {
     padding: 14px;
 }
 
-/* 滚动条美化 */
+/* 滚动条美化 (精致细条、极简无边框、现代浅灰胶囊配色) */
 QScrollBar:vertical {
     border: none;
     background: transparent;
@@ -544,8 +564,42 @@ QScrollBar::handle:vertical {
 QScrollBar::handle:vertical:hover {
     background: #94a3b8;
 }
+QScrollBar::handle:vertical:pressed {
+    background: #64748b;
+}
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
     height: 0px;
+    width: 0px;
+    background: transparent;
+}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: transparent;
+}
+
+QScrollBar:horizontal {
+    border: none;
+    background: transparent;
+    height: 6px;
+    margin: 0px;
+}
+QScrollBar::handle:horizontal {
+    background: #cbd5e1;
+    min-width: 24px;
+    border-radius: 3px;
+}
+QScrollBar::handle:horizontal:hover {
+    background: #94a3b8;
+}
+QScrollBar::handle:horizontal:pressed {
+    background: #64748b;
+}
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0px;
+    height: 0px;
+    background: transparent;
+}
+QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
+    background: transparent;
 }
 
 /* ==================== 6. 分割器美化 (极窄精致，告别粗厚视觉负担) ==================== */

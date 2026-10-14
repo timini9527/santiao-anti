@@ -33,6 +33,8 @@ class TestChatSetting:
         self.chatSettingPage.click_more_button()
         self.chatSettingPage.wait_for_setting_page_load()
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('单聊设置 - 获取聊天对象昵称')
     @allure.title('单聊设置 - 获取聊天对象昵称-状态：已完成')
     @pytest.mark.parametrize('chat_strategy', [pytest.param(PRIVATE_USER1, id='param_1')])
@@ -44,6 +46,8 @@ class TestChatSetting:
             nickname = self.chatSettingPage.get_friend_name()
             check.equal(nickname, chat_strategy.name, f'预期昵称应为: {chat_strategy.name}, 实际为: {nickname}')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('单聊设置 - 聊天密码开关')
     @allure.title('单聊设置 - 聊天密码开关-状态：已完成')
     @pytest.mark.parametrize('chat_strategy', [pytest.param(PRIVATE_USER1, id='单聊-聊天密码开关'), pytest.param(GROUP_STRATEGY, id='群聊-聊天密码开关')])
@@ -75,6 +79,8 @@ class TestChatSetting:
             self.chatSettingPage.click_switch_chat_pwd()
             check.equal(self.chatSettingPage.get_switch_chat_pwd_status(), init_status, '❌ 聊天密码状态未能成功恢复')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('单聊设置 - 截屏通知开关')
     @allure.title('单聊设置 - 截屏通知开关-状态：已完成')
     @pytest.mark.parametrize('chat_strategy', [pytest.param(PRIVATE_USER1, id='单聊-截屏通知'), pytest.param(GROUP_STRATEGY, id='群聊-截屏通知')])
@@ -101,6 +107,8 @@ class TestChatSetting:
             final_status = self.chatSettingPage.get_switch_screenshot_status()
             check.equal(final_status, init_status, '❌ 恢复原始状态失败')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('单聊设置 - 撤回通知开关')
     @allure.title('单聊设置 - 撤回通知开关-状态：已完成')
     @pytest.mark.parametrize('chat_strategy', [pytest.param(PRIVATE_USER1, id='单聊-撤回通知'), pytest.param(GROUP_STRATEGY, id='群聊-撤回通知')])
@@ -135,6 +143,8 @@ class TestChatSetting:
             final_status = self.chatSettingPage.get_switch_recall_status()
             check.equal(final_status, init_status, '❌ 恢复原始状态失败')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('单聊设置 - 清空聊天记录')
     @allure.title('单聊设置 - 清空聊天记录-状态：已完成')
     @pytest.mark.parametrize('chat_strategy', [pytest.param(PRIVATE_USER2, id='param_1')])

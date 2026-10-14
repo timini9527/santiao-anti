@@ -59,6 +59,8 @@ class TestChatImages:
 
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story("默认页面加载状态")
     @allure.title("默认页面加载状态-状态：已完成")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
@@ -73,6 +75,8 @@ class TestChatImages:
             assert result, "🍎 默认页面加载状态异常"
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story("选择图片后取消勾选")
     @allure.title("选择图片后取消勾选-状态：已完成")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
@@ -94,6 +98,8 @@ class TestChatImages:
 
 
     # ==================== 核心发图流程（策略参数化 3×4×2 = 24 条）====================
+    @pytest.mark.p0
+    @allure.severity(allure.severity_level.BLOCKER)
     @allure.story("单张图片发送：选图模式 × 发送选项")
     @allure.title("单张图片发送：选图模式 × 发送选项-状态：已完成")
     @pytest.mark.parametrize("send_option", SEND_OPTIONS, ids=lambda s: s.desc)
@@ -126,6 +132,8 @@ class TestChatImages:
             self.imagePage.back()
     
     
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story("单张图片发送-纯发送")
     @allure.title("单张图片发送-纯发送-状态：已完成")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
@@ -157,6 +165,8 @@ class TestChatImages:
             self.imagePage.back()
     
     
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story("发图边界场景：勾选上限测试")
     @allure.title("发图边界场景：勾选上限测试-状态：已完成")
     @pytest.mark.parametrize("strategy", [PRIVATE_USER1, GROUP_STRATEGY], ids=lambda s: s.desc)
@@ -178,6 +188,8 @@ class TestChatImages:
 
 
     # ==================== 批量发图 ====================
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story("批量多选发图测试")
     @allure.title("批量多选发图测试-状态：已完成")
     @pytest.mark.parametrize("scenario", BATCH_IMAGE_SCENARIOS, ids=lambda s: s.desc)

@@ -111,9 +111,11 @@ class BaseSmokeMoments:
 class TestSmokeMoments(BaseSmokeMoments):
     """朋友圈/动态模块核心冒烟用例集 (闭环与鲁棒性保障)"""
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
+    @pytest.mark.smoke
     @allure.story('朋友圈信息流与基础交互')
     @allure.title('朋友圈基础冒烟-进入与刷新信息流-状态：已完成')
-    @pytest.mark.smoke
     def test_smoke_enter_and_refresh(self):
         """测试进入朋友圈并刷新信息流的基础状态，验证主页加载与下拉刷新稳定性"""
         with allure.step('1. 确认已成功加载朋友圈主页及核心交互入口'):
@@ -126,9 +128,11 @@ class TestSmokeMoments(BaseSmokeMoments):
             check.is_true(self.momentsPage.wait_for_moments_page_load(), '❌ 刷新后朋友圈主页标题加载异常')
             check.is_true(self.momentsPage.is_camera_displayed(), '❌ 刷新后朋友圈核心功能入口丢失或异常')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('动态发布与验证')
     @allure.title('发布纯文本动态并在列表首位成功展示与删除-状态：已完成')
-    @pytest.mark.smoke
     def test_smoke_post_text_moment(self):
         """测试发布纯文字朋友圈的核心链路 (包含数据闭环清理)"""
         test_content = f'冒烟文字动态_{int(time.time() * 1000)}'
@@ -147,9 +151,11 @@ class TestSmokeMoments(BaseSmokeMoments):
             with allure.step('3. 后置清理：删除本条临时冒烟动态'):
                 self._delete_test_moment(test_content)
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
+    @pytest.mark.smoke
     @allure.story('动态发布与验证')
     @allure.title('空内容发布拦截并停留编辑页-状态：已完成')
-    @pytest.mark.smoke
     def test_smoke_empty_text_moment_blocked(self):
         """测试纯文字发布页空内容不可发表，防止发布校验失效。"""
         with allure.step('1. 长按相机按钮进入纯文字编辑页，不输入任何内容'):
@@ -164,9 +170,11 @@ class TestSmokeMoments(BaseSmokeMoments):
             self.momentsPage.click_iv_back()
             check.is_true(self.momentsPage.wait_for_moments_page_load(), '❌ 空内容发布拦截后返回朋友圈主页失败')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('动态发布与验证')
     @allure.title('发布单图动态并验证与删除-状态：已完成')
-    @pytest.mark.smoke
     def test_smoke_post_image_moment(self):
         """测试发布单张图片朋友圈的核心链路 (包含数据闭环清理)"""
         test_content = f'冒烟单图动态_{int(time.time() * 1000)}'
@@ -187,9 +195,11 @@ class TestSmokeMoments(BaseSmokeMoments):
             with allure.step('3. 后置清理：删除本条临时冒烟图片动态'):
                 self._delete_test_moment(test_content)
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('动态发布与验证')
     @allure.title('发布单视频动态并验证与删除-状态：已完成')
-    @pytest.mark.smoke
     def test_smoke_post_video_moment(self):
         """测试发布单个视频朋友圈的核心链路 (包含数据闭环清理)"""
         test_content = f'冒烟视频动态_{int(time.time() * 1000)}'
@@ -210,9 +220,11 @@ class TestSmokeMoments(BaseSmokeMoments):
             with allure.step('3. 后置清理：删除本条临时冒烟视频动态'):
                 self._delete_test_moment(test_content)
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
+    @pytest.mark.smoke
     @allure.story('动态发布与验证')
     @allure.title('取消发布朋友圈-放弃编辑二次确认-状态：已完成')
-    @pytest.mark.smoke
     def test_smoke_cancel_post_moment_dialog(self):
         """测试在发布编辑页输入内容后点击返回并确认放弃编辑的流程"""
         with allure.step('1. 进入纯文字编辑页并输入临时内容'):
@@ -226,9 +238,11 @@ class TestSmokeMoments(BaseSmokeMoments):
             check.is_false(self.momentsPage.is_publish_editor_displayed(), '❌ 确认放弃编辑后依然停留在发布编辑页')
             check.is_true(self.momentsPage.wait_for_moments_page_load(), '❌ 退出编辑后未成功返回朋友圈主页')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('动态点赞与评论')
     @allure.title('点赞并取消点赞-状态：已完成')
-    @pytest.mark.smoke
     def test_smoke_like_moment(self):
         """测试对朋友圈动态点赞后可再次取消点赞 (包含状态刷新与数据清理)"""
         moment_content = f'点赞冒烟测试_{int(time.time() * 1000)}'
@@ -267,9 +281,11 @@ class TestSmokeMoments(BaseSmokeMoments):
             with allure.step('5. 后置清理：删除用于点赞测试的临时动态'):
                 self._delete_test_moment(moment_content)
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('动态点赞与评论')
     @allure.title('发表评论并删除评论-状态：已完成')
-    @pytest.mark.smoke
     def test_smoke_comment_moment(self):
         """测试对朋友圈发表评论后刷新可见，并能成功删除 (包含数据闭环)"""
         moment_content = f'评论冒烟测试_{int(time.time() * 1000)}'

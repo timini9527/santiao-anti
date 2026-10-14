@@ -35,6 +35,8 @@ class TestOneLogin:
         self.ocr_utils = OcrUtils(driver_sender)
         yield
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('无卡状态时，首页点击一键登录验证弹窗')
     @allure.title('无卡状态时，首页点击一键登录验证弹窗-状态：已完成')
     @pytest.mark.no_login_entrance

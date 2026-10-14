@@ -3,7 +3,6 @@ import pytest
 import allure
 import pytest_check as check
 from pages.login.login_page import LoginPage
-from locators.login.login_locator import LoginLocator
 from core.logger_utils import logger
 from utils.file_reader.data_loader import load_yaml_data
 from dataclasses import dataclass
@@ -77,6 +76,8 @@ class TestVerificationLogin:
         yield
 
 
+    @pytest.mark.p0
+    @allure.severity(allure.severity_level.BLOCKER)
     @allure.story("验证码登录场景回归验证")
     @allure.title("验证码登录场景-状态：已完成")
     @pytest.mark.parametrize("case_dict", load_verification_login_test_cases(), ids=lambda x: x.get('id', 'TC'))

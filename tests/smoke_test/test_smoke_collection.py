@@ -116,6 +116,9 @@ class BaseSmokeCollectionSingle:
 class TestSmokeCollectionSingle(BaseSmokeCollectionSingle):
     """单端收藏夹条目管理（收藏、删除、发送）冒烟用例"""
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('收藏条目删除')
     @allure.title('删除收藏夹中的单个条目流程 - 状态：已完成')
     def test_delete_collection_success(self):
@@ -131,6 +134,9 @@ class TestSmokeCollectionSingle(BaseSmokeCollectionSingle):
             after_content = self.chatCollectionPage.get_collection_text_content(0)
             check.not_equal(after_content, unique_text, '❌ 删除校验失败：本用例收藏仍在最新位置')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
+    @pytest.mark.smoke
     @allure.story('连续删除本用例收藏')
     @allure.title('连续删除本用例创建的收藏条目-状态：已完成')
     def test_delete_created_collection_items(self):
@@ -148,6 +154,9 @@ class TestSmokeCollectionSingle(BaseSmokeCollectionSingle):
             latest_text = self.chatCollectionPage.get_collection_text_content(0)
             check.is_not_in(latest_text, [first_text, second_text], '❌ 本用例创建的收藏未清理干净')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('聊天中发送收藏')
     @allure.title('从聊天页面中的收藏发送消息-状态：已完成')
     def test_send_collection_message(self):
@@ -180,6 +189,9 @@ class TestSmokeCollectionSingle(BaseSmokeCollectionSingle):
 class TestSmokeChatCollection(BaseSmokeCollectionSingle):
     """聊天消息的直接收藏校验冒烟用例"""
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('收藏单条文本消息')
     @allure.title('聊天页面收藏一条文本消息，状态：已完成')
     def test_collection_first_text(self):
@@ -193,6 +205,9 @@ class TestSmokeChatCollection(BaseSmokeCollectionSingle):
         with allure.step('3. 清理本用例创建的收藏'):
             self._delete_latest_text_collection(text)
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('收藏单条图片消息')
     @allure.title('聊天页面收藏一条图片消息，状态：已完成')
     def test_collection_first_image(self):
@@ -229,6 +244,9 @@ class TestSmokeCollectionDouble(BaseSmokeCollectionSingle):
             except Exception as e:
                 logger.warning(f'⚠️ [Cleanup] 双端清理返回首页异常: {e}')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('双端协同实时收藏')
     @allure.title('收藏对方发送的文本消息-双端实时状态校验-状态：已完成')
     def test_collect_received_text_message_double(self):

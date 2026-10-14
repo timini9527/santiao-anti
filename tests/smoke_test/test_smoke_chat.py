@@ -46,6 +46,9 @@ class BaseSmokeChat:
 class TestSmokeChatCore(BaseSmokeChat):
     """单聊文本消息收发以及单聊选项（昵称、聊天密码、截屏、撤回、清空）冒烟用例"""
 
+    @pytest.mark.p0
+    @allure.severity(allure.severity_level.BLOCKER)
+    @pytest.mark.smoke
     @allure.story('发送文本消息')
     @allure.title('发送 Text 消息，状态：已完成')
     def test_send_text_message(self):
@@ -59,6 +62,9 @@ class TestSmokeChatCore(BaseSmokeChat):
             text = self.chatPage.get_text_message_content_by_index(index=-1, side='sent')
             check.equal(text, expected, f'消息实际值 {text} 与预期值 {expected} 不匹配')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
+    @pytest.mark.smoke
     @allure.story('查看好友昵称')
     @allure.title('单聊设置 - 获取聊天对象昵称-状态：已完成')
     def test_get_chat_nickname(self):
@@ -68,6 +74,9 @@ class TestSmokeChatCore(BaseSmokeChat):
             nickname = self.chatSettingPage.get_friend_name()
             check.equal(nickname, PRIVATE_USER1.name, f'预期昵称: {PRIVATE_USER1.name}, 实际昵称: {nickname}')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('聊天密码开关')
     @allure.title('单聊设置 - 聊天密码开关-状态：已完成')
     def test_chat_password_switch(self):
@@ -106,6 +115,9 @@ class TestSmokeChatCore(BaseSmokeChat):
                     except Exception:
                         pass
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
+    @pytest.mark.smoke
     @allure.story('截屏通知开关')
     @allure.title('单聊设置 - 截屏通知开关-状态：已完成')
     def test_screenshot_notification_switch(self):
@@ -140,6 +152,9 @@ class TestSmokeChatCore(BaseSmokeChat):
                     except Exception:
                         pass
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
+    @pytest.mark.smoke
     @allure.story('撤回通知开关')
     @allure.title('单聊设置 - 撤回通知开关-状态：已完成')
     def test_recall_notification_switch(self):
@@ -174,6 +189,9 @@ class TestSmokeChatCore(BaseSmokeChat):
                     except Exception:
                         pass
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('清空聊天记录')
     @allure.title('单聊设置 - 清空聊天记录-状态：已完成')
     def test_clear_chat_records(self):
@@ -197,6 +215,9 @@ class TestSmokeChatCore(BaseSmokeChat):
 class TestSmokeChatSearch(BaseSmokeChat):
     """聊天记录全文文本检索与定位冒烟用例"""
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('文本消息检索')
     @allure.title('文本内容检索 - 消息存在-状态：已完成')
     def test_search_by_text_content_and_locate(self):
@@ -223,6 +244,9 @@ class TestSmokeChatSearch(BaseSmokeChat):
             last_message = self.chatPage.get_text_message_content_by_index(index=-1, side='sent')
             check.is_in(keyword, last_message, f'❌ 未能在屏幕上找到定位消息')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
+    @pytest.mark.smoke
     @allure.story('文本消息检索 - 消息不存在')
     @allure.title('文本内容检索 - 消息不存在(空边界)-状态：已完成')
     def test_search_text_content_not_exist(self):
@@ -236,6 +260,9 @@ class TestSmokeChatSearch(BaseSmokeChat):
             results_count = self.chatSearchPage.get_search_results_count()
             check.equal(results_count, 0, f'❌ 预期无搜索结果，但实际找到了 {results_count} 条记录')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
+    @pytest.mark.smoke
     @allure.story('快速分类检索入口')
     @allure.title('快速分类检索入口可用性校验-状态：已完成')
     def test_search_by_category_entry(self):
@@ -260,6 +287,9 @@ class TestSmokeChatSearch(BaseSmokeChat):
 class TestSmokeChatLongPress(BaseSmokeChat):
     """消息气泡长按动作（复制、收藏）冒烟用例"""
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('长按菜单复制')
     @allure.title('长按菜单操作专项：复制-状态：已完成')
     def test_long_press_action_copy(self):
@@ -276,6 +306,9 @@ class TestSmokeChatLongPress(BaseSmokeChat):
             paste_text = self.chatPage.paste_clipboard_text()
             check.equal(paste_text, payload, f'❌ 复制内容不一致: {paste_text}')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('长按菜单收藏')
     @allure.title('长按菜单操作专项：收藏-状态：已完成')
     def test_long_press_action_collection(self):
@@ -298,6 +331,9 @@ class TestSmokeChatLongPress(BaseSmokeChat):
             is_deleted = self.collectionPage.del_collection_item(del_type='text', index=0)
             check.is_true(is_deleted, '❌ 删除本次测试产生的收藏内容失败')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('长按菜单删除')
     @allure.title('长按菜单操作专项：删除消息-状态：已完成')
     def test_long_press_action_delete(self):
@@ -317,6 +353,9 @@ class TestSmokeChatLongPress(BaseSmokeChat):
             post_last_msg = self.chatPage.get_text_message_content_by_index(index=-1, side='sent', expect_missing=True)
             check.not_equal(post_last_msg, payload, '❌ 删除消息后，最后一条消息内容仍为已删除的文本')
 
+    @pytest.mark.p0
+    @allure.severity(allure.severity_level.BLOCKER)
+    @pytest.mark.smoke
     @allure.story('长按菜单撤回')
     @allure.title('长按菜单操作专项：撤回消息-状态：已完成')
     def test_long_press_action_recall(self):

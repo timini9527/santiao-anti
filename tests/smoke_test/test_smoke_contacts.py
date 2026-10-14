@@ -35,6 +35,9 @@ class BaseSmokeContacts:
 class TestSmokeContacts(BaseSmokeContacts):
     """联系人与好友模块冒烟用例集"""
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('外部好友搜索与申请')
     @allure.title('通过右上角加号菜单添加朋友 - 正常搜索跳转与按钮状态校验')
     def test_smoke_search_and_view_friend_external(self):
@@ -55,6 +58,9 @@ class TestSmokeContacts(BaseSmokeContacts):
                 check.is_true(send_msg_exist, '❌ 目标对象已是好友状态，但资料详情页未显示 [发送消息] 按钮')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('本地通讯录查看好友')
     @allure.title('在好友列表中搜索并查看好友资料详情-状态：已完成')
     def test_smoke_view_friend_detail_local(self):

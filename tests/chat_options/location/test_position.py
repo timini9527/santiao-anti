@@ -49,6 +49,8 @@ class TestChatPosition:
 
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('搜索位置-无结果异常场景')
     @allure.title('搜索位置-无结果异常场景-状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
@@ -65,6 +67,8 @@ class TestChatPosition:
             check.is_true(self.chatPage.verify_is_on_chat_page(), '❌ 点击取消后未能正常返回聊天页面')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('搜索指定位置并发送')
     @allure.title('搜索指定位置并发送-状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
@@ -84,6 +88,8 @@ class TestChatPosition:
             check.is_in(poi_titles[0], actual_bubble['title'], f"发送的搜索位置标题不匹配 {poi_titles} {actual_bubble['title']}")
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('取消发送位置流程')
     @allure.title('取消发送位置流程-状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
@@ -104,6 +110,8 @@ class TestChatPosition:
             check.equal(initial_count, final_count, '点击取消后不应产生新消息')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('发送定位消息')
     @allure.title('发送定位消息-状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
@@ -127,6 +135,8 @@ class TestChatPosition:
             check.is_true(result, f'发送位置 {poi_title} {poi_detail} 地图显示位置信息不一致')
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('位置消息-详情页返回')
     @allure.title('位置消息-详情页返回-状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])

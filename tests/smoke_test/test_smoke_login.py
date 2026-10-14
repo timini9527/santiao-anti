@@ -27,6 +27,8 @@ class BaseSmokeLogin:
 class TestSmokeLoginAgreement(BaseSmokeLogin):
     """登录模块协议功能及未登录前置校验冒烟用例"""
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('验证协议存在')
     @allure.title('验证用户协议、隐私协议和未成年协议三个协议是否正常展示-状态：已完成')
     def test_agreement_display(self):
@@ -36,6 +38,8 @@ class TestSmokeLoginAgreement(BaseSmokeLogin):
             check.is_true('《隐私协议》' in full_text, '缺少隐私协议')
             check.is_true('《未成年人个人信息保护规则》' in full_text, '缺少未成年人保护规则')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('验证协议跳转')
     @allure.title('主页-《用户协议》跳转验证-状态：已完成')
     def test_agreement_jump(self):
@@ -51,6 +55,9 @@ class TestSmokeLoginAgreement(BaseSmokeLogin):
             if pre_title != protocol_title:
                 self.loginPage.click_back_btn()
 
+    @pytest.mark.p0
+    @allure.severity(allure.severity_level.BLOCKER)
+    @pytest.mark.smoke
     @allure.story('协议拦截与弹窗处理')
     @allure.title('未勾选协议直接点击登录 - 弹出服务协议确认框并可拒绝/同意-状态：已完成')
     def test_login_without_agreement_popup(self):
@@ -85,6 +92,9 @@ class TestSmokeLoginAgreement(BaseSmokeLogin):
 class TestSmokeLoginPwd(BaseSmokeLogin):
     """手机账号密码正常登录与记住账号逻辑冒烟用例"""
 
+    @pytest.mark.p0
+    @allure.severity(allure.severity_level.BLOCKER)
+    @pytest.mark.smoke
     @allure.story('账号密码成功登录')
     @allure.title('手机账号密码登录场景回归验证-状态：已完成')
     def test_pwd_login_success(self):
@@ -110,6 +120,9 @@ class TestSmokeLoginPwd(BaseSmokeLogin):
                     is_success = self.loginPage.wait_for_login_page()
                     check.is_true(is_success, '❌ 退出登录后未回到登录页')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('手机账号记住功能')
     @allure.title('连续登录退出不同由于，验证手机号记住功能-状态：已完成')
     def test_login_remember_account(self):

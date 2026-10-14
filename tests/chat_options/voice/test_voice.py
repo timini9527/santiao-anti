@@ -71,6 +71,8 @@ class TestChatVoice:
 
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('基础语音发送测试')
     @allure.title('基础语音发送测试-状态：已完成')
     @pytest.mark.parametrize('hold_time', [
@@ -99,6 +101,8 @@ class TestChatVoice:
                 check.is_true(is_success, f'语音气泡显示异常！预期时长应约为 {expected_time} 秒')
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('语音录制取消测试')
     @allure.title('语音录制取消测试-状态：已完成')
     @pytest.mark.parametrize('press_time', [pytest.param(1, id='按压1秒')])
@@ -117,6 +121,8 @@ class TestChatVoice:
             check.is_true(is_success, '❌ 语音取消发送校验失败！页面上出现了新消息')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('语音进阶交互：滑动试听测试并操作(发送/取消)，并验证')
     @allure.title('语音进阶交互：滑动试听测试并操作(发送/取消)，并验证-状态：已完成')
     @pytest.mark.parametrize('action', [pytest.param('send', id='发送'), pytest.param('cancel', id='取消')])
@@ -139,6 +145,8 @@ class TestChatVoice:
                 self._execute_preview_decision(action, listen_time, pre_snapshot)
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('语音进阶交互：试听模式多场景操作测试 (播放/暂停、听筒/扬声器切换) + 最终发送/取消校验')
     @allure.title('语音进阶交互：试听模式多场景操作测试 (播放/暂停、听筒/扬声器切换) + 最终发送/取消校验-状态：已完成')
     @pytest.mark.parametrize('press_time', [pytest.param(1, id='按压1秒')])

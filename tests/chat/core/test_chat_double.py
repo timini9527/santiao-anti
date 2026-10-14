@@ -68,9 +68,10 @@ class TestChatDouble:
 
 
 
+    @pytest.mark.p0
+    @allure.severity(allure.severity_level.BLOCKER)
     @allure.story('发送和接收 Text 消息')
     @allure.title('单聊双端文本消息发送与实时接收端到端校验')
-    # @pytest.mark.skip('暂时跳过，待后续优化')
     @pytest.mark.parametrize(
         'text_message',
         [pytest.param(x, id=f"msg_{x.get('data', {}).get('payload', '')[:8]}") for x in CHAT_DATA.get('text_message', [])]

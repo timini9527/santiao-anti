@@ -298,6 +298,8 @@ class TestChatMultiDevice:
 
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('发送 Text 消息')
     @allure.title('多设备群聊异步并行发送 Text 消息-状态：已完成')
     def test_send_text_message_async_multi_device(self, setup_test):
@@ -336,6 +338,8 @@ class TestChatMultiDevice:
 
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('发送 Text 消息')
     @allure.title('多设备单聊异步并行发送 Text 消息-状态：已完成')
     def test_send_text_message_async_multi_device_private(self, setup_test):
@@ -371,6 +375,8 @@ class TestChatMultiDevice:
 
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('发送 Text 消息')
     @allure.title('多设备群聊与单聊合并异步并行发送 Text 消息-状态：已完成')
     def test_send_text_message_async_multi_device_combined(self, setup_test):

@@ -30,6 +30,8 @@ class TestChatVideos:
         self.chatListPage.enter_chat(chat_name)
         self.videoPage.open_panel_to_album()
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('视频相册基础状态')
     @allure.title('视频相册基础状态-状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
@@ -42,6 +44,8 @@ class TestChatVideos:
             assert result, '🍎 默认页面加载状态异常'
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('选择视频后取消勾选')
     @allure.title('选择视频后取消勾选-状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
@@ -59,6 +63,8 @@ class TestChatVideos:
             assert result, '🍎 取消勾选后状态未恢复为默认'
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('单视频发送：模式 × 选项')
     @allure.title('单视频发送：模式 × 选项-状态：已完成')
     @pytest.mark.parametrize('send_option', [pytest.param(s, id=s.desc) for s in VIDEO_SEND_OPTIONS])
@@ -101,6 +107,8 @@ class TestChatVideos:
             check.is_true(video_status, '聊天区未加载出视频 Item')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('单条视频发送并校验')
     @allure.title('单条视频发送并校验-状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
@@ -125,6 +133,8 @@ class TestChatVideos:
             check.is_true(is_sent, '视频发送超时或检测到失败红点')
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('视频发送边界场景：勾选上限测试')
     @allure.title('视频发送边界场景：勾选上限测试-状态：已完成')
     @pytest.mark.parametrize('strategy', [pytest.param(PRIVATE_USER1, id='私聊模式'), pytest.param(GROUP_STRATEGY, id='群聊模式')])
@@ -142,6 +152,8 @@ class TestChatVideos:
             self.videoPage.click_back_button()
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('批量视频发送')
     @allure.title('批量视频发送-状态：已完成')
     @pytest.mark.parametrize('scenario', [pytest.param(s, id=s.desc) for s in BATCH_VIDEO_SCENARIOS])

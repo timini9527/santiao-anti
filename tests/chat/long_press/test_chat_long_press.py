@@ -7,15 +7,14 @@ from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_page import ChatPage
 from pages.chat.core.chat_long_press_page import ChatLongPressPage
 from core.logger_utils import logger
-from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
 from strategy.chat.chat_message_strategy import MessageTypeStrategy, ChatMessageBuilder
-from locators.chat.core.chat_locator import ChatLocator
 from pages.home.side_slip_page import SideSlipPage
 from pages.home.home_page import HomePage
 from pages.mine.collection.chat_collection_page import ChatCollectionPage
 from pages.common.contact_select_page import ContactSelectPage
 from pages.common.session_select_page import SessionSelectPage
 from pages.chat_options.emojis.chat_emoji_package_page import ChatEmojiPackagePage
+from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, PRIVATE_USER3, GROUP_STRATEGY
 
 @allure.epic('IM核心功能测试')
 @allure.feature('聊天模块-长按菜单')
@@ -44,6 +43,8 @@ class TestChatLongPress:
         is_sent = self.chatPage.wait_for_last_message_send_status()
         check.is_true(is_sent, f'❌ 消息【{msg_type}】未能成功发送上屏 或 发送失败')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('不同消息长按菜单的完整性校验')
     @allure.title('不同消息长按菜单的完整性校验-状态：已完成')
     @pytest.mark.parametrize(
@@ -71,9 +72,10 @@ class TestChatLongPress:
             check.is_true(is_items_ok, f'❌ 消息【{msg_type}】长按菜单项未识别')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('长按菜单操作专项：复制')
     @allure.title('长按菜单操作专项：复制-状态：已完成')
-    @pytest.mark.severity(allure.severity_level.CRITICAL)
     @pytest.mark.parametrize(
         'msg_type', [
             pytest.param('text', id='文本消息'),
@@ -103,9 +105,10 @@ class TestChatLongPress:
             check.equal(paste_text, expected_text, f'❌ 复制内容不一致: {paste_text}')
             
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('长按菜单操作专项：收藏')
     @allure.title('长按菜单操作专项：收藏-状态：已完成')
-    @pytest.mark.severity(allure.severity_level.CRITICAL)
     @pytest.mark.parametrize(
         'msg_type', [
             pytest.param('text', id='文本消息'),
@@ -156,9 +159,10 @@ class TestChatLongPress:
                 check.is_true(is_similar, f'❌ 收藏夹图片不一致: 列表hash:{coll_img_hash}, 发送hash: {original_hash}')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('长按菜单操作专项：转发')
     @allure.title('长按菜单操作专项：转发-状态：已完成')
-    @pytest.mark.severity(allure.severity_level.CRITICAL)
     @pytest.mark.parametrize(
         'msg_type', [
             pytest.param(t, id=f'消息类型-{t}')
@@ -201,9 +205,10 @@ class TestChatLongPress:
                     check.equal(actual_val, expected_val, f"❌ 转发 {key} 不一致: 期望 '{expected_val}', 实际 '{actual_val}'")
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('长按菜单操作专项：多选')
     @allure.title('长按菜单操作专项：多选-状态：已完成')
-    @pytest.mark.severity(allure.severity_level.NORMAL)
     @pytest.mark.parametrize(
         'msg_list', [
             pytest.param(['text', 'emoji', 'image', 'voice', 'video', 'position', 'card', 'file', 'package'], 
@@ -285,9 +290,10 @@ class TestChatLongPress:
                 pass
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('长按菜单操作专项：添加表情')
     @allure.title('长按菜单操作专项：添加表情-状态：已完成')
-    @pytest.mark.severity(allure.severity_level.CRITICAL)
     @pytest.mark.parametrize(
         'msg_type', [
             pytest.param('package', id='表情包消息')
@@ -316,9 +322,10 @@ class TestChatLongPress:
             check.is_true(has_pkg, f'❌ 【{msg_type}】消息添加表情失败')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('长按菜单操作专项：撤回')
     @allure.title('长按菜单操作专项：撤回-状态：已完成')
-    @pytest.mark.severity(allure.severity_level.CRITICAL)
     @pytest.mark.parametrize(
         'msg_type', [
             pytest.param(t, id=f'消息类型-{t}')
@@ -352,9 +359,10 @@ class TestChatLongPress:
 
 
     # TODO：发送表情包有问题，需要检查
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('长按菜单操作专项：删除')
     @allure.title('长按菜单操作专项：删除-状态：已完成')
-    @pytest.mark.severity(allure.severity_level.CRITICAL)
     @pytest.mark.parametrize(
         'msg_list', [
             pytest.param(['text', 'emoji', 'image', 'voice', 'video', 'position', 'card', 'file', 'package'], id='全量消息类型')

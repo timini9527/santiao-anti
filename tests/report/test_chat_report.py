@@ -31,6 +31,8 @@ class TestChatReport:
             except Exception as e:
                 pass
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('投诉分类列表结构验证')
     @allure.title('投诉分类列表结构验证-状态：已完成')
     def test_report_categories_layout(self):
@@ -60,6 +62,9 @@ class TestChatReport:
                         check.is_true(is_visible, f"❌ 在 '{parent_cat}' 下未找到二级子项: '{sub_item}'")
                     self.reportPage.click_back()
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('投诉流程随机路径冒烟测试')
     @allure.title('投诉流程随机路径冒烟测试-状态：已完成')
     def test_submit_report_smoke(self):

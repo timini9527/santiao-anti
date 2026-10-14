@@ -8,7 +8,6 @@ from appium.webdriver.common.appiumby import AppiumBy
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.setting.chat_setting_page import ChatSettingPage
 from pages.report.report_page import ReportPage
-from locators.report.report_locator import ReportLocator
 from strategy.chat.chat_strategy import PRIVATE_USER1
 from core.logger_utils import logger
 
@@ -46,8 +45,7 @@ class TestExtractReportTree:
             before_texts = [tv.text for tv in self.driver.find_elements(AppiumBy.CLASS_NAME, 'android.widget.TextView') if tv.text]
             for _ in range(3):
                 try:
-                    el = self.driver.find_element(*ReportLocator.TOP_IV_BACK_BTN)
-                    el.click()
+                    self.reportPage.click_back()
                     time.sleep(1.5)
                     after_texts = [tv.text for tv in self.driver.find_elements(AppiumBy.CLASS_NAME, 'android.widget.TextView') if tv.text]
                     if before_texts != after_texts:

@@ -46,6 +46,8 @@ class TestGroupBotJoinVerify:
         except Exception as e:
             logger.warning(f'⚠️ [Cleanup] 清理入群验证开关发生异常: {e}')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('入群验证-开关切换与配置')
     @allure.title('开启与关闭入群验证 - 触发Toast提醒且配置保存生效-状态：未完成')
     @pytest.mark.usefixtures('cleanup_verify_settings')

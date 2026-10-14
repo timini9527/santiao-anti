@@ -43,6 +43,8 @@ class TestNewFriend:
 
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.title("进入新的朋友页并返回好友列表-状态：已完成")
     def test_new_friend_entry_and_back(self):
         with allure.step("1. 点击新的朋友页返回按钮"):
@@ -53,6 +55,8 @@ class TestNewFriend:
             check.is_true(is_loaded, "❌ 返回后未显示好友列表")
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.title("新的朋友申请记录展示完整-状态：已完成")
     def test_new_friend_apply_list_display(self):
         with allure.step("1. 获取当前可见的申请人昵称"):
@@ -67,6 +71,8 @@ class TestNewFriend:
             )
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.title("取消清空申请记录后列表保持不变-状态：已完成")
     def test_new_friend_clear_cancel(self):
         with allure.step("1. 记录清空前的申请人昵称"):
@@ -83,6 +89,8 @@ class TestNewFriend:
             check.equal(names_after, names_before, "❌ 取消清空后申请记录发生变化")
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.title("确认清空全部申请记录-状态：待显式执行")
     @pytest.mark.destructive
     def test_new_friend_clear_confirm(self):

@@ -128,6 +128,9 @@ class TestSmokeContactDetail(BaseSmokeContactDetail):
             self.contactDetailPage.click_iv_back()
             self.homePage.wait_for_friend_page_load()
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('入口与展示')
     @allure.title('从通讯录成功进入好友资料页并校验信息-状态：已完成')
     def test_smoke_entry_and_profile_display(self):
@@ -143,6 +146,9 @@ class TestSmokeContactDetail(BaseSmokeContactDetail):
             check.is_true(len(st_id) > 0, '❌ 资料页显示的ID为空')
             check.is_true(len(location) > 0, '❌ 资料页显示的地区所在地为空')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('设置备注名')
     @allure.title('正常修改备注名并同步，校验后恢复-状态：已完成')
     def test_smoke_modify_contact_remark_and_sync(self):
@@ -192,6 +198,9 @@ class TestSmokeContactDetail(BaseSmokeContactDetail):
                 has_orig = self.contactSelectPage.click_contact_by_name(RECEIVER_NAME, search=True)
                 check.is_true(bool(has_orig), f'❌ 清空备注后通讯录未恢复展示好友原昵称: {RECEIVER_NAME}')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
+    @pytest.mark.smoke
     @allure.story('电话管理')
     @allure.title('新增电话号码回显校验并清空还原-状态：已完成')
     def test_smoke_phone_number_addition_and_deletion(self):
@@ -235,6 +244,9 @@ class TestSmokeContactDetail(BaseSmokeContactDetail):
                 is_exist = self.contactDetailPage.is_row_profile_phone()
                 check.is_false(is_exist, '❌ 电话清空后，好友资料详情页依然残留显示了电话栏目')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.smoke
     @allure.story('标签')
     @allure.title('选择标签并保存同步，校验后环境恢复-状态：已完成')
     def test_smoke_tag_selection_and_sync(self):
@@ -287,6 +299,9 @@ class TestSmokeContactDetail(BaseSmokeContactDetail):
                     self.homePage.wait_for_friend_page_load()
                     self._clear_specific_tag(target_tag)
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
+    @pytest.mark.smoke
     @allure.story('备忘描述')
     @allure.title('新增备忘描述回显校验与清除还原-状态：已完成')
     def test_smoke_memo_description(self):
@@ -329,6 +344,9 @@ class TestSmokeContactDetail(BaseSmokeContactDetail):
                 cleared_memo = self.remarkSettingPage.get_profile_memo_value(raise_exception=False)
                 check.is_false(bool(cleared_memo), f'❌ 备忘清空后，好友资料详情页依然残留展示了备忘描述: {cleared_memo}')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
+    @pytest.mark.smoke
     @allure.story('共同群聊')
     @allure.title('进入共同群聊列表并点击切入聊天界面-状态：已完成')
     def test_smoke_common_groups_navigation(self):

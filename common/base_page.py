@@ -965,6 +965,53 @@ class BasePage:
             logger.error(f"❌ 触发键盘按键 Keycode {keycode} 失败: {e}")
             raise e
     
+    @allure.step("软键盘管理: 安全稳健收起软键盘")
+    def hide_keyboard_robust(self, max_retries: int = 2) -> bool:
+        """
+        [工业级稳健] 安全收起移动端软键盘 (支持 Android & iOS)：
+        1. 优先使用 Appium driver.hide_keyboard()；
+        2. 若抛出 UnknownError ("The software keyboard cannot be hidden")，在 Android 平台立即启用
+           系统返回键 KEYCODE_BACK (Keycode 4) 执行物理收起；
+        3. 循环轮询确认软键盘是否真正关闭，确保不会遗留键盘遮挡，同时严格避免无键盘时误触返回键退出页面。
+        :return: 软键盘是否已成功收起 (若一开始就没有软键盘也返回 True)
+        """
+        if not hasattr(self, "driver") or not self.driver:
+            return True
+
+        try:
+            if not (hasattr(self.driver, "is_keyboard_shown") and self.driver.is_keyboard_shown()):
+                return True
+
+            logger.info("📱 [Action] 检测到软键盘处于打开状态，正在收起软键盘...")
+            # 方式 1: 优先尝试 Appium 标准 API
+            try:
+                self.driver.hide_keyboard()
+                time.sleep(0.3)
+            except Exception as e:
+                logger.debug(f"driver.hide_keyboard() 执行受限: {e}")
+
+            # 方式 2: 若软键盘仍然打开，采用 Android 系统 Keycode 4 (KEYCODE_BACK) 进行物理级收起
+            retries = 0
+            while hasattr(self.driver, "is_keyboard_shown") and self.driver.is_keyboard_shown() and retries < max_retries:
+                logger.info(f"📱 软键盘仍处于打开状态，启用 KEYCODE_BACK (Keycode 4) 执行第 {retries + 1} 次系统收起...")
+                if hasattr(self.driver, "press_keycode"):
+                    self.driver.press_keycode(4)
+                elif hasattr(self, "press_keycode"):
+                    self.press_keycode(4)
+                time.sleep(0.3)
+                retries += 1
+
+            is_still_open = hasattr(self.driver, "is_keyboard_shown") and self.driver.is_keyboard_shown()
+            if is_still_open:
+                logger.warning("⚠️ 尝试多次收起软键盘后，软键盘状态依然为打开")
+                return False
+            else:
+                logger.info("✅ 软键盘已成功收起")
+                return True
+        except Exception as e:
+            logger.warning(f"⚠️ 收起软键盘异常: {e}")
+            return False
+    
     @allure.step("读取手机剪贴板内容")
     def paste_clipboard_text(self):
         """读取手机剪贴板内容 (Appium 原生支持)"""

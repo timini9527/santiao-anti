@@ -46,6 +46,8 @@ class TestAddFriend:
         is_loaded = self.contactDetailPage.wait_for_detail_page_load()
         assert is_loaded, f'❌ 搜索 {search_key} 后未能进入资料详情页'
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('添加好友页面')
     @allure.title('进入添加朋友页校验并点击返回-状态：已完成')
     def test_add_friend_entry_and_back(self):
@@ -61,6 +63,8 @@ class TestAddFriend:
             is_on_home = self.homePage.wait_home_page(timeout=5)
             check.is_true(is_on_home, '❌ 点击返回按钮后，未能成功退回主页面')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('搜索')
     @allure.title('搜索框为空/空格时的拦截校验-状态：已完成')
     @pytest.mark.parametrize('search_key', [pytest.param('', id='空值'), pytest.param(' ', id='单个空格'), pytest.param('    ', id='多个空格')])
@@ -76,6 +80,8 @@ class TestAddFriend:
             check.is_false(can_search, '❌ 搜索为空或空格时，异常出现了确认搜索项')
             check.is_false(is_result, '❌ 搜索为空或空格时，异常出现了搜索结果项')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('搜索')
     @allure.title('搜索不存在账号 - 验证未找到好友提示-状态：已完成')
     def test_add_friend_search_non_existent_account(self):
@@ -91,6 +97,8 @@ class TestAddFriend:
             check.equal('未找到好友/群组', msg, '❌ 搜索不存在账号时，未弹出预期 [未找到好友/群组] 提示')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('搜索')
     @allure.title('通过{search_type}搜索正常账号并校验资料详情-状态：已完成')
     @pytest.mark.parametrize('search_type, search_key', [
@@ -115,6 +123,8 @@ class TestAddFriend:
                 logger.info("ℹ️ [Action - AddFriend] 当前搜索到的账号为非好友，资料页不展示三条ID，跳过三条ID断言")
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('搜索')
     @allure.title('搜索当前登录账号时禁止添加自己-状态：已完成')
     def test_add_friend_search_self(self):
@@ -129,6 +139,8 @@ class TestAddFriend:
             check.is_false(has_add_button, '❌ 搜索自己后异常显示了添加好友按钮')
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('搜索')
     @allure.title('搜索已有好友时展示发送消息入口-状态：已完成')
     def test_add_friend_search_existing_friend(self):
@@ -143,6 +155,8 @@ class TestAddFriend:
             check.is_false(has_add_button, '❌ 搜索已有好友后异常显示了添加好友按钮')
 
 
+    @pytest.mark.p0
+    @allure.severity(allure.severity_level.BLOCKER)
     @allure.story('申请')
     @allure.title('发送好友验证申请流-状态：已完成')
     def test_add_friend_request_flow(self):
@@ -169,6 +183,8 @@ class TestAddFriend:
             check.is_true(toast, '❌ 点击发送好友申请后，未弹出预期 Toast 提示')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('申请')
     @allure.title('重复发送待处理好友申请-状态：已完成')
     def test_add_friend_repeat_pending_request(self):

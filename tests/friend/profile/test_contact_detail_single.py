@@ -150,6 +150,8 @@ class TestContactDetailSingle:
             self.contactDetailPageS.click_iv_back()
             self.homePageS.wait_for_friend_page_load()
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('入口与展示')
     @allure.title('从通讯录成功进入好友资料页并校验-状态：已完成')
     def test_entry_and_profile_display(self):
@@ -165,6 +167,8 @@ class TestContactDetailSingle:
             check.is_true(len(st_id) > 0, '❌ 资料页显示的ID为空')
             check.is_true(len(location) > 0, '❌ 资料页显示的地区所在地为空')
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('设置备注名')
     @allure.title('修改备注名、各处同步并在清空后恢复-参数化边界字数限制校验-状态：已完成')
     @pytest.mark.parametrize('input_remark, expected_remark', [pytest.param('DYNAMIC_TIME', 'DYNAMIC_TIME', id='正常修改备注'), pytest.param('A' * 30, 'A' * 30, id='30个字符'), pytest.param('B' * 31, 'B' * 30, id='超过30个字符')])
@@ -207,6 +211,8 @@ class TestContactDetailSingle:
             has_remark = self.contactSelectPageS.select_contact_by_name(RECEIVER_NAME)
             check.is_true(bool(has_remark), f'❌ 清空备注后通讯录未恢复展示好友原昵称')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('电话管理')
     @allure.title('新增电话号码参数化校验（上限3个/数字限制/15字字符截断）-状态：已完成')
     @pytest.mark.parametrize('scenario, input_phones, expected_phones', [pytest.param('LIMIT_COUNT', ['13800000001', '13800000002', '13800000003', '13800000004'], ['13800000001', '13800000002', '13800000003'], id='限制输入最多3个'), pytest.param('ONLY_DIGITS', ['1380000abc'], ['1380000'], id='只允许输入数字'), pytest.param('MAX_LENGTH', ['1' * 16], ['1' * 15], id='最多输入15个字符')])
@@ -267,6 +273,8 @@ class TestContactDetailSingle:
             is_exist = self.contactDetailPageS.is_row_profile_phone()
             check.is_false(is_exist, f'❌ 清空后资料卡电话行不符合预期，实际: {is_exist}, 预期: False')
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('电话管理')
     @allure.title('删除电话号码及添加按钮重新显露逻辑-状态：已完成')
     def test_phone_number_deletion_flow(self):
@@ -306,6 +314,8 @@ class TestContactDetailSingle:
             self.remarkSettingPageS.click_save()
             self.contactDetailPageS.click_iv_back()
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('标签')
     @allure.title('标签点击后选中/取消选中状态切换-状态：已完成')
     def test_tag_selection_and_toggle(self):
@@ -353,6 +363,8 @@ class TestContactDetailSingle:
             self.contactDetailPageS.click_iv_back()
             self.contactDetailPageS.wait_for_detail_page_load()
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('标签')
     @allure.title('选择标签及标签上限边界参数化校验-状态：已完成')
     @pytest.mark.parametrize('select_count, expected_selected_count, check_exceed_toast', [pytest.param(1, 1, False, id='选择1个标签'), pytest.param(14, 14, False, id='选择14个标签'), pytest.param(15, 15, False, id='选择15个标签'), pytest.param(16, 15, True, id='选择16个标签受阻')])
@@ -396,6 +408,8 @@ class TestContactDetailSingle:
         with allure.step('5. 环境恢复：进入设置页清空所有选中标签'):
             self._clean_tags_and_back_to_detail()
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('标签')
     @allure.title('新增标签30字限制及新增后默认选中-状态：已完成')
     @pytest.mark.destructive
@@ -423,6 +437,8 @@ class TestContactDetailSingle:
         with allure.step('4. 环境恢复：清空创建的测试标签'):
             self._cancel_from_tag_search_to_detail()
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('标签')
     @allure.title('新增标签数量边界及保存回显参数化校验-状态：已完成')
     @pytest.mark.destructive
@@ -474,6 +490,8 @@ class TestContactDetailSingle:
             self.homePageS.wait_for_friend_page_load()
             self._clear_all_tags()
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('备忘描述')
     @allure.title('备忘描述多行Emoji及上限(200字)边界参数化校验-状态：已完成')
     @pytest.mark.parametrize('input_note, expected_note', [pytest.param('第一行：测试账号特性描述\n第二行：具有高可靠性校验🌟', '第一行：测试账号特性描述\n第二行：具有高可靠性校验🌟', id='多行带Emoji描述'), pytest.param('q' * 199, 'q' * 199, id='199字-上限前'), pytest.param('q' * 200, 'q' * 200, id='200字-正好上限'), pytest.param('q' * 201, 'q' * 200, id='201字-超限截断')])
@@ -505,6 +523,8 @@ class TestContactDetailSingle:
             self.contactDetailPageS.click_iv_back()
             self.contactDetailPageS.wait_for_detail_page_load()
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('共同群聊')
     @allure.title('共同群聊入口展示、点击列表项跳转至群聊窗口校验-状态：已完成')
     def test_common_groups_navigation_and_search(self):

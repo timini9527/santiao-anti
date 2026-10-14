@@ -11,7 +11,6 @@ from pages.chat.list.chat_list_page import ChatListPage
 from pages.groups.setting.manager.group_manager_page import GroupManagerPage
 from pages.common.session_select_page import SessionSelectPage
 from pages.common.contact_select_page import ContactSelectPage
-from locators.chat.core.chat_locator import ChatLocator
 from strategy.chat.chat_strategy import GROUP_STRATEGY, PRIVATE_USER1
 
 
@@ -182,6 +181,8 @@ class TestGroupBotInteraction:
 
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story("禁发关键词-仅撤回处置方式")
     @allure.title("命中违规关键词 - 触发群助手仅撤回-状态：已完成")
     def test_keyword_action_revoke(self):
@@ -209,6 +210,8 @@ class TestGroupBotInteraction:
             self._owner_enter_bot_setting()
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story("禁发关键词-警告处置方式")
     @allure.title("命中违规关键词 - 触发群助手撤回并群内@警告-状态：已完成")
     def test_keyword_action_warn(self):
@@ -247,6 +250,8 @@ class TestGroupBotInteraction:
             self._owner_enter_bot_setting()
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story("禁发关键词-禁言处置方式")
     @allure.title("命中违规关键词 - 触发群助手撤回并禁言发送者-状态：已完成")
     @pytest.mark.parametrize("rule_time", GroupBotPage.MUTE_DURATION_OPTIONS,
@@ -320,6 +325,8 @@ class TestGroupBotInteraction:
             self._owner_enter_bot_setting()
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story("禁发关键词-移除群聊处置方式")
     @allure.title("命中违规关键词 - 触发群助手撤回并移除发送者-状态：已完成")
     @pytest.mark.destructive

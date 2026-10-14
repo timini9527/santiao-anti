@@ -57,6 +57,8 @@ class TestChatSearch:
 
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('文本内容检索 - 消息存在')
     @allure.title('文本内容检索 - 消息存在-状态：已完成')
     @pytest.mark.parametrize(
@@ -90,6 +92,8 @@ class TestChatSearch:
             check.is_in(keyword, last_message, f"❌ 未能在聊天屏幕上找到包含关键字 '{keyword}' 的定位消息")
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('文本内容检索 - 消息不存在')
     @allure.title('文本内容检索 - 消息不存在-状态：已完成')
     @pytest.mark.parametrize(
@@ -112,6 +116,8 @@ class TestChatSearch:
             check.equal(results_count, 0, f"❌ 检索到包含关键字 '{keyword}' 的消息记录")
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('日期日历面板筛选聊天记录状态校验')
     @allure.title('日期日历面板筛选聊天记录状态校验-状态：已完成')
     @pytest.mark.parametrize('day_type, delta_days, expected_gray, send_msg_before', [
@@ -182,6 +188,8 @@ class TestChatSearch:
                         check.is_true(found, f"❌ OCR识别的文本列表 '{texts}' 中，均不包含目标日期 '{expected_date_str}' 或 '{target_day}'")
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('多媒体（图片/视频/文件）分类过滤定位测试')
     @allure.title('多媒体（图片/视频/文件）分类过滤定位测试-状态：已完成')
     @pytest.mark.parametrize(
@@ -218,6 +226,8 @@ class TestChatSearch:
                 check.is_true(image_hash in chat_image_hash, f'❌ 图片 hash 值不匹配')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('视频分类过滤定位测试')
     @allure.title('视频分类过滤定位测试-状态：已完成')
     @pytest.mark.parametrize(
@@ -255,6 +265,8 @@ class TestChatSearch:
                 check.is_true(video_duration in chat_video_duration, f'❌ 视频时长不匹配')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('文件分类过滤定位测试')
     @allure.title('文件分类过滤定位测试-状态：已完成')
     @pytest.mark.parametrize(
@@ -290,6 +302,8 @@ class TestChatSearch:
                 check.is_true(is_contained, f'❌ 文件名称不匹配')
 
 
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('群成员分类过滤定位测试')
     @allure.title('群成员分类过滤定位测试-状态：已完成')
     @pytest.mark.parametrize(

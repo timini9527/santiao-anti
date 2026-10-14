@@ -82,6 +82,8 @@ class TestContactTagGroup:
     # =========================================================================
     # 测试用例 (Testcases)
     # =========================================================================
+    @pytest.mark.p1
+    @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('新建与删除分组')
     @allure.title('FD_GROUP_TAG_001 - 正向创建好友分组、校验展示并成功删除闭环-状态：已完成')
     def test_create_and_delete_contact_group_normal(self):
@@ -103,6 +105,8 @@ class TestContactTagGroup:
                 self._cleanup_group(test_group_name)
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('删除分组')
     @allure.title('批量清空所有好友分组并校验列表为空-状态：已完成')
     @pytest.mark.destructive
@@ -132,6 +136,8 @@ class TestContactTagGroup:
                     self.tagGroupPage.delete_group_or_all_groups_flow(is_all=True)
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('分组边界')
     @allure.title('FD_GROUP_TAG_002 - 分组名称长度 30 字上限边界参数化校验-状态：已完成')
     @pytest.mark.parametrize('input_length, expected_length', [
@@ -162,6 +168,8 @@ class TestContactTagGroup:
                 self._cleanup_group(expected_name)
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('分组异常处理')
     @allure.title('FD_GROUP_TAG_003 - 尝试创建重复名称分组的拦截校验-状态：已完成')
     def test_duplicate_group_name_interception(self):

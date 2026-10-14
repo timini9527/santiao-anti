@@ -45,6 +45,8 @@ class TestGroupAvatar:
         self.groupAvatarPage.click_confirm_change_group_avatar()
         self.groupAvatarPage.wait_for_album_dialog()
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('群聊头像设置')
     @allure.title('从相册修改群聊头像-状态：已完成')
     @pytest.mark.parametrize('action_type, desc', [
@@ -83,6 +85,8 @@ class TestGroupAvatar:
             check.is_false(is_similar, f'❌ 修改前后的群头像哈希相似度过高，群头像未能成功更新。old: {old_hash}, new: {new_hash}')
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('群聊头像设置')
     @allure.title('修改群头像-拍照上传-状态：已完成')
     @pytest.mark.parametrize('photo_mode, desc', [
@@ -127,6 +131,8 @@ class TestGroupAvatar:
             check.is_false(is_similar, f'❌ 修改前后的群头像哈希相似度过高，群头像未能成功更新。old: {old_hash}, new: {new_hash}')
 
 
+    @pytest.mark.p2
+    @allure.severity(allure.severity_level.NORMAL)
     @allure.story('群聊头像设置')
     @allure.title('保存群头像到本地相册成功-状态：已完成')
     def test_save_group_avatar_to_album(self):

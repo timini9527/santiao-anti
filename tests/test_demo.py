@@ -2,13 +2,15 @@ import time
 from selenium.webdriver.support.ui import WebDriverWait
 import pytest
 import allure
-import sys
-import os
 from pages.home.home_page import HomePage
-from pages.personal.other_page import OtherPage
-from pages.login.login_page import LoginPage
-from utils.file_reader.csv_handler import RegionCrawler
 
+
+@pytest.mark.p2
+@allure.severity(allure.severity_level.NORMAL)
+@allure.epic('系统冒烟与通用功能')
+@allure.feature('通用启动与流程Demo')
+@allure.story('App启动与基础包名校验')
+@allure.title('验证App启动状态与基础会话流转-状态：已完成')
 def test_full_flow(driver_sender):
     wait = WebDriverWait(driver_sender, 15)
     HomePage(driver_sender).open_left_menu()
