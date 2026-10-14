@@ -50,9 +50,9 @@ pelican_bicycle.html
 build_desktop/
 build_native/
 scratch/
-desktop_app/logo_crop.png
-desktop_app/sant_logo_raw.png
-desktop_app/sant_logo_hd.png
+# desktop_app/logo_crop.png
+# desktop_app/sant_logo_raw.png
+# desktop_app/sant_logo_hd.png
 web_platform/backend/task_debug.log
 build_mac/
 qa_studio_app/
