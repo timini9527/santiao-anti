@@ -25,7 +25,7 @@ class HomePage(BasePage):
         """ 主页 - 点击打开侧边栏 """
         logger.info("[Action-Home] 主页 - 点击打开侧边栏")
         self.click(HomeLocator.LEFT_MENU, timeout=timeout)
-        time.sleep(1.5)
+        time.sleep(0.5)
 
     # 主页 - 点击主页标题
     def click_home_title(self, timeout: int = 2) -> None:

@@ -60,3 +60,7 @@ class CallLocator(CommonLocator):
 
     # 来电通知提示
     TV_AVCHAT_NOTIFY = (AppiumBy.ID, f'{PACKAGE_ID}/avchatAudioNotify')                         # 来电提示文本 (如 "邀请你语音通话" / "邀请你视频通话")
+    LL_EXIT = (AppiumBy.ID, f'{PACKAGE_ID}/llExit')                                             # 取消按钮
+    TV_EXIT = (AppiumBy.ID, f'{PACKAGE_ID}/tv_exit')                                            # 取消文本
+    LL3 = (AppiumBy.ID, f'{PACKAGE_ID}/ll3')                                                    # 发送消息按钮
+    IV_CALL_TEXT = (AppiumBy.ID, f'{PACKAGE_ID}/ivCallText')                                    # 发送消息文本

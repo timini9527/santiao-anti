@@ -1,7 +1,9 @@
 from locators.home.side_slip_locator import SideSlipLocator
 from core.logger_utils import logger
 from pages.home.home_page import HomePage
-
+from pages.home.left_menus.settings_center_page import SettingsCenterPage
+from pages.home.left_menus.account_security_page import AccountSecurityPage
+from pages.home.left_menus.privacy_protection_page import PrivacyProtectionPage
 
 
 
@@ -101,3 +103,5 @@ class SideSlipPage(HomePage):
         logger.info(f"🧐 [Action - SideSlip] 获取到菜单【{item_name}】的标题文本: {title}")
         return title
 
+
+    

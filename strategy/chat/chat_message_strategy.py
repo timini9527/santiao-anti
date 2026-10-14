@@ -136,6 +136,10 @@ class ChatMessageBuilder(ChatPage):
         pos = ChatPositionPage(self.driver)
         pos.open_panel_enter_location_page()
         pos.click_current_location_button()
+        toast = pos.get_toast(timeout=1.5)
+        if bool(toast):
+            logger.warning(f"🧪 [Setup] - DataBuilder 获取地理位置失败，无法发送: {toast}")
+            return
         pos.click_send_button()
         self.click_add_button()
 

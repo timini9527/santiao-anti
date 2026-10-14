@@ -126,3 +126,16 @@ class CallPage(BasePage):
         duration = self.get_attribute(CallLocator.AVCHAT_VIDEO_TIME, "text", raise_exception=False)
         logger.info(f"📞 [Action-Call] 获取通话时长结果: {duration}")
         return duration
+
+    # 音视频 - 点击取消按钮
+    def click_cancel(self) -> None:
+        """ 音视频 - 点击取消按钮 """
+        logger.info("📞 [Action-Call] 点击取消按钮")
+        self.click(CallLocator.LL_EXIT)
+    
+    # 音视频 - 点击发送消息按钮
+    def click_send_message(self) -> None:
+        """ 音视频 - 点击发送消息按钮 """
+        logger.info("📞 [Action-Call] 点击发送消息按钮")
+        self.click(CallLocator.LL3)
+

@@ -13,6 +13,9 @@ from pages.groups.setting.general.group_setting_page import GroupSettingPage
 from pages.groups.setting.manager.group_manager_page import GroupManagerPage
 from pages.chat.call.call_page import CallPage
 from pages.chat.mention.chat_mention_page import ChatMentionPage
+from pages.home.side_slip_page import SideSlipPage
+from pages.home.left_menus.settings_center_page import SettingsCenterPage
+from pages.home.left_menus.privacy_protection_page import PrivacyProtectionPage
 from strategy.chat.chat_strategy import (
     PRIVATE_USER1, 
     PRIVATE_USER2,
@@ -51,6 +54,9 @@ class TestChatListDouble:
         self.chatMentionS = ChatMentionPage(driver_sender)
         self.groupSettingS = GroupSettingPage(driver_sender)
         self.groupManagerS = GroupManagerPage(driver_sender)
+        self.sideSlipS = SideSlipPage(driver_sender)
+        self.settingsCenterS = SettingsCenterPage(driver_sender)
+        self.privacyProtectionS = PrivacyProtectionPage(driver_sender)
 
         self.mainR = MainPage(driver_receiver)
         self.homeR = HomePage(driver_receiver)
@@ -61,6 +67,9 @@ class TestChatListDouble:
         self.chatMentionR = ChatMentionPage(driver_receiver)
         self.groupSettingR = GroupSettingPage(driver_receiver)
         self.groupManagerR = GroupManagerPage(driver_receiver)
+        self.sideSlipR = SideSlipPage(driver_receiver)
+        self.settingsCenterR = SettingsCenterPage(driver_receiver)
+        self.privacyProtectionR = PrivacyProtectionPage(driver_receiver)
 
         with allure.step('前置准备：确认双端均安全返回并就绪于首页'):
             for main_page, side_desc in [(self.mainS, '发送端'), (self.mainR, '接收端')]:
@@ -146,6 +155,7 @@ class TestChatListDouble:
                 self.callR.wait_incoming_call_page_load()
                 self.callR.reject()
                 time.sleep(1)
+                self.callS.click_cancel()
                 self.chatS.click_back_button()
                 self.homeS.wait_home_page()
                 self.homeR.wait_home_page()
@@ -210,6 +220,13 @@ class TestChatListDouble:
         target_group = GROUP_STRATEGY2.name
         expected_text = "[群邀请确认]"
 
+        with allure.step(f'0. 校验进去邀请开关是否打开'):
+            self.homeR.open_left_menu()
+            self.sideSlipR.click_setting()
+            self.settingsCenterR.click_privacy_protection()
+            self.privacyProtectionR.click_switch_group_invite_confirm('true')
+            self.mainR.go_to_main_page()
+
         with allure.step(f'1. 发送端进入群聊【{target_group}】并打开群设置'):
             self.chatListS.enter_chat(target_group)
             self.chatS.wait_for_chat_page_load()
@@ -231,7 +248,6 @@ class TestChatListDouble:
         with allure.step('3. 发送端安全退回首页，确保双端主页面加载就绪'):
             self.mainS.go_to_main_page()
             self.homeS.wait_home_page()
-            self.homeR.wait_home_page()
 
         with allure.step(f'4. 验证接收端在与【{PRIVATE_USER3.name}】私聊会话列表中展示包含: {expected_text}'):
             actual_content_r = self.homeR.get_message_by_name(PRIVATE_USER3.name, expected_text=expected_text, timeout=10)
@@ -263,6 +279,12 @@ class TestChatListDouble:
                         f'❌ 接收端私聊会话内未检测到有效的群邀请确认消息, 实际内容为: {invite_msg_text}')
             self.chatR.click_back_button()
             self.homeR.wait_home_page()
+        
+        with allure.step(f'6. 接收端关闭群邀请确认'):
+            self.homeR.open_left_menu()
+            self.sideSlipR.click_setting()
+            self.settingsCenterR.click_privacy_protection()
+            self.privacyProtectionR.click_switch_group_invite_confirm('false')
 
 
     @allure.story('群聊@强提醒与核销双端协同')
