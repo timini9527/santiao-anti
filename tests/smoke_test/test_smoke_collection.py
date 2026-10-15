@@ -12,7 +12,7 @@ from pages.mine.collection.collection_page import CollectionPage
 from pages.mine.collection.chat_collection_page import ChatCollectionPage
 from pages.home.side_slip_page import SideSlipPage
 from pages.chat_options.images.chat_image_page import ChatImagePage
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, PRIVATE_USER3
 
 class BaseSmokeCollectionSingle:
@@ -242,7 +242,7 @@ class TestSmokeCollectionDouble(BaseSmokeCollectionSingle):
                 self.mainPage.go_to_main_page()
                 self.mainPageR.go_to_main_page()
             except Exception as e:
-                logger.warning(f'⚠️ [Cleanup] 双端清理返回首页异常: {e}')
+                logger.warning(f'{LogIcon.WARN} 双端清理返回首页异常: {e}')
 
     @pytest.mark.p1
     @allure.severity(allure.severity_level.CRITICAL)

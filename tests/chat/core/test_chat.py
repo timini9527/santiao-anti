@@ -1,7 +1,7 @@
 import allure
 import pytest
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.chat.core.chat_page import ChatPage
 from pages.chat.list.chat_list_page import ChatListPage
@@ -29,12 +29,12 @@ class TestChat:
         """测试类执行结束的兜底清理，确保会话关闭并退回主页"""
         if cls._in_chat and cls._class_driver:
             try:
-                logger.info('🧹 [Class Teardown] 测试类结束，释放会话锁并退回主页')
+                logger.info(f'{LogIcon.SETUP} [Class Teardown] 测试类结束，释放会话锁并退回主页')
                 cls._in_chat = False
                 cls._chat_target = None
                 MainPage(cls._class_driver).go_to_main_page()
             except Exception as e:
-                logger.error(f'[Class Teardown] 返回主页失败: {e}')
+                logger.error(f'{LogIcon.FAIL} [Class Teardown] 返回主页失败: {e}')
 
     @pytest.fixture(autouse=False)
     def setup(self, driver_sender, message_page, request):
@@ -52,30 +52,30 @@ class TestChat:
             try:
                 self.mainPage.go_to_main_page()
             except Exception as e:
-                logger.error(f'⚠️ [Teardown] 异常自愈退回首页失败: {e}')
+                logger.error(f'{LogIcon.WARN} 异常自愈退回首页失败: {e}')
         else:
-            logger.info(f'🔒 [Teardown] 会话保持在【{self.__class__._chat_target}】，跳过退回主页')
+            logger.info(f'{LogIcon.SETUP} 🔒 [Teardown] 会话保持在【{self.__class__._chat_target}】，跳过退回主页')
 
     def _enter_chat(self, chat_name: str) -> None:
         """进入指定的聊天会话（支持同会话直接复用，跨会话自动退回主页重新进入）"""
         if self.__class__._chat_target != chat_name:
             if self.__class__._in_chat:
-                logger.info(f'🔄 [Lock] 会话切换: {self.__class__._chat_target} -> {chat_name}，退回主页重新进入')
+                logger.info(f'{LogIcon.ACTION} [Lock] 会话切换: {self.__class__._chat_target} -> {chat_name}，退回主页重新进入')
                 try:
                     self.mainPage.go_to_main_page()
                 except Exception as e:
-                    logger.error(f'⚠️ [Error] 切换会话退回主页失败: {e}')
+                    logger.error(f'{LogIcon.WARN} 切换会话退回主页失败: {e}')
             self.__class__._in_chat = False
             self.__class__._chat_target = chat_name
 
         if not self.__class__._in_chat:
             self.chatListPage.enter_chat(chat_name)
             self.__class__._in_chat = True
-            logger.info(f'🔓 [Lock] 已成功进入与【{chat_name}】的会话，开启会话保持锁')
+            logger.info(f'{LogIcon.SUCCESS} 🔓 [Lock] 已成功进入与【{chat_name}】的会话，开启会话保持锁')
 
     def _reenter_chat(self, chat_name: str) -> None:
         """重新进入当前会话：用于大批量消息发送后刷新视口并强制锚定至最新消息底部"""
-        logger.info(f"🔄 [Re-enter] 重新进入与【{chat_name}】的会话以刷新最新消息视口...")
+        logger.info(f"{LogIcon.ACTION} [Re-enter] 重新进入与【{chat_name}】的会话以刷新最新消息视口...")
         self.mainPage.go_to_main_page()
         self.__class__._in_chat = False
         self._enter_chat(chat_name)

@@ -10,7 +10,7 @@ from pages.common.session_select_page import SessionSelectPage
 from pages.common.contact_select_page import ContactSelectPage
 from pages.home.home_page import HomePage
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.chat.setting.chat_setting_page import ChatSettingPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, PRIVATE_DISABLE1, PRIVATE_DISABLE2, GROUP_STRATEGY
 
@@ -52,7 +52,7 @@ class TestGroupCreate:
         actual_group_count = 1
         selected_count = self.contactSelectPage.select_x_random_friends(x=batch_size)
         if selected_count == 0:
-            logger.warning('没有足够的可选好友，返回')
+            logger.warning(f'{LogIcon.WARN} 没有足够的可选好友，返回')
             pytest.skip('⏭️ 测试环境好友数量不足，跳过该用例。')
         initial = self.contactSelectPage.get_first_contact_initial()
         self.contactSelectPage.click_action_button()
@@ -68,7 +68,7 @@ class TestGroupCreate:
                 actual_group_count = group_number
             remaining_need = total_needed - actual_group_count
             if remaining_need <= 0:
-                logger.info(f'✅ 群聊已达到预期人数: {actual_group_count}')
+                logger.info(f'{LogIcon.SUCCESS} 群聊已达到预期人数: {actual_group_count}')
                 break
             current_batch_need = min(batch_size, remaining_need)
             message_texts = self.groupCreatePage.get_message_text_elements()
@@ -82,24 +82,24 @@ class TestGroupCreate:
             if friend_headers and len(friend_headers) >= 2:
                 friend_headers[-2].click()
             else:
-                logger.warning('无法找到添加成员按钮，退出循环')
+                logger.warning(f'{LogIcon.WARN} 无法找到添加成员按钮，退出循环')
                 break
             selected_count, clicked_names, initial_new = self.groupCreatePage.select_x_friends_with_exclusion(current_batch_need, exclude_names, initial)
             if selected_count == 0:
-                logger.warning('当前批次未能选择到任何有效好友，结束建群')
+                logger.warning(f'{LogIcon.WARN} 当前批次未能选择到任何有效好友，结束建群')
                 self.groupCreatePage.click_iv_back_button()
                 break
             self.groupCreatePage.click_edit_to_next()
             add_toast = self.groupCreatePage.get_toast()
-            logger.info(f'加人Toast: {add_toast}')
+            logger.info(f'{LogIcon.ACTION} 加人Toast: {add_toast}')
             self.chatPage.wait_banner_message_disappear()
             if '该用户状态异常，无法邀请其加入群聊' in add_toast:
-                logger.warning('该用户状态异常，无法邀请其加入群聊')
+                logger.warning(f'{LogIcon.WARN} 该用户状态异常，无法邀请其加入群聊')
                 exclude_names.extend(clicked_names)
                 time.sleep(1)
                 self.selectPage.click_back_button()
             elif '群成员已达上限！' in add_toast:
-                logger.warning('群成员已达上限，结束建群')
+                logger.warning(f'{LogIcon.WARN} 群成员已达上限，结束建群')
                 time.sleep(1)
                 self.selectPage.click_back_button()
             else:
@@ -108,7 +108,7 @@ class TestGroupCreate:
             try:
                 self.groupCreatePage.click_iv_back_button()
             except Exception:
-                logger.warning('⚠️ UI返回按钮点击失效，执行系统物理返回键兜底...')
+                logger.warning(f'{LogIcon.WARN} UI返回按钮点击失效，执行系统物理返回键兜底...')
                 self.groupCreatePage.back()
         return actual_group_count
 
@@ -278,7 +278,7 @@ class TestGroupCreate:
                         check.less_equal(actual_group_count, max_expected_count, f'❌ 建群失败或降级成了单聊，群聊人数低于3人，标题: {title}, 勾选人数: {actual_selected}')
                         check.greater_equal(actual_group_count, 3, f'❌ 群聊实际人数异常，标题: {title}, 勾选人数: {actual_selected}')
                         if actual_group_count != num_friends + 1:
-                            logger.warning(f'⚠️ 部分被邀请用户可能为停用/注销状态，已被排除。勾选人数: {actual_selected}, 预期最多人数: {num_friends + 1}, 实际群人数: {actual_group_count}')
+                            logger.warning(f'{LogIcon.WARN} 部分被邀请用户可能为停用/注销状态，已被排除。勾选人数: {actual_selected}, 预期最多人数: {num_friends + 1}, 实际群人数: {actual_group_count}')
             elif num_friends >= 50:
                 toast = self.contactSelectPage.get_toast()
                 check.is_in('一次性邀请人数过多，请分批邀请', toast, f'❌ 未弹出正确的Toast提示')

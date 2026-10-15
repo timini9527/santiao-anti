@@ -3,7 +3,7 @@ import pytest
 import time
 import pytest_check as check
 
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.common.contact_select_page import ContactSelectPage
 from pages.friend.profile.contact_detail_page import ContactDetailPage
 from pages.home.home_page import HomePage
@@ -36,7 +36,7 @@ class TestFriendList:
         try:
             self.mainPage.go_to_main_page()
         except Exception as error:
-            logger.error(f"⚠️ [Teardown] 返回主页失败: {error}")
+            logger.error(f"{LogIcon.WARN} 返回主页失败: {error}")
 
 
     @pytest.mark.p2

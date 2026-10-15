@@ -2,7 +2,7 @@ import time
 import allure
 import pytest
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.groups.create.group_create_page import GroupCreatePage
@@ -42,11 +42,11 @@ class TestGroupCreateDouble:
         try:
             self.mainPageS.go_to_main_page()
         except Exception as e:
-            logger.warning(f'⚠️ [Teardown] A 端返回首页失败: {e}')
+            logger.warning(f'{LogIcon.WARN} A 端返回首页失败: {e}')
         try:
             self.mainPageR.go_to_main_page()
         except Exception as e:
-            logger.warning(f'⚠️ [Teardown] B 端返回首页失败: {e}')
+            logger.warning(f'{LogIcon.WARN} B 端返回首页失败: {e}')
 
     @pytest.mark.p1
     @allure.severity(allure.severity_level.CRITICAL)
@@ -70,7 +70,7 @@ class TestGroupCreateDouble:
             try:
                 func()
             except Exception as e:
-                logger.error(f'❌ 线程 [{thread_key}] 执行异常: {e}')
+                logger.error(f'{LogIcon.FAIL} 线程 [{thread_key}] 执行异常: {e}')
                 thread_exceptions[thread_key] = e
 
         def run_parallel(func_a, func_b):
@@ -114,14 +114,14 @@ class TestGroupCreateDouble:
                 is_in_chat_sender = self.chatPageS.wait_for_chat_page_load()
                 check.is_true(is_in_chat_sender, '❌ A端建群失败，未能进入群聊页面')
                 res_dict['group_name_a'] = self.chatPageS.get_top_name()
-                logger.info(f"✅ A端创建的群一名称: {res_dict['group_name_a']}")
+                logger.info(f"{LogIcon.SUCCESS} A端创建的群一名称: {res_dict['group_name_a']}")
                 self.chatPageS.send_message(msg_from_a)
 
             def chat_init_send_b():
                 is_in_chat_receiver = self.chatPageR.wait_for_chat_page_load()
                 check.is_true(is_in_chat_receiver, '❌ B端建群失败，未能进入群聊页面')
                 res_dict['group_name_b'] = self.chatPageR.get_top_name()
-                logger.info(f"✅ B端创建的群二名称: {res_dict['group_name_b']}")
+                logger.info(f"{LogIcon.SUCCESS} B端创建的群二名称: {res_dict['group_name_b']}")
                 self.chatPageR.send_message(msg_from_b)
             run_parallel(chat_init_send_a, chat_init_send_b)
         with allure.step('4. 并发步骤：发信后，双端均退回到主页聊天会话列表'):
@@ -223,7 +223,7 @@ class TestGroupCreateDouble:
             is_in_chat_sender = self.chatPageS.wait_for_chat_page_load(timeout=15)
             check.is_true(is_in_chat_sender, '❌ A端建群后未能成功进入群聊主界面')
             group_name = self.chatPageS.get_top_name()
-            logger.info(f'✅ A端进入群聊成功，自动生成的默认群聊名称为: {group_name}')
+            logger.info(f'{LogIcon.SUCCESS} A端进入群聊成功，自动生成的默认群聊名称为: {group_name}')
         with allure.step(f"4. A端在群聊中发送首发消息: '{group_first_msg}'"):
             self.chatPageS.send_message(group_first_msg)
         with allure.step('5. B端等待会话通知刷新并进入群聊'):

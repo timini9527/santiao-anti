@@ -1,6 +1,6 @@
 import hashlib
 from appium.webdriver import WebElement
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 
 
 
@@ -18,7 +18,7 @@ class AvatarComparator:
 
         # 计算 MD5
         md5_hash = hashlib.md5(img_bytes).hexdigest()
-        logger.info(f"📸 获取到元素 {imageElement} 的图片 Hash: {md5_hash}")
+        logger.info(f"{LogIcon.CAMERA} 获取到元素 {imageElement} 的图片 Hash: {md5_hash}")
         return md5_hash
 
 

@@ -6,7 +6,7 @@ from pages.main.main_page import MainPage
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_page import ChatPage
 from pages.chat.core.chat_long_press_page import ChatLongPressPage
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from strategy.chat.chat_message_strategy import MessageTypeStrategy, ChatMessageBuilder
 from pages.home.side_slip_page import SideSlipPage
 from pages.home.home_page import HomePage
@@ -41,7 +41,7 @@ class TestChatLongPress:
         """辅助方法：在当前会话中发送待测消息"""
         self.messageBuilder.build_message(msg_type)
         is_sent = self.chatPage.wait_for_last_message_send_status()
-        check.is_true(is_sent, f'❌ 消息【{msg_type}】未能成功发送上屏 或 发送失败')
+        assert is_sent, f'❌ 前置准备阶段：消息【{msg_type}】未能成功发送上屏，强制终止后续测试'
 
     @pytest.mark.p1
     @allure.severity(allure.severity_level.CRITICAL)
@@ -190,7 +190,8 @@ class TestChatLongPress:
         with allure.step(f'6. 选择好友【{strategy.name}】进行转发'):
             is_select = self.contactSelectPage.forward_select_contact_by_name(name=strategy.name)
             check.is_true(is_select, f'❌ 未能选择转发对象: {strategy.name}')
-            self.sessionSelectPage.click_finish_button()
+            self.sessionSelectPage.wait_for_share_dialog_load()
+            self.sessionSelectPage.send_share_and_verify_toast()
             self.chatPage.wait_for_last_message_send_status()
             re_data = self.messageBuilder.get_message_feature(msg_type)
             if msg_type == 'package':
@@ -385,7 +386,7 @@ class TestChatLongPress:
                 if '撤回/删除' in strategy_model.expected_menus or '删除' in strategy_model.expected_menus:
                     valid_msg_list.append(m_type)
                 else:
-                    logger.info(f'⏭️ {m_type} 消息类型不支持【删除】，过滤跳过')
+                    logger.info(f"{LogIcon.STEP} {m_type} 消息类型不支持【删除】，过滤跳过")
                     
         if not valid_msg_list:
             pytest.skip('⏭️ 当前列表中无任何支持【删除】的消息类型，跳过用例')
@@ -404,12 +405,12 @@ class TestChatLongPress:
                             continue
                     successfully_sent_types.append(m_type)
                 except Exception as e:
-                    logger.error(f'❌ 发送 {m_type} 消息过程中崩溃: {e}')
+                    logger.error(f"{LogIcon.FAIL} 发送 {m_type} 消息过程中崩溃: {e}")
                     for _ in range(5):
                         if self.chatPage.is_element_exist(ChatLocator.ADD_BUTTON, timeout=1):
-                            logger.info(f'✅ 已成功从 {m_type} 失败状态恢复到聊天页面，继续执行下一类型')
+                            logger.info(f"{LogIcon.SUCCESS} 已成功从 {m_type} 失败状态恢复到聊天页面，继续执行下一类型")
                             break
-                        logger.warning(f'⚠️ {m_type} 测试卡在其他页面，正在尝试按返回键恢复...')
+                        logger.warning(f"{LogIcon.WARN} {m_type} 测试卡在其他页面，正在尝试按返回键恢复...")
                         self.chatPage.back_to_chat_page()
 
         if not successfully_sent_types:
@@ -417,7 +418,7 @@ class TestChatLongPress:
 
         with allure.step(f'4. 批量验证并从下往上删除'):
             for m_type in reversed(successfully_sent_types):
-                logger.info(f'正在执行删除验证，类型: {m_type}')
+                logger.info(f"{LogIcon.ACTION} 正在执行删除验证，类型: {m_type}")
                 try:
                     self.longPressPage.long_press_last_message(msg_type=m_type)
                     is_ok = self.longPressPage._execute_and_verify_menu_item('删除')
@@ -425,5 +426,5 @@ class TestChatLongPress:
                     current = self.messageBuilder.get_message_feature(m_type, expect_missing=True)
                     check.not_equal(current, pre_data[m_type], f'❌ 【{m_type}】删除后消息仍存在')
                 except Exception as e:
-                    logger.error(f'❌ 验证删除 {m_type} 时发生异常: {e}')
+                    logger.error(f"{LogIcon.FAIL} 验证删除 {m_type} 时发生异常: {e}")
                     check.is_true(False, f'❌ 验证删除 {m_type} 时发生异常: {e}')

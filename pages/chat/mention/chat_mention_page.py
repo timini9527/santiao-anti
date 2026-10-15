@@ -3,7 +3,7 @@ from typing import Optional
 from appium.webdriver.common.appiumby import AppiumBy
 from common.base_page import BasePage
 from locators.chat.mention.chat_mention_locator import ChatMentionLocator
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 
 
 class ChatMentionPage(BasePage):
@@ -19,58 +19,58 @@ class ChatMentionPage(BasePage):
     # 等待选人列表加载就绪
     def wait_for_mention_page_load(self, timeout: int = 5) -> bool:
         """ 等待群聊@选人界面加载就绪 """
-        logger.info(f"⏳ [Action-Mention] 等待群聊@选人页面加载就绪 (超时: {timeout}s)...")
+        logger.info(f"{LogIcon.WAIT} 等待群聊@选人页面加载就绪 (超时: {timeout}s)...")
         st = self.is_element_exist(ChatMentionLocator.MEMBER_LIST_RV, timeout=timeout, raise_exception=False)
         if not st:
             st = self.is_element_exist(ChatMentionLocator.LL_AT_ALL, timeout=2, raise_exception=False)
-        logger.info(f"✅ [Action-Mention] 选人页面就绪状态: {st}")
+        logger.info(f"{LogIcon.SUCCESS} 选人页面就绪状态: {st}")
         return st
 
     # 等待选人列表退出关闭
     def wait_for_mention_page_close(self, timeout: int = 3) -> bool:
         """ 等待群聊@选人界面成功退出并销毁 """
-        logger.info(f"⏳ [Action-Mention] 等待群聊@选人页面退出关闭 (超时: {timeout}s)...")
+        logger.info(f"{LogIcon.WAIT} 等待群聊@选人页面退出关闭 (超时: {timeout}s)...")
         res = self.wait_until_element_disappear(ChatMentionLocator.MEMBER_LIST_RV, timeout=timeout)
-        logger.info(f"✅ [Action-Mention] 选人页面关闭状态: {res}")
+        logger.info(f"{LogIcon.SUCCESS} 选人页面关闭状态: {res}")
         return res
 
     # 顶部导航栏 - 点击返回/取消按钮
     def click_back_button(self) -> None:
         """ 点击顶部返回按钮取消@选人 """
-        logger.info("🔙 [Action-Mention] 点击顶部返回按钮")
+        logger.info(f"{LogIcon.ACTION} 点击顶部返回按钮")
         self.click(ChatMentionLocator.BACK_BTN)
 
     # 顶部导航栏 - 获取页面标题文本
     def get_title_text(self, timeout: int = 2) -> str:
         """ 获取选人页面顶部标题文本 """
-        logger.info("📖 [Action-Mention] 获取选人页面顶部标题文本")
+        logger.info(f"{LogIcon.FIND} 📖 [Action-Mention] 获取选人页面顶部标题文本")
         title = self.get_attribute(ChatMentionLocator.TV_TITLE, "text", timeout=timeout, raise_exception=False)
-        logger.info(f"✅ [Action-Mention] 获取页面标题: '{title}'")
+        logger.info(f"{LogIcon.SUCCESS} 获取页面标题: '{title}'")
         return title or ""
 
     # 顶部导航栏 - 点击确认/完成按钮
     def click_confirm_btn(self) -> None:
         """ 点击右上角确认/完成按钮 """
-        logger.info("⚙️ [Action-Mention] 点击右上角确认/完成按钮")
+        logger.info(f"{LogIcon.SETUP} 点击右上角确认/完成按钮")
         self.click(ChatMentionLocator.CONFIRM_BTN)
 
     # 检查【@所有人】选项是否可见
     def is_at_all_displayed(self, timeout: int = 2) -> bool:
         """ 检查【@所有人】整行选项是否可见（用于群管理权限校验） """
         res = self.is_element_exist(ChatMentionLocator.LL_AT_ALL, timeout=timeout, raise_exception=False)
-        logger.info(f"🔍 [Action-Mention] 检查【@所有人】可见性: {res}")
+        logger.info(f"{LogIcon.FIND} 检查【@所有人】可见性: {res}")
         return res
 
     # 点击选择【@所有人】
     def click_at_all(self) -> None:
         """点击选择【@所有人】选项"""
-        logger.info("🔘 [Action-Mention] 点击选择【@所有人】选项")
+        logger.info(f"{LogIcon.ACTION} 🔘 [Action-Mention] 点击选择【@所有人】选项")
         self.click(ChatMentionLocator.LL_AT_ALL, force_wait=True)
 
     # 在群成员列表中查找并点击选择指定成员
     def click_member_by_name(self, name: str) -> None:
         """在群成员列表中根据姓名选择指定群成员"""
-        logger.info(f"🔘 [Action-Mention] 在群成员列表中选择成员【{name}】")
+        logger.info(f"{LogIcon.ACTION} 🔘 [Action-Mention] 在群成员列表中选择成员【{name}】")
         self.click(ChatMentionLocator.get_member_item_by_name(name), force_wait=True)
 
     # 统一选人入口

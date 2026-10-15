@@ -1,3 +1,4 @@
+from core.logger_utils import logger, LogIcon
 """
 配置驱动型 Locust 接口性能压测主入口 (locustfile.py)
 架构特性：
@@ -32,14 +33,14 @@ CONFIG_FILE = CURRENT_DIR / "config" / "perf_config.yaml"
 def load_perf_interfaces() -> List[Dict[str, Any]]:
     """从 perf_config.yaml 中加载用户自定义的接口列表"""
     if not CONFIG_FILE.exists():
-        print(f"⚠️ [配置未找到] 未检测到配置文件: {CONFIG_FILE}")
+        logger.warning(f"{LogIcon.WARN} [配置未找到] 未检测到配置文件: {CONFIG_FILE}")
         return []
     try:
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
             return data.get("interfaces", [])
     except Exception as e:
-        print(f"❌ [配置解析失败] 读取 interfaces 出现异常: {e}")
+        logger.error(f"{LogIcon.FAIL} [配置解析失败] 读取 interfaces 出现异常: {e}")
         return []
 
 
@@ -250,30 +251,30 @@ ZH_CN_INJECT_SCRIPT = """
 def on_test_start(environment, **kwargs) -> None:
     """压测启动前事件：输出当前已生效的自定义接口矩阵"""
     ifaces = [i for i in load_perf_interfaces() if i.get("enabled", True)]
-    print("\n=======================================================")
-    print("🚀 [配置驱动压测引擎] 启动就绪！")
-    print(f"📋 当前生效的自定义接口数量: {len(ifaces)} 个")
+    # 分隔线日志
+    logger.info(f"{LogIcon.SETUP} [配置驱动压测引擎] 启动就绪！")
+    logger.info(f"{LogIcon.SETUP} 当前生效的自定义接口数量: {len(ifaces)} 个")
     for idx, item in enumerate(ifaces, 1):
-        print(f"   {idx}. [{item.get('method', 'GET').upper()}] {item.get('name')} -> {item.get('path')} (权重: {item.get('weight', 1)})")
-    print("⚡ 引擎核心: FastHttpUser (基于 C 解析器极速并发)")
-    print("🇨🇳 界面语言: 已注入地道中文专业汉化补丁")
-    print("=======================================================\n")
+        logger.info(f"{LogIcon.ACTION} {idx}. [{item.get('method', 'GET').upper()}] {item.get('name')} -> {item.get('path')} (权重: {item.get('weight', 1)})")
+    logger.info(f"{LogIcon.SETUP} 引擎核心: FastHttpUser (基于 C 解析器极速并发)")
+    logger.info(f"{LogIcon.ACTION} 🇨🇳 界面语言: 已注入地道中文专业汉化补丁")
+    # 分隔线日志
 
 
 @events.test_stop.add_listener
 def on_test_stop(environment, **kwargs) -> None:
     """压测结束事件：打印质量门禁统计摘要"""
     stats = environment.stats.total
-    print("\n=======================================================")
-    print("🏁 [自定义接口压测] 压测执行完毕，指标汇总统计：")
-    print(f"📊 总请求数: {stats.num_requests}")
-    print(f"❌ 失败请求数: {stats.num_failures}")
+    # 分隔线日志
+    logger.info(f"{LogIcon.ACTION} 🏁 [自定义接口压测] 压测执行完毕，指标汇总统计：")
+    logger.info(f"{LogIcon.ACTION} 📊 总请求数: {stats.num_requests}")
+    logger.error(f"{LogIcon.FAIL} 失败请求数: {stats.num_failures}")
     failure_rate = (stats.num_failures / stats.num_requests * 100) if stats.num_requests > 0 else 0.0
-    print(f"📉 失败率: {failure_rate:.2f}%")
-    print(f"⏱️ 平均响应时间: {stats.avg_response_time:.2f} ms")
-    print(f"⏱️ 中位数 (P50): {stats.median_response_time} ms")
-    print(f"⏱️ 95% 分位数 (P95): {stats.get_response_time_percentile(0.95)} ms")
-    print(f"⏱️ 99% 分位数 (P99): {stats.get_response_time_percentile(0.99)} ms")
-    print(f"🚀 当前吞吐量 (RPS): {stats.current_rps:.2f}")
-    print("=======================================================\n")
+    logger.error(f"{LogIcon.FAIL} 📉 失败率: {failure_rate:.2f}%")
+    logger.info(f"{LogIcon.SETUP} 平均响应时间: {stats.avg_response_time:.2f} ms")
+    logger.info(f"{LogIcon.SETUP} 中位数 (P50): {stats.median_response_time} ms")
+    logger.info(f"{LogIcon.SETUP} 95% 分位数 (P95): {stats.get_response_time_percentile(0.95)} ms")
+    logger.info(f"{LogIcon.SETUP} 99% 分位数 (P99): {stats.get_response_time_percentile(0.99)} ms")
+    logger.info(f"{LogIcon.SETUP} 当前吞吐量 (RPS): {stats.current_rps:.2f}")
+    # 分隔线日志
 

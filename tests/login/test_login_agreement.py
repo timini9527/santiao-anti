@@ -2,7 +2,7 @@ import pytest
 import allure
 import pytest_check as check
 from pages.login.login_page import LoginPage
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from utils.cv_recognition.ocr_utils import OcrUtils
 
 @allure.epic('IM核心功能测试')
@@ -17,11 +17,11 @@ class TestLoginAgreement:
         """智能路由：进入手机号登录表单"""
         self.loginPage = LoginPage(driver_sender)
         if not TestLoginAgreement._has_entered_phone_login:
-            logger.info('🚀 首次进入手机号表单，执行点击操作。')
+            logger.info(f'{LogIcon.ACTION} 首次进入手机号表单，执行点击操作。')
             self.loginPage.click_phone_login_button()
             TestLoginAgreement._has_entered_phone_login = True
         else:
-            logger.debug('⚡ 检测到已经处于手机号表单页，跳过点击，直接开始测试。')
+            logger.debug(f'{LogIcon.ACTION} 检测到已经处于手机号表单页，跳过点击，直接开始测试。')
         yield
 
     @pytest.fixture(autouse=True)
@@ -50,7 +50,7 @@ class TestLoginAgreement:
     @pytest.mark.parametrize('agreement_name, expected_title, is_popup, click_login_btn', [pytest.param('《用户协议》', '三条软件许可及服务协议', False, False, id='Main_UserAgreement'), pytest.param('《隐私协议》', '三条软件 隐私政策', False, False, id='Main_PrivacyPolicy'), pytest.param('《未成年人个人信息保护规则》', '三条未成年人及儿童隐私保护政策', False, False, id='Main_ChildrenPrivacy'), pytest.param('《用户协议》', '三条软件许可及服务协议', True, True, id='Popup_UserAgreement'), pytest.param('《隐私协议》', '三条软件 隐私政策', True, False, id='Popup_PrivacyPolicy'), pytest.param('《未成年人个人信息保护规则》', '三条未成年人及儿童隐私保护政策', True, False, id='Popup_ChildrenPrivacy')])
     def test_verify_agreements_jump(self, agreement_name, expected_title, is_popup, click_login_btn):
         allure.dynamic.title(f"{('弹窗' if is_popup else '主页')}-{agreement_name}验证")
-        logger.info(f"🚀 开始执行专属用例: {('弹窗' if is_popup else '主页')}-{agreement_name}验证")
+        logger.info(f"{LogIcon.ACTION} 开始执行专属用例: {('弹窗' if is_popup else '主页')}-{agreement_name}验证")
         with allure.step('1. 点击登录按钮（以触发弹窗）'):
             if click_login_btn:
                 self.loginPage.click_login_button()

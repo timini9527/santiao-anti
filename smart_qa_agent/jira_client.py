@@ -1,3 +1,4 @@
+from core.logger_utils import logger, LogIcon
 import os
 import json
 import requests
@@ -57,7 +58,7 @@ class JiraClient:
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(mock_bug_data, f, indent=4, ensure_ascii=False)
             
-            print(f"[提示]: 未检测到完整 Jira 环境变量。Bug 数据已输出到本地 file: {file_path}")
+            logger.warning(f"{LogIcon.WARN} [提示]: 未检测到完整 Jira 环境变量。Bug 数据已输出到本地 file: {file_path}")
             return f"LOCAL_MOCK_FILE: {file_path}"
 
         # 真实 Jira 创建请求
@@ -95,12 +96,12 @@ class JiraClient:
             )
             if response.status_code in [200, 201]:
                 issue_key = response.json().get("key")
-                print(f"[Jira] 成功在 Jira 创建 Bug 单: {issue_key}")
+                logger.info(f"{LogIcon.SUCCESS} [Jira] 成功在 Jira 创建 Bug 单: {issue_key}")
                 return issue_key
             else:
-                print(f"[Jira] Jira 创建失败 (HTTP {response.status_code}): {response.text}")
+                logger.error(f"{LogIcon.FAIL} [Jira] Jira 创建失败 (HTTP {response.status_code}): {response.text}")
                 # 失败时做个兜底保存
                 return f"ERROR_FALLBACK: {response.text}"
         except Exception as e:
-            print(f"[Jira] 连接 Jira 发生网络异常: {e}")
+            logger.error(f"{LogIcon.FAIL} [Jira] 连接 Jira 发生网络异常: {e}")
             return f"ERROR_FALLBACK_EXCEPTION: {e}"

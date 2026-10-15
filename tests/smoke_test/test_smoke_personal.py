@@ -6,7 +6,7 @@ from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.home.side_slip_page import SideSlipPage
 from pages.personal.other_page import OtherPage
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 
 class BaseSmokePersonal:
     """个人资料模块测试基类"""
@@ -36,11 +36,11 @@ class BaseSmokePersonal:
         yield
         with allure.step('类后置步骤：所有用例执行完毕，返回首页'):
             try:
-                logger.info('🧹 [Class Teardown] 恢复页面状态至首页...')
+                logger.info(f'{LogIcon.SETUP} [Class Teardown] 恢复页面状态至首页...')
                 other_page.back_to_personal_info()
                 main_page.go_to_main_page()
             except Exception as e:
-                logger.error(f'❌ [Class Teardown] 状态恢复失败: {e}')
+                logger.error(f'{LogIcon.FAIL} [Class Teardown] 状态恢复失败: {e}')
 
     @pytest.fixture(autouse=True)
     def setup_base(self, driver_sender):
@@ -90,7 +90,7 @@ class TestSmokePersonal(BaseSmokePersonal):
                         self.otherPage.change_nickname(pre_nickname)
                         self.otherPage.click_done()
                 except Exception as e:
-                    logger.error(f'⚠️ [Teardown] 还原原始昵称异常: {e}')
+                    logger.error(f'{LogIcon.WARN} 还原原始昵称异常: {e}')
 
     @pytest.mark.p2
     @allure.severity(allure.severity_level.NORMAL)
@@ -120,7 +120,7 @@ class TestSmokePersonal(BaseSmokePersonal):
                     if ('*' in final_phone) != is_initially_hidden:
                         self.otherPage.click_phone_eyes()
                 except Exception as e:
-                    logger.error(f'⚠️ [Teardown] 恢复手机号初始显示状态异常: {e}')
+                    logger.error(f'{LogIcon.WARN} 恢复手机号初始显示状态异常: {e}')
 
     @pytest.mark.p2
     @allure.severity(allure.severity_level.NORMAL)
@@ -147,5 +147,5 @@ class TestSmokePersonal(BaseSmokePersonal):
                 try:
                     self.otherPage.click_qrcode_back()
                 except Exception as e:
-                    logger.warning(f'⚠️ [Teardown] 退出二维码页面异常，尝试备用返回: {e}')
+                    logger.warning(f'{LogIcon.WARN} 退出二维码页面异常，尝试备用返回: {e}')
                     self.otherPage.back_to_personal_info()

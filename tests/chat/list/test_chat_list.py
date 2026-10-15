@@ -3,7 +3,7 @@ from typing import Optional
 import allure
 import pytest
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.setting.chat_setting_page import ChatSettingPage
 from pages.home.home_page import HomePage
@@ -41,12 +41,12 @@ class TestChatList:
             self.mainPage.go_to_main_page()
             self.chatListPage._quick_slide_to_top()
         except Exception as e:
-            logger.warning(f'Setup 预置首页状态异常: {e}')
+            logger.warning(f'{LogIcon.WARN} Setup 预置首页状态异常: {e}')
         yield
         try:
             self.mainPage.go_to_main_page()
         except Exception as e:
-            logger.error(f'Teardown 失败，未能返回首页: {e}')
+            logger.error(f'{LogIcon.FAIL} Teardown 失败，未能返回首页: {e}')
 
     def _send_and_verify_message(self, message: str):
         """提取的文本消息发送验证逻辑（发送 -> 气泡断言 -> 返回首页）"""
@@ -75,30 +75,30 @@ class TestChatList:
         if has_fold:
             fold_count = self.homePage.get_fold_count()
             fold_state = self.homePage.get_top_fold_state()
-            logger.info(f"📌 [场景 2/3] 检测到置顶折叠条 (数量: {fold_count}, 状态: 【{fold_state}】)")
+            logger.info(f"{LogIcon.STEP} [场景 2/3] 检测到置顶折叠条 (数量: {fold_count}, 状态: 【{fold_state}】)")
             if fold_state == 'collapsed':
-                logger.info("👉 [场景 3] 折叠条处于折叠收起状态，点击展开折叠条...")
+                logger.info(f"{LogIcon.ACTION} [场景 3] 折叠条处于折叠收起状态，点击展开折叠条...")
                 self.homePage.click_fold_entry()
-            logger.info(f"👉 [场景 2/3] 展开状态下，直接批量取消 {fold_count} 个置顶会话...")
+            logger.info(f"{LogIcon.ACTION} [场景 2/3] 展开状态下，直接批量取消 {fold_count} 个置顶会话...")
             self._batch_set_top(fold_count, '取消置顶')
             self.mainPage.go_to_main_page()
             self.chatListPage._quick_slide_to_top()
-            logger.info("✅ 折叠条内置顶会话已全部清理完毕！")
+            logger.info(f"{LogIcon.SUCCESS} 折叠条内置顶会话已全部清理完毕！")
             return
 
         # ==================== 分支 B：无折叠条 (场景 0 / 场景 1) ====================
         names = self.chatListPage.clean_ui_text(self.homePage.get_conversation_names())
         if not names:
-            logger.info("ℹ️ 会话列表为空，无需清理置顶项")
+            logger.info(f"{LogIcon.SETUP} ℹ️ 会话列表为空，无需清理置顶项")
             return
 
         first_name = names[0]
         menu_text = self.chatListPage.slide_top_session(first_name, action='取消置顶')
         if menu_text == '置顶':
-            logger.info(f"✅ [场景 0] 首个会话【{first_name}】未置顶，全列表无任何置顶会话，极速放行！")
+            logger.info(f"{LogIcon.SUCCESS} [场景 0] 首个会话【{first_name}】未置顶，全列表无任何置顶会话，极速放行！")
             return
 
-        logger.info(f"🧹 [场景 1] 首个会话【{first_name}】为置顶项且已取消，继续取消剩余置顶会话 (最多4个)...")
+        logger.info(f"{LogIcon.SETUP} [场景 1] 首个会话【{first_name}】为置顶项且已取消，继续取消剩余置顶会话 (最多4个)...")
         clean_limit = min(max_clean, 4)
         for attempt in range(clean_limit):
             names = self.chatListPage.clean_ui_text(self.homePage.get_conversation_names())
@@ -107,9 +107,9 @@ class TestChatList:
             current_first = names[0]
             menu_text = self.chatListPage.slide_top_session(current_first, action='取消置顶')
             if menu_text == '置顶':
-                logger.info(f"✅ [场景 1] 顶部首项【{current_first}】已为非置顶状态，全部置顶会话清理完毕")
+                logger.info(f"{LogIcon.SUCCESS} [场景 1] 顶部首项【{current_first}】已为非置顶状态，全部置顶会话清理完毕")
                 break
-            logger.info(f"  • 已清理置顶会话: 【{current_first}】")
+            logger.info(f"{LogIcon.SETUP} • 已清理置顶会话: 【{current_first}】")
 
     def _batch_set_top(self, count: int, action: str = '置顶') -> int:
         """
@@ -132,22 +132,22 @@ class TestChatList:
 
             if not remaining_names:
                 if max_scroll_attempts <= 0:
-                    logger.warning(f"⚠️ 已达最大滑屏尝试上限，列表会话已全部扫描完毕 (已处理: {top_count}/{count})")
+                    logger.warning(f"{LogIcon.WARN} 已达最大滑屏尝试上限，列表会话已全部扫描完毕 (已处理: {top_count}/{count})")
                     break
-                logger.info(f"⏳ 当前可视会话已全部处理，平滑上滑加载更多 (当前已处理: {top_count}/{count})...")
+                logger.info(f"{LogIcon.WAIT} 当前可视会话已全部处理，平滑上滑加载更多 (当前已处理: {top_count}/{count})...")
                 self.chatListPage.swipe_page(slid_type='up', duration=500, times=1)
                 has_scrolled = True
                 max_scroll_attempts -= 1
                 new_names = self.chatListPage.clean_ui_text(self.homePage.get_conversation_names())
                 new_remaining = [n for n in new_names if n not in processed_names]
                 if not new_remaining:
-                    logger.info("ℹ️ 触达列表底部，无更多新会话可用")
+                    logger.info(f"{LogIcon.ACTION} ℹ️ 触达列表底部，无更多新会话可用")
                     break
                 remaining_names = new_remaining
 
             name = remaining_names[0]
             if not self.homePage.ensure_item_safe_visible(name, allow_swipe=True):
-                logger.warning(f"⚠️ 会话【{name}】在当前屏无法安全可见，跳过")
+                logger.warning(f"{LogIcon.WARN} 会话【{name}】在当前屏无法安全可见，跳过")
                 processed_names.add(name)
                 continue
 
@@ -155,7 +155,7 @@ class TestChatList:
             processed_names.add(name)
             if menu_text == action:
                 top_count += 1
-                logger.info(f"  • [{top_count}/{count}] 已成功对【{name}】执行【{action}】")
+                logger.info(f"{LogIcon.SUCCESS} • [{top_count}/{count}] 已成功对【{name}】执行【{action}】")
 
         if has_scrolled:
             self.chatListPage._quick_slide_to_top()
@@ -221,7 +221,7 @@ class TestChatList:
                 con_names = self.chatListPage.clean_ui_text(self.homePage.get_conversation_names())
                 assert con_names, '❌ 无法获取底部会话列表名称，当前列表为空'
                 target_name = con_names[-1]
-                logger.info(f'🎯 选中末尾待置顶目标会话: 【{target_name}】')
+                logger.info(f'{LogIcon.FIND} 选中末尾待置顶目标会话: 【{target_name}】')
 
                 menu_text = self.chatListPage.slide_top_session(target_name, action='置顶')
                 check.is_in(menu_text, ['置顶', '取消置顶'], f'侧滑置顶文案异常: {menu_text}')
@@ -242,9 +242,9 @@ class TestChatList:
                         self.mainPage.go_to_main_page()
                         self.chatListPage._quick_slide_to_top()
                         self.chatListPage.slide_top_session(target_name, action='取消置顶')
-                        logger.info(f'✅ 已成功还原【{target_name}】的置顶状态')
+                        logger.info(f'{LogIcon.SUCCESS} 已成功还原【{target_name}】的置顶状态')
                     except Exception as e:
-                        logger.warning(f'⚠️ 环境自愈取消置顶异常: {e}')
+                        logger.warning(f'{LogIcon.WARN} 环境自愈取消置顶异常: {e}')
 
 
     @pytest.mark.p1
@@ -265,7 +265,7 @@ class TestChatList:
                 names = self.chatListPage.clean_ui_text(self.homePage.get_conversation_names())
                 assert names, '❌ 会话列表为空，无法执行批量置顶测试'
                 target_batch = names[:batch_limit]
-                logger.info(f'🎯 本次批量测试目标样本集: {target_batch}')
+                logger.info(f'{LogIcon.FIND} 本次批量测试目标样本集: {target_batch}')
 
             with allure.step('1. 阶段一：批量对目标会话执行侧滑【置顶】'):
                 for con_name in target_batch:
@@ -310,9 +310,9 @@ class TestChatList:
                 try:
                     self.mainPage.go_to_main_page()
                     self._clear_all_pinned_sessions()
-                    logger.info('✅ 批量测试环境自愈完成')
+                    logger.info(f'{LogIcon.SUCCESS} 批量测试环境自愈完成')
                 except Exception as e:
-                    logger.warning(f'⚠️ 环境清理异常: {e}')
+                    logger.warning(f'{LogIcon.WARN} 环境清理异常: {e}')
 
 
     @pytest.mark.p2
@@ -341,15 +341,15 @@ class TestChatList:
             with allure.step('4. 校验置顶折叠展开与还原逻辑'):
                 initial_state = self.homePage.get_top_fold_state()
                 con_names_pre = self.chatListPage.clean_ui_text(self.homePage.get_conversation_names())
-                logger.info(f"📌 [Fold Click Test] 当前初始状态: {initial_state}, 当前可见会话: {con_names_pre[:3]}...")
+                logger.info(f"{LogIcon.STEP} [Fold Click Test] 当前初始状态: {initial_state}, 当前可见会话: {con_names_pre[:3]}...")
                 self.homePage.click_fold_entry()
                 switched_state = self.homePage.get_top_fold_state()
                 con_names_aft = self.chatListPage.clean_ui_text(self.homePage.get_conversation_names())
                 assert con_names_pre != con_names_aft, f'❌ 折叠切换后会话列表应发生变化，实际: {con_names_pre} == {con_names_aft}'
-                logger.info(f"✅ [Fold Click Test] 状态成功切换: {initial_state} -> {switched_state}")
+                logger.info(f"{LogIcon.SUCCESS} [Fold Click Test] 状态成功切换: {initial_state} -> {switched_state}")
                 self.homePage.click_fold_entry()
                 restored_state = self.homePage.get_top_fold_state()
-                logger.info(f"✅ [Fold Click Test] 状态成功还原: {restored_state}")
+                logger.info(f"{LogIcon.SUCCESS} [Fold Click Test] 状态成功还原: {restored_state}")
                 assert restored_state == initial_state, f'❌ 折叠还原后状态不匹配！预期: {initial_state}, 实际: {restored_state}'
 
         if scenario.is_last:
@@ -540,13 +540,13 @@ class TestChatList:
                 self.chatListPage.click_back_button()
                 self.homePage.wait_home_page()
                 fail_status = self.homePage.get_remind_status()
-                logger.info(f'会话列表当前消息状态: {fail_status}')
+                logger.info(f'{LogIcon.FAIL} 会话列表当前消息状态: {fail_status}')
         finally:
             with allure.step('环境自愈：强制恢复正常全网连接并安全重置至首页'):
                 try:
                     self.chatListPage.set_network_connection('online')
                 except Exception as e:
-                    logger.warning(f'网络恢复异常: {e}')
+                    logger.warning(f'{LogIcon.WARN} 网络恢复异常: {e}')
             
 
     @pytest.mark.p1

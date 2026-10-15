@@ -9,7 +9,7 @@ from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.setting.chat_setting_page import ChatSettingPage
 from pages.report.report_page import ReportPage
 from strategy.chat.chat_strategy import PRIVATE_USER1
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 
 @allure.epic('IM核心功能测试')
 @allure.feature('投诉模块提取')
@@ -50,12 +50,12 @@ class TestExtractReportTree:
                     after_texts = [tv.text for tv in self.driver.find_elements(AppiumBy.CLASS_NAME, 'android.widget.TextView') if tv.text]
                     if before_texts != after_texts:
                         return
-                    logger.warning('⚠️ 点击了返回按钮，但页面没变，重试...')
+                    logger.warning(f'{LogIcon.WARN} 点击了返回按钮，但页面没变，重试...')
                     time.sleep(1)
                 except Exception as e:
-                    logger.warning(f'⚠️ 点击返回抛出异常: {e}')
+                    logger.warning(f'{LogIcon.WARN} 点击返回抛出异常: {e}')
                     time.sleep(1)
-            logger.error('❌ 致命错误：多次尝试 UI 返回失败，强制终止！')
+            logger.error(f'{LogIcon.FAIL} 致命错误：多次尝试 UI 返回失败，强制终止！')
             raise RuntimeError('无法执行返回操作！')
 
         def dfs(current_level, parent_name=''):
@@ -88,10 +88,10 @@ class TestExtractReportTree:
             result_dict = {}
             leaf_list = []
             for i, option in enumerate(options):
-                logger.info(f'👉 [Level {current_level}] 探测选项: {option}')
+                logger.info(f'{LogIcon.ACTION} [Level {current_level}] 探测选项: {option}')
                 Level_texts = self.driver.find_elements(AppiumBy.CLASS_NAME, 'android.widget.TextView')
                 before_texts = [tv.text for tv in Level_texts if tv.text]
-                logger.info(f'👉 [Level {current_level}] 第 {current_level} 级菜单: {before_texts}')
+                logger.info(f'{LogIcon.ACTION} [Level {current_level}] 第 {current_level} 级菜单: {before_texts}')
                 locator = (AppiumBy.ANDROID_UIAUTOMATOR, f'new UiSelector().text("{option}")')
                 try:
                     el = self.driver.find_element(*locator)
@@ -101,16 +101,16 @@ class TestExtractReportTree:
                     if self.driver.find_elements(AppiumBy.CLASS_NAME, 'android.widget.EditText') or before_texts != after_texts:
                         pass
                     else:
-                        logger.warning(f"⚠️ 点击 '{option}' 后页面未变化，尝试二次重试点击...")
+                        logger.warning(f"{LogIcon.WARN} 点击 '{option}' 后页面未变化，尝试二次重试点击...")
                         el = self.driver.find_element(*locator)
                         el.click()
                         time.sleep(1.0)
                 except Exception as e:
-                    logger.warning(f"⚠️ 无法点击 '{option}': {e}")
+                    logger.warning(f"{LogIcon.WARN} 无法点击 '{option}': {e}")
                     continue
                 elements = self.driver.find_elements(AppiumBy.CLASS_NAME, 'android.widget.EditText')
                 if len(elements) > 0:
-                    logger.info(f"✅ '{option}' 到底了！进入了填写内容页。")
+                    logger.info(f"{LogIcon.SUCCESS} 点击选项 '{option}' 已到达末级节点，成功进入内容填写页面")
                     safe_click_back()
                     leaf_list.append(option)
                     continue
@@ -118,7 +118,7 @@ class TestExtractReportTree:
                     Level_texts_after = self.driver.find_elements(AppiumBy.CLASS_NAME, 'android.widget.TextView')
                     after_texts = [tv.text for tv in Level_texts_after if tv.text]
                     if before_texts == after_texts:
-                        logger.info(f"🛑 点击 '{option}' 页面无变化，判定为静态节点。")
+                        logger.info(f"{LogIcon.FAIL} 点击 '{option}' 页面无变化，判定为静态节点。")
                         leaf_list.append(option)
                         continue
                     sub_tree = dfs(current_level + 1, option)
@@ -135,12 +135,10 @@ class TestExtractReportTree:
                 for leaf in leaf_list:
                     result_dict[leaf] = []
                 return result_dict
-        logger.info('🚀 开始按节点层级递归抓取...')
+        logger.info(f'{LogIcon.ACTION} 开始按节点层级递归抓取...')
         tree = dfs(1)
         yaml_path = os.path.join(os.path.dirname(__file__), 'report_tree_output.yaml')
         with open(yaml_path, 'w', encoding='utf-8') as f:
             yaml.dump(tree, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
-        logger.info(f'🎉 抓取大功告成！文件已保存至: {yaml_path}')
-        print('\n' + '=' * 40 + '\n')
-        print(yaml.dump(tree, allow_unicode=True, sort_keys=False))
-        print('\n' + '=' * 40 + '\n')
+        logger.info(f"{LogIcon.SUCCESS} 抓取大功告成！文件已保存至: {yaml_path}")
+        logger.info(f"{LogIcon.SUCCESS} 抓取树结构详情:\n{yaml.dump(tree, allow_unicode=True, sort_keys=False)}")

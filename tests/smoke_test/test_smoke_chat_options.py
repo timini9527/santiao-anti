@@ -2,7 +2,7 @@ import pytest
 import allure
 import pytest_check as check
 import time
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_page import ChatPage
@@ -93,7 +93,7 @@ class TestSmokeChatOptions(BaseSmokeChatOptions):
             self.imagePage.click_last_sent_image()
             sent_signature = self.imagePage.get_preview_signature()
             distance = ScreenshotUtils.hamming_distance(preview_signature, sent_signature)
-            logger.info(f'📊 [Image Hash Compare] 发送前 Hash: {preview_signature}, 发送后 Hash: {sent_signature}, 汉明距离: {distance}')
+            logger.info(f'{LogIcon.FIND} [Image Hash Compare] 发送前 Hash: {preview_signature}, 发送后 Hash: {sent_signature}, 汉明距离: {distance}')
             check.is_true(distance <= 5, f'❌ 大图预览与发送出去的图片不一致 (汉明距离 {distance} > 5)')
             self.imagePage.back()
 
@@ -211,10 +211,10 @@ class TestSmokeChatOptions(BaseSmokeChatOptions):
                 self.emojiStorePage.open_emoji_store()
                 added_pkg_names, add_status = self.emojiStorePage.add_emoji_packages('sequential', 1)
                 if not added_pkg_names:
-                    logger.warning('当前商店页面没有可供添加的表情包')
+                    logger.warning(f'{LogIcon.WARN} 当前商店页面没有可供添加的表情包')
                     pytest.skip('当前商店页面没有可供添加的表情包')
                 if not add_status:
-                    logger.warning('添加表情包失败')
+                    logger.warning(f'{LogIcon.WARN} 添加表情包失败')
                     pytest.skip('添加表情包失败')
                 self.emojiStorePage.back_to_emoji_page()
         with allure.step(f'3. 选择第 {pkg_index} 个表情包并发送 {send_count} 个贴图'):

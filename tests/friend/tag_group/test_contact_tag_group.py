@@ -7,7 +7,7 @@ from pages.home.home_page import HomePage
 from pages.friend.tag_group.contact_tag_group_page import ContactTagGroupPage
 from pages.common.contact_select_page import ContactSelectPage
 from pages.friend.profile.contact_detail_page import ContactDetailPage
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 
 
 
@@ -47,7 +47,7 @@ class TestContactTagGroup:
                     self.homePage.click_friend()
                     self.homePage.click_category_manager()
         except Exception as e:
-            logger.error(f'⚠️ [Teardown] 返回分组列表页面失败: {e}')
+            logger.error(f'{LogIcon.WARN} 返回分组列表页面失败: {e}')
 
 
 

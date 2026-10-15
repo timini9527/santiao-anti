@@ -1,7 +1,7 @@
 import allure
 import pytest
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_page import ChatPage
@@ -32,7 +32,7 @@ class TestContactCard:
         try:
             self.mainPage.go_to_main_page()
         except Exception as e:
-            logger.error(f'Teardown 失败，未能返回首页: {e}')
+            logger.error(f'{LogIcon.FAIL} Teardown 失败，未能返回首页: {e}')
 
     def _enter_chat_and_open_card(self, chat_name: str):
         """进入指定的聊天会话并打开名片面板"""

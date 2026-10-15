@@ -2,7 +2,7 @@ import pytest
 import allure
 import time
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.groups.setting.general.group_setting_page import GroupSettingPage
 from pages.groups.bot.group_bot_page import GroupBotPage
@@ -65,7 +65,7 @@ class TestGroupBotInteraction:
         request.cls.chatR = ChatPage(driver_receiver)
 
         with allure.step("-> [前置环境准备] 群主开启违规关键词拦截并批量配置违规词库"):
-            logger.info("⏳ [Class Setup] 进入群助手，开启开关并配置违规关键词列表")
+            logger.info(f"{LogIcon.WAIT} [Class Setup] 进入群助手，开启开关并配置违规关键词列表")
             self._navigate_to_keyword_block()
 
             botS = self.botS
@@ -78,7 +78,7 @@ class TestGroupBotInteraction:
         yield
 
         with allure.step("-> [环境清理] 清空测试关键词并关闭开关，安全复原环境"):
-            logger.info("⏳ [Class Teardown] 清空关键词并关闭开关，恢复环境")
+            logger.info(f"{LogIcon.WAIT} [Class Teardown] 清空关键词并关闭开关，恢复环境")
             try:
                 # self._navigate_to_keyword_block()
                 botS.click_keyword_row()
@@ -92,7 +92,7 @@ class TestGroupBotInteraction:
                 self.groupManagerS.click_iv_back_button()
                 self.mainS.go_to_main_page()
             except Exception as e:
-                logger.error(f"❌ [Class Teardown] 环境恢复失败，关键词配置可能残留，需人工检查: {e}")
+                logger.error(f"{LogIcon.FAIL} [Class Teardown] 环境恢复失败，关键词配置可能残留，需人工检查: {e}")
 
 
     @pytest.fixture(autouse=True)
@@ -106,7 +106,7 @@ class TestGroupBotInteraction:
         """进入群助手关键词配置页，将处置方式切换为指定规则后保存退出。
         关键词列表与开关已由 class 级 fixture 配好，这里只切换处置规则。
         """
-        logger.info(f"⏳ [Pre-condition] 设置关键词处置方式为【{rule_name}】")
+        logger.info(f"{LogIcon.WAIT} [Pre-condition] 设置关键词处置方式为【{rule_name}】")
         botS = self.botS
         botS.select_action_rule(rule_name)
         if rule_name == "禁言":
@@ -242,9 +242,9 @@ class TestGroupBotInteraction:
                 last_sender_msg = all_messages[-1]
                 has_warn2 = "@" in last_sender_msg
                 if has_warn2:
-                    logger.info(f"✅ 发送方检测到群助手 @ 警告: {last_sender_msg}")
+                    logger.info(f"{LogIcon.SUCCESS} 发送方检测到群助手 @ 警告: {last_sender_msg}")
                 else:
-                    logger.info(f"ℹ️ 发送方未检测到 @ 警告（触发限流机制，最后消息: {last_sender_msg}）")
+                    logger.info(f"{LogIcon.FIND} ℹ️ 发送方未检测到 @ 警告（触发限流机制，最后消息: {last_sender_msg}）")
 
         with allure.step("5. 发送方重新进入设置以供 teardown 恢复环境"):
             self._owner_enter_bot_setting()
@@ -305,7 +305,7 @@ class TestGroupBotInteraction:
             self._owner_return_to_chat()
             all_messages = self._owner_assert_base_and_keyword_messages(rule_name, message)
             if all_messages:
-                logger.info(f"✅ 发送方退回群聊消息校验通过，最后一条消息: {all_messages[-1]}")
+                logger.info(f"{LogIcon.SUCCESS} 发送方退回群聊消息校验通过，最后一条消息: {all_messages[-1]}")
         
         with allure.step(f"7. 发送方重新进入群管理，解除禁言恢复环境"):
             self.chatS.click_more_button()

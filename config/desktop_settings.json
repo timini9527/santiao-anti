@@ -9,7 +9,7 @@
     "group_chat_name": "",
     "env": "dev",
     "debug_mode": false,
-    "role": "tech",
+    "role": "business",
     "selected_test_file": "",
     "auto_scroll_log": false,
     "splitter_h_sizes": [
@@ -17,11 +17,11 @@
       1149
     ],
     "splitter_v_sizes": [
-      622,
-      291
+      613,
+      300
     ],
     "log_collapsed": false,
-    "last_log_height": 291,
+    "last_log_height": 300,
     "params_collapsed": true,
     "node_status_map": {
       "tests/chat/core/test_chat/TestChat::test_send_text_message": "passed",
@@ -43,7 +43,7 @@
       "tests/chat/list/test_chat_list.py::TestChatList::test_slide_top_last_session[私聊模式]": "passed",
       "tests/chat/list/test_chat_list.py::TestChatList::test_slide_top_last_session": "passed",
       "tests/smoke_test/test_smoke_chat.py::TestSmokeChatLongPress::test_long_press_action_copy": "broken",
-      "tests/smoke_test/test_smoke_chat.py::TestSmokeChatLongPress::test_long_press_action_collection": "broken",
+      "tests/smoke_test/test_smoke_chat.py::TestSmokeChatLongPress::test_long_press_action_collection": "passed",
       "tests/smoke_test/test_smoke_chat.py::TestSmokeChatLongPress": "failed",
       "tests/smoke_test/test_smoke_chat.py": "failed",
       "tests/smoke_test": "failed",
@@ -65,13 +65,41 @@
       "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_display_action[群聊模式-消息类型-package]": "passed",
       "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_display_action": "passed",
       "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress": "",
-      "tests/chat/long_press/test_chat_long_press.py": "failed"
+      "tests/chat/long_press/test_chat_long_press.py": "failed",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_collection[私聊模式-文本消息]": "passed",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_collection[私聊模式-Emoji消息]": "passed",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_collection[私聊模式-图片消息]": "passed",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_collection[群聊模式-文本消息]": "passed",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_collection[群聊模式-Emoji消息]": "passed",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_collection[群聊模式-图片消息]": "passed",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_collection": "passed",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_forward[私聊模式-消息类型-text]": "passed",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_forward[私聊模式-消息类型-emoji]": "passed",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_forward[私聊模式-消息类型-image]": "passed",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_forward[私聊模式-消息类型-video]": "passed",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_forward[私聊模式-消息类型-position]": "failed",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_forward[私聊模式-消息类型-card]": "passed",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_forward[私聊模式-消息类型-file]": "passed",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_forward[私聊模式-消息类型-package]": "passed",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_forward[群聊模式-消息类型-text]": "passed",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_forward[群聊模式-消息类型-emoji]": "passed",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_forward[群聊模式-消息类型-image]": "passed",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_forward[群聊模式-消息类型-video]": "passed",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_forward[群聊模式-消息类型-position]": "broken",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_forward[群聊模式-消息类型-card]": "passed",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_forward[群聊模式-消息类型-file]": "passed",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_forward[群聊模式-消息类型-package]": "passed",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_forward": "passed"
     },
     "expanded_targets": [
       "tests/chat",
       "tests/chat/long_press/test_chat_long_press.py",
       "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress",
-      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_copy"
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_forward",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_multi_select",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_add_emoji",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_recall",
+      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress::test_long_press_action_delete"
     ],
     "web_receipt_fields": [
       {

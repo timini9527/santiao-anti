@@ -2,7 +2,7 @@ import time
 import allure
 import pytest
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.friend.profile.contact_detail_page import ContactDetailPage
@@ -100,7 +100,7 @@ class TestSmokeContactDetail(BaseSmokeContactDetail):
 
     def _clear_specific_tag(self, tag_name: str):
         """精准删除指定名称的分组标签，保护环境隔离性不影响其他分组"""
-        logger.info(f"⚙️ [SmokeClean] 精准清理测试生成的临时标签分组: {tag_name}")
+        logger.info(f"{LogIcon.SETUP} [SmokeClean] 精准清理测试生成的临时标签分组: {tag_name}")
         self.homePage.click_category_manager()
         self.tagGroupPage.wait_for_group_list_page_load(page_title='0')
         self.tagGroupPage.delete_group_or_all_groups_flow(group_name=tag_name, is_all=False)
@@ -114,7 +114,7 @@ class TestSmokeContactDetail(BaseSmokeContactDetail):
             self.tagGroupPage.wait_for_group_list_page_load(page_title='0')
             group_names = self.tagGroupPage.get_group_tag_names(timeout=1, raise_exception=False)
             if not group_names:
-                logger.info('✅ [Action - TagGroup] 分组管理页面分组已全部删除，无需再操作')
+                logger.info(f'{LogIcon.SUCCESS} 分组管理页面分组已全部删除，无需再操作')
                 self.contactDetailPage.click_iv_back()
                 return
         with allure.step('2. 执行批量清空所有分组操作'):

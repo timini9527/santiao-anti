@@ -7,7 +7,7 @@ from typing import Optional, Protocol, Literal, Union, List
 from PIL import Image
 import imagehash
 
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 
 # ==========================================
 # 协议定义：解除与具体 Driver/Element 的耦合
@@ -94,7 +94,7 @@ class ScreenshotUtils:
         适用于无法通过原生方式定位、或需要局部偏移截取的场景。
         """
         if rect.width <= 0 or rect.height <= 0:
-            logger.warning("裁剪区域宽高不合法(<=0)，降级返回全屏截图")
+            logger.warning(f"{LogIcon.WARN} 裁剪区域宽高不合法(<=0)，降级返回全屏截图")
             return ScreenshotUtils.full_png(driver)
 
         # 1. 拿到全屏图片并读取进内存
@@ -178,28 +178,28 @@ class ScreenshotUtils:
         if element is not None:
             try:
                 data = ScreenshotUtils.element_png(element)
-                logger.debug(f"🚀[Action] - 成功获取原生 Element 截图，大小: {len(data)} 字节")
+                logger.debug(f"{LogIcon.ACTION} Element 截图，大小: {len(data)} 字节")
             except Exception as e:
-                logger.warning(f"⚠️[Action] - 原生 Element 截图失败，降级至坐标裁切: {e}")
+                logger.warning(f"{LogIcon.WARN} Element 截图失败，降级至坐标裁切: {e}")
 
         # 2. 尝试按坐标切图
         if not data and rect is not None:
             data = ScreenshotUtils.crop_png(driver, rect)
-            logger.debug(f"🚀[Action] - 成功根据坐标 {rect} 裁切截图，大小: {len(data)} 字节")
+            logger.debug(f"{LogIcon.ACTION} {rect} 裁切截图，大小: {len(data)} 字节")
  
         # 3. 兜底：全屏截图
         if not data:
             data = ScreenshotUtils.full_png(driver)
-            logger.debug(f"🚀[Action] - 触发兜底全屏截图，大小: {len(data)} 字节")
+            logger.debug(f"{LogIcon.ACTION} {len(data)} 字节")
 
         # 4. 执行特征提取
         if method == 'dhash':
             signature = ScreenshotUtils.dhash_of_bytes(data)
-            logger.info(f"📸[Signature] - 提取 dHash 指纹成功: {signature}")
+            logger.info(f"{LogIcon.CAMERA} dHash 指纹成功: {signature}")
             return signature
             
         signature = ScreenshotUtils.md5_of_bytes(data)
-        logger.info(f"📸[Signature] - 提取 MD5 签名成功: {signature}")
+        logger.info(f"{LogIcon.CAMERA} MD5 签名成功: {signature}")
         return signature
 
     # 快捷方法别名
@@ -247,16 +247,16 @@ class ImageComparator:
         :return: 是否相似
         """
         if not hash1 or not hash2:
-            logger.warning("⚠️ [Compare] 其中一个哈希值为空，无法比对")
+            logger.warning(f"{LogIcon.WARN} 其中一个哈希值为空，无法比对")
             return False
             
         distance = ScreenshotUtils.hamming_distance(hash1, hash2)
         is_similar = distance <= threshold
         
         if is_similar:
-            logger.info(f"✅ [Compare] 图像指纹比对通过 | 汉明距离: {distance} (阈值: {threshold})")
+            logger.info(f"{LogIcon.SUCCESS} 图像指纹比对通过 | 汉明距离: {distance} (阈值: {threshold})")
         else:
-            logger.warning(f"❌ [Compare] 图像指纹差异过大 | 汉明距离: {distance} (阈值: {threshold})")
+            logger.warning(f"{LogIcon.FAIL} 图像指纹差异过大 | 汉明距离: {distance} (阈值: {threshold})")
             
         return is_similar
 
@@ -279,10 +279,10 @@ class ImageComparator:
                 if h:
                     hashes.append(h)
             except Exception as e:
-                logger.warning(f"⚠️ [Sample] 采集第 {i+1} 帧图像指纹异常: {e}")
+                logger.warning(f"{LogIcon.WARN} [Sample] 采集第 {i+1} 帧图像指纹异常: {e}")
             if i < sample_count - 1:
                 time.sleep(interval)
-        logger.info(f"✅ [Sample] 完成多帧图像采集 | 成功采样: {len(hashes)}/{sample_count} 帧")
+        logger.info(f"{LogIcon.SUCCESS} [Sample] 完成多帧图像采集 | 成功采样: {len(hashes)}/{sample_count} 帧")
         return hashes
 
     @staticmethod
@@ -297,7 +297,7 @@ class ImageComparator:
         :return: 是否匹配成功
         """
         if not hashes1 or not hashes2:
-            logger.warning("⚠️ [Compare] 采样哈希集合为空，无法进行交叉比对")
+            logger.warning(f"{LogIcon.WARN} 采样哈希集合为空，无法进行交叉比对")
             return False
 
         min_distance = 999
@@ -312,10 +312,10 @@ class ImageComparator:
                 
                 # 只要任意一对低于或等于阈值，即刻短路返回比对成功
                 if distance <= threshold:
-                    logger.info(f"✅ [Compare] 交叉多帧比对成功！第一组第 {i+1} 帧 与 第二组第 {j+1} 帧 匹配成功 | 汉明距离: {distance} (阈值: {threshold})")
+                    logger.info(f"{LogIcon.SUCCESS} 交叉多帧比对成功！第一组第 {i+1} 帧 与 第二组第 {j+1} 帧 匹配成功 | 汉明距离: {distance} (阈值: {threshold})")
                     return True
 
-        logger.warning(f"❌ [Compare] 交叉多帧比对失败 | 最小汉明距离: {min_distance} (阈值: {threshold})，出现在第一组第 {best_pair[0]+1} 帧与第二组第 {best_pair[1]+1} 帧之间")
+        logger.warning(f"{LogIcon.FAIL} 交叉多帧比对失败 | 最小汉明距离: {min_distance} (阈值: {threshold})，出现在第一组第 {best_pair[0]+1} 帧与第二组第 {best_pair[1]+1} 帧之间")
         return False
 
 
@@ -329,7 +329,7 @@ class ImageComparator:
         
         path = os.path.join(debug_dir, f"{name_prefix}_{int(time.time())}.png")
         img.save(path)
-        logger.info(f"📸 调试图像已归档：{path}")
+        logger.info(f"{LogIcon.CAMERA} 调试图像已归档：{path}")
 
     @staticmethod
     def compare_similarity(image_bytes_1: bytes, image_bytes_2: bytes, threshold: int = 10) -> bool:
@@ -353,15 +353,15 @@ class ImageComparator:
 
             # 计算核心差异指标
             distance = hash1 - hash2
-            logger.info(f"🖼️ 图像对比判定 | 汉明距离: {distance} (阈值上限: {threshold})")
+            logger.info(f"{LogIcon.FIND} 🖼️ 图像对比判定 | 汉明距离: {distance} (阈值上限: {threshold})")
 
             if distance <= threshold:
                 return True
             else:
-                logger.warning(f"❌ 图像相似度过低，距离 {distance} 已跃出阈值范围 {threshold}")
+                logger.warning(f"{LogIcon.FAIL} 图像相似度过低，距离 {distance} 已跃出阈值范围 {threshold}")
                 ImageComparator._save_debug_image(img1, "mismatch_expected")
                 ImageComparator._save_debug_image(img2, "mismatch_actual")
                 return False
         except Exception as e:
-            logger.error(f"❌ 图像相似度对比过程由于由于 IO 或解析异常而中断: {e}")
+            logger.error(f"{LogIcon.FAIL} 图像相似度对比过程由于由于 IO 或解析异常而中断: {e}")
             return False

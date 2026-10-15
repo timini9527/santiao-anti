@@ -2,7 +2,7 @@ import pytest
 import allure
 import time
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.moments.moments_page import MomentsPage
 from pages.home.home_page import HomePage
@@ -39,7 +39,7 @@ class TestMomentsDouble:
                 try:
                     main_page.go_to_main_page()
                 except Exception as e:
-                    logger.error(f'{name} Teardown 失败: {e}')
+                    logger.error(f'{LogIcon.FAIL} {name} Teardown 失败: {e}')
 
     @classmethod
     def _go_to_moments_pageS(cls):
@@ -70,9 +70,9 @@ class TestMomentsDouble:
                 found = self.momentsS.has_moment_with_text(content)
                 check.is_false(found, f'❌ 测试临时动态 [{content}] 删除后依然可见')
             else:
-                logger.info(f'ℹ️ [Teardown] 未在首条朋友圈找到测试动态 [{content}]，跳过删除以防误删')
+                logger.info(f'{LogIcon.SETUP} ℹ️ [Teardown] 未在首条朋友圈找到测试动态 [{content}]，跳过删除以防误删')
         except Exception as e:
-            logger.error(f'❌ [Teardown] 删除测试朋友圈失败: {content}, 原因: {e}')
+            logger.error(f'{LogIcon.FAIL} 删除测试朋友圈失败: {content}, 原因: {e}')
 
     def _register_moment_cleanup(self, request, content: str):
         """注册防御性清理，避免用例中途失败后残留测试动态"""
@@ -91,7 +91,7 @@ class TestMomentsDouble:
             self.momentsS.post_moment_with_visibility(actual_content, visibility=visibility, target_friend=target_friend, target_tag=target_tag, is_ex=is_ex)
         if is_ex:
             self.momentsS.wait_for_moments_page_load()
-        logger.info(f'发送端成功发布朋友圈动态 ({visibility}): {actual_content}')
+        logger.info(f'{LogIcon.SUCCESS} 发送端成功发布朋友圈动态 ({visibility}): {actual_content}')
         return actual_content
 
     def _receiver_prepare_moments_feed(self, expected_content: str=None, max_refresh: int=3) -> str:
@@ -100,7 +100,7 @@ class TestMomentsDouble:
         for attempt in range(1, max_refresh + 1):
             self.momentsR.refresh_moments()
             actual_content = self.momentsR.get_first_moment_content()
-            logger.info(f'接收端第 {attempt} 次刷新后首条朋友圈动态: {actual_content}')
+            logger.info(f'{LogIcon.ACTION} 接收端第 {attempt} 次刷新后首条朋友圈动态: {actual_content}')
             if expected_content is None or actual_content == expected_content:
                 return actual_content
             time.sleep(0.3)

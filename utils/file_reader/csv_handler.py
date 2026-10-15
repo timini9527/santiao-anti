@@ -7,7 +7,7 @@ from appium.webdriver.common.appiumby import AppiumBy
 from selenium.webdriver.common.by import By
 
 from common.base_page import BasePage
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 
 
 class RegionCrawler(BasePage):
@@ -33,7 +33,7 @@ class RegionCrawler(BasePage):
         self.saved_pairs = set()      # 存储已保存的 (province, city) 对
         self.saved_provinces = set()  # 存储已保存过数据的省份集合
 
-        logger.info(f"📂 [RegionCrawler] 初始化地区数据归档文件: {self.csv_file}")
+        logger.info(f"{LogIcon.SETUP} [RegionCrawler] 初始化地区数据归档文件: {self.csv_file}")
 
         # 若 CSV 文件已存在且有内容，加载已有数据用于增量去重并保持 ID 递增
         if os.path.exists(self.csv_file) and os.path.getsize(self.csv_file) > 0:
@@ -52,9 +52,9 @@ class RegionCrawler(BasePage):
                                 self.current_id = row_id + 1
                         except (ValueError, TypeError):
                             pass
-                logger.info(f"📊 [RegionCrawler] 已加载 {len(self.saved_pairs)} 条现有地区数据，当前接续 ID: {self.current_id}")
+                logger.info(f"{LogIcon.FIND} [RegionCrawler] 已加载 {len(self.saved_pairs)} 条现有地区数据，当前接续 ID: {self.current_id}")
             except Exception as e:
-                logger.warning(f"⚠️ [RegionCrawler] 读取已有 CSV 文件异常: {e}，将重新初始化文件")
+                logger.warning(f"{LogIcon.WARN} [RegionCrawler] 读取已有 CSV 文件异常: {e}，将重新初始化文件")
 
         # 若文件不存在或为空，创建文件并写入表头
         if not os.path.exists(self.csv_file) or os.path.getsize(self.csv_file) == 0:
@@ -67,7 +67,7 @@ class RegionCrawler(BasePage):
         根据抓取到的层级数据，自动格式化并写入一行标准 CSV 数据
         """
         if (province, city) in self.saved_pairs:
-            logger.info(f"⏩ [RegionCrawler] 记录已存在，跳过写入: ({province}, {city})")
+            logger.info(f"{LogIcon.STEP} [RegionCrawler] 记录已存在，跳过写入: ({province}, {city})")
             return
 
         # 1. 自动生成 Expected (去除'省', '市', '自治区'后缀后以空格拼接)
@@ -107,7 +107,7 @@ class RegionCrawler(BasePage):
 
         self.saved_pairs.add((province, city))
         self.saved_provinces.add(province)
-        logger.info(f"📝 [RegionCrawler] 写入地区数据 [{self.current_id}]: {row}")
+        logger.info(f"{LogIcon.ACTION} [RegionCrawler] 写入地区数据 [{self.current_id}]: {row}")
         self.current_id += 1
 
     def get_elements_safe(self) -> List[str]:
@@ -127,7 +127,7 @@ class RegionCrawler(BasePage):
             items = self.get_elements_safe()
             new_items = [i for i in items if i not in all_cities]
             if not new_items:
-                logger.info("🏁 [RegionCrawler] 无新增元素，已到达列表最底部")
+                logger.info(f"{LogIcon.SUCCESS} [RegionCrawler] 无新增元素，已到达列表最底部")
                 break
             all_cities.extend(new_items)
             self.swipe_page(slid_type='up', duration=400)
@@ -136,7 +136,7 @@ class RegionCrawler(BasePage):
 
     def go_back(self) -> None:
         """返回上一级页面"""
-        logger.info("🔙 [RegionCrawler] 执行返回上一级省份页面...")
+        logger.info(f"{LogIcon.ACTION} [RegionCrawler] 执行返回上一级省份页面...")
         self.driver.back()
         time.sleep(0.8)
 
@@ -148,7 +148,7 @@ class RegionCrawler(BasePage):
         3、如果当前页面省份已经爬取完成，则向下滑，获取下一个页面重新执行1，2步骤
         4、若当前页面的省份和城市已经保存在表格中，则跳过这一省份和城市，执行下一个省份和城市进行保存，依次进行
         """
-        logger.info("🚀 [RegionCrawler] 开始执行省市数据抓取流程...")
+        logger.info(f"{LogIcon.ACTION} [RegionCrawler] 开始执行省市数据抓取流程...")
         # 记录已处理完成或已在表格中跳过的省份
         handled_provinces = set(self.saved_provinces)
         consecutive_no_new_scrolls = 0
@@ -158,7 +158,7 @@ class RegionCrawler(BasePage):
             # 获取当前屏幕可视省份列表
             current_provinces = self.get_elements_safe()
             if not current_provinces:
-                logger.warning("⚠️ [RegionCrawler] 当前页面未获取到任何省份元素，结束遍历")
+                logger.warning(f"{LogIcon.WARN} [RegionCrawler] 当前页面未获取到任何省份元素，结束遍历")
                 break
 
             # 步骤 1 & 4：检查当前屏幕是否存在未爬取且未保存在表格中的省份
@@ -171,7 +171,7 @@ class RegionCrawler(BasePage):
                 # 发现当前屏未爬取省份，执行步骤 1
                 has_unhandled_in_screen = True
                 consecutive_no_new_scrolls = 0
-                logger.info(f"👉 [RegionCrawler] 步骤一：点击省份 '{p_name}' 进入二级城市页面")
+                logger.info(f"{LogIcon.ACTION} [RegionCrawler] 步骤一：点击省份 '{p_name}' 进入二级城市页面")
 
                 # 定位当前屏中的省份并点击
                 p_element = self.find_element(
@@ -180,7 +180,7 @@ class RegionCrawler(BasePage):
                     raise_exception=False
                 )
                 if not p_element:
-                    logger.warning(f"⚠️ [RegionCrawler] 当前屏幕未找到元素 '{p_name}'，跳过")
+                    logger.warning(f"{LogIcon.WARN} [RegionCrawler] 当前屏幕未找到元素 '{p_name}'，跳过")
                     handled_provinces.add(p_name)
                     continue
 
@@ -197,7 +197,7 @@ class RegionCrawler(BasePage):
                     for c_name in cities:
                         # 步骤 4：若城市已保存在表格中，则跳过
                         if (p_name, c_name) in self.saved_pairs:
-                            logger.info(f"⏩ [RegionCrawler] 城市 '{p_name} - {c_name}' 已保存在表格中，跳过")
+                            logger.info(f"{LogIcon.STEP} [RegionCrawler] 城市 '{p_name} - {c_name}' 已保存在表格中，跳过")
                             continue
                         self.write_row(p_name, c_name, "")
 
@@ -205,7 +205,7 @@ class RegionCrawler(BasePage):
                 self.saved_provinces.add(p_name)
 
                 # 步骤 2：获取二级城市后，返回上一级省份页面，重新执行步骤一
-                logger.info(f"🔙 [RegionCrawler] 步骤二：省份 '{p_name}' 处理完成，返回上一级省份页面")
+                logger.info(f"{LogIcon.ACTION} [RegionCrawler] 步骤二：省份 '{p_name}' 处理完成，返回上一级省份页面")
                 self.go_back()
 
                 # 跳出当前屏幕循环，重新获取当前屏省份列表继续执行步骤一
@@ -213,7 +213,7 @@ class RegionCrawler(BasePage):
 
             # 步骤 3：如果当前页面所有可视省份均已爬取完成，则向下滑动获取下一页省份
             if not has_unhandled_in_screen:
-                logger.info("📜 [RegionCrawler] 步骤三：当前页面省份已全部爬取完成，向下滑动获取下一页...")
+                logger.info(f"{LogIcon.ACTION} [RegionCrawler] 步骤三：当前页面省份已全部爬取完成，向下滑动获取下一页...")
                 self.swipe_page(slid_type='up', duration=500)
                 time.sleep(0.8)
 
@@ -222,12 +222,12 @@ class RegionCrawler(BasePage):
                 unhandled_after_swipe = [p for p in new_screen_provinces if p not in handled_provinces]
                 if not unhandled_after_swipe:
                     consecutive_no_new_scrolls += 1
-                    logger.info(f"🏁 [RegionCrawler] 滑动后未检测到新省份 (连续 {consecutive_no_new_scrolls}/{max_empty_scrolls} 次)")
+                    logger.info(f"{LogIcon.SUCCESS} [RegionCrawler] 滑动后未检测到新省份 (连续 {consecutive_no_new_scrolls}/{max_empty_scrolls} 次)")
                     if consecutive_no_new_scrolls >= max_empty_scrolls:
-                        logger.info("🎉 [RegionCrawler] 所有省份和二级城市全部遍历保存完毕！")
+                        logger.info(f"{LogIcon.SUCCESS} [RegionCrawler] 所有省份和二级城市全部遍历保存完毕！")
                         break
                 else:
                     consecutive_no_new_scrolls = 0
 
-        logger.info(f"🎉 [RegionCrawler] 地区数据抓取任务结束！文件已归档至: {self.csv_file}")
+        logger.info(f"{LogIcon.SUCCESS} [RegionCrawler] 地区数据抓取任务结束！文件已归档至: {self.csv_file}")
         return self.csv_file

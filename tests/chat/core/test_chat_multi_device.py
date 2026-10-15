@@ -4,7 +4,7 @@ import pytest
 import threading
 import concurrent.futures
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from utils.file_reader.data_loader import load_csv_data
 from pages.main.main_page import MainPage
 from pages.chat.core.chat_page import ChatPage
@@ -42,13 +42,13 @@ class TestChatMultiDevice:
         """
         if cls._in_chat and cls._class_driver:
             try:
-                logger.info('🧹 [Class Teardown] 多设备测试类执行结束，强制释放会话锁并退回主页')
+                logger.info(f'{LogIcon.SETUP} [Class Teardown] 多设备测试类执行结束，强制释放会话锁并退回主页')
                 cls._in_chat = False
                 cls._chat_target = None
                 main_page = MainPage(cls._class_driver)
                 main_page.go_to_main_page()
             except Exception as e:
-                logger.error(f'[Class Teardown] 最终返回主页失败: {e}')
+                logger.error(f'{LogIcon.FAIL} [Class Teardown] 最终返回主页失败: {e}')
 
 
     def _ensure_device_on_main_page(self, main_page: MainPage, dev_name: str, max_wait_sec: int = 60) -> bool:
@@ -60,25 +60,25 @@ class TestChatMultiDevice:
         """
         start_time = time.time()
         smooth_wait = min(15, max_wait_sec)
-        logger.info(f"⏳ [{dev_name}] 正在检测是否处于主页面（平滑检测上限 {smooth_wait}s）...")
+        logger.info(f"{LogIcon.WAIT} [{dev_name}] 正在检测是否处于主页面（平滑检测上限 {smooth_wait}s）...")
         while time.time() - start_time < smooth_wait:
             try:
                 if main_page.is_in_main_page(timeout=1):
-                    logger.info(f"🍏 [{dev_name}] 确认已稳定处于主页面 (耗时 {time.time() - start_time:.1f}s)")
+                    logger.info(f"{LogIcon.ACTION} 🍏 [{dev_name}] 确认已稳定处于主页面 (耗时 {time.time() - start_time:.1f}s)")
                     return True
             except Exception:
                 pass
 
-        logger.warning(f"⚠️ [{dev_name}] 初始阶段未检测到主页面，启动安全退回机制...")
+        logger.warning(f"{LogIcon.WARN} [{dev_name}] 初始阶段未检测到主页面，启动安全退回机制...")
         while time.time() - start_time < max_wait_sec:
             try:
                 main_page.go_to_main_page(timeout=1, max_retries=3)
                 if main_page.is_in_main_page(timeout=1):
-                    logger.info(f"🍏 [{dev_name}] 安全退回成功，当前已稳定处于主页面 (耗时 {time.time() - start_time:.1f}s)")
+                    logger.info(f"{LogIcon.SUCCESS} 🍏 [{dev_name}] 安全退回成功，当前已稳定处于主页面 (耗时 {time.time() - start_time:.1f}s)")
                     return True
             except Exception as e:
-                logger.error(f"❌ [{dev_name}] 执行返回主页面异常: {e}")
-        logger.error(f"❌ [{dev_name}] 超过最大等待上限 {max_wait_sec}s，仍未能进入主页面")
+                logger.error(f"{LogIcon.FAIL} [{dev_name}] 执行返回主页面异常: {e}")
+        logger.error(f"{LogIcon.FAIL} [{dev_name}] 超过最大等待上限 {max_wait_sec}s，仍未能进入主页面")
         return False
 
 
@@ -101,12 +101,12 @@ class TestChatMultiDevice:
         current_mode = mode.lower() if mode.lower() != "smart" else class_mode
 
         if current_mode == "hard":
-            logger.info(f"⏳ [Wait Devices Mode: HARD] 已启用固定死等策略，强制挂机等待 {timeout} 秒 (time.sleep({timeout}))...")
+            logger.info(f"{LogIcon.WAIT} 已启用固定死等策略，强制挂机等待 {timeout} 秒 (time.sleep({timeout}))...")
             time.sleep(timeout)
-            logger.info(f"⏰ [Wait Devices Mode: HARD] 强制死等 {timeout} 秒已结束，开始继续执行后续发送流程！")
+            logger.info(f"{LogIcon.WAIT} ⏰ [Wait Devices Mode: HARD] 强制死等 {timeout} 秒已结束，开始继续执行后续发送流程！")
             return True
 
-        logger.info(f"🚀 [Wait Devices Mode: SMART] 已启用智能动态并发探针策略 (最大超时上限: {timeout}s，就绪即刻放行)...")
+        logger.info(f"{LogIcon.ACTION} 已启用智能动态并发探针策略 (最大超时上限: {timeout}s，就绪即刻放行)...")
         if device_indices is None:
             device_indices = range(5, 10)
 
@@ -117,10 +117,10 @@ class TestChatMultiDevice:
                 active_devices.append((idx, f'Device_{idx}', mp))
 
         if not active_devices:
-            logger.warning('⚠️ [Wait Devices] 未检测到任何已初始化的设备页面对象，跳过主页面等待')
+            logger.warning(f'{LogIcon.WARN} 未检测到任何已初始化的设备页面对象，跳过主页面等待')
             return True
 
-        logger.info(f"⏳ [Wait Devices] 开始并发等待 {len(active_devices)} 台设备统一在主页面就绪: {[name for _, name, _ in active_devices]}...")
+        logger.info(f"{LogIcon.WAIT} 开始并发等待 {len(active_devices)} 台设备统一在主页面就绪: {[name for _, name, _ in active_devices]}...")
         dev_results = {}
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=len(active_devices)) as executor:
@@ -133,14 +133,14 @@ class TestChatMultiDevice:
                 try:
                     dev_results[dev_name] = future.result()
                 except Exception as e:
-                    logger.error(f"❌ [Wait Devices] 设备 [{dev_name}] 等待主页面发生未捕获异常: {e}")
+                    logger.error(f"{LogIcon.FAIL} 设备 [{dev_name}] 等待主页面发生未捕获异常: {e}")
                     dev_results[dev_name] = False
 
         failed = [d for d, success in dev_results.items() if not success]
         if failed:
-            logger.error(f"❌ [Wait Devices] 以下设备未能在主页面就绪: {failed}")
+            logger.error(f"{LogIcon.FAIL} 以下设备未能在主页面就绪: {failed}")
             return False
-        logger.info(f"🎉 [Wait Devices] 所有参与设备 ({list(dev_results.keys())}) 已全部在主页面就绪！")
+        logger.info(f"{LogIcon.SUCCESS} 所有参与设备 ({list(dev_results.keys())}) 已全部在主页面就绪！")
         return True
 
 
@@ -159,7 +159,7 @@ class TestChatMultiDevice:
                     setattr(self, f'chatPositionPageT{idx}', ChatPositionPage(driver))
                     self.__class__._class_driver = driver
             except Exception as e:
-                logger.warning(f'⚠️ [Setup Test] 设备 driver_device{idx} 启动失败 (对应的 Appium 服务可能未开启): {e}')
+                logger.warning(f'{LogIcon.WARN} 设备 driver_device{idx} 启动失败 (对应的 Appium 服务可能未开启): {e}')
 
         self.__class__._in_chat = False
         self.__class__._chat_target = None
@@ -169,13 +169,13 @@ class TestChatMultiDevice:
 
         yield
         if self.__class__._in_chat:
-            logger.info(f'🔒 [Teardown] 保持在当前与 {self.__class__._chat_target} 的聊天会话中，跳过返回主页')
+            logger.info(f'{LogIcon.SETUP} 🔒 [Teardown] 保持在当前与 {self.__class__._chat_target} 的聊天会话中，跳过返回主页')
             return
         try:
             # 优雅对所有就绪的多设备并发安全退回主页面
             self._wait_all_devices_on_main_page(range(5, 10))
         except Exception as e:
-            logger.error(f'Teardown 失败，未能返回首页: {e}')
+            logger.error(f'{LogIcon.FAIL} Teardown 失败，未能返回首页: {e}')
 
 
     # 内部调度方法-多设备异步并发消息发送统一执行器
@@ -206,10 +206,10 @@ class TestChatMultiDevice:
             if chat_list_page and chat_page:
                 ready_tasks.append((idx, dev_name, chat_list_page, chat_page, main_page, session_list))
             else:
-                logger.warning(f'⚠️ 设备 {dev_name} 未就绪 (对应端口的 Appium 服务未开启)，跳过此设备')
+                logger.warning(f'{LogIcon.WARN} 设备 {dev_name} 未就绪 (对应端口的 Appium 服务未开启)，跳过此设备')
 
         if not ready_tasks:
-            logger.warning(f'⚠️ 没有可用设备执行 {session_type} 异步发送')
+            logger.warning(f'{LogIcon.WARN} 没有可用设备执行 {session_type} 异步发送')
             return
 
         # 2. 发送前全局屏障：并发等待本轮参与的所有设备确认处于主页面
@@ -227,12 +227,12 @@ class TestChatMultiDevice:
 
                 # 同步栅栏：等待所有设备都在主页面后，同步放行进入会话
                 if barrier:
-                    logger.info(f'⏳ 设备 [{dev_name}] 已在主页面就绪，等待全设备同步对齐...')
+                    logger.info(f'{LogIcon.WAIT} 设备 [{dev_name}] 已在主页面就绪，等待全设备同步对齐...')
                     try:
                         barrier.wait(timeout=30)
                     except threading.BrokenBarrierError:
-                        logger.error(f'❌ 设备 [{dev_name}] 栅栏等待超时破损，强制继续执行')
-                    logger.info(f'🏁 设备 [{dev_name}] 全设备对齐完毕，并发进入会话！')
+                        logger.error(f'{LogIcon.FAIL} 设备 [{dev_name}] 栅栏等待超时破损，强制继续执行')
+                    logger.info(f'{LogIcon.SUCCESS} 设备 [{dev_name}] 全设备对齐完毕，并发进入会话！')
 
                 # 兼容单一策略对象或列表；群聊取首个指定群，私聊按序轮询多会话
                 session_list = sessions if isinstance(sessions, list) else [sessions]
@@ -245,7 +245,7 @@ class TestChatMultiDevice:
                     prefix = "" if is_group else f"U{s_idx + 1}_"
 
                     chatListPage.enter_chat(target.name)
-                    logger.info(f'🚀 设备 [{dev_name}] 进入{desc}【{target.name}】，开始连续批量发送 {loop_count} 轮...')
+                    logger.info(f'{LogIcon.ACTION} 设备 [{dev_name}] 进入{desc}【{target.name}】，开始连续批量发送 {loop_count} 轮...')
                     send_start = time.time()
 
                     for loop in range(loop_count):
@@ -254,22 +254,22 @@ class TestChatMultiDevice:
                             for idx, msg_data in enumerate(CHAT_CSV_DATA)
                         ]
                         chatPage.send_messages_batch(payloads, interval=interval)
-                        logger.debug(f'✅ 设备 [{dev_name}] 在{session_type}【{target.name}】中完成第 {loop + 1}/{loop_count} 轮发送')
+                        logger.debug(f'{LogIcon.SUCCESS} 设备 [{dev_name}] 在{session_type}【{target.name}】中完成第 {loop + 1}/{loop_count} 轮发送')
 
                     cost_sec = max(0.1, time.time() - send_start)
                     total_sent = loop_count * len(CHAT_CSV_DATA)
                     action_tip = "退回主页..." if is_group or (s_idx + 1 == total) else "退回主页并轮询下一个会话..."
-                    logger.info(f'✅ 设备 [{dev_name}] 已发完{desc}【{target.name}】的全部 {total_sent} 条消息 (耗时 {cost_sec:.1f}s, 吞吐 {total_sent/cost_sec:.1f}条/s)，{action_tip}')
+                    logger.info(f'{LogIcon.SUCCESS} 设备 [{dev_name}] 已发完{desc}【{target.name}】的全部 {total_sent} 条消息 (耗时 {cost_sec:.1f}s, 吞吐 {total_sent/cost_sec:.1f}条/s)，{action_tip}')
 
                     chatPage.click_back_button()
                     if mainPage:
                         mainPage.go_to_main_page(timeout=1, max_retries=3)
             except Exception as e:
-                logger.error(f'❌ 设备 [{dev_name}] {session_type}异步发送时发生异常: {e}')
+                logger.error(f'{LogIcon.FAIL} 设备 [{dev_name}] {session_type}异步发送时发生异常: {e}')
                 exceptions.append((dev_name, e))
                 if barrier and not barrier.broken:
                     try:
-                        logger.warning(f'⚠️ 设备 [{dev_name}] 异常退出，主动解除同步栅栏以唤醒其他就绪设备...')
+                        logger.warning(f'{LogIcon.WARN} 设备 [{dev_name}] 异常退出，主动解除同步栅栏以唤醒其他就绪设备...')
                         barrier.abort()
                     except Exception:
                         pass
@@ -281,7 +281,7 @@ class TestChatMultiDevice:
                 args=(chat_list_page, chat_page, main_page, dev_name, session_list)
             )
             threads.append(t)
-            logger.info(f'🧵 已就绪{session_type}设备线程: {dev_name}')
+            logger.info(f'{LogIcon.ACTION} 🧵 已就绪{session_type}设备线程: {dev_name}')
 
         try:
             for t in threads:
@@ -324,7 +324,7 @@ class TestChatMultiDevice:
             9: ('Device_9', dev9_groups)
         }
         with allure.step("0. 前置准备：并发等待所有设备在主页面就绪"):
-            logger.info("⏳ [Multi Device Group Test] 检查并等待所有参与设备在主页面就绪...")
+            logger.info(f"{LogIcon.WAIT} [Multi Device Group Test] 检查并等待所有参与设备在主页面就绪...")
             is_ready = self._wait_all_devices_on_main_page(list(device_groups_map.keys()))
             check.is_true(is_ready, "所有设备启动后应成功到达主页面")
 
@@ -361,7 +361,7 @@ class TestChatMultiDevice:
             9: ('Device_9', TEST_PRIVATE_USERS)
         }
         with allure.step("0. 前置准备：并发等待所有设备在主页面就绪"):
-            logger.info("⏳ [Multi Device Private Test] 检查并等待所有参与设备在主页面就绪...")
+            logger.info(f"{LogIcon.WAIT} [Multi Device Private Test] 检查并等待所有参与设备在主页面就绪...")
             is_ready = self._wait_all_devices_on_main_page(list(device_users_map.keys()))
             check.is_true(is_ready, "所有设备启动后应成功到达主页面")
 
@@ -408,12 +408,12 @@ class TestChatMultiDevice:
         }
 
         with allure.step("0. 前置准备：并发等待所有设备在主页面就绪"):
-            logger.info("⏳ [Combined Test] 检查并等待所有参与设备在主页面就绪...")
+            logger.info(f"{LogIcon.WAIT} [Combined Test] 检查并等待所有参与设备在主页面就绪...")
             is_ready = self._wait_all_devices_on_main_page(list(device_groups_map.keys()))
             check.is_true(is_ready, "所有设备启动后应成功到达主页面")
 
         with allure.step("1. 阶段一：多设备群聊异步并发发送"):
-            logger.info("🚀 [Combined Test] 启动阶段一：多设备群聊并发发送...")
+            logger.info(f"{LogIcon.ACTION} [Combined Test] 启动阶段一：多设备群聊并发发送...")
             self._run_async_multi_device_send(
                 device_sessions_map=device_groups_map,
                 loop_count=1,
@@ -422,12 +422,12 @@ class TestChatMultiDevice:
             )
 
         with allure.step("1.5. 阶段过渡：确保所有设备退出群聊并在主列表对齐"):
-            logger.info("⏳ [Combined Test] 阶段一结束，检查并确认所有设备均已安全返回主页面...")
+            logger.info(f"{LogIcon.WAIT} [Combined Test] 阶段一结束，检查并确认所有设备均已安全返回主页面...")
             is_trans_ready = self._wait_all_devices_on_main_page(list(device_users_map.keys()))
             check.is_true(is_trans_ready, "群聊阶段完成后所有设备应安全回到主页面准备进入单聊阶段")
 
         with allure.step("2. 阶段二：多设备单聊异步并发发送"):
-            logger.info("🚀 [Combined Test] 启动阶段二：多设备单聊并发发送...")
+            logger.info(f"{LogIcon.ACTION} [Combined Test] 启动阶段二：多设备单聊并发发送...")
             self._run_async_multi_device_send(
                 device_sessions_map=device_users_map,
                 loop_count=1,

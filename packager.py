@@ -89,6 +89,8 @@ def build_dependency_graph(root_dir):
                 
     return used_py_files, external_deps
 
+from core.logger_utils import logger, LogIcon
+
 def main():
     print("开始分析依赖...")
     used_py_files, external_deps = build_dependency_graph('.')

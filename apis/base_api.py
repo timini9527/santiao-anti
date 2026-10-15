@@ -1,7 +1,7 @@
 import  allure
 import requests
 
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from core.config_loader import config
 from utils.file_reader.data_loader import load_yaml_data
 
@@ -53,17 +53,17 @@ class BaseApi:
 
         # kwargs["headers"]["Authorization"] = f"Bearer {self.token}"
 
-        logger.info(f"REQUEST: {method} {url} | Body: {kwargs.get('json', '')}")
+        logger.info(f"{LogIcon.FIND} 发送 HTTP 请求: {method} {url} | 请求体: {kwargs.get('json', '')}")
 
         try:
             response = requests.request(method, url, **kwargs)
-            logger.info(f"RESPONSE: {response.status_code} | Body: {response.text[:200]}...")  # 截断日志防止过长
+            logger.info(f"{LogIcon.SUCCESS} 收到 HTTP 响应: 状态码 {response.status_code} | 响应体: {response.text[:200]}...")  # 截断日志防止过长
 
             # 将请求详情附加到 Allure
             allure.attach(url, "Request URL", allure.attachment_type.TEXT)
             allure.attach(response.text, "Response Body", allure.attachment_type.JSON)
             return  response
         except Exception as e:
-            logger.error(f"Request Failed: {e}")
+            logger.error(f"{LogIcon.FAIL} HTTP 请求执行失败: {e}")
             raise e
 

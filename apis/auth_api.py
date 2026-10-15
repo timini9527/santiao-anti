@@ -1,4 +1,4 @@
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from utils.file_reader.data_loader import  load_yaml_data, update_token
 from apis.base_api import BaseApi
 
@@ -33,12 +33,11 @@ class AuthApi(BaseApi):
                 update_token(token, open_id)
                 return token
             else:
-                logger.error("登录响应中未找到 Token")
+                logger.error(f"{LogIcon.FAIL} 登录响应中未找到 Token")
                 # print("登录响应中未找到 Token")
                 raise ValueError("登录响应中未找到 Token")
         except Exception as e:
-            logger.error(f"登录失败: {e}")
-            print(f"登录失败: {e}")
+            logger.error(f"{LogIcon.FAIL} 登录失败: {e}")
             raise e
 
 

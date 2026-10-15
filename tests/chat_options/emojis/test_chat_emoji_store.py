@@ -5,7 +5,7 @@ from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_page import ChatPage
 from strategy.chat.chat_strategy import PRIVATE_USER1
 from pages.main.main_page import MainPage
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from utils.file_reader.data_loader import load_yaml_data
 from pages.chat_options.emojis.chat_emoji_store_page import ChatEmojiStorePage
 from pages.chat_options.emojis.chat_emoji_package_page import ChatEmojiPackagePage
@@ -19,7 +19,7 @@ def load_emoji_test_cases():
             cases.append((item.get('pkg_index'), item.get('strategy'), item.get('count'), item.get('network'), item.get('post_action'), item.get('desc')))
         return cases
     except Exception as e:
-        logger.error(f'加载表情包测试用例数据失败: {e}')
+        logger.error(f'{LogIcon.FAIL} 加载表情包测试用例数据失败: {e}')
         return []
 
 @allure.epic('IM核心功能测试')
@@ -41,7 +41,7 @@ class TestChatEmojiStore:
         try:
             self.mainPage.go_to_main_page()
         except Exception as e:
-            logger.error(f'Teardown 失败，未能返回首页: {e}')
+            logger.error(f'{LogIcon.FAIL} Teardown 失败，未能返回首页: {e}')
 
     @pytest.mark.p2
     @allure.severity(allure.severity_level.NORMAL)
@@ -56,12 +56,12 @@ class TestChatEmojiStore:
         with allure.step(f'3. 根据策略执行添加: {desc}'):
             added_pkg_names, add_status = self.emojiStorePage.add_emoji_packages(emoji_type, count)
             if not added_pkg_names:
-                logger.warning('当前商店页面没有可供添加的表情包')
+                logger.warning(f'{LogIcon.WARN} 当前商店页面没有可供添加的表情包')
                 pytest.skip('当前商店页面没有可供添加的表情包')
             if not add_status:
-                logger.warning('添加表情包失败')
+                logger.warning(f'{LogIcon.WARN} 添加表情包失败')
                 pytest.skip('添加表情包失败')
-            logger.info(f'本次操作成功添加了以下表情包: {added_pkg_names}')
+            logger.info(f'{LogIcon.SUCCESS} 本次操作成功添加了以下表情包: {added_pkg_names}')
             self.emojiStorePage.back_to_emoji_page()
         with allure.step('4. 验证添加的表情包是否成功'):
             verify_status = self.emojiStorePage.verify_added_packages(added_pkg_names)
@@ -109,11 +109,11 @@ class TestChatEmojiStore:
         with allure.step(f'2. 根据策略执行删除: {desc}'):
             current_items = self.emojiPackagePage._get_unadded_packages_on_screen()
             if not current_items:
-                logger.warning('我的表情列表中没有可供删除的表情包，跳过测试')
+                logger.warning(f'{LogIcon.WARN} 我的表情列表中没有可供删除的表情包，跳过测试')
                 pytest.skip('列表为空，跳过验证')
             deled_pkgs, aft_current_items, del_result = self.emojiPackagePage.delete_emoji_packages(emoji_type, count)
             check.is_true(del_result, f'删除表情包操作执行失败，策略: {emoji_type}')
-            logger.info(f'执行删除操作完成，成功删除: {deled_pkgs}, 结果状态: {del_result}')
+            logger.info(f'{LogIcon.SUCCESS} 执行删除操作完成，成功删除: {deled_pkgs}, 结果状态: {del_result}')
         with allure.step('3. 验证删除的表情包是否成功'):
             del_status = self.emojiPackagePage.verify_delete_emoji_packages(deled_pkgs, aft_current_items)
             check.is_true(del_status, f'删除表情包后列表未正确刷新！被删包: {deled_pkgs}, 剩余包: {aft_current_items}')

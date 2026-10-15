@@ -2,7 +2,7 @@ import time
 import allure
 import pytest
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.chat.core.chat_page import ChatPage
 from pages.chat.list.chat_list_page import ChatListPage
@@ -40,7 +40,7 @@ class TestChatDouble:
                 try:
                     main_page.go_to_main_page()
                 except Exception as e:
-                    logger.warning(f'⚡ [Setup] {side_desc} 返回首页异常: {e}')
+                    logger.warning(f'{LogIcon.ACTION} {side_desc} 返回首页异常: {e}')
 
         yield
 
@@ -49,7 +49,7 @@ class TestChatDouble:
                 try:
                     main_page.go_to_main_page()
                 except Exception as e:
-                    logger.error(f'❌ [Teardown] {side_desc} 清理返回首页失败: {e}')
+                    logger.error(f'{LogIcon.FAIL} {side_desc} 清理返回首页失败: {e}')
 
     def _wait_for_received_message(self, expected_text: str, timeout: int = 8) -> str:
         """
@@ -61,7 +61,7 @@ class TestChatDouble:
         while time.time() - start_time < timeout:
             last_text = self.chatR.get_text_message_content_by_index(index=-1, side='received', expect_missing=True)
             if last_text == expected_text:
-                logger.info(f"⚡ [Sync] 接收端在 {time.time() - start_time:.2f}s 内成功捕获目标消息: '{expected_text}'")
+                logger.info(f"{LogIcon.ACTION} [Sync] 接收端在 {time.time() - start_time:.2f}s 内成功捕获目标消息: '{expected_text}'")
                 return last_text
             time.sleep(0.3)
         return last_text

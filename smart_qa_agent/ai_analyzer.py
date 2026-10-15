@@ -1,3 +1,4 @@
+from core.logger_utils import logger, LogIcon
 import os
 import re
 import requests
@@ -135,8 +136,8 @@ class AIAnalyzer:
             else:
                 # HTTP 报错时退回到本地 Mock 诊断
                 err_msg = f"API 响应错误 (HTTP {response.status_code}): {response.text}"
-                print(f"警告: 大模型接口请求失败，将使用本地诊断。{err_msg}")
+                logger.error(f"{LogIcon.FAIL} 警告: 大模型接口请求失败，将使用本地诊断。{err_msg}")
                 return self._get_mock_analysis(failure_detail)
         except Exception as e:
-            print(f"警告: 大模型接口请求发生异常，将使用本地诊断。错误: {e}")
+            logger.error(f"{LogIcon.FAIL} 警告: 大模型接口请求发生异常，将使用本地诊断。错误: {e}")
             return self._get_mock_analysis(failure_detail)

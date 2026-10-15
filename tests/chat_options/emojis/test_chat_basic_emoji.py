@@ -5,7 +5,7 @@ from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_page import ChatPage
 from strategy.chat.chat_strategy import PRIVATE_USER1
 from pages.main.main_page import MainPage
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.chat_options.emojis.chat_emoji_page import ChatEmojiPage
 
 
@@ -29,9 +29,9 @@ class TestChatBasicEmoji:
         try:
             self.__class__._chat_target = None
             MainPage(driver_sender).go_to_main_page()
-            logger.info("🧹 [Class Teardown] 表情模块全部用例执行完毕，统一返回主页")
+            logger.info(f"{LogIcon.SETUP} [Class Teardown] 表情模块全部用例执行完毕，统一返回主页")
         except Exception as e:
-            logger.error(f"Teardown 失败，未能返回首页: {e}")
+            logger.error(f"{LogIcon.FAIL} Teardown 失败，未能返回首页: {e}")
 
     @pytest.fixture(autouse=True)
     def setup(self, driver_sender):
@@ -45,7 +45,7 @@ class TestChatBasicEmoji:
         """进入指定的聊天会话并打开表情面板（支持同会话直接复用，首次进入后保持在面板内）"""
         if self.__class__._chat_target != chat_name:
             if self.__class__._chat_target is not None:
-                logger.info(f"🔄 [Session Switch] 检测到聊天对象从【{self.__class__._chat_target}】切换为【{chat_name}】，退回首页重新进入")
+                logger.info(f"{LogIcon.ACTION} [Session Switch] 检测到聊天对象从【{self.__class__._chat_target}】切换为【{chat_name}】，退回首页重新进入")
                 self.mainPage.go_to_main_page()
             self.chatListPage.enter_chat(chat_name)
             self.__class__._chat_target = chat_name

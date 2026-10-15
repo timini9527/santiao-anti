@@ -1,6 +1,6 @@
 import time
 from common.base_page import BasePage
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from locators.home.home_locator import HomeLocator
 from locators.main.main_locator import MainLocator
 
@@ -50,7 +50,7 @@ class MainPage(BasePage):
         通过 Android Intent 栈顶恢复机制 (FLAG_ACTIVITY_CLEAR_TOP)，
         在不强杀进程、不中断 WebSocket 长连接的前提下，将 MainActivity 瞬间推回栈顶。
         """
-        logger.warning("🚀 [StateHealer] 触发 Intent 栈顶恢复：无损归位 MainActivity...")
+        logger.warning(f"{LogIcon.ACTION} [StateHealer] 触发 Intent 栈顶恢复：无损归位 MainActivity...")
         try:
             # 1. 优先使用 Appium UiAutomator2 原生 mobile: startActivity (FLAG_ACTIVITY_CLEAR_TOP | SINGLE_TOP = 0x24000000)
             self.driver.execute_script(
@@ -62,20 +62,20 @@ class MainPage(BasePage):
             )
             time.sleep(0.2)
             if self.is_in_main_page(timeout=0.3):
-                logger.info("✅ [StateHealer] Intent 栈顶清空归位成功！")
+                logger.info(f"{LogIcon.SUCCESS} [StateHealer] Intent 栈顶清空归位成功！")
                 return True
         except Exception as e:
-            logger.debug(f"⚠️ [StateHealer] mobile: startActivity 执行失败，尝试 activate_app 备用通道: {e}")
+            logger.debug(f"{LogIcon.WARN} [StateHealer] mobile: startActivity 执行失败，尝试 activate_app 备用通道: {e}")
 
         # 2. 备用通道：activate_app 激活回到前台
         try:
             self.driver.activate_app(self.APP_PACKAGE)
             time.sleep(0.25)
             if self.is_in_main_page(timeout=0.3):
-                logger.info("✅ [StateHealer] activate_app 备用通道归位成功！")
+                logger.info(f"{LogIcon.SUCCESS} [StateHealer] activate_app 备用通道归位成功！")
                 return True
         except Exception as e:
-            logger.warning(f"⚠️ [StateHealer] activate_app 备用通道失败: {e}")
+            logger.warning(f"{LogIcon.WARN} [StateHealer] activate_app 备用通道失败: {e}")
 
         return False
 
@@ -85,12 +85,12 @@ class MainPage(BasePage):
             # App 状态：0=NOT_INSTALLED, 1=NOT_RUNNING, 2=BACKGROUND_SUSPENDED, 3=BACKGROUND, 4=FOREGROUND
             app_state = self.driver.query_app_state(self.APP_PACKAGE)
             if app_state != 4:
-                logger.warning(f"🚨 [StateHealer] App 未在前台运行 (State={app_state})，执行自动热唤醒拉起...")
+                logger.warning(f"{LogIcon.WARN} 🚨 [StateHealer] App 未在前台运行 (State={app_state})，执行自动热唤醒拉起...")
                 self.driver.activate_app(self.APP_PACKAGE)
                 time.sleep(0.5)
                 return self.wait_for_main_page_load(timeout=3.0)
         except Exception as e:
-            logger.warning(f"⚠️ [StateHealer] 查询应用状态异常: {e}")
+            logger.warning(f"{LogIcon.WARN} [StateHealer] 查询应用状态异常: {e}")
             try:
                 self.driver.activate_app(self.APP_PACKAGE)
                 time.sleep(0.5)
@@ -107,18 +107,18 @@ class MainPage(BasePage):
         """
         # 1. 瞬时前置守卫：已在主页 100% 绝对拦截放行，严禁触碰任何返回动作！
         if self.is_in_main_page(timeout=timeout, raise_exception=raise_exception):
-            logger.debug("🍏 [StateHealer] 当前已处于纯净主页面，0 操作安全放行")
+            logger.debug(f"{LogIcon.FIND} 🍏 [StateHealer] 当前已处于纯净主页面，0 操作安全放行")
             return True
 
-        logger.info("🔄 [StateHealer] 检测到不在主页面，开始归位主页面...")
+        logger.info(f"{LogIcon.ACTION} [StateHealer] 检测到不在主页面，开始归位主页面...")
 
         for step in range(max_retries):
             if not self.is_app_in_foreground():
-                logger.warning("🔙 [StateHealer] 检测到已不在应用前台，终止按 Back，切入 Intent 恢复...")
+                logger.warning(f"{LogIcon.ACTION} [StateHealer] 检测到已不在应用前台，终止按 Back，切入 Intent 恢复...")
                 break
             try:
                 if self.is_in_main_page(timeout=0.3):
-                    logger.info(f"🍏 [StateHealer] 平滑第 {step + 1} 次退回已成功归位主页面 (零闪烁)")
+                    logger.info(f"{LogIcon.SUCCESS} 🍏 [StateHealer] 平滑第 {step + 1} 次退回已成功归位主页面 (零闪烁)")
                     return True
                 self.back(timeout=0.2)
             except Exception:
@@ -130,7 +130,7 @@ class MainPage(BasePage):
 
         # 4. 异常容错自愈 (如存在搜索覆盖层、展开抽屉遮挡)
         if self.is_in_search_page(timeout=0.1):
-            logger.info("🧹 [StateHealer] 检测到残留搜索覆盖层，正在退出搜索...")
+            logger.info(f"{LogIcon.SETUP} [StateHealer] 检测到残留搜索覆盖层，正在退出搜索...")
             try:
                 self.click(HomeLocator.SEARCH_CANCEL, timeout=1.0)
             except Exception:
@@ -146,17 +146,17 @@ class MainPage(BasePage):
 
         # 5. 状态校验
         if self.is_in_main_page(timeout=0.3):
-            logger.info("🍏 [StateHealer] 状态自愈完成，已确保停留在主页面")
+            logger.info(f"{LogIcon.SUCCESS} 🍏 [StateHealer] 状态自愈完成，已确保停留在主页面")
             return True
 
         # 6. 进程存活终极兜底
         self.ensure_app_alive_and_ready()
         success = self.is_in_main_page(timeout=0.5)
         if success:
-            logger.info("🍏 [StateHealer] 状态自愈完成，已确保停留在主页面")
+            logger.info(f"{LogIcon.SUCCESS} 🍏 [StateHealer] 状态自愈完成，已确保停留在主页面")
             return True
 
         if raise_exception:
             raise RuntimeError("❌ [StateHealer] 经过终极自愈后仍未能恢复至主页面！")
-        logger.error("❌ [StateHealer] 经过终极自愈后仍未能恢复至主页面")
+        logger.error(f"{LogIcon.FAIL} [StateHealer] 经过终极自愈后仍未能恢复至主页面")
         return False

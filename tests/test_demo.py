@@ -3,6 +3,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 import pytest
 import allure
 from pages.home.home_page import HomePage
+from core.logger_utils import logger, LogIcon
 
 
 @pytest.mark.p2
@@ -14,7 +15,7 @@ from pages.home.home_page import HomePage
 def test_full_flow(driver_sender):
     wait = WebDriverWait(driver_sender, 15)
     HomePage(driver_sender).open_left_menu()
-    print('正在验证 App 启动状态...')
+    logger.info(f"{LogIcon.ACTION} 正在验证 App 启动状态...")
     assert driver_sender.current_package == 'com.santiaotalk.im'
-    print('业务测试流程执行完毕！')
+    logger.info(f"{LogIcon.SUCCESS} 业务测试流程执行完毕！")
     time.sleep(10)

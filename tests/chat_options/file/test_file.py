@@ -2,7 +2,7 @@ import allure
 import pytest
 import time
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_page import ChatPage
@@ -32,9 +32,9 @@ class TestChatFile:
         try:
             self.__class__._chat_target = None
             MainPage(driver_sender).go_to_main_page()
-            logger.info("🧹 [Class Teardown] 文件模块全部用例执行完毕，统一返回主页")
+            logger.info(f"{LogIcon.SETUP} [Class Teardown] 文件模块全部用例执行完毕，统一返回主页")
         except Exception as e:
-            logger.error(f"Teardown 失败，未能返回首页: {e}")
+            logger.error(f"{LogIcon.FAIL} Teardown 失败，未能返回首页: {e}")
 
     @pytest.fixture(autouse=True)
     def setup(self, driver_sender):
@@ -48,7 +48,7 @@ class TestChatFile:
         """进入指定的聊天会话并打开选择文件页面（支持同会话直接复用，跨会话如私聊切群聊时自动退回主页重新进入）"""
         if self.__class__._chat_target != chat_name:
             if self.__class__._chat_target is not None:
-                logger.info(f"🔄 [Session Switch] 检测到聊天对象从【{self.__class__._chat_target}】切换为【{chat_name}】，退回首页重新进入")
+                logger.info(f"{LogIcon.ACTION} [Session Switch] 检测到聊天对象从【{self.__class__._chat_target}】切换为【{chat_name}】，退回首页重新进入")
                 self.mainPage.go_to_main_page()
             self.chatListPage.enter_chat(chat_name)
             self.__class__._chat_target = chat_name
@@ -189,7 +189,7 @@ class TestChatFile:
             if withdraw_result:
                 notice_text, _ = withdraw_result
                 check.is_in('撤回', notice_text, f'❌ 未能捕获到预期的撤回提示文字: {notice_text}')
-                logger.info(f'✅ 文件消息撤回验证通过: {notice_text}')
+                logger.info(f'{LogIcon.SUCCESS} 文件消息撤回验证通过: {notice_text}')
 
 
     @allure.story('发送异常-重试机制')
@@ -206,12 +206,12 @@ class TestChatFile:
         with allure.step('2. 检查是否有失败红点并尝试重发'):
             has_fail = self.chatPage.get_last_message_send_fail_status()
             if has_fail:
-                logger.info('🚩 检测到发送失败红点，准备执行重发')
+                logger.info(f'{LogIcon.FAIL} 🚩 检测到发送失败红点，准备执行重发')
                 self.chatPage.click_last_message_resend_button()
                 success = self.chatPage.wait_for_last_sent_message_completed()
                 check.is_true(success, '❌ 点击重发按钮后，消息仍未发送成功')
             else:
-                logger.warning('⚠️ 当前环境网络太好，未触发发送失败场景，跳过重发点击步骤')
+                logger.warning(f'{LogIcon.WARN} 当前环境网络太好，未触发发送失败场景，跳过重发点击步骤')
                 check.is_true(self.chatPage.wait_for_last_sent_message_completed(), '❌ 消息发送状态异常')
 
 

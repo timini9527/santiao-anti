@@ -2,7 +2,7 @@ import io
 import math
 from dataclasses import dataclass
 from PIL import Image
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 
 
 @dataclass(frozen=True)
@@ -52,16 +52,16 @@ class VerifyColor:
             # 蓝色图标通常 Blue 值会明显大于 Red 值
             # 如果女性是粉色/红色图标，则 Red 值会比较高
             if b > r + 20:
-                logger.info(f"判断结果：男 (中心点RGB: {r}, {g}, {b})")
+                logger.info(f"{LogIcon.FIND} 判断结果：男 (中心点RGB: {r}, {g}, {b})")
                 return '男'
             elif r > b + 20:
-                logger.info(f"判断结果：女 (中心点RGB: {r}, {g}, {b})")
+                logger.info(f"{LogIcon.FIND} 判断结果：女 (中心点RGB: {r}, {g}, {b})")
                 return '女'
             else:
-                logger.info(f"判断结果：未知/可能是灰色 (中心点RGB: {r}, {g}, {b})")
+                logger.info(f"{LogIcon.FIND} 判断结果：未知/可能是灰色 (中心点RGB: {r}, {g}, {b})")
                 return '未知'
         except Exception as e:
-            logger.error(f"找不到元素或截图失败: {e}")
+            logger.error(f"{LogIcon.FAIL} 找不到元素或截图失败: {e}")
             return  None
 
     @staticmethod
@@ -94,13 +94,13 @@ class VerifyColor:
             # 如果绿色像素占比超过 5%，说明按钮呈现绿色(被勾选)
             green_ratio = green_pixels / total_pixels
             if green_ratio > 0.05:
-                logger.info(f"判断同意按钮状态：已勾选 ✅ (绿色占比: {green_ratio:.1%})")
+                logger.info(f"{LogIcon.SUCCESS} 判断同意按钮状态：已勾选 ✅ (绿色占比: {green_ratio:.1%})")
                 return True
             else:
-                logger.info(f"判断同意按钮状态：未勾选 ❎ (绿色占比: {green_ratio:.1%})")
+                logger.info(f"{LogIcon.FIND} 判断同意按钮状态：未勾选 ❎ (绿色占比: {green_ratio:.1%})")
                 return False
         except Exception as e:
-            logger.error(f"分析勾选按钮状态失败: {e}")
+            logger.error(f"{LogIcon.FAIL} 分析勾选按钮状态失败: {e}")
             return False
 
     @staticmethod
@@ -168,20 +168,20 @@ class VerifyColor:
         try:
             features = VerifyColor._extract_color_features(day_elem)
             logger.info(
-                f"🎨 [CalendarColor] 彩色占比: {features.colored_ratio:.1%}, "
-                f"绿色占比: {features.green_ratio:.1%}, "
-                f"文字笔画平均亮度: {features.avg_text_brightness if features.avg_text_brightness is not None else 'N/A'}, "
-                f"最暗像素亮度: {features.avg_darkest if features.avg_darkest is not None else 'N/A'}"
+                f"{LogIcon.ACTION} 彩色占比: {features.colored_ratio:.1%}, "
+                f"{LogIcon.ACTION} 绿色占比: {features.green_ratio:.1%}, "
+                f"{LogIcon.ACTION} 文字笔画平均亮度: {features.avg_text_brightness if features.avg_text_brightness is not None else 'N/A'}, "
+                f"{LogIcon.ACTION} 最暗像素亮度: {features.avg_darkest if features.avg_darkest is not None else 'N/A'}"
             )
 
             # 今天等日期可能带绿色背景/文字 (如25日 "今天")，直接视为激活/可用 (非灰色)。
             if features.colored_ratio > 0.05 or features.green_ratio > 0.02:
-                logger.info("🎨 [CalendarColor] 判定结果：非灰色 (检测到绿色/彩色活跃元素，如今天)")
+                logger.info(f"{LogIcon.ACTION} 判定结果：非灰色 (检测到绿色/彩色活跃元素，如今天)")
                 return False
 
             # 未提取到任何非白色文字像素，说明是空白日期格，视为不可点/灰色。
             if features.avg_text_brightness is None:
-                logger.info("🎨 [CalendarColor] 判定结果：灰色 (未提取到文字笔画像素，空白格)")
+                logger.info(f"{LogIcon.ACTION} 判定结果：灰色 (未提取到文字笔画像素，空白格)")
                 return True
 
             # 黑色/深色文字 (有消息/可点) 笔画亮度一般在 30~90 之间；
@@ -189,12 +189,12 @@ class VerifyColor:
             # 以 125 为分割阈值：>= 125 判定为灰色不可用，< 125 判定为黑色可用。
             is_gray = features.avg_text_brightness >= 125
             logger.info(
-                f"🎨 [CalendarColor] 判定结果：{'灰色 🩶 (不可点/无记录)' if is_gray else '黑色 🩵 (可点/有记录)'} "
-                f"(文字平均亮度: {features.avg_text_brightness:.1f}, 阈值: 125.0)"
+                f"{LogIcon.ACTION} 判定结果：{'灰色 🩶 (不可点/无记录)' if is_gray else '黑色 🩵 (可点/有记录)'} "
+                f"{LogIcon.ACTION} (文字平均亮度: {features.avg_text_brightness:.1f}, 阈值: 125.0)"
             )
             return is_gray
         except Exception as e:
-            logger.error(f"❌ [CalendarColor] 分析日期颜色失败: {e}")
+            logger.error(f"{LogIcon.FAIL} [CalendarColor] 分析日期颜色失败: {e}")
             return False
 
     @staticmethod
@@ -205,12 +205,12 @@ class VerifyColor:
             # 绿色文字可能只占 TextView 截图的一小部分，阈值低于通用彩色判断。
             is_selected = features.green_ratio >= 0.01
             logger.info(
-                f"🎨 [TagColor] 绿色像素占比: {features.green_ratio:.1%}, "
-                f"判定为{'已选中' if is_selected else '未选中'}"
+                f"{LogIcon.ACTION} [TagColor] 绿色像素占比: {features.green_ratio:.1%}, "
+                f"{LogIcon.FIND} 判定为{'已选中' if is_selected else '未选中'}"
             )
             return is_selected
         except Exception as e:
-            logger.error(f"❌ [TagColor] 分析标签颜色失败: {e}")
+            logger.error(f"{LogIcon.FAIL} [TagColor] 分析标签颜色失败: {e}")
             return False
 
     @staticmethod
@@ -224,27 +224,27 @@ class VerifyColor:
         """
         try:
             features = VerifyColor._extract_color_features(btn_elem)
-            logger.info(f"🎨 [ColorVerify] 中心区域彩色像素占比: {features.colored_ratio:.1%} (阈值: 5.0%)")
+            logger.info(f"{LogIcon.ACTION} [ColorVerify] 中心区域彩色像素占比: {features.colored_ratio:.1%} (阈值: 5.0%)")
 
             if features.colored_ratio > 0.05:
-                logger.info("🎨 [ColorVerify] 判定结果：非灰色（检测到彩色活跃元素，如绿色背景/文本） 🩵 (已激活)")
+                logger.info(f"{LogIcon.ACTION} [ColorVerify] 判定结果：非灰色（检测到彩色活跃元素，如绿色背景/文本） 🩵 (已激活)")
                 return False
 
             if features.avg_darkest is None:
-                logger.warning("⚠️ [ColorVerify] 未在元素中心区域提取到有效的无色系像素点，默认判定为非灰色")
+                logger.warning(f"{LogIcon.WARN} [ColorVerify] 未在元素中心区域提取到有效的无色系像素点，默认判定为非灰色")
                 return False
 
             # 保留旧调用的背景兼容规则；日期页面不再使用本方法。
             if features.avg_darkest >= 120 or (
                 features.light_ratio > 0.8 and features.colored_ratio < 0.03
             ):
-                logger.info("🎨 [ColorVerify] 判定结果：灰色 🩶 (未激活/未选中)")
+                logger.info(f"{LogIcon.ACTION} [ColorVerify] 判定结果：灰色 🩶 (未激活/未选中)")
                 return True
             else:
-                logger.info("🎨 [ColorVerify] 判定结果：非灰色/黑色 🩵 (已激活/已选中)")
+                logger.info(f"{LogIcon.ACTION} [ColorVerify] 判定结果：非灰色/黑色 🩵 (已激活/已选中)")
                 return False
         except Exception as e:
-            logger.error(f"❌ [ColorVerify] 分析灰色状态失败: {e}")
+            logger.error(f"{LogIcon.FAIL} [ColorVerify] 分析灰色状态失败: {e}")
             return False
 
 
@@ -315,13 +315,13 @@ class FigmaColorToken:
             ratio = matched_pixels / total_pixels
             is_matched = ratio >= min_ratio
             logger.info(
-                f"🎨 [FigmaColor] 目标 HEX: {target_hex} (RGB: {target_rgb}), "
-                f"匹配像素占比: {ratio:.1%} (期望阈值: {min_ratio:.1%}, 色差容差: {tolerance}) -> "
-                f"判定: {'符合设计规范 ✅' if is_matched else '不匹配 ❌'}"
+                f"{LogIcon.ACTION} [FigmaColor] 目标 HEX: {target_hex} (RGB: {target_rgb}), "
+                f"{LogIcon.FIND} 匹配像素占比: {ratio:.1%} (期望阈值: {min_ratio:.1%}, 色差容差: {tolerance}) -> "
+                f"{LogIcon.SUCCESS} 判定: {'符合设计规范 ✅' if is_matched else '不匹配 ❌'}"
             )
             return is_matched
         except Exception as e:
-            logger.error(f"❌ [FigmaColor] Figma 颜色匹配校验异常: {e}")
+            logger.error(f"{LogIcon.FAIL} [FigmaColor] Figma 颜色匹配校验异常: {e}")
             return False
 
     # ==================================================================================================
@@ -332,16 +332,16 @@ class FigmaColorToken:
         """通过 Figma 蓝色/粉色 Token 校验性别图标"""
         try:
             if cls.verify_element_color_match(gender_elem, FigmaDesignColor.MALE_BLUE):
-                logger.info("🎨 [FigmaSex] 匹配 Figma 男性蓝色 Token -> 判定为: 男")
+                logger.info(f"{LogIcon.ACTION} [FigmaSex] 匹配 Figma 男性蓝色 Token -> 判定为: 男")
                 return '男'
             elif cls.verify_element_color_match(gender_elem, FigmaDesignColor.FEMALE_PINK):
-                logger.info("🎨 [FigmaSex] 匹配 Figma 女性粉色 Token -> 判定为: 女")
+                logger.info(f"{LogIcon.ACTION} [FigmaSex] 匹配 Figma 女性粉色 Token -> 判定为: 女")
                 return '女'
             else:
-                logger.info("🎨 [FigmaSex] 未匹配性别颜色 Token -> 判定为: 未知")
+                logger.info(f"{LogIcon.ACTION} [FigmaSex] 未匹配性别颜色 Token -> 判定为: 未知")
                 return '未知'
         except Exception as e:
-            logger.error(f"❌ [FigmaSex] 校验性别颜色失败: {e}")
+            logger.error(f"{LogIcon.FAIL} [FigmaSex] 校验性别颜色失败: {e}")
             return None
 
     @classmethod
@@ -349,10 +349,10 @@ class FigmaColorToken:
         """通过 Figma 浅绿 Token 校验同意勾选按钮"""
         try:
             is_agreed = cls.verify_element_color_match(btn_elem, FigmaDesignColor.TEXT_DATE_TODAY)
-            logger.info(f"🎨 [FigmaAgree] 同意勾选按钮判定: {'已勾选 ✅' if is_agreed else '未勾选 ❎'}")
+            logger.info(f"{LogIcon.ACTION} [FigmaAgree] 同意勾选按钮判定: {'已勾选 ✅' if is_agreed else '未勾选 ❎'}")
             return is_agreed
         except Exception as e:
-            logger.error(f"❌ [FigmaAgree] 分析勾选按钮状态失败: {e}")
+            logger.error(f"{LogIcon.FAIL} [FigmaAgree] 分析勾选按钮状态失败: {e}")
             return False
 
     @classmethod
@@ -361,15 +361,15 @@ class FigmaColorToken:
         try:
             # 1. 优先校验是否为今天浅绿色背景/文字 (如25日 "今天") -> 属于激活状态 (非灰色)
             if cls.verify_element_color_match(day_elem, FigmaDesignColor.TEXT_DATE_TODAY):
-                logger.info("🎨 [FigmaCalendar] 匹配 Figma 今天绿色 Token -> 判定为: 非灰色/已激活")
+                logger.info(f"{LogIcon.ACTION} [FigmaCalendar] 匹配 Figma 今天绿色 Token -> 判定为: 非灰色/已激活")
                 return False
 
             # 2. 校验是否匹配置灰无消息文字 Token (#9D9D9D)
             is_gray = cls.verify_element_color_match(day_elem, FigmaDesignColor.TEXT_DISABLE)
-            logger.info(f"🎨 [FigmaCalendar] 校验置灰 Token ({FigmaDesignColor.TEXT_DISABLE}) -> 判定为: {'灰色 🩶 (无消息/不可点)' if is_gray else '黑色 🩵 (有消息/可点)'}")
+            logger.info(f"{LogIcon.ACTION} [FigmaCalendar] 校验置灰 Token ({FigmaDesignColor.TEXT_DISABLE}) -> 判定为: {'灰色 🩶 (无消息/不可点)' if is_gray else '黑色 🩵 (有消息/可点)'}")
             return is_gray
         except Exception as e:
-            logger.error(f"❌ [FigmaCalendar] 分析日历日期颜色失败: {e}")
+            logger.error(f"{LogIcon.FAIL} [FigmaCalendar] 分析日历日期颜色失败: {e}")
             return False
 
     @classmethod
@@ -377,10 +377,10 @@ class FigmaColorToken:
         """根据 Figma 绿色 Token 判断标签是否为已选中状态"""
         try:
             is_selected = cls.verify_element_color_match(tag_elem, FigmaDesignColor.TEXT_DATE_TODAY)
-            logger.info(f"🎨 [FigmaTag] 标签选中校验: {'已选中 ✅' if is_selected else '未选中 ❎'}")
+            logger.info(f"{LogIcon.ACTION} [FigmaTag] 标签选中校验: {'已选中 ✅' if is_selected else '未选中 ❎'}")
             return is_selected
         except Exception as e:
-            logger.error(f"❌ [FigmaTag] 分析标签颜色失败: {e}")
+            logger.error(f"{LogIcon.FAIL} [FigmaTag] 分析标签颜色失败: {e}")
             return False
 
     @classmethod
@@ -388,10 +388,10 @@ class FigmaColorToken:
         """根据 Figma 置灰 Token 判断按钮是否呈现灰色未激活状态"""
         try:
             is_gray = cls.verify_element_color_match(btn_elem, FigmaDesignColor.TEXT_DISABLE)
-            logger.info(f"🎨 [FigmaBtn] 按钮置灰校验: {'灰色未激活 🩶' if is_gray else '活跃正常 🩵'}")
+            logger.info(f"{LogIcon.ACTION} [FigmaBtn] 按钮置灰校验: {'灰色未激活 🩶' if is_gray else '活跃正常 🩵'}")
             return is_gray
         except Exception as e:
-            logger.error(f"❌ [FigmaBtn] 分析按钮置灰状态失败: {e}")
+            logger.error(f"{LogIcon.FAIL} [FigmaBtn] 分析按钮置灰状态失败: {e}")
             return False
 
 

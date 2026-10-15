@@ -6,7 +6,7 @@ from pages.main.main_page import MainPage
 from pages.moments.moments_page import MomentsPage
 from pages.home.home_page import HomePage
 from pages.common.album_page import CommonAlbumPage
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 
 
 
@@ -28,7 +28,7 @@ class BaseSmokeMoments:
             try:
                 main_page.go_to_main_page()
             except Exception as e:
-                logger.error(f'类级 Teardown 失败，未能返回首页: {e}')
+                logger.error(f'{LogIcon.FAIL} 类级 Teardown 失败，未能返回首页: {e}')
 
     @pytest.fixture(autouse=True)
     def setup_base(self, driver_sender):
@@ -40,7 +40,7 @@ class BaseSmokeMoments:
         yield
         try:
             if self.momentsPage.is_publish_editor_displayed():
-                logger.warning('⚠️ 冒烟用例运行结束但残留编辑页，执行强制退出...')
+                logger.warning(f'{LogIcon.WARN} 冒烟用例运行结束但残留编辑页，执行强制退出...')
                 self.momentsPage.click_iv_back()
                 try:
                     self.momentsPage.confirm_delete_moment()
@@ -48,7 +48,7 @@ class BaseSmokeMoments:
                     pass
                 self.momentsPage.wait_for_moments_page_load()
         except Exception as e:
-            logger.error(f'方法级 Teardown 状态重置失败: {e}')
+            logger.error(f'{LogIcon.FAIL} 方法级 Teardown 状态重置失败: {e}')
 
     def _verify_moment_published(self, expected_content: str, timeout: int = 15) -> bool:
         """通用发布成功校验：等待 Toast，轮询刷新列表，直到最新内容出现在首位"""
@@ -84,9 +84,9 @@ class BaseSmokeMoments:
                 check.is_true(deleted, f'❌ 临时朋友圈 [{content}] 删除后依然在列表中可见')
                 self.momentsPage.refresh_moments()
             else:
-                logger.warning(f'⚠️ [Teardown] 列表中首条朋友圈为 [{first_content}]，不匹配期望删除的 [{content}]，跳过删除以防误伤原始数据')
+                logger.warning(f'{LogIcon.WARN} 列表中首条朋友圈为 [{first_content}]，不匹配期望删除的 [{content}]，跳过删除以防误伤原始数据')
         except Exception as e:
-            logger.error(f'⚠️ [Teardown] 删除测试朋友圈异常: {e}')
+            logger.error(f'{LogIcon.WARN} 删除测试朋友圈异常: {e}')
 
     def _wait_until(self, condition, timeout: int = 5, interval: float = 0.5, description: str = "") -> bool:
         """轮询等待异步 UI 状态变化，避免固定 sleep 或网络延迟导致的偶发断言失败"""
@@ -100,7 +100,7 @@ class BaseSmokeMoments:
                 last_error = e
             time.sleep(interval)
         if last_error:
-            logger.warning(f"⚠️ [Wait-until] 等待条件 [{description}] 期间发生异常: {last_error}")
+            logger.warning(f"{LogIcon.WARN} 等待条件 [{description}] 期间发生异常: {last_error}")
         return False
 
 

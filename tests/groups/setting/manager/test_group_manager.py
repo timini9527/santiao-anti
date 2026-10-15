@@ -2,7 +2,7 @@ import pytest
 import allure
 import pytest_check as check
 from datetime import datetime, timedelta
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.groups.create.group_create_page import GroupCreatePage
@@ -65,7 +65,7 @@ class TestGroupManager:
             title = self.groupManagerPage.get_group_active_point_title()
             check.is_in('提升群活跃', title, f'❌ 【提升群活跃】项标题不匹配: {title}')
             points_text = self.groupManagerPage.get_group_activity_points()
-            logger.info(f"今日活跃点: {points_text}")
+            logger.info(f"{LogIcon.ACTION} 今日活跃点: {points_text}")
         with allure.step('2. 点击提升群活跃入口'):
             self.groupManagerPage.click_improve_group_activity()
         with allure.step('3. 返回群管理'):
@@ -106,7 +106,7 @@ class TestGroupManager:
             title = self.groupManagerPage.get_group_assistant_title()
             check.is_in('群助手', title, f'❌ 【添加群助手】标题不匹配: {title}')
             status = self.groupManagerPage.get_group_assistant_status()
-            logger.info(f"群助手状态: {status}")
+            logger.info(f"{LogIcon.ACTION} 群助手状态: {status}")
         with allure.step('2. 点击添加群助手入口'):
             self.groupManagerPage.click_add_group_assistant()
         with allure.step('3. 返回群管理页面'):

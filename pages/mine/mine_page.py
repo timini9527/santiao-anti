@@ -1,6 +1,6 @@
 from selenium.webdriver.common.by import By
 from common.base_page import BasePage
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from appium.webdriver.common.appiumby import AppiumBy
 
 
@@ -21,25 +21,25 @@ class MinePage(BasePage):
     # 我的 - 点击进入我的页面
     def enter_mine_page(self) -> None:
         """ 进入我的页面 """
-        logger.info("⚙️ [Action - Mine] 点击底部导航【我的】进入我的页面")
+        logger.info(f"{LogIcon.SETUP} 点击底部导航【我的】进入我的页面")
         self.click(self.MENU_MINE)
 
     # 我的 - 退出登录操作
     def exit_login_page(self) -> bool:
         """ 退出登录操作，若当前已登录则执行退出 """
-        logger.info("⚙️ [Action - Mine] 检查登录状态并准备退出登录")
+        logger.info(f"{LogIcon.SETUP} 检查登录状态并准备退出登录")
         exit_l = self.find_element(self.MENU_MINE, timeout=2, expect_missing=True)
         if exit_l is not None:
-            logger.info("⚙️ [Action - Mine] 检测到已在登录状态，开始执行退出步骤")
-            logger.info("⚙️ [Action - Mine] 点击【我的】导航")
+            logger.info(f"{LogIcon.SETUP} 检测到已在登录状态，开始执行退出步骤")
+            logger.info(f"{LogIcon.SETUP} 点击【我的】导航")
             self.click(self.MENU_MINE)
-            logger.info("⚙️ [Action - Mine] 点击【通用设置】")
+            logger.info(f"{LogIcon.SETUP} 点击【通用设置】")
             self.click(self.COMMON_SETTING)
-            logger.info("⚙️ [Action - Mine] 点击【退出登录】入口")
+            logger.info(f"{LogIcon.SETUP} 点击【退出登录】入口")
             self.click(self.EXIT_LAYOUT)
-            logger.info("⚙️ [Action - Mine] 点击【确认退出】")
+            logger.info(f"{LogIcon.SETUP} 点击【确认退出】")
             self.click(self.LAYOUT_TV)
-            logger.info("✅ [Action - Mine] 退出登录成功")
+            logger.info(f"{LogIcon.SUCCESS} 退出登录成功")
             return True
-        logger.warning("⚠️ [Action - Mine] 未在登录状态，无需退出")
+        logger.warning(f"{LogIcon.WARN} 未在登录状态，无需退出")
         return False

@@ -11,12 +11,10 @@ import pytest
 import time
 import yaml
 import allure
-import logging
 import socket
 from core.driver_factory import DriverFactory
 from pages.main.main_page import MainPage
-
-logger = logging.getLogger(__name__)
+from core.logger_utils import logger, LogIcon
 
 # socket.setdefaulttimeout(15)
 
@@ -47,7 +45,7 @@ def pytest_configure(config):
     if env:
         os.environ["ENV"] = env
         os.environ["TEST_ENV"] = env
-        logger.info(f"🌐 [pytest_configure] 全局测试环境已设定为: {env}")
+        logger.info(f"{LogIcon.SETUP} 全局测试环境已设定为: {env}")
 
 
 # ============================================================
@@ -67,10 +65,10 @@ def _load_rerun_config() -> dict:
             config = yaml.safe_load(f)
             return config.get("rerun", {})
     except FileNotFoundError:
-        logger.warning(f"⚠️ 重跑配置文件不存在: {_RERUN_CONFIG_PATH}，使用默认值")
+        logger.warning(f"{LogIcon.WARN} 重跑配置文件不存在: {_RERUN_CONFIG_PATH}，使用默认值")
         return {}
     except Exception as e:
-        logger.error(f"❌ 加载重跑配置失败: {e}，使用默认值")
+        logger.error(f"{LogIcon.FAIL} 加载重跑配置失败: {e}，使用默认值")
         return {}
 
 
@@ -110,9 +108,9 @@ def pytest_runtest_makereport(item, call):
                         name=f"失败现场截图 ({driver_name})",
                         attachment_type=allure.attachment_type.PNG
                     )
-                    logger.info(f"📸 自动捕获失败截图: {driver_name}")
+                    logger.info(f"{LogIcon.CAMERA} 自动捕获失败截图: {driver_name}")
                 except Exception as e:
-                    logger.warning(f"⚠️ 捕获失败截图 {driver_name} 失败: {e}")
+                    logger.warning(f"{LogIcon.WARN} 捕获失败截图 {driver_name} 失败: {e}")
 
     # ---- 重跑检测 ----
     # pytest-rerunfailures 会在 item 上挂载 execution_count 属性
@@ -124,8 +122,8 @@ def pytest_runtest_makereport(item, call):
 
         if LOG_RERUN:
             logger.warning(
-                f"🔄 [Rerun] 用例 [{item.nodeid}] 第 {exec_count} 次重跑仍失败 "
-                f"| Session 已重跑: {_session_rerun_count}/{SESSION_MAX_RERUNS}"
+                f"{LogIcon.WARN} 用例 [{item.nodeid}] 第 {exec_count} 次重跑仍失败 "
+                f"{LogIcon.WARN} | Session 已重跑: {_session_rerun_count}/{SESSION_MAX_RERUNS}"
             )
 
         # Allure 标记 Flaky
@@ -136,8 +134,8 @@ def pytest_runtest_makereport(item, call):
         # Session 级熔断：当整个会话的重跑总次数超过上限时，跳过后续所有用例的重跑
         if _session_rerun_count >= SESSION_MAX_RERUNS:
             logger.error(
-                f"🚨 [Rerun] Session 重跑总次数已达上限 ({SESSION_MAX_RERUNS})！"
-                f"后续失败用例将不再重跑，请检查测试环境稳定性。"
+                f"{LogIcon.FAIL} Session 重跑总次数已达上限 ({SESSION_MAX_RERUNS})！"
+                f"{LogIcon.FAIL} 后续失败用例将不再重跑，请检查测试环境稳定性。"
             )
             # 通过移除 reruns marker 来阻止后续用例重跑
             item.config.option.reruns = 0
@@ -148,8 +146,8 @@ def pytest_runtest_makereport(item, call):
 
         if LOG_RERUN:
             logger.info(
-                f"✅ [Rerun] 用例 [{item.nodeid}] 第 {exec_count} 次重跑后通过 ✅ "
-                f"| Session 已重跑: {_session_rerun_count}/{SESSION_MAX_RERUNS}"
+                f"{LogIcon.SUCCESS} 用例 [{item.nodeid}] 第 {exec_count} 次重跑后通过 "
+                f"{LogIcon.ACTION} | Session 已重跑: {_session_rerun_count}/{SESSION_MAX_RERUNS}"
             )
 
         if ALLURE_LABEL:
@@ -175,7 +173,7 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
 # --- API 准备 (保持你原有的逻辑) ---
 # @pytest.fixture(scope="session", autouse=True)
 def prepare_api_token():
-    print("\n[Setup] 正在进行 API 辅助账号登录...")
+    logger.info(f"{LogIcon.SETUP} 正在进行 API 辅助账号登录...")
     # auth = AuthApi()
     # success = auth.login()
     # assert success, "API 账号登录失败"
@@ -220,9 +218,9 @@ def driver_sender():
     finally:
         # 放进 finally：即使用例 setup/执行阶段抛异常，也保证执行清理逻辑，
         # 避免 driver 未 quit 导致 systemPort 残留、下次启动端口 busy。
-        print("\n[Teardown] 关闭发送方驱动")
+        logger.info(f"{LogIcon.SETUP} 关闭发送方驱动")
         if os.environ.get("DEBUG_MODE") == "1":
-            print("🐞 [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
+            logger.info(f"{LogIcon.FIND} [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
         else:
             driver.quit()
 
@@ -234,9 +232,9 @@ def driver_receiver():
     try:
         yield driver
     finally:
-        print("\n[Teardown] 关闭接收方驱动")
+        logger.info(f"{LogIcon.SETUP} 关闭接收方驱动")
         if os.environ.get("DEBUG_MODE") == "1":
-            print("🐞 [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
+            logger.info(f"{LogIcon.FIND} [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
         else:
             driver.quit()
 
@@ -247,9 +245,9 @@ def driver_device3():
     try:
         yield driver
     finally:
-        print("\n[Teardown] 关闭第3个设备驱动")
+        logger.info(f"{LogIcon.SETUP} 关闭第3个设备驱动")
         if os.environ.get("DEBUG_MODE") == "1":
-            print("🐞 [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
+            logger.info(f"{LogIcon.FIND} [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
         else:
             driver.quit()
 
@@ -260,9 +258,9 @@ def driver_device4():
     try:
         yield driver
     finally:
-        print("\n[Teardown] 关闭第4个设备驱动")
+        logger.info(f"{LogIcon.SETUP} 关闭第4个设备驱动")
         if os.environ.get("DEBUG_MODE") == "1":
-            print("🐞 [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
+            logger.info(f"{LogIcon.FIND} [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
         else:
             driver.quit()
 
@@ -273,9 +271,9 @@ def driver_device5():
     try:
         yield driver
     finally:
-        print("\n[Teardown] 关闭第5个设备驱动")
+        logger.info(f"{LogIcon.SETUP} 关闭第5个设备驱动")
         if os.environ.get("DEBUG_MODE") == "1":
-            print("🐞 [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
+            logger.info(f"{LogIcon.FIND} [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
         else:
             driver.quit()
 
@@ -286,9 +284,9 @@ def driver_device6():
     try:
         yield driver
     finally:
-        print("\n[Teardown] 关闭第6个设备驱动")
+        logger.info(f"{LogIcon.SETUP} 关闭第6个设备驱动")
         if os.environ.get("DEBUG_MODE") == "1":
-            print("🐞 [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
+            logger.info(f"{LogIcon.FIND} [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
         else:
             driver.quit()
 
@@ -299,9 +297,9 @@ def driver_device7():
     try:
         yield driver
     finally:
-        print("\n[Teardown] 关闭第7个设备驱动")
+        logger.info(f"{LogIcon.SETUP} 关闭第7个设备驱动")
         if os.environ.get("DEBUG_MODE") == "1":
-            print("🐞 [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
+            logger.info(f"{LogIcon.FIND} [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
         else:
             driver.quit()
 
@@ -312,9 +310,9 @@ def driver_device8():
     try:
         yield driver
     finally:
-        print("\n[Teardown] 关闭第8个设备驱动")
+        logger.info(f"{LogIcon.SETUP} 关闭第8个设备驱动")
         if os.environ.get("DEBUG_MODE") == "1":
-            print("🐞 [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
+            logger.info(f"{LogIcon.FIND} [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
         else:
             driver.quit()
 
@@ -325,9 +323,9 @@ def driver_device9():
     try:
         yield driver
     finally:
-        print("\n[Teardown] 关闭第9个设备驱动")
+        logger.info(f"{LogIcon.SETUP} 关闭第9个设备驱动")
         if os.environ.get("DEBUG_MODE") == "1":
-            print("🐞 [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
+            logger.info(f"{LogIcon.FIND} [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
         else:
             driver.quit()
 

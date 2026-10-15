@@ -1,6 +1,6 @@
 from urllib.parse import urlparse
 from apis.base_api import BaseApi
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from utils.file_reader.data_loader import load_yaml_data
 
 
@@ -31,8 +31,7 @@ class PersonalAPI:
             res_json = res.json()
             return res_json
         except Exception as e:
-            logger.error(f"获取个人信息请求失败: {e}")
-            print(f"获取个人信息请求失败: {e}")
+            logger.error(f"{LogIcon.FAIL} 获取个人信息请求失败: {e}")
             raise e
 
     def get_avatar_info(self):
@@ -51,7 +50,7 @@ class PersonalAPI:
             if not redirect_url:
                 raise ValueError("响应头中未找到 Location 字段")
 
-            logger.info(f"获取到重定向地址: {redirect_url}")
+            logger.info(f"{LogIcon.FIND} 获取到重定向地址: {redirect_url}")
 
             # 3. 【核心改进】使用标准库解析 URL，不再依赖 IP 中的 '20/'
             # 假设 URL 是 http://121.204.228.20/11,0ac50358bff236?width=...
@@ -64,11 +63,10 @@ class PersonalAPI:
 
             # print(parsed_path)
             # print(avatar_id)
-            logger.info(f"解析头像 ID 成功: {avatar_id}")
+            logger.info(f"{LogIcon.SUCCESS} 解析头像 ID 成功: {avatar_id}")
             return avatar_id
         except Exception as e:
-            logger.error(f"获取用户头像请求失败: {e}")
-            print(f"获取用户头像请求失败: {e}")
+            logger.error(f"{LogIcon.FAIL} 获取用户头像请求失败: {e}")
             raise e
 
 

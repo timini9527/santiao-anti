@@ -5,7 +5,7 @@ import pytest_check as check
 from pages.main.main_page import MainPage
 from pages.moments.moments_page import MomentsPage
 from pages.home.home_page import HomePage
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from utils.file_reader.data_loader import load_yaml_data
 
 
@@ -30,7 +30,7 @@ class TestMomentsInteraction:
             try:
                 main_page.go_to_main_page()
             except Exception as e:
-                logger.error(f"类级 Teardown 失败，未能返回首页: {e}")
+                logger.error(f"{LogIcon.FAIL} 类级 Teardown 失败，未能返回首页: {e}")
 
     @pytest.fixture(autouse=True)
     def method_setup(self, driver_sender):
@@ -67,7 +67,7 @@ class TestMomentsInteraction:
             found = self.momentsPage.has_moment_with_text(content)
             check.is_false(found, f"❌ 测试临时动态 [{content}] 删除后依然可见")
         else:
-            logger.warning(f"⚠️ [Teardown] 首条朋友圈内容 [{first_content}] 与要删内容 [{content}] 不匹配，跳过删除以防误删他人数据")
+            logger.warning(f"{LogIcon.WARN} 首条朋友圈内容 [{first_content}] 与要删内容 [{content}] 不匹配，跳过删除以防误删他人数据")
 
     def _wait_until(self, condition, timeout: int = 5, interval: float = 0.5, description: str = "") -> bool:
         """轮询等待异步 UI 状态，避免固定 sleep 导致慢设备误判"""
@@ -81,7 +81,7 @@ class TestMomentsInteraction:
                 last_error = e
             time.sleep(interval)
         if last_error:
-            logger.warning(f"⚠️ 等待条件 [{description}] 期间最后一次异常: {last_error}")
+            logger.warning(f"{LogIcon.WARN} 等待条件 [{description}] 期间最后一次异常: {last_error}")
         return False
 
     def _wait_for_comment_state(self, comment_text: str, should_exist: bool = True, timeout: int = 5) -> bool:
@@ -251,12 +251,12 @@ class TestMomentsInteraction:
                     try:
                         self.momentsPage.delete_own_comment_with_confirm(comment_text)
                     except Exception as e:
-                        logger.warning(f"⚠️ 清理本条评论失败: {e}")
+                        logger.warning(f"{LogIcon.WARN} 清理本条评论失败: {e}")
                 elif expected_behavior == "truncated":
                     try:
                         self.momentsPage.delete_own_comment_with_confirm(comment_text[:999])
                     except Exception as e:
-                        logger.warning(f"⚠️ 清理本条截断评论失败: {e}")
+                        logger.warning(f"{LogIcon.WARN} 清理本条截断评论失败: {e}")
 
 
     @pytest.mark.p2
@@ -302,7 +302,7 @@ class TestMomentsInteraction:
                 try:
                     self.momentsPage.delete_own_comment_with_confirm(test_comment)
                 except Exception as e:
-                    logger.warning(f"⚠️ 清理刷新持久化测试评论失败: {e}")
+                    logger.warning(f"{LogIcon.WARN} 清理刷新持久化测试评论失败: {e}")
 
 
     @pytest.mark.p2
@@ -333,7 +333,7 @@ class TestMomentsInteraction:
                 try:
                     self.momentsPage.delete_own_comment_with_confirm(test_comment)
                 except Exception as e:
-                    logger.warning(f"⚠️ 清理取消删除测试评论失败: {e}")
+                    logger.warning(f"{LogIcon.WARN} 清理取消删除测试评论失败: {e}")
 
 
 

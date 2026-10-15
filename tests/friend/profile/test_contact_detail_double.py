@@ -2,7 +2,7 @@ import time
 import allure
 import pytest
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.friend.add_friend.add_friend_page import AddFriendPage
@@ -61,7 +61,7 @@ class TestContactDetailDouble:
             try:
                 mainPage.go_to_main_page()
             except Exception as e:
-                logger.error(f"⚠️ [Teardown] 返回首页失败: {e}")
+                logger.error(f"{LogIcon.WARN} 返回首页失败: {e}")
 
     def _get_pages(self, side='S'):
         """根据端别 (S/R) 获取对应的核心页面对象"""
@@ -94,7 +94,7 @@ class TestContactDetailDouble:
         # 1. 尝试从 S 端（操作方）寻找接收方
         is_friend = self._go_to_contact_detail_from_list(RECEIVER_NAME, side='S', raise_exception=False)
         if not is_friend:
-            logger.info("ℹ️ 双端当前非好友，正在执行临时好友绑定...")
+            logger.info(f"{LogIcon.ACTION} ℹ️ 双端当前非好友，正在执行临时好友绑定...")
             self.mainPageS.go_to_main_page()
             self.homePageS.click_add_button()
             self.homePageS.click_add_friend()
@@ -115,7 +115,7 @@ class TestContactDetailDouble:
             self.homePageR.click_new_friend()
             self.newFriendPageR.wait_for_new_friend_page_load()
             self.newFriendPageR.click_accept_btn_by_name(SENDER_NAME)
-            logger.info("✅ 好友绑定成功")
+            logger.info(f"{LogIcon.SUCCESS} 好友绑定成功")
     
     
     

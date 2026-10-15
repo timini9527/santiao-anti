@@ -1,7 +1,7 @@
 import allure
 import pytest
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.chat.core.chat_page import ChatPage
 from pages.chat.list.chat_list_page import ChatListPage
@@ -39,7 +39,7 @@ class TestCollectionDouble:
                 self.mainS.go_to_main_page()
                 self.mainR.go_to_main_page()
             except Exception as e:
-                logger.warning(f'⚠️ [Cleanup] 双端清理返回首页失败: {e}')
+                logger.warning(f'{LogIcon.WARN} 双端清理返回首页失败: {e}')
 
     @pytest.mark.p1
     @allure.severity(allure.severity_level.CRITICAL)
@@ -69,7 +69,7 @@ class TestCollectionDouble:
             click_dt = self.collS.str_to_dtime(click_time)
             show_dt = self.collS.str_to_dtime(details['collected_time'])
             diff = abs((show_dt - click_dt).total_seconds())
-            logger.info(f"⏳ 收藏操作时间: {click_time}, UI显示时间: {details['collected_time']}, 误差: {diff}s")
+            logger.info(f"{LogIcon.WAIT} 收藏操作时间: {click_time}, UI显示时间: {details['collected_time']}, 误差: {diff}s")
             check.is_true(diff <= 1.5, f'❌ [Verify] 收藏落库时间误差 {diff}s 超过了 1.5s 限制')
         with allure.step('4. 环境清理：发送端(Sender)删除该条测试产生的收藏记录'):
             self.collS.del_collection_item(del_type='text', index=0)

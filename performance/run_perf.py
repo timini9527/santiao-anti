@@ -1,3 +1,4 @@
+from core.logger_utils import logger, LogIcon
 """
 压测一键执行与质量门禁校验入口 (run_perf.py)
 功能特性：
@@ -97,17 +98,17 @@ def main() -> None:
     is_headless = not args.web
     worker_count = args.workers
 
-    print("==================================================")
-    print("📋 正在装载压测任务与参数矩阵...")
-    print(f"🎯 目标主机: {config.get('target', {}).get('host')}")
-    print(f"👥 目标并发数: {args.users or config.get('run_settings', {}).get('users')} VUsers")
-    print(f"⏱️ 持续时间: {args.time or config.get('run_settings', {}).get('run_time')}")
-    print(f"🖥️ 运行模式: {'Headless (CI/CD 自动化)' if is_headless else 'Web UI 可视化控制台'}")
+    # 分隔线日志
+    logger.info(f"{LogIcon.SETUP} 正在装载压测任务与参数矩阵...")
+    logger.info(f"{LogIcon.SETUP} 目标主机: {config.get('target', {}).get('host')}")
+    logger.info(f"{LogIcon.SETUP} 目标并发数: {args.users or config.get('run_settings', {}).get('users')} VUsers")
+    logger.info(f"{LogIcon.SETUP} 持续时间: {args.time or config.get('run_settings', {}).get('run_time')}")
+    logger.info(f"{LogIcon.SETUP} 运行模式: {'Headless (CI/CD 自动化)' if is_headless else 'Web UI 可视化控制台'}")
     if worker_count > 0:
-        print(f"⚡ 分布式集群模式: 1 个 Master 调度节点 + {worker_count} 个 Worker 施压节点（多核批量加速）")
+        logger.info(f"{LogIcon.SETUP} 分布式集群模式: 1 个 Master 调度节点 + {worker_count} 个 Worker 施压节点（多核批量加速）")
     if args.tags:
-        print(f"🏷️ 场景标签过滤: {args.tags}")
-    print("==================================================")
+        logger.info(f"{LogIcon.SETUP} 场景标签过滤: {args.tags}")
+    # 分隔线日志
 
     locust_file = str(CURRENT_DIR / "locustfile.py")
     target_host = config.get("target", {}).get("host", "http://127.0.0.1:8080")
@@ -140,10 +141,10 @@ def main() -> None:
                 webbrowser.open(url)
 
             threading.Thread(target=_auto_open_browser, daemon=True).start()
-            print(f"👉 压测控制台地址: {url}")
-            print("💡 系统已尝试为您自动弹出浏览器，若未弹出请手动复制上方地址在浏览器打开。\n")
+            logger.info(f"{LogIcon.ACTION} 压测控制台地址: {url}")
+            logger.info(f"{LogIcon.ACTION} 系统已尝试为您自动弹出浏览器，若未弹出请手动复制上方地址在浏览器打开。\n")
 
-        print(f"执行命令: {' '.join(cmd)}\n")
+        logger.info(f"{LogIcon.ACTION} 执行命令: {' '.join(cmd)}\n")
         proc = subprocess.run(cmd)
         sys.exit(proc.returncode)
 
@@ -192,15 +193,15 @@ def main() -> None:
     import time
     worker_processes = []
     try:
-        print(f"🚀 [1/2] 正在启动 Master 调度节点...")
+        logger.info(f"{LogIcon.SETUP} [1/2] 正在启动 Master 调度节点...")
         master_proc = subprocess.Popen(master_cmd)
         time.sleep(1.5)  # 等待 Master 节点端口就绪
 
-        print(f"🚀 [2/2] 正在批量拉起 {worker_count} 个 Worker 施压节点...")
+        logger.info(f"{LogIcon.SETUP} [2/2] 正在批量拉起 {worker_count} 个 Worker 施压节点...")
         for i in range(1, worker_count + 1):
             wp = subprocess.Popen(worker_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             worker_processes.append(wp)
-            print(f"   - Worker #{i} 已启动 (PID: {wp.pid})")
+            logger.info(f"{LogIcon.SUCCESS} - Worker #{i} 已启动 (PID: {wp.pid})")
 
         if not is_headless:
             import webbrowser
@@ -208,13 +209,13 @@ def main() -> None:
             url = f"http://127.0.0.1:{web_port}"
             time.sleep(1.0)
             webbrowser.open(url)
-            print(f"\n👉 压测控制台地址: {url}")
-            print(f"💡 集群就绪！可在 Web UI 查看已连接的 {worker_count} 个 Worker 节点状态。\n")
+            logger.info(f"{LogIcon.ACTION} 压测控制台地址: {url}")
+            logger.info(f"{LogIcon.ACTION} 集群就绪！可在 Web UI 查看已连接的 {worker_count} 个 Worker 节点状态。\n")
 
         # 等待 Master 执行完毕
         master_proc.wait()
     except KeyboardInterrupt:
-        print("\n🛑 收到中断信号，正在批量清理所有压测节点...")
+        logger.info(f"{LogIcon.ACTION} 收到中断信号，正在批量清理所有压测节点...")
     finally:
         # 清理与回收所有 Worker 进程
         for wp in worker_processes:
@@ -222,7 +223,7 @@ def main() -> None:
                 wp.terminate()
             except Exception:
                 pass
-        print("✅ 所有分布式压测节点已安全退出。")
+        logger.info(f"{LogIcon.SUCCESS} 所有分布式压测节点已安全退出。")
 
 
 if __name__ == "__main__":

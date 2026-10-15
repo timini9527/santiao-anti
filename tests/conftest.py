@@ -4,20 +4,20 @@ from pages.chat.list.chat_list_page import ChatListPage
 from pages.main.main_page import MainPage
 from pages.home.side_slip_page import SideSlipPage
 from pages.home.home_page import HomePage
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 
 @pytest.fixture(scope='class')
 def enter_personal_info(driver_sender):
     """
     前置：只在第一个用例开始前，从首页导航到个人信息页
     """
-    logger.info('🛠️ [Class Setup] 正在初始化页面并导航至个人信息页...')
+    logger.info(f'{LogIcon.SETUP} [Class Setup] 正在初始化页面并导航至个人信息页...')
     home_page = HomePage(driver_sender)
     side_slip_page = SideSlipPage(driver_sender)
     home_page.open_left_menu()
     side_slip_page.click_INFO()
     yield
-    logger.info('🧹 [Class Teardown] 当前类测试结束，清理类级别状态...')
+    logger.info(f'{LogIcon.SETUP} [Class Teardown] 当前类测试结束，清理类级别状态...')
 
 @pytest.fixture(scope='class')
 def message_page(driver_sender):

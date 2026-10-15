@@ -2,7 +2,7 @@ import pytest
 import allure
 import pytest_check as check
 from pages.login.login_page import LoginPage
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from utils.cv_recognition.ocr_utils import OcrUtils
 from strategy.chat.chat_strategy import PRIVATE_USER1
 DEFAULT_ACCOUNT = '38100000225'
@@ -17,7 +17,7 @@ class BaseSmokeLogin:
         self.loginPage = LoginPage(driver_sender)
         self.ocr_utils = OcrUtils(driver_sender)
         if not BaseSmokeLogin._has_entered_phone_login:
-            logger.info('🚀 首次进入手机号表单，执行点击操作。')
+            logger.info(f'{LogIcon.ACTION} 首次进入手机号表单，执行点击操作。')
             self.loginPage.click_phone_login_button()
             BaseSmokeLogin._has_entered_phone_login = True
         yield
@@ -114,7 +114,7 @@ class TestSmokeLoginPwd(BaseSmokeLogin):
         finally:
             with allure.step('4. 环境清理：确保账号登出'):
                 if self.loginPage.is_login_success():
-                    logger.info('环境清理：检测到账号处于登录状态，执行强制登出...')
+                    logger.info(f'{LogIcon.SETUP} 环境清理：检测到账号处于登录状态，执行强制登出...')
                     msg = self.loginPage.logout_if_logged_in()
                     check.equal(msg, '已退出登录', '⚠️ 环境清理失败：退出登录动作未成功！')
                     is_success = self.loginPage.wait_for_login_page()

@@ -1,7 +1,7 @@
 import pytest
 import allure
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.groups.setting.general.group_setting_page import GroupSettingPage
@@ -34,7 +34,7 @@ class TestGroupBotAutoClean:
     def cleanup_clean_settings(self):
         """后置清理：恢复自动清理开关为关闭状态"""
         yield
-        logger.info('🧹 [Cleanup] 开始清理自动清理成员设置...')
+        logger.info(f'{LogIcon.SETUP} 开始清理自动清理成员设置...')
         try:
             self.main_sender.go_to_main_page()
             self.chat_list_sender.enter_chat(GROUP_STRATEGY.name)
@@ -45,9 +45,9 @@ class TestGroupBotAutoClean:
             self.group_bot_sender.enter_group_bot()
             self.group_bot_sender.enter_auto_clean()
             self.group_bot_sender.toggle_auto_clean_switch(enable=False)
-            logger.info('🧹 [Cleanup] 成功关闭群助手自动清理开关')
+            logger.info(f'{LogIcon.SETUP} 成功关闭群助手自动清理开关')
         except Exception as e:
-            logger.warning(f'⚠️ [Cleanup] 清理自动清理开关发生异常: {e}')
+            logger.warning(f'{LogIcon.WARN} 清理自动清理开关发生异常: {e}')
 
     @pytest.mark.p2
     @allure.severity(allure.severity_level.NORMAL)
@@ -67,12 +67,12 @@ class TestGroupBotAutoClean:
         with allure.step('2. 切换定时开关为启用，验证 Toast 提示'):
             self.group_bot_sender.toggle_auto_clean_switch(enable=True)
             toast_text = self.chat_sender.get_toast_text()
-            logger.info(f"🔍 开启任务提示: '{toast_text}'")
+            logger.info(f"{LogIcon.FIND} 开启任务提示: '{toast_text}'")
             check.is_true('已开启' in toast_text or '启用' in toast_text or toast_text == '', f'❌ 开启定时任务未捕获到正确Toast: {toast_text}')
         with allure.step('3. 切换定时开关为禁用，验证 Toast 提示'):
             self.group_bot_sender.toggle_auto_clean_switch(enable=False)
             toast_text = self.chat_sender.get_toast_text()
-            logger.info(f"🔍 关闭任务提示: '{toast_text}'")
+            logger.info(f"{LogIcon.FIND} 关闭任务提示: '{toast_text}'")
             check.is_true('已关闭' in toast_text or '关闭' in toast_text or toast_text == '', f'❌ 关闭定时任务未捕获到正确Toast: {toast_text}')
 
     @pytest.mark.p2
@@ -100,5 +100,5 @@ class TestGroupBotAutoClean:
             self.group_bot_sender.click_finish()
             self.group_bot_sender.click_confirm()
             toast_text = self.chat_sender.get_toast_text()
-            logger.info(f"🔍 保存规则提示: '{toast_text}'")
+            logger.info(f"{LogIcon.FIND} 保存规则提示: '{toast_text}'")
             check.is_true('已保存' in toast_text or '成功' in toast_text or toast_text == '', f'❌ 保存清理规则未捕获到成功Toast: {toast_text}')

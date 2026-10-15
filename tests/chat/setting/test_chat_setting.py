@@ -1,7 +1,7 @@
 import allure
 import pytest
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.setting.chat_setting_page import ChatSettingPage
 from pages.main.main_page import MainPage
@@ -25,7 +25,7 @@ class TestChatSetting:
         try:
             self.mainPage.go_to_main_page()
         except Exception as e:
-            logger.error(f'Teardown 失败，未能返回首页: {e}')
+            logger.error(f'{LogIcon.FAIL} Teardown 失败，未能返回首页: {e}')
 
     def _enter_setting(self, name: str):
         """进入好友单聊并打开设置页面"""

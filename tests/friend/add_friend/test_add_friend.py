@@ -2,7 +2,7 @@ import allure
 import pytest
 import time
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.friend.add_friend.add_friend_page import AddFriendPage
@@ -28,7 +28,7 @@ class TestAddFriend:
         try:
             self.mainPage.go_to_main_page()
         except Exception as e:
-            logger.error(f'⚠️ [Teardown] 返回首页失败: {e}')
+            logger.error(f'{LogIcon.WARN} 返回首页失败: {e}')
 
     def _home_to_add_friend(self):
         """从首页进入添加好友页面"""
@@ -120,7 +120,7 @@ class TestAddFriend:
                 st_id = self.contactDetailPage.get_st_id()
                 check.is_in(search_id, st_id, f'❌ 资料页三条ID为 {st_id}，不包含预期的 {search_id}')
             else:
-                logger.info("ℹ️ [Action - AddFriend] 当前搜索到的账号为非好友，资料页不展示三条ID，跳过三条ID断言")
+                logger.info(f"{LogIcon.STEP} ℹ️ [Action - AddFriend] 当前搜索到的账号为非好友，资料页不展示三条ID，跳过三条ID断言")
 
 
     @pytest.mark.p2

@@ -2,7 +2,7 @@ import pytest
 import allure
 import pytest_check as check
 from pages.login.login_page import LoginPage
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from utils.file_reader.data_loader import load_yaml_data
 from dataclasses import dataclass
 
@@ -16,7 +16,7 @@ def load_login_test_cases():
             item.pop('priority', None)  # 过滤优先级说明字段
         return cases
     except Exception as e:
-        logger.error(f"加载 YAML 用例失败: {e}")
+        logger.error(f"{LogIcon.FAIL} 加载 YAML 用例失败: {e}")
         return []
 
 @dataclass
@@ -57,13 +57,13 @@ class TestLogin:
         # 智能页面路由 (Smart Routing)
         if not is_lo_test:
             if not TestLogin._has_entered_phone_login:
-                logger.info("🚀 首次进入手机号表单，执行点击操作。")
+                logger.info(f"{LogIcon.ACTION} 首次进入手机号表单，执行点击操作。")
                 self.loginPage.click_phone_login_button()
                 TestLogin._has_entered_phone_login = True # 上锁
             else:
-                logger.debug("⚡ 检测到已经处于手机号表单页，跳过点击，直接开始测试。")
+                logger.debug(f"{LogIcon.ACTION} 检测到已经处于手机号表单页，跳过点击，直接开始测试。")
         else:
-            logger.info("👉 探测到 @pytest.mark.no_login_entrance 标签，停留在登录首页，不进入手机号表单。")
+            logger.info(f"{LogIcon.ACTION} 探测到 @pytest.mark.no_login_entrance 标签，停留在登录首页，不进入手机号表单。")
             
         yield
 
@@ -84,14 +84,14 @@ class TestLogin:
         case = LoginCaseData(**case_dict)
 
         allure.dynamic.title(f"[{case.id}] 登录场景 - {case.desc}")
-        logger.info(f"🚀 开始执行用例: [{case.id}] {case.desc}")
+        logger.info(f"{LogIcon.ACTION} 开始执行用例: [{case.id}] {case.desc}")
 
         with allure.step("1. 初始化登录环境并输入数据"):
             self.loginPage.click_password_login_button()
             
             if case.password == "[LONG_STRING_1000]":
                 case.password = "A" * 1000
-                logger.info("动态生成了 1000 位超长密码测试数据")
+                logger.info(f"{LogIcon.ACTION} 动态生成了 1000 位超长密码测试数据")
                 
             self.loginPage.input_account(case.account)
             self.loginPage.input_password(case.password)
@@ -115,7 +115,7 @@ class TestLogin:
                     pwd_after = self.loginPage.get_password()
                     check.not_equal(pwd_before, pwd_after, f"❌ 点击眼睛后，密码明密文状态未发生反转")
             
-            logger.info("UI 状态验证完毕，提前结束本条用例。")
+            logger.info(f"{LogIcon.FIND} UI 状态验证完毕，提前结束本条用例。")
             return  # 【正常退出】不需要清理登录态，因为根本没点登录
 
         # ========================================================
@@ -169,7 +169,7 @@ class TestLogin:
         finally:
             with allure.step("5. 环境清理：确保账号登出"):
                 if self.loginPage.is_login_success():  
-                    logger.info("环境清理：检测到账号处于登录状态，执行强制登出...")
+                    logger.info(f"{LogIcon.SETUP} 环境清理：检测到账号处于登录状态，执行强制登出...")
                     msg = self.loginPage.logout_if_logged_in()
                     check.equal(msg, '已退出登录', f"⚠️ 环境清理失败：退出登录动作未成功！")
                     is_success = self.loginPage.wait_for_login_page()
@@ -182,7 +182,7 @@ class TestLogin:
     @allure.title("连续登录退出不同由于，验证手机号记住功能-状态：已完成")
     def test_login_remember_account(self):
         allure.dynamic.title("连续登录退出不同由于，验证手机号记住功能")
-        logger.info("🚀 开始执行专属用例: 连续登录不同账号，验证最后一次账号被准确记住")
+        logger.info(f"{LogIcon.ACTION} 开始执行专属用例: 连续登录不同账号，验证最后一次账号被准确记住")
         
         users = [
             {"account": "38100000225", "password": "a1234567B9"},
@@ -222,7 +222,7 @@ class TestLogin:
     @pytest.mark.skip
     def test_login_too_frequent(self):
         allure.dynamic.title("异常行为监控 - 连续多次发起登录请求触发防刷")
-        logger.info("🚀 开始执行专属用例: 操作频繁防刷验证")
+        logger.info(f"{LogIcon.ACTION} 开始执行专属用例: 操作频繁防刷验证")
 
         account = "38100000225"
         password = "wrong_password_for_frequent_test"
@@ -237,14 +237,14 @@ class TestLogin:
             is_frequent_intercepted = False
             
             for i in range(1, 16):
-                logger.info(f"➡️ 发起第 {i} 次错误登录请求")
+                logger.info(f"{LogIcon.FAIL} ➡️ 发起第 {i} 次错误登录请求")
                 self.loginPage.click_login_button()
                 
                 msg = self.loginPage.get_toast_text()
                 
                 if "频繁" in msg or "次数过多" in msg:
                     is_frequent_intercepted = True
-                    logger.info(f"✅ 成功在第 {i} 次触发了频率限制: {msg}")
+                    logger.info(f"{LogIcon.SUCCESS} 成功在第 {i} 次触发了频率限制: {msg}")
                     break
             check.is_true(is_frequent_intercepted, f"❌ 连续下发 15 次登录请求，竟然没有触发操作频繁拦截，最后一次Toast为: '{msg}'")
         # 兜底校验

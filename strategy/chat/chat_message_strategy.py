@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List
 import time
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.chat.core.chat_page import ChatPage
 
 
@@ -50,7 +50,7 @@ class ChatMessageBuilder(ChatPage):
     
     def build_message(self, strategy_name: str, **kwargs):
         strategy = MessageTypeStrategy.get_strategy(strategy_name)
-        logger.info(f"🧪 [Setup] - DataBuilder 正在准备测试数据，类型: {strategy.type_name}")
+        logger.info(f"{LogIcon.SETUP} DataBuilder 准备测试数据，类型: {strategy.type_name}")
         handler = getattr(self, strategy.prepare_action_name, None)
         if not handler:
             raise NotImplementedError(f"❌ 未找到对应的构造方法: {strategy.prepare_action_name}")
@@ -105,7 +105,7 @@ class ChatMessageBuilder(ChatPage):
         self.enter_emoji_page()
         emojiPage.open_collection_emoji_manage()
         has_pkg = emojiPage.get_collection_emoji_pkg_item() >= 1
-        logger.info(f"🧪 [Setup] - DataBuilder 正在准备测试数据，has_pkg: {has_pkg}")
+        logger.info(f"{LogIcon.SETUP} DataBuilder 准备测试数据，has_pkg: {has_pkg}")
         self.enter_emoji_page()
         return has_pkg
 
@@ -139,14 +139,22 @@ class ChatMessageBuilder(ChatPage):
         """发送/准备地理位置消息"""
         from pages.chat_options.location.chat_position_page import ChatPositionPage
         pos = ChatPositionPage(self.driver)
-        pos.open_panel_enter_location_page()
-        pos.click_current_location_button()
-        toast = pos.get_toast(timeout=1.5)
-        if bool(toast):
-            logger.warning(f"🧪 [Setup] - DataBuilder 获取地理位置失败，无法发送: {toast}")
-            return
-        pos.click_send_button()
-        self.click_add_button()
+        try:
+            pos.open_panel_enter_location_page()
+            pos.click_current_location_button()
+            toast = pos.get_toast(timeout=1.5)
+            if bool(toast):
+                logger.error(f"{LogIcon.FAIL} DataBuilder 获取地理位置失败，无法发送: {toast}")
+                self.back_to_chat_page()
+                raise RuntimeError(f"{LogIcon.FAIL} [前置数据准备失败] 获取地理位置失败: {toast}，无法构造位置消息")
+            pos.click_send_button()
+            self.click_add_button()
+        except RuntimeError:
+            raise
+        except Exception as e:
+            logger.error(f"{LogIcon.FAIL} 发送地理位置过程发生异常: {e}")
+            self.back_to_chat_page()
+            raise RuntimeError(f"{LogIcon.FAIL} [前置数据准备失败] 发送地理位置异常: {e}")
 
     def _prepare_card_msg(self, **kwargs):
         """发送/准备联系人名片消息"""
@@ -170,6 +178,7 @@ class ChatMessageBuilder(ChatPage):
         self.close_keyboard_or_panel()
 
     def _prepare_group_card_msg(self, **kwargs):
+        """ 准备/发送群名片消息 """
         from pages.groups.setting.general.group_setting_page import GroupSettingPage
         from pages.common.session_select_page import SessionSelectPage
         from pages.chat.list.chat_list_page import ChatListPage
@@ -178,7 +187,7 @@ class ChatMessageBuilder(ChatPage):
         default_group = kwargs.get("group_name", "测试群aaaaa")
         backup_group = kwargs.get("backup_group_name", "测试群bbbbb")
         source_group = backup_group if target_name == default_group else default_group
-        logger.info(f"🎴 [GroupCard] 准备从群【{source_group}】分享群名片至目标会话【{target_name}】")
+        logger.info(f"{LogIcon.ACTION} 准备从群【{source_group}】分享群名片至目标会话【{target_name}】")
         main_page = MainPage(self.driver)
         chat_list = ChatListPage(self.driver)
         group_setting = GroupSettingPage(self.driver)
@@ -197,7 +206,7 @@ class ChatMessageBuilder(ChatPage):
         main_page.go_to_main_page()
         chat_list.enter_chat(target_name)
         self.wait_for_chat_page_load()
-        logger.info(f"✅ [GroupCard] 成功将群【{source_group}】名片分享至【{target_name}】并恢复至聊天界面")
+        logger.info(f"{LogIcon.SUCCESS} 成功将群【{source_group}】名片分享至【{target_name}】并恢复至聊天界面")
 
     def _prepare_link_msg(self, **kwargs):
         """发送/准备链接消息"""
@@ -207,7 +216,7 @@ class ChatMessageBuilder(ChatPage):
 
     # 统一消息特征值提取方法，将分散的提取逻辑集中起来，方便维护和扩展
     def get_message_feature(self, msg_type: str, expect_missing: bool = False, index: int = -1) -> dict:
-        logger.info(f"🔎 正在提取 {msg_type} 消息的 UI 特征 (index={index})")
+        logger.info(f"{LogIcon.FIND} 正在提取 {msg_type} 消息的 UI 特征 (index={index})")
         
         if msg_type == "package":
             from pages.chat_options.emojis.chat_emoji_package_page import ChatEmojiPackagePage

@@ -2,7 +2,7 @@ import allure
 import time
 import os
 from typing import Optional
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.chat.core.chat_page import ChatPage
 from locators.chat.core.chat_locator import ChatLocator
 from locators.chat.core.chat_long_press_locator import ChatLongPressLocator
@@ -18,13 +18,13 @@ class ChatLongPressPage(ChatPage):
     # 长按前置条件：等待长按弹窗出现
     def wait_for_long_press_dialog(self) -> bool:
         """等待长按弹窗出现"""
-        logger.info("⏳ 正在等待长按弹窗出现...")
+        logger.info(f"{LogIcon.WAIT} 正在等待长按弹窗出现...")
         menu_status = self.is_element_exist(ChatLongPressLocator.LONG_PRESS_MENU_CONTAINER, timeout=2)
         if not menu_status:
-            logger.warning("⚠️ 长按弹窗未出现")
+            logger.warning(f"{LogIcon.WARN} 长按弹窗未出现")
             return False
         
-        logger.info("✅ 长按弹窗出现")
+        logger.info(f"{LogIcon.SUCCESS} 长按弹窗出现")
         return True
             
     # ==================================
@@ -33,49 +33,49 @@ class ChatLongPressPage(ChatPage):
     # 长按消息-点击复制
     def click_copy(self) -> None:
         """点击复制"""
-        logger.info("🖱️ [Action] - 正在复制消息...")
+        logger.info(f"{LogIcon.ACTION} 正在复制消息...")
         self.click_menu_item("复制")
     
     # 长按消息-点击收藏
     def click_favorite(self) -> None:
         """点击收藏"""
-        logger.info("🖱️ [Action] - 正在收藏消息...")
+        logger.info(f"{LogIcon.ACTION} 正在收藏消息...")
         self.click_menu_item("收藏")
     
     # 长按消息-点击转发
     def click_forward(self) -> None:
         """点击转发"""
-        logger.info("🖱️ [Action] - 正在转发消息...")
+        logger.info(f"{LogIcon.ACTION} 正在转发消息...")
         self.click_menu_item("转发")
 
     # 长按消息-点击多选
     def click_multi_select(self) -> None:
         """点击多选"""
-        logger.info("🖱️ [Action] - 正在多选消息...")
+        logger.info(f"{LogIcon.ACTION} 正在多选消息...")
         self.click_menu_item("多选")
 
     # 长按消息-点击回复
     def click_reply(self) -> None:
         """点击回复"""
-        logger.info("🖱️ [Action] - 正在回复消息...")
+        logger.info(f"{LogIcon.ACTION} 正在回复消息...")
         self.click_menu_item("回复")
 
     # 长按消息-点击删除
     def click_delete(self) -> None:
         """点击删除"""
-        logger.info("🖱️ [Action] - 正在删除消息...")
+        logger.info(f"{LogIcon.ACTION} 正在删除消息...")
         self.click_menu_item("删除")
 
     # 长按消息-点击添加表情
     def click_add_emoji(self) -> None:
         """点击添加表情"""
-        logger.info("🖱️ [Action] - 正在添加表情...")
+        logger.info(f"{LogIcon.ACTION} 正在添加表情...")
         self.click_menu_item("添加表情")
 
     # 长按消息-点击撤回
     def click_revoke(self) -> None:
         """点击撤回"""
-        logger.info("🖱️ [Action] - 正在撤回消息...")
+        logger.info(f"{LogIcon.ACTION} 正在撤回消息...")
         self.click_menu_item("撤回")
     
     # 长按消息-点击切换听筒/扬声器
@@ -83,10 +83,10 @@ class ChatLongPressPage(ChatPage):
         """切换听筒/扬声器"""
         # 语音消息独有，动态识别当前是哪个就点哪个
         if self.is_text_present("听筒"):
-            logger.info("🖱️ [Action] - 正在切换到扬声器...")
+            logger.info(f"{LogIcon.ACTION} 正在切换到扬声器...")
             self.click_menu_item("听筒")
         else:
-            logger.info("🖱️ [Action] - 正在切换到听筒...")
+            logger.info(f"{LogIcon.ACTION} 正在切换到听筒...")
             self.click_menu_item("扬声器")
 
     # 长按消息-长按最后一条消息
@@ -95,26 +95,26 @@ class ChatLongPressPage(ChatPage):
         执行长按最后一条消息的操作（精准穿透长按具体的图片、视频、文本、语音或卡片组件）
         :param msg_type: 消息类型（可选，如 'text', 'image', 'video', 'voice', 'file', 'position', 'card', 'package', 'emoji'）
         """
-        logger.info(f"🖱️ [Action] - 准备精准长按最后一条聊天消息组件: {msg_type or '智能穿透探测'}")
+        logger.info(f"{LogIcon.ACTION} 准备精准长按最后一条聊天消息组件: {msg_type or '智能穿透探测'}")
         message_element = self.get_last_message_content_element(msg_type=msg_type)
         if msg_type == 'package' or msg_type == 'emoji':
             self.click_emoji_button(is_open=False)
         else:
             self.click_add_button(is_open=False)
         time.sleep(0.3)
-        logger.info(f"🖱️ [Action] - 执行长按手势")
+        logger.info(f"{LogIcon.ACTION} 执行长按手势")
         self.long_press_action(message_element)
 
     # 弹窗-点击确认/确定
     def click_dialog_confirm(self) -> None:
         """点击弹窗的【确认】按钮（适用于删除、退出群聊等操作）"""
-        logger.info("🖱️ [Action] - 点击弹窗确认按钮 (Confirm)")
+        logger.info(f"{LogIcon.ACTION} 点击弹窗确认按钮 (Confirm)")
         self.click(ChatLongPressLocator.BTN_CONFIRM)
 
     # 弹窗-点击取消
     def click_dialog_cancel(self) -> None:
         """点击弹窗的【取消】按钮"""
-        logger.info("🖱️ [Action] - 点击弹窗取消按钮 (Cancel)")
+        logger.info(f"{LogIcon.ACTION} 点击弹窗取消按钮 (Cancel)")
         self.click(ChatLongPressLocator.BTN_CANCEL)
     
     # ==================================
@@ -128,23 +128,23 @@ class ChatLongPressPage(ChatPage):
         :param menu_name: 菜单项名称
         :return: True 表示菜单项存在，False 表示不存在
         """
-        logger.info(f"🖱️ [Action] - 正在校验长按菜单项: 【{menu_name}】")
+        logger.info(f"{LogIcon.ACTION} 正在校验长按菜单项: 【{menu_name}】")
         
         locator = ChatLongPressLocator.get_menu_item_by_name(menu_name)
         if self.is_element_exist(locator, timeout=2, raise_exception=False):
-            logger.info(f"✅ XML 成功识别菜单: {menu_name}")
+            logger.info(f"{LogIcon.SUCCESS} XML 成功识别菜单: {menu_name}")
             return True
 
-        logger.warning(f"⚠️ XML 未能识别菜单项: {menu_name}，准备启动 OCR 降级方案...")
+        logger.warning(f"{LogIcon.WARN} XML 未能识别菜单项: {menu_name}，准备启动 OCR 降级方案...")
         ocr_list = OcrUtils(self.driver).get_all_text()
         ocr_text_blob = "".join(ocr_list).replace(" ", "")
         clean_menu_name = menu_name.replace(" ", "")
         
         if clean_menu_name in ocr_text_blob:
-            logger.info(f"✅ OCR 成功识别菜单: {menu_name}")
+            logger.info(f"{LogIcon.SUCCESS} OCR 成功识别菜单: {menu_name}")
             return True
         
-        logger.error(f"❌ OCR 也未能识别出文字: {menu_name}")
+        logger.error(f"{LogIcon.FAIL} OCR 也未能识别出文字: {menu_name}")
         return False
     
     # 长按消息-获取所有菜单项
@@ -155,7 +155,7 @@ class ChatLongPressPage(ChatPage):
         :param msg_type: 消息类型
         :param is_admin: 是否为管理员/群主身份（管理员模式下“撤回”和“删除”需同时存在）
         """
-        logger.info(f"🖱️ [Action] - 正在校验 【{msg_type}】 消息的长按菜单项 (身份: {'管理员' if is_admin else '普通成员'})")
+        logger.info(f"{LogIcon.ACTION} 正在校验 【{msg_type}】 消息的长按菜单项 (身份: {'管理员' if is_admin else '普通成员'})")
         
         from strategy.chat.chat_message_strategy import MessageTypeStrategy
         strategy = MessageTypeStrategy.get_strategy(msg_type)
@@ -183,11 +183,11 @@ class ChatLongPressPage(ChatPage):
                     missing_in_xml.append(item)
 
         if not missing_in_xml:
-            logger.info(f"✅ XML 层级成功识别出 【{msg_type}】 所有菜单项")
+            logger.info(f"{LogIcon.SUCCESS} XML 层级成功识别出 【{msg_type}】 所有菜单项")
             return True
             
         # --- 第二阶段：OCR 兜底校验 ---
-        logger.warning(f"⚠️ XML 未能完全识别菜单项: {missing_in_xml}，准备启动 OCR 降级方案...")
+        logger.warning(f"{LogIcon.WARN} XML 未能完全识别菜单项: {missing_in_xml}，准备启动 OCR 降级方案...")
         
         ocr_list = OcrUtils(self.driver).get_all_text()
         ocr_text_blob = "".join(ocr_list)
@@ -208,9 +208,9 @@ class ChatLongPressPage(ChatPage):
                 if item not in ocr_list:
                     final_missing.append(item)
             if final_missing:
-                logger.error(f"❌ OCR 兜底后仍未能识别出 【{msg_type}】 菜单项: {final_missing}")
+                logger.error(f"{LogIcon.FAIL} OCR 兜底后仍未能识别出 【{msg_type}】 菜单项: {final_missing}")
                 return False
-        logger.info(f"✅ OCR 成功识别出 XML 缺失的菜单项: {missing_in_xml}")
+        logger.info(f"{LogIcon.SUCCESS} OCR 成功识别出 XML 缺失的菜单项: {missing_in_xml}")
         return True
 
 
@@ -220,17 +220,17 @@ class ChatLongPressPage(ChatPage):
         点击弹窗菜单中的指定项目
         优先使用 XML 定位，如果 XML 抓不到，则渐进式通过 [CnOcr -> PaddleOCR -> OpenCV模板匹配] 兜底定位点击
         """
-        logger.info(f"🖱️ [Action] - 尝试点击菜单项: 【{menu_name}】")
+        logger.info(f"{LogIcon.ACTION} 尝试点击菜单项: 【{menu_name}】")
         
         locator = ChatLongPressLocator.get_menu_item_by_name(menu_name)
         
         # 1. XML 直接模糊匹配尝试
         if self.is_element_exist(locator, timeout=1.5, raise_exception=False):
-            logger.info(f"🖱️ [Action] - XML 成功匹配，直接点击菜单: {menu_name}")
+            logger.info(f"{LogIcon.ACTION} XML 成功匹配，直接点击菜单: {menu_name}")
             self.click(locator)
             return
         # 2. 三步渐进式 OCR/图片匹配 兜底
-        logger.warning(f"⚠️ XML 未能定位菜单项 【{menu_name}】，启动渐进式识别降级机制...")
+        logger.warning(f"{LogIcon.WARN} XML 未能定位菜单项 【{menu_name}】，启动渐进式识别降级机制...")
         
         # 2.0 截图保存为临时图片
         screenshot_path = "temp_long_press.png"
@@ -240,16 +240,16 @@ class ChatLongPressPage(ChatPage):
         helper = OCRHelper()
         
         # --- 步骤 1: 尝试 RapidOCR 定位并点击 ---
-        logger.info(f"🔍 [OCR 兜底 Step 1] 尝试使用 RapidOCR 定位并点击: 【{menu_name}】")
+        logger.info(f"{LogIcon.FIND} 尝试使用 RapidOCR 定位并点击: 【{menu_name}】")
         if ocr_util.click_text_by_ocr(ocr_text=menu_name, image_name="temp_long_press.png", exact_match=True):
-            logger.info(f"🎯 [OCR 兜底 Step 1] RapidOCR 识别成功并完成点击")
+            logger.info(f"{LogIcon.SUCCESS} RapidOCR 识别成功并完成点击")
             return
 
         # --- 步骤 2: 尝试 CnOcr 定位 ---
-        logger.info(f"🔍 [OCR 兜底 Step 2] 尝试使用 CnOcr 定位: 【{menu_name}】")
+        logger.info(f"{LogIcon.FIND} 尝试使用 CnOcr 定位: 【{menu_name}】")
         x, y = helper.find_coordinates(screenshot_path, menu_name, method="cnocr")
         if x is not None and y is not None:
-            logger.info(f"🎯 [OCR 兜底 Step 2] CnOcr 识别成功，坐标点击: ({x}, {y})")
+            logger.info(f"{LogIcon.SUCCESS} CnOcr 识别成功，坐标点击: ({x}, {y})")
             self.click_by_coordinate(x, y)
             return
 
@@ -266,15 +266,15 @@ class ChatLongPressPage(ChatPage):
         if menu_name in template_map:
             template_file = template_map[menu_name]
             template_path = os.path.join(helper._BASE_DIR, 'resources', 'action_long_press', template_file)
-            logger.info(f"🔍 [OCR 兜底 Step 3] 尝试使用 OpenCV 模板匹配: {template_path}")
+            logger.info(f"{LogIcon.FIND} 尝试使用 OpenCV 模板匹配: {template_path}")
             
             x, y = helper.find_coordinates(screenshot_path, template_path, method="template", threshold=0.8)
             if x is not None and y is not None:
-                logger.info(f"🎯 [OCR 兜底 Step 3] 模板图像匹配成功，坐标点击: ({x}, {y})")
+                logger.info(f"{LogIcon.SUCCESS} 模板图像匹配成功，坐标点击: ({x}, {y})")
                 self.click_by_coordinate(x, y)
                 return
 
-        logger.error(f"❌ [OCR 兜底] 所有识别方案(CnOcr / RapidOCR / 模板匹配)均未能识别到: 【{menu_name}】")
+        logger.error(f"{LogIcon.FAIL} 所有识别方案(CnOcr / RapidOCR / 模板匹配)均未能识别到: 【{menu_name}】")
         raise RuntimeError(f"无法定位并点击长按菜单项: {menu_name}")
 
 
@@ -293,7 +293,7 @@ class ChatLongPressPage(ChatPage):
         
         config = MenuActionConfig.get_strategy(menu_name)
         if not config:
-            logger.warning(f"⚠️ 菜单项 【{menu_name}】 未配置自动化动作，仅尝试点击")
+            logger.warning(f"{LogIcon.WARN} 菜单项 【{menu_name}】 未配置自动化动作，仅尝试点击")
             self.click_menu_item(menu_name)
             return True
             
@@ -307,30 +307,30 @@ class ChatLongPressPage(ChatPage):
         verify_type = config.verify_type
         expect_val = config.expect_value
         
-        logger.info(f"🔍 [Verify] - 正在进行 【{menu_name}】 的结果校验 (类型: {verify_type})")
+        logger.info(f"{LogIcon.FIND} 正在进行 【{menu_name}】 的结果校验 (类型: {verify_type})")
         
         if verify_type == "toast":
             is_toast_ok = self.get_toast(expected_toast=expect_val)
             if is_toast_ok:
-                logger.info(f"✅ 【{menu_name}】 校验成功: 成功捕获预期提示框 【{expect_val}】")
+                logger.info(f"{LogIcon.SUCCESS} 【{menu_name}】 校验成功: 成功捕获预期提示框 【{expect_val}】")
                 return True
             else:
-                logger.error(f"❌ 【{menu_name}】 校验失败: 未能捕获预期提示框 【{expect_val}】")
+                logger.error(f"{LogIcon.FAIL} 【{menu_name}】 校验失败: 未能捕获预期提示框 【{expect_val}】")
                 return False
         elif verify_type == "page_change":
             from pages.common.contact_select_page import ContactSelectPage
             forward_page = ContactSelectPage(self.driver)
             if not forward_page.wait_for_forward_page_load(msg_type=msg_type):
-                logger.error(f"❌ 【{menu_name}】 校验失败: 未进入转发页面")
+                logger.error(f"{LogIcon.FAIL} 【{menu_name}】 校验失败: 未进入转发页面")
                 return False
-            logger.info(f"✅ 【{menu_name}】 校验成功: 进入转发页面")
+            logger.info(f"{LogIcon.SUCCESS} 【{menu_name}】 校验成功: 进入转发页面")
             return True
         elif verify_type == "ui_state":
             multi_state = self.wait_for_multi_select_page_load()
             if not multi_state:
-                logger.error(f"❌ 【{menu_name}】 校验失败: 未进入多选页面")
+                logger.error(f"{LogIcon.FAIL} 【{menu_name}】 校验失败: 未进入多选页面")
                 return False
-            logger.info(f"✅ 【{menu_name}】 校验成功: 进入多选页面")
+            logger.info(f"{LogIcon.SUCCESS} 【{menu_name}】 校验成功: 进入多选页面")
             return True
         elif verify_type == "msg_disappear":
             # TODO: 消息消失校验 待完善

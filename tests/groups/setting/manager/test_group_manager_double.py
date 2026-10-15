@@ -4,7 +4,7 @@ import pytest
 import allure
 import time
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.groups.create.group_create_page import GroupCreatePage
@@ -60,7 +60,7 @@ class TestGroupManagerDouble:
 
         # 2. Setup 调度
         if skip_setup:
-            logger.info('⚡ [Setup] 用例声明了 skip_env_setup，跳过全局进群前置')
+            logger.info(f'{LogIcon.ACTION} 用例声明了 skip_env_setup，跳过全局进群前置')
         elif keep_group:
             if self.__class__._active_keep_group != keep_group:
                 self._run_env_setup(auto_enter_manager=auto_enter_manager)
@@ -99,7 +99,7 @@ class TestGroupManagerDouble:
         if auto_enter_manager:
             self._enter_group_manager_sender()
         else:
-            logger.info("⚡ [Setup] 当前用例配置为不自动进入群管理页面，发送端(群主)保持停留在群聊聊天界面")
+            logger.info(f"{LogIcon.ACTION} 当前用例配置为不自动进入群管理页面，发送端(群主)保持停留在群聊聊天界面")
 
     def _run_env_teardown(self):
         """执行双端返回首页的清理流程"""
@@ -108,7 +108,7 @@ class TestGroupManagerDouble:
                 self.mainS.go_to_main_page()
                 self.mainR.go_to_main_page()
             except Exception as e:
-                logger.warning(f'⚠️ [Cleanup] 双端返回首页失败: {e}')
+                logger.warning(f'{LogIcon.WARN} 双端返回首页失败: {e}')
 
     def _enter_group_manager_sender(self):
         """内部辅助：发送端(群主)进入该群【群管理】页面"""
@@ -155,7 +155,7 @@ class TestGroupManagerDouble:
             self.groupManagerS.wait_for_admin_page_load()
             existing_admins = self.groupManagerS.get_member_names()
             if PRIVATE_USER1.name in existing_admins:
-                logger.info(f"ℹ️ [Setup] 成员【{PRIVATE_USER1.name}】已存在于管理员列表中，无需重复添加")
+                logger.info(f"{LogIcon.SETUP} ℹ️ [Setup] 成员【{PRIVATE_USER1.name}】已存在于管理员列表中，无需重复添加")
             else:
                 self.groupManagerS.click_add_admin()
                 self.groupManagerS.click_member_by_name(name=PRIVATE_USER1.name)
@@ -593,7 +593,7 @@ class TestGroupManagerDouble:
             is_disabled = self.chatR.is_input_disabled()
             check.is_true(is_disabled, '❌ 开启新成员自动禁言后，新入群成员输入框未被禁用')
             title, tip = self.chatR.get_input_disabled_info()
-            logger.info(f"接收端禁言信息提示: title='{title}', tip='{tip}'")
+            logger.info(f"{LogIcon.ACTION} 接收端禁言信息提示: title='{title}', tip='{tip}'")
             check.is_true(bool(title) or bool(tip), f'❌ 接收端输入框未展示禁言提示: title={title}, tip={tip}')
             total_mins = self.chatR.get_mute_remaining_minutes(tip)
             if total_mins is None:
@@ -645,7 +645,7 @@ class TestGroupManagerDouble:
             self.groupSettingS.click_group_manager()
             self.groupManagerS.wait_for_group_manager_page_load()
             badge_count = self.groupManagerS.get_join_apply_badge_count()
-            logger.info(f"群主端进群申请红点未读数: {badge_count}")
+            logger.info(f"{LogIcon.ACTION} 群主端进群申请红点未读数: {badge_count}")
             check.greater(badge_count, 0, f"❌ 产生进群申请后，群主端进群申请红点未增加或未显示: {badge_count}")
 
         with allure.step('4. 群主端进入审批并同意申请，校验红点消除'):
@@ -661,7 +661,7 @@ class TestGroupManagerDouble:
                 self.groupSettingS.click_group_manager()
                 self.groupManagerS.wait_for_group_manager_page_load()
                 after_badge = self.groupManagerS.get_join_apply_badge_count()
-            logger.info(f"审批通过后群主端进群申请红点数: {after_badge}")
+            logger.info(f"{LogIcon.SUCCESS} 审批通过后群主端进群申请红点数: {after_badge}")
             check.not_equal(after_badge, badge_count, f"❌ 审批通过后进群申请红点未清零，实际仍有: {after_badge}")
 
         with allure.step(f'5. 环境复原：群主端返回群设置，将【{PRIVATE_USER2.name}】移出群聊'):

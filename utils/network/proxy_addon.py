@@ -1,5 +1,6 @@
 from mitmproxy import http
 import json
+from core.logger_utils import logger, LogIcon
 
 # 假设登录接口的 URL 包含这个关键词
 LOGIN_PATH = "http://192.168.1.148/userservices/v2/user/login"
@@ -16,16 +17,15 @@ class TokenInterceptor:
                 token = data.get("data", {}).get("access_token")
 
                 if token:
-                    print(f" [Mitmproxy] 捕获到 Token: {token}")
+                    logger.info(f"{LogIcon.SUCCESS} [Mitmproxy] 捕获到 Token: {token}")
                     # 将 Token 写入共享缓存文件
                     with open(".temp_token_cache", "w") as f:
                         f.write(token)
             except Exception as e:
-                print(f" [Mitmproxy] 解析 Token 失败: {e}")
+                logger.error(f"{LogIcon.FAIL} [Mitmproxy] 解析 Token 失败: {e}")
 
 
 addons = [
     TokenInterceptor()
 ]
-print(" [Mitmproxy] 启动成功")
-print(addons)
+logger.info(f"{LogIcon.SUCCESS} [Mitmproxy] 插件装载启动成功")

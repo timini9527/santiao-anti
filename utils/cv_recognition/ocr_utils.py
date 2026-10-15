@@ -1,5 +1,5 @@
 from rapidocr_onnxruntime import RapidOCR
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from common.base_page import BasePage as BP
 import time
 import os
@@ -32,8 +32,8 @@ class OcrUtils:
         result, elapse = self.ocr(screenshot_path, **ocr_kwargs)
         texts = [line[1] for line in result] if result else []
         # logger.info(f"OCR result: {result}")
-        logger.info(f"OCR 识别文本列表: {texts}")
-        logger.info(f"OCR 识别耗时: {elapse}s")
+        logger.info(f"{LogIcon.FIND} OCR 识别文本列表: {texts}")
+        logger.info(f"{LogIcon.FIND} OCR 识别耗时: {elapse}s")
         return result
 
     # 截图OCR识别点击，默认模糊匹配（精确匹配）
@@ -81,7 +81,7 @@ class OcrUtils:
                     try:
                         best_match_box, best_text, _ = matches[match_index]
                     except IndexError:
-                        logger.warning(f"要求的 index {match_index} 超出找到的匹配数量 {len(matches)}，将使用最后一个匹配")
+                        logger.warning(f"{LogIcon.WARN} 要求的 index {match_index} 超出找到的匹配数量 {len(matches)}，将使用最后一个匹配")
                         best_match_box, best_text, _ = matches[-1]
                 else:
                     # 原逻辑：找出匹配长度最大的
@@ -96,7 +96,7 @@ class OcrUtils:
                 # 通过估算水平方向上字符占比，将点击坐标横向纠偏到我们要找的关键词正中心。
                 if not exact_match and ocr_text in best_text and len(ocr_text) < len(best_text):
                     start_idx = best_text.find(ocr_text)
-                    logger.info(f"OCR 目标关键词在整串字符中的相对索位: {start_idx}")
+                    logger.info(f"{LogIcon.ACTION} OCR 目标关键词在整串字符中的相对索位: {start_idx}")
                     
                     prefix_str = best_text[:start_idx]
                     total_chars = len(best_text)
@@ -119,16 +119,16 @@ class OcrUtils:
                     box_width = best_match_box[1][0] - best_match_box[0][0]
                     
                     center_x = best_match_box[0][0] + (center_weight / total_weight) * box_width
-                    logger.warning(f"由于长句包含关键字，原中心已根据字符占比向 x 轴纠偏至: {int(center_x)}")
+                    logger.warning(f"{LogIcon.WARN} 由于长句包含关键字，原中心已根据字符占比向 x 轴纠偏至: {int(center_x)}")
                 
                 center_x = int(center_x)
                 center_y = int(center_y)
                 
                 # 使用安全的短点击时长（如 100ms/200ms）以防触发系统级长按
                 BP(self.driver).tap_point(x=center_x, y=center_y, duration=click_duration)
-                logger.info(f"✅ RapidOCR 找到最佳匹配区域 '{best_text}'，用于目标 '{ocr_text}'，坐标({center_x}, {center_y})")
+                logger.info(f"{LogIcon.SUCCESS} RapidOCR 找到最佳匹配区域 '{best_text}'，用于目标 '{ocr_text}'，坐标({center_x}, {center_y})")
                 return True
-        logger.error(f"❌ 屏幕上未能找到目标文字: {ocr_text}")
+        logger.error(f"{LogIcon.FAIL} 屏幕上未能找到目标文字: {ocr_text}")
         return False
 
 
@@ -153,7 +153,7 @@ class OcrUtils:
         result = self._get_ocr_result(image_name, sub_dir)
 
         if not result:
-            logger.warning("❌ 屏幕上未识别到任何文本")
+            logger.warning(f"{LogIcon.FAIL} 屏幕上未识别到任何文本")
             return False
 
         for line in result:
@@ -169,7 +169,7 @@ class OcrUtils:
                     is_matched = True
                     
             if is_matched:
-                logger.info(f"✅ 成功找到目标文本: '{text}' (置信度: {float(score):.2f})")
+                logger.info(f"{LogIcon.SUCCESS} 成功找到目标文本: '{text}' (置信度: {float(score):.2f})")
                 
                 # box[0] 是左上角, box[2] 是右下角
                 base_x = box[0][0]
@@ -178,12 +178,12 @@ class OcrUtils:
                 target_x = base_x + offset_x
                 target_y = base_y + offset_y
                 
-                logger.info(f"🎯 基准点({base_x}, {base_y}) | 偏移量({offset_x}, {offset_y}) -> 实际点击坐标({target_x}, {target_y})")
+                logger.info(f"{LogIcon.FIND} 基准点({base_x}, {base_y}) | 偏移量({offset_x}, {offset_y}) -> 实际点击坐标({target_x}, {target_y})")
                 
                 BP(self.driver).tap_point(x=target_x, y=target_y, duration=click_duration)
                 return True
                 
-        logger.error(f"❌ 屏幕上未能找到目标文本: '{target_text}'")
+        logger.error(f"{LogIcon.FAIL} 屏幕上未能找到目标文本: '{target_text}'")
         return False
 
     # 获取屏幕上识别到的所有文本列表
@@ -193,11 +193,11 @@ class OcrUtils:
         """
         result = self._get_ocr_result(image_name)
         if not result:
-            logger.warning("OCR 未能在屏幕上识别到任何文字")
+            logger.warning(f"{LogIcon.WARN} OCR 未能在屏幕上识别到任何文字")
             return []
             
         texts = [line[1] for line in result]
-        logger.info(f"🔍 OCR 识别到全屏文字: {texts}")
+        logger.info(f"{LogIcon.FIND} OCR 识别到全屏文字: {texts}")
         return texts
 
 

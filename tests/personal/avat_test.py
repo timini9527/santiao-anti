@@ -6,7 +6,7 @@ import pytest
 import allure
 from PIL import Image
 from pytest_check import check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.personal.avat_page import AvatarPage
 from pages.home.home_page import HomePage
 from pages.home.side_slip_page import SideSlipPage
@@ -152,17 +152,16 @@ class TestAvatar:
         if self.pre_avatar == aft_avatar:
             with allure.step('🔧 触发防呆重置机制：更换为备用图片后重新验证'):
                 backup_strategy = 'second' if strategy == 'first' else 'first'
-                logger.info(f"--> [重置状态] 使用备用策略 '{backup_strategy}' 垫底...")
+                logger.info(f"{LogIcon.SETUP} --> [重置状态] 使用备用策略 '{backup_strategy}' 垫底...")
                 enter_page()
                 new_pre_avatar = update_avatar(backup_strategy)
-                logger.info(f"--> [重新验证] 再次执行目标策略 '{strategy}'...")
+                logger.info(f"{LogIcon.FIND} --> [重新验证] 再次执行目标策略 '{strategy}'...")
                 enter_page()
-                final_avatar = update_avatar(strategy)
-                print(f'备用更换前: {new_pre_avatar}, 备用更换后: {final_avatar}')
-                check.not_equal(final_avatar, new_pre_avatar, f'❌ 【{desc}】终极防呆重试后头像仍未更新！核心功能可能存在 Bug。')
+                logger.info(f"{LogIcon.ACTION} 备用更换前: {new_pre_avatar}, 备用更换后: {final_avatar}")
+                check.not_equal(final_avatar, new_pre_avatar, f'【{desc}】终极防呆重试后头像仍未更新！核心功能可能存在 Bug。')
         else:
             with allure.step('✅ 验证头像更新成功'):
-                logger.info(f'更换前: {self.pre_avatar}, 更换后: {aft_avatar}')
+                logger.info(f'{LogIcon.ACTION} 更换前: {self.pre_avatar}, 更换后: {aft_avatar}')
                 check.not_equal(aft_avatar, self.pre_avatar, f'【{desc}】头像更新失败！前后数据一致: {aft_avatar}')
 
     @allure.story('逆向流：取消更换动作')
@@ -411,7 +410,7 @@ class TestAvatar:
     @allure.title('在头像操作页点击取消，验证页面回退且头像未变')
     def test_cancel_avatar(self):
         with allure.step('1. 获取取消操作前的原始头像数据'):
-            logger.info(f'取消更换头像前的原始头像数据: {self.pre_avatar}')
+            logger.info(f'{LogIcon.ACTION} 取消更换头像前的原始头像数据: {self.pre_avatar}')
         with allure.step('2. 执行取消并回退操作'):
             self.avatarPage.click_cancel_button()
             self.avatarPage.click_back_avatar()
@@ -472,7 +471,7 @@ class TestUpdateAvatarByFixedAccount:
                 for f in os.listdir(avatars_dir)
                 if os.path.splitext(f)[1].lower() in supported_exts
             ])
-            logger.info(f"🖼️ 已从本地表情包资源库加载 {len(avatar_images)} 张合规静态头像图片")
+            logger.info(f"{LogIcon.ACTION} 🖼️ 已从本地表情包资源库加载 {len(avatar_images)} 张合规静态头像图片")
 
         if not avatar_images:
             temp_dir = os.path.join(project_root, "resources", "images")
@@ -491,10 +490,10 @@ class TestUpdateAvatarByFixedAccount:
                 if driver:
                     ready_tasks.append((idx, dev_name, driver, acc_list))
             except Exception as e:
-                logger.warning(f"⚠️ 设备 {dev_name} (driver_device{idx}) 未就绪或启动失败: {e}")
+                logger.warning(f"{LogIcon.WARN} 设备 {dev_name} (driver_device{idx}) 未就绪或启动失败: {e}")
 
         if not ready_tasks:
-            logger.warning("⚠️ 未检测到任何 Device_5 ~ Device_9 设备，尝试回退使用 driver_sender 单设备执行")
+            logger.warning(f"{LogIcon.WARN} 未检测到任何 Device_5 ~ Device_9 设备，尝试回退使用 driver_sender 单设备执行")
             try:
                 default_driver = request.getfixturevalue("driver_sender")
                 ready_tasks.append((1, "Default_Sender", default_driver, accounts))
@@ -505,7 +504,7 @@ class TestUpdateAvatarByFixedAccount:
 
         # 5. 单设备异步并发 Worker 执行函数（严格线程安全，独立维护专属 Page 实例）
         def worker_avatar_update(dev_idx, dev_name, driver, acc_list):
-            logger.info(f"🚀 设备 [{dev_name}] 线程启动，开始异步并行处理 {len(acc_list)} 个固定账号更换头像...")
+            logger.info(f"{LogIcon.ACTION} 设备 [{dev_name}] 线程启动，开始异步并行处理 {len(acc_list)} 个固定账号更换头像...")
             # 为当前设备独立创建一套专属 Page Object 实例，杜绝多线程资源竞态
             login_page = LoginPage(driver)
             home_page = HomePage(driver)
@@ -527,7 +526,7 @@ class TestUpdateAvatarByFixedAccount:
             for a_idx, item in enumerate(acc_list, start=1):
                 acc = item["account"]
                 pwd = item["password"]
-                logger.info(f"👉 [{dev_name}] [{a_idx}/{total_acc}] 开始处理固定账号: {acc}")
+                logger.info(f"{LogIcon.ACTION} [{dev_name}] [{a_idx}/{total_acc}] 开始处理固定账号: {acc}")
                 try:
                     # 分配专属头像图片并推送到相机胶卷置顶
                     img_idx = (int(acc[-2:]) if acc[-2:].isdigit() else a_idx) % len(avatar_images)
@@ -559,7 +558,7 @@ class TestUpdateAvatarByFixedAccount:
                     avatar_page.select_image_by_strategy("first")
                     avatar_page.click_selected_crop()
                     avatar_page.back_to_personal_info()
-                    logger.info(f"✅ [{dev_name}] [{a_idx}/{total_acc}] 账号【{acc}】头像更换完成")
+                    logger.info(f"{LogIcon.SUCCESS} [{dev_name}] [{a_idx}/{total_acc}] 账号【{acc}】头像更换完成")
 
                     # 步骤 D：从个人信息返回主页 -> 打开侧边栏 -> 设置中心 -> 退出登录
                     avatar_page.click_back()
@@ -569,7 +568,7 @@ class TestUpdateAvatarByFixedAccount:
                     login_page.wait_for_login_success_no_card(timeout=2)
 
                 except Exception as acc_err:
-                    logger.error(f"❌ [{dev_name}] 账号【{acc}】换头像异常: {acc_err}")
+                    logger.error(f"{LogIcon.FAIL} [{dev_name}] 账号【{acc}】换头像异常: {acc_err}")
                     exceptions.append((dev_name, acc, acc_err))
                     # 异常自愈兜底：退回到登录页，继续处理后续账号
                     try:
@@ -582,7 +581,7 @@ class TestUpdateAvatarByFixedAccount:
                         pass
                     login_page.wait_for_login_success_no_card(timeout=3)
 
-            logger.info(f"🏁 设备 [{dev_name}] 线程全部 {total_acc} 个账号处理完毕！")
+            logger.info(f"{LogIcon.SUCCESS} 设备 [{dev_name}] 线程全部 {total_acc} 个账号处理完毕！")
 
         # 6. 创建并启动多设备并发线程
         threads = []
@@ -593,7 +592,7 @@ class TestUpdateAvatarByFixedAccount:
                 name=f"Thread-{dev_name}"
             )
             threads.append(t)
-            logger.info(f"🧵 [Multi Device Avatar] 已就绪并发设备线程: {dev_name} (分配账号数: {len(acc_list)})")
+            logger.info(f"{LogIcon.ACTION} 🧵 [Multi Device Avatar] 已就绪并发设备线程: {dev_name} (分配账号数: {len(acc_list)})")
 
         with allure.step(f"0. 启动多设备异步并发换头像 (参与设备数: {len(threads)})"):
             for t in threads:
@@ -603,8 +602,8 @@ class TestUpdateAvatarByFixedAccount:
 
         if exceptions:
             err_details = "\n".join([f"[{d}] 账号 {a}: {e}" for d, a, e in exceptions])
-            logger.warning(f"⚠️ 多设备换头像执行完毕，共有 {len(exceptions)} 个账号发生异常:\n{err_details}")
+            logger.warning(f"{LogIcon.WARN} 多设备换头像执行完毕，共有 {len(exceptions)} 个账号发生异常:\n{err_details}")
             if len(exceptions) > len(accounts) * 0.3:
                 pytest.fail(f"❌ 多设备更换头像失败率过高 (失败数: {len(exceptions)}/{len(accounts)}):\n{err_details}")
         else:
-            logger.info("🎉 恭喜！所有参与设备的固定账号头像已全部并发更换完成！")
+            logger.info(f"{LogIcon.SUCCESS} 恭喜！所有参与设备的固定账号头像已全部并发更换完成！")

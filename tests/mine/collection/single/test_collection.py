@@ -10,7 +10,7 @@ from pages.mine.collection.chat_collection_page import ChatCollectionPage
 from pages.mine.collection.collection_page import CollectionPage
 from pages.home.side_slip_page import SideSlipPage
 from pages.chat_options.images.chat_image_page import ChatImagePage
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
 from pages.common.contact_select_page import ContactSelectPage
 import time
@@ -156,7 +156,7 @@ class TestCollection:
                 after_content = self.collectionPage.get_collection_text_content(0)
                 check.not_equal(before_content, after_content, f"❌ 删除校验失败：第0条文本内容依然为 '{before_content}'")
             else:
-                logger.info('✅ 图片删除成功')
+                logger.info(f'{LogIcon.SUCCESS} 图片删除成功')
 
     @pytest.mark.p2
     @allure.severity(allure.severity_level.NORMAL)
@@ -202,8 +202,8 @@ class TestCollection:
         with allure.step('2. 解析时间序列并做排序断言'):
             actual_times = [item['collected_time'] for item in details]
             expected_times = self.collectionPage.get_sort_time(details)
-            logger.info(f'⏳ 实际时间序列: {actual_times}')
-            logger.info(f'⏳ 期望时间序列: {expected_times}')
+            logger.info(f'{LogIcon.WAIT} 实际时间序列: {actual_times}')
+            logger.info(f'{LogIcon.WAIT} 期望时间序列: {expected_times}')
             check.equal(actual_times, expected_times, '❌ 收藏列表未按时间倒序排列！')
 
     @pytest.mark.p1

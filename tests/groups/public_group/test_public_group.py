@@ -2,7 +2,7 @@ import time
 import allure
 import pytest
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.chat.core.chat_page import ChatPage
 from pages.groups.setting.general.group_setting_page import GroupSettingPage
 from pages.main.main_page import MainPage
@@ -34,7 +34,7 @@ class TestPublicGroup:
             try:
                 self.mainPage.go_to_main_page()
             except Exception as e:
-                logger.error(f'⚠️ [Teardown] 返回首页失败: {e}')
+                logger.error(f'{LogIcon.WARN} 返回首页失败: {e}')
 
     def _home_to_public_group(self) -> None:
         """导航辅助：从主页右上角加号进入添加朋友页面，并等待公开群聊就绪"""
@@ -76,7 +76,7 @@ class TestPublicGroup:
 
                 # 步骤 2：检索指定目标群聊并触发加入
                 with allure.step(f'第 {i} 轮-步骤 1: 检索指定目标公开群【{target_group}】并加入'):
-                    logger.info(f"第 {i} 轮准备加入指定目标群聊: 【{target_group}】")
+                    logger.info(f"{LogIcon.FIND} 第 {i} 轮准备加入指定目标群聊: 【{target_group}】")
                     # 优先在公开群列表中自动匹配并换一批查找
                     is_joined = self.publicGroupPage.find_and_join_target_group(target_group, max_batches=5)
 
@@ -86,7 +86,7 @@ class TestPublicGroup:
                     if self.publicGroupPage.wait_for_detail_page_loaded(timeout=3):
                         detail_name = self.publicGroupPage.get_detail_group_name()
                         action_text = self.publicGroupPage.get_detail_action_btn_text()
-                        logger.info(f"公开群详情页群名: '{detail_name}', 底部按钮: '{action_text}'")
+                        logger.info(f"{LogIcon.ACTION} 公开群详情页群名: '{detail_name}', 底部按钮: '{action_text}'")
                         self.publicGroupPage.click_detail_action_button()
 
                     # 校验是否成功拉起群聊主界面
@@ -95,20 +95,20 @@ class TestPublicGroup:
 
                 # TODO: # 这里有BUG
                 if not is_in_chat:
-                    logger.warning(f'⚠️ 第 {i} 轮未能进入聊天页，重新加入群聊，重新开始循环')
+                    logger.warning(f'{LogIcon.WARN} 第 {i} 轮未能进入聊天页，重新加入群聊，重新开始循环')
                     is_joined = self.publicGroupPage.find_and_join_target_group(target_group, max_batches=5)
                     
                     if self.publicGroupPage.wait_for_detail_page_loaded(timeout=3):
                         detail_name = self.publicGroupPage.get_detail_group_name()
                         action_text = self.publicGroupPage.get_detail_action_btn_text()
-                        logger.info(f"公开群详情页群名: '{detail_name}', 底部按钮: '{action_text}'")
+                        logger.info(f"{LogIcon.ACTION} 公开群详情页群名: '{detail_name}', 底部按钮: '{action_text}'")
                         self.publicGroupPage.click_detail_action_button()
                     
 
                 # 步骤 4：精准校验当前进入的会话群名称与指定目标群一致
                 with allure.step(f'第 {i} 轮-步骤 3: 校验当前群聊名称与指定目标群【{target_group}】一致'):
                     actual_group = self.chatPage.get_group_name()
-                    logger.info(f"当前群聊实际名称: '{actual_group}', 预期目标群: '{target_group}'")
+                    logger.info(f"{LogIcon.FIND} 当前群聊实际名称: '{actual_group}', 预期目标群: '{target_group}'")
                     check.is_in(target_group, actual_group, f'❌ 当前群聊名称【{actual_group}】与目标群【{target_group}】不匹配')
 
                 # 步骤 5：进入群设置并执行【删除并退出】
@@ -126,7 +126,7 @@ class TestPublicGroup:
                 #         self.mainPage.go_to_main_page()
                 #         is_in_main = self.mainPage.is_in_main_page(timeout=3)
                 #     check.is_true(is_in_main, f'❌ 第 {i} 轮删除并退出群聊后未能返回主页面')
-                #     logger.info(f'✅ 第 {i} 轮公开群加群并退群流程执行完成')
+                #     logger.info(f'{LogIcon.SUCCESS} 第 {i} 轮公开群加群并退群流程执行完成')
 
 
     @pytest.mark.p2
@@ -138,19 +138,19 @@ class TestPublicGroup:
 
         with allure.step('1. 校验公开群聊区域标题文本'):
             title = self.publicGroupPage.get_rank_title()
-            logger.info(f"公开群聊区域标题: '{title}'")
+            logger.info(f"{LogIcon.ACTION} 公开群聊区域标题: '{title}'")
             check.is_in('公开群聊', title, f'❌ 公开群聊区域标题不匹配，实际展示为: {title}')
 
         with allure.step('2. 校验公开群聊推荐列表非空并提取群名称'):
             group_names = self.publicGroupPage.get_public_group_names()
-            logger.info(f"当前公开群列表展示群名称: {group_names}")
+            logger.info(f"{LogIcon.ACTION} 当前公开群列表展示群名称: {group_names}")
             check.greater(len(group_names), 0, '❌ 公开群推荐列表为空，未获取到任何公开群')
 
         if group_names:
             first_group = group_names[0]
             with allure.step(f'3. 校验首个公开群【{first_group}】各属性完整性 (活跃度/成员数/群ID)'):
                 info = self.publicGroupPage.get_group_info(first_group)
-                logger.info(f"首个公开群【{first_group}】卡片详情: {info}")
+                logger.info(f"{LogIcon.ACTION} 首个公开群【{first_group}】卡片详情: {info}")
                 check.is_true(bool(info.get('active_value')), f'❌ 公开群【{first_group}】活跃度数值为空')
                 check.is_true(bool(info.get('member_num')), f'❌ 公开群【{first_group}】成员数量为空')
                 check.is_true('ID' in info.get('group_id', ''), f'❌ 公开群【{first_group}】群ID格式异常: {info.get("group_id")}')
@@ -164,7 +164,7 @@ class TestPublicGroup:
 
         with allure.step('1. 获取换一批点击前公开群列表'):
             initial_groups = self.publicGroupPage.get_public_group_names()
-            logger.info(f"换一批前公开群列表: {initial_groups}")
+            logger.info(f"{LogIcon.ACTION} 换一批前公开群列表: {initial_groups}")
 
         with allure.step('2. 点击【换一批】按钮'):
             self.publicGroupPage.click_change_batch()
@@ -172,11 +172,11 @@ class TestPublicGroup:
 
         with allure.step('3. 获取换一批点击后公开群列表并校验'):
             refreshed_groups = self.publicGroupPage.get_public_group_names()
-            logger.info(f"换一批后公开群列表: {refreshed_groups}")
+            logger.info(f"{LogIcon.ACTION} 换一批后公开群列表: {refreshed_groups}")
             check.greater(len(refreshed_groups), 0, '❌ 换一批后公开群列表为空')
             # 记录刷新前后对比结果日志
             is_changed = initial_groups != refreshed_groups
-            logger.info(f"换一批前后群列表是否发生变化: {is_changed}")
+            logger.info(f"{LogIcon.ACTION} 换一批前后群列表是否发生变化: {is_changed}")
 
     @pytest.mark.p2
     @allure.severity(allure.severity_level.NORMAL)
@@ -194,7 +194,7 @@ class TestPublicGroup:
             with allure.step(f'2. 点击公开群【{target_group}】的复制群ID按钮'):
                 self.publicGroupPage.click_copy_group_id(target_group)
                 time.sleep(0.5)
-                logger.info(f"已成功点击公开群【{target_group}】复制群ID按钮")
+                logger.info(f"{LogIcon.SUCCESS} 已成功点击公开群【{target_group}】复制群ID按钮")
 
     @pytest.mark.p1
     @allure.severity(allure.severity_level.CRITICAL)
@@ -212,7 +212,7 @@ class TestPublicGroup:
             with allure.step(f'2. 点击公开群【{target_group}】的【加入】按钮'):
                 self.publicGroupPage.click_join_group(target_group)
                 time.sleep(1)
-                logger.info(f"已成功触发公开群【{target_group}】加入动作")
+                logger.info(f"{LogIcon.SUCCESS} 已成功触发公开群【{target_group}】加入动作")
 
     @pytest.mark.p2
     @allure.severity(allure.severity_level.NORMAL)

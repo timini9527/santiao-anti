@@ -1,4 +1,4 @@
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from utils.file_reader.data_loader import load_yaml_data
 from apis.base_api import BaseApi
 
@@ -21,12 +21,10 @@ class CollectionApi:
             res = BaseApi().request("GET", url)
             assert res.status_code == 200, f"获取所有收藏数据请求失败，状态码: {res.status_code}"
             res_json = res.json()
-            logger.info(f"获取所有收藏数据成功: {res_json}")
-            print(f"获取所有收藏数据成功: {res_json}")
+            logger.info(f"{LogIcon.SUCCESS} 获取所有收藏数据成功: {res_json}")
             return res_json
         except Exception as e:
-            logger.error(f"获取所有收藏数据请求失败: {e}")
-            print(f"获取所有收藏数据请求失败: {e}")
+            logger.error(f"{LogIcon.FAIL} 获取所有收藏数据请求失败: {e}")
             raise e
 
 

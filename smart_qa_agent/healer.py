@@ -1,3 +1,4 @@
+from core.logger_utils import logger, LogIcon
 import os
 import shutil
 import re
@@ -24,7 +25,7 @@ class TestHealer:
         bak_path = abs_path + ".bak"
         shutil.copy2(abs_path, bak_path)
         self.backups[rel_path] = bak_path
-        print(f"[Healer] 已备份文件: {rel_path} -> {rel_path}.bak")
+        logger.info(f"{LogIcon.SUCCESS} [Healer] 已备份文件: {rel_path} -> {rel_path}.bak")
 
     def restore_file(self, rel_path: str):
         """还原源文件"""
@@ -34,7 +35,7 @@ class TestHealer:
             shutil.copy2(bak_path, abs_path)
             os.remove(bak_path)
             self.backups.pop(rel_path)
-            print(f"[Healer] 已成功还原文件: {rel_path}")
+            logger.info(f"{LogIcon.SUCCESS} [Healer] 已成功还原文件: {rel_path}")
 
     def attempt_heal(self, rel_path: str, line_number: int) -> bool:
         """
@@ -45,7 +46,7 @@ class TestHealer:
         """
         abs_path = os.path.join(self.workspace_dir, rel_path)
         if not os.path.exists(abs_path):
-            print(f"[Healer] 找不到需要自愈的文件: {abs_path}")
+            logger.warning(f"{LogIcon.WARN} [Healer] 找不到需要自愈的文件: {abs_path}")
             return False
 
         # 1. 备份原文件
@@ -85,8 +86,8 @@ class TestHealer:
                 new_line = current_line.replace(old_val, new_val)
                 lines[idx] = new_line
                 healed = True
-                print(f"[Healer] [自愈成功] 在 {rel_path} 第 {idx + 1} 行检测到定位器变量: {var_name}")
-                print(f"   原值: '{old_val}' -> 修复为: '{new_val}'")
+                logger.info(f"{LogIcon.SUCCESS} [Healer] [自愈成功] 在 {rel_path} 第 {idx + 1} 行检测到定位器变量: {var_name}")
+                logger.info(f"{LogIcon.ACTION}    原值: '{old_val}' -> 修复为: '{new_val}'")
                 break
 
         if healed:
@@ -97,5 +98,5 @@ class TestHealer:
         else:
             # 未能自愈，清除备份
             self.restore_file(rel_path)
-            print(f"[Healer] 无法从 {rel_path} 第 {line_number} 行附近识别出明确的定位器变量配置，自愈放弃。")
+            logger.warning(f"{LogIcon.WARN} [Healer] 无法从 {rel_path} 第 {line_number} 行附近识别出明确的定位器变量配置，自愈放弃。")
             return False

@@ -5,7 +5,7 @@ from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_page import ChatPage
 from pages.chat_options.voice.chat_voice_page import ChatVoicePage
 from pages.main.main_page import MainPage
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
 
 
@@ -28,9 +28,9 @@ class TestChatVoice:
         try:
             self.__class__._chat_target = None
             MainPage(driver_sender).go_to_main_page()
-            logger.info("🧹 [Class Teardown] 语音模块全部用例执行完毕，统一返回主页")
+            logger.info(f"{LogIcon.SETUP} [Class Teardown] 语音模块全部用例执行完毕，统一返回主页")
         except Exception as e:
-            logger.error(f"Teardown 失败，未能返回首页: {e}")
+            logger.error(f"{LogIcon.FAIL} Teardown 失败，未能返回首页: {e}")
 
     @pytest.fixture(autouse=True)
     def setup(self, driver_sender):
@@ -43,7 +43,7 @@ class TestChatVoice:
         """进入指定的聊天会话并开启语音输入模式（支持同会话直接复用，跨会话如私聊切群聊时自动退回主页重新进入）"""
         if self.__class__._chat_target != chat_name:
             if self.__class__._chat_target is not None:
-                logger.info(f"🔄 [Session Switch] 检测到聊天对象从【{self.__class__._chat_target}】切换为【{chat_name}】，退回首页重新进入")
+                logger.info(f"{LogIcon.ACTION} [Session Switch] 检测到聊天对象从【{self.__class__._chat_target}】切换为【{chat_name}】，退回首页重新进入")
                 self.mainPage.go_to_main_page()
             self.chatListPage.enter_chat(chat_name)
             self.__class__._chat_target = chat_name

@@ -6,7 +6,7 @@ import yaml
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 import pandas as pd
 from config import CONFIG_DIR, DATA_DIR, RESOURCE_DIR
 
@@ -27,7 +27,7 @@ def find_file(filename: str) -> Any | None:
 
         # 判断该绝对路径下的文件是否存在
         if target_path.exists() and target_path.is_file():
-            logger.info(f"✅ 快速定位文件成功：{target_path}")
+            logger.info(f"{LogIcon.SUCCESS} 快速定位文件成功：{target_path}")
             return target_path
     return None
 
@@ -37,7 +37,7 @@ def load_yaml_data(file_name):
     """
     file_path = find_file(file_name)
     if file_path is None:
-        logger.error(f"未找到文件 {file_name}")
+        logger.error(f"{LogIcon.FAIL} 未找到文件 {file_name}")
         raise FileNotFoundError(f"未找到文件 {file_name}")
 
     try:
@@ -47,10 +47,10 @@ def load_yaml_data(file_name):
             # print("读取文件：", data)
         return data
     except yaml.YAMLError as e:
-        logger.error(f"YAML解析错误 {file_path}: {e}")
+        logger.error(f"{LogIcon.FAIL} YAML解析错误 {file_path}: {e}")
         raise
     except Exception as e:
-        logger.error(f"文件读取错误 {file_path}: {e}")
+        logger.error(f"{LogIcon.FAIL} 文件读取错误 {file_path}: {e}")
         raise
 
 
@@ -78,7 +78,7 @@ def update_token(token, open_id):
 
     file_path = find_file('auth_config.yaml')
     if file_path is None:
-        logger.error(f"未找到文件 {file_name}")
+        logger.error(f"{LogIcon.FAIL} 未找到文件 {file_name}")
         raise FileNotFoundError(f"未找到文件 {file_name}")
 
     # 3. 回写入文件
@@ -87,7 +87,7 @@ def update_token(token, open_id):
         # sort_keys=False 保证写入顺序不被打乱
         yaml.dump(auth_data, f, allow_unicode=True, sort_keys=False)
 
-    print(f" [Config] Token 已更新至 auth_config.yaml: {auth_token[-15:]}...")
+    logger.info(f"{LogIcon.SUCCESS} [Config] Token 已更新至 auth_config.yaml: {auth_token[-15:]}...")
 
 
 def load_csv_data(file_name):
@@ -96,9 +96,9 @@ def load_csv_data(file_name):
     """
     file_path = find_file(file_name)
     if file_path is None:
-        logger.error(f"未找到文件 {file_name}")
+        logger.error(f"{LogIcon.FAIL} 未找到文件 {file_name}")
         raise FileNotFoundError(f"未找到文件 {file_name}")
-    print("file_path: ", file_path)
+    logger.info(f"{LogIcon.FIND} 目标 CSV 文件路径: {file_path}")
 
     try:
         with open(file_path, 'r', encoding='utf-8-sig') as f:
@@ -107,17 +107,16 @@ def load_csv_data(file_name):
             data = []
             for row in reader:
                 data.append(row)
-            logger.info(f"已读取文件 {data}")
-            print("data_list: ", data)
+            logger.info(f"{LogIcon.FIND} 已读取文件 {data}")
             return data
     except csv.Error as e:
-        logger.error(f"CSV 文件解析错误: {e}")
+        logger.error(f"{LogIcon.FAIL} CSV 文件解析错误: {e}")
         raise
     except FileNotFoundError:
-        logger.error(f"未找到文件 {file_name}")
+        logger.error(f"{LogIcon.FAIL} 未找到文件 {file_name}")
         raise
     except Exception as e:
-        logger.error(f"未知错误: {e}")
+        logger.error(f"{LogIcon.FAIL} 未知错误: {e}")
         raise
 
 def pandas_load_csv_data(file_name):
@@ -126,24 +125,23 @@ def pandas_load_csv_data(file_name):
     """
     file_path = find_file(file_name)
     if file_path is None:
-        logger.error(f"未找到文件 {file_name}")
+        logger.error(f"{LogIcon.FAIL} 未找到文件 {file_name}")
         raise FileNotFoundError(f"未找到文件 {file_name}")
-    print("file_path: ", file_path)
+    logger.info(f"{LogIcon.FIND} 目标 CSV 文件路径: {file_path}")
 
     try:
         df = pd.read_csv(file_path, encoding='utf-8-sig')  # 使用 utf-8-sig 自动处理
         data = df.to_dict('records')
-        logger.info(f"已读取文件 {data}")
-        print("data_list: ", data)
+        logger.info(f"{LogIcon.FIND} 已读取文件 {data}")
         return data
     except csv.Error as e:
-        logger.error(f"CSV 文件解析错误: {e}")
+        logger.error(f"{LogIcon.FAIL} CSV 文件解析错误: {e}")
         raise
     except FileNotFoundError:
-        logger.error(f"未找到文件 {file_name}")
+        logger.error(f"{LogIcon.FAIL} 未找到文件 {file_name}")
         raise
     except Exception as e:
-        logger.error(f"未知错误: {e}")
+        logger.error(f"{LogIcon.FAIL} 未知错误: {e}")
         raise
 
 def save_csv_data(file_name, data):
@@ -152,9 +150,9 @@ def save_csv_data(file_name, data):
     """
     file_path = find_file(file_name)
     if file_path is None:
-        logger.error(f"未找到文件 {file_name}")
+        logger.error(f"{LogIcon.FAIL} 未找到文件 {file_name}")
         raise FileNotFoundError(f"未找到文件 {file_name}")
-    print("file_path: ", file_path)
+    logger.info(f"{LogIcon.FIND} 目标文件路径: {file_path}")
     pass
 
 

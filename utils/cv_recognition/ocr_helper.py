@@ -1,14 +1,14 @@
 import os
 import time
 from cnocr import CnOcr
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 
 # 引入 cv2 进行模板匹配
 try:
     import cv2
     import numpy as np
 except ImportError:
-    logger.warning("⚠️ 未检测到 opencv-python 库，模板匹配功能将无法使用")
+    logger.warning(f"{LogIcon.WARN} 未检测到 opencv-python 库，模板匹配功能将无法使用")
 
 
 class OCRHelper:
@@ -30,9 +30,9 @@ class OCRHelper:
             # 初始化 CnOcr
             try:
                 cls._ocr = CnOcr(det_model_name='en_PP-OCRv3_det', rec_model_name='densenet_lite_136-gru')
-                logger.info("✅ CnOcr 引擎预加载成功")
+                logger.info(f"{LogIcon.SUCCESS} CnOcr 引擎预加载成功")
             except Exception as e:
-                logger.warning(f"⚠️ CnOcr 引擎加载失败: {e}")
+                logger.warning(f"{LogIcon.WARN} CnOcr 引擎加载失败: {e}")
                 
         return cls._instance
 
@@ -42,12 +42,12 @@ class OCRHelper:
         start_time = time.time()
         # 识别图片
         result = self._ocr.ocr(image_path)
-        logger.info(f"cnocr -> 识别结果: {result}，开始遍历")
+        logger.info(f"{LogIcon.FIND} cnocr -> 识别结果: {result}，开始遍历")
 
         for item in result:
             # item 结构: {'text': '复制', 'position': [[x1, y1], [x2, y1], [x2, y2], [x1, y2]], 'score': 0.9}
             text = item['text']
-            logger.info(f"cnocr -> 识别文字: {text}")
+            logger.info(f"{LogIcon.FIND} cnocr -> 识别文字: {text}")
 
             # 模糊匹配，只要包含 "复制" 即可
             if target_text in text:
@@ -56,10 +56,10 @@ class OCRHelper:
                 center_x = (position[0][0] + position[2][0]) / 2
                 center_y = (position[0][1] + position[2][1]) / 2
 
-                logger.info(f"OCR 耗时: {time.time() - start_time:.2f}s | 找到 '{target_text}' 坐标: ({center_x}, {center_y})")
+                logger.info(f"{LogIcon.FIND} OCR 耗时: {time.time() - start_time:.2f}s | 找到 '{target_text}' 坐标: ({center_x}, {center_y})")
                 return center_x, center_y
 
-        logger.warning(f"OCR 未找到文字: {target_text}")
+        logger.warning(f"{LogIcon.WARN} OCR 未找到文字: {target_text}")
         return None, None
 
 
@@ -75,10 +75,10 @@ class OCRHelper:
         :return: (center_x, center_y) 或 (None, None)
         """
         if not os.path.exists(image_path):
-            logger.error(f"❌ 大图文件不存在: {image_path}")
+            logger.error(f"{LogIcon.FAIL} 大图文件不存在: {image_path}")
             return None, None
         if not os.path.exists(template_path):
-            logger.error(f"❌ 模板图片文件不存在: {template_path}")
+            logger.error(f"{LogIcon.FAIL} 模板图片文件不存在: {template_path}")
             return None, None
 
         start_time = time.time()
@@ -123,13 +123,13 @@ class OCRHelper:
             if best_match_val >= threshold:
                 center_x = int(best_match_loc[0] + best_scale_w / 2)
                 center_y = int(best_match_loc[1] + best_scale_h / 2)
-                logger.info(f"✅ [Multi-Scale Template Matching] 成功匹配到模板: {template_path} | 最佳相似度: {best_match_val:.4f} (阈值: {threshold}) | 最佳尺寸: {best_scale_w}x{best_scale_h} -> 坐标: ({center_x}, {center_y}) | 耗时: {time.time() - start_time:.4f}s")
+                logger.info(f"{LogIcon.SUCCESS} [Multi-Scale Template Matching] 成功匹配到模板: {template_path} | 最佳相似度: {best_match_val:.4f} (阈值: {threshold}) | 最佳尺寸: {best_scale_w}x{best_scale_h} -> 坐标: ({center_x}, {center_y}) | 耗时: {time.time() - start_time:.4f}s")
                 return center_x, center_y
 
-            logger.warning(f"❌ [Multi-Scale Template Matching] 最佳相似度仍低于阈值: {best_match_val:.4f} < {threshold}")
+            logger.warning(f"{LogIcon.FAIL} [Multi-Scale Template Matching] 最佳相似度仍低于阈值: {best_match_val:.4f} < {threshold}")
             return None, None
         except Exception as e:
-            logger.error(f"❌ 执行多尺度模板匹配过程中发生异常: {e}")
+            logger.error(f"{LogIcon.FAIL} 执行多尺度模板匹配过程中发生异常: {e}")
             return None, None
 
 
@@ -149,7 +149,7 @@ class OCRHelper:
         elif method == "cnocr":
             return self.find_text_coordinates_cnocr(image_path, target)
         else:
-            logger.error(f"❌ 不支持的识别方法类型: {method}")
+            logger.error(f"{LogIcon.FAIL} 不支持的识别方法类型: {method}")
             return None, None
 
 

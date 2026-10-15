@@ -4,7 +4,7 @@ import allure
 import pytest
 import pytest_check as check
 
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.friend.add_friend.add_friend_page import AddFriendPage
 from pages.friend.add_friend.new_friend_page import NewFriendPage
 from pages.home.home_page import HomePage
@@ -39,7 +39,7 @@ class TestNewFriend:
         try:
             self.mainPage.go_to_main_page()
         except Exception as error:
-            logger.error(f"⚠️ [Teardown] 返回主页失败: {error}")
+            logger.error(f"{LogIcon.WARN} 返回主页失败: {error}")
 
 
 

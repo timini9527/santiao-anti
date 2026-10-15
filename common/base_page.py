@@ -12,7 +12,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.common.actions.action_builder import ActionBuilder
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from utils.except_utils import catch_exception, check_element_status, catch_elements_exception
 from appium.webdriver.common.appiumby import AppiumBy
 from locators.common.common_locator import CommonLocator
@@ -43,7 +43,7 @@ class BasePage:
         :param expect_missing: 预期元素不存在 (用于断言元素不应出现的场景)
         :return:
         """
-        logger.info(f"🔎 正在查找元素: {locator} (模式: {condition})")
+        logger.info(f"{LogIcon.FIND} 正在查找元素: {locator} (模式: {condition})")
         wait = WebDriverWait(self.driver, timeout, poll_frequency=0.2)
         # 如果这里超时报错， @catch_exception 会自动捕获、截图、写 error 日志
         if condition == "visibility":  # 等待可见
@@ -72,7 +72,7 @@ class BasePage:
         :param expect_missing: 预期元素不存在 (用于断言元素不应出现的场景) 
         :return: 元素对象的列表。如果 raise_exception 为 False 且没找到，返回空列表 []
         """
-        logger.info(f"🔎 正在查找元素: {locator} (模式: {condition})")
+        logger.info(f"{LogIcon.FIND} 正在查找元素: {locator} (模式: {condition})")
         wait = WebDriverWait(self.driver, timeout)
         if condition == 'visibility':
             # 注意：不使用 visibility_of_all_elements_located —— 它要求匹配到的【所有】元素都可见，
@@ -106,15 +106,15 @@ class BasePage:
         :param expect_missing: 保持签名兼容
         :return: True(存在) / False(不存在)
         """
-        logger.info(f"🔎 探查元素状态: {locator} (模式: {condition}, 超时: {timeout}s)")
+        logger.info(f"{LogIcon.FIND} 探查元素状态: {locator} (模式: {condition}, 超时: {timeout}s)")
 
         elements = self.find_elements(locator=locator, timeout=timeout, condition=condition,
                                     raise_exception=raise_exception, expect_missing=expect_missing)
         is_exist = len(elements) > 0
         if is_exist:
-            logger.info(f"✅ 元素存在: {locator}")
+            logger.info(f"{LogIcon.SUCCESS} 元素存在: {locator}")
         else:
-            logger.warning(f"⚠️ 元素不存在: {locator}")
+            logger.warning(f"{LogIcon.WARN} 元素不存在: {locator}")
         return is_exist
 
     def wait_until_element_disappear(self, locator: tuple, timeout: int = 10) -> bool:
@@ -125,13 +125,13 @@ class BasePage:
         :return: 元素成功消失返回 True，超时仍存在返回 False
         """
         try:
-            logger.info(f"⏳ [Wait] 等待元素消失: {locator}")
+            logger.info(f"{LogIcon.WAIT} 等待元素消失: {locator}")
             WebDriverWait(self.driver, timeout, poll_frequency=0.5).until(
                 EC.invisibility_of_element_located(locator)
             )
             return True
         except Exception:
-            logger.warning(f"⚠️ [Wait] 元素在 {timeout}s 内未能从页面消失: {locator}")
+            logger.warning(f"{LogIcon.WARN} 元素在 {timeout}s 内未能从页面消失: {locator}")
             return False
 
     def wait_for_element(self, locator: tuple, timeout: int = 15, interval: float = 1.0,
@@ -147,7 +147,7 @@ class BasePage:
         :param text: 可选，要求元素文本包含此子串才算命中（用于等"特定内容"的消息）
         :return: 命中返回 True，超时未命中返回 False
         """
-        logger.info(f"⏳ [Wait] 轮询等待元素出现: {locator} (总超时 {timeout}s, 间隔 {interval}s"
+        logger.info(f"{LogIcon.WAIT} 轮询等待元素出现: {locator} (总超时 {timeout}s, 间隔 {interval}s"
                     f"{', 文本含 ' + repr(text) if text else ''})")
         deadline = time.time() + timeout
         while time.time() < deadline:
@@ -155,16 +155,16 @@ class BasePage:
                 elements = self.driver.find_elements(*locator)
                 for el in elements:
                     if text is None:
-                        logger.info(f"✅ [Wait] 已检测到目标元素: {locator}")
+                        logger.info(f"{LogIcon.SUCCESS} 已检测到目标元素: {locator}")
                         return True
                     if text in (el.text or ""):
-                        logger.info(f"✅ [Wait] 已检测到包含文本【{text}】的元素")
+                        logger.info(f"{LogIcon.SUCCESS} 已检测到包含文本【{text}】的元素")
                         return True
             except Exception:
                 # 探测期间的 stale / 查找异常都忽略，继续下一轮轮询
                 pass
             time.sleep(interval)
-        logger.warning(f"⚠️ [Wait] 等待 {timeout}s 仍未检测到目标元素: {locator}"
+        logger.warning(f"{LogIcon.WARN} 等待 {timeout}s 仍未检测到目标元素: {locator}"
                        f"{'（文本含 ' + repr(text) + '）' if text else ''}")
         return False
 
@@ -177,11 +177,11 @@ class BasePage:
         :param attr: 属性名，例如 "text"、"checked"、"enabled"
         :return: 属性值（字符串）
         """
-        logger.info(f"🔎 获取元素属性: {locator} -> attr='{attr}'")
+        logger.info(f"{LogIcon.FIND} 获取元素属性: {locator} -> attr='{attr}'")
         element = self.find_element(locator, timeout=timeout, raise_exception=raise_exception, expect_missing=expect_missing)
         if element is not None:
             value = element.get_attribute(attr)
-            logger.info(f"✅ base - 属性获取成功: {attr} = {value}")
+            logger.info(f"{LogIcon.SUCCESS} base - 属性获取成功: {attr} = {value}")
             return value
         return ""
 
@@ -196,10 +196,10 @@ class BasePage:
         condition = "clickable" if force_wait else "visibility"
         element = self.find_element(locator, condition=condition, timeout=timeout)
         if element:
-            logger.info(f"🖱️ 以 {condition} 模式点击元素: {locator}")
+            logger.info(f"{LogIcon.ACTION} 以 {condition} 模式点击元素: {locator}")
             element.click()
         else:
-            logger.error(f"❌ 点击失败，未找到元素: {locator}")
+            logger.error(f"{LogIcon.FAIL} 点击失败，未找到元素: {locator}")
             raise NoSuchElementException(f"无法点击，元素未找到: {locator}")
 
     @allure.step("input -> 输入文本: {text}")
@@ -212,22 +212,22 @@ class BasePage:
         :param append: 是否在末尾以无损模式追加（默认 False，为 True 时采用系统剪贴板注入，杜绝 UiAutomator2 底层自动清空）
         """
         if append:
-            logger.info(f"✍️ [Action-Base] 以无损追加模式输入文本: '{text}'")
+            logger.info(f"{LogIcon.ACTION} 以无损追加模式输入文本: '{text}'")
             self.driver.set_clipboard_text(text)
             self.press_keycode(123)  # KEYCODE_MOVE_END (光标移到末尾)
             self.press_keycode(279)  # KEYCODE_PASTE (系统级粘贴)
             time.sleep(0.3)
-            logger.info(f"[Action] 追加输入文本成功: {text}")
+            logger.info(f"{LogIcon.SUCCESS} 追加输入文本成功: {text}")
             return
 
         ele = self.find_element(locator)
         if not ele:
-            logger.warning(f"未找到元素: {locator}")
+            logger.warning(f"{LogIcon.WARN} 未找到元素: {locator}")
             raise NoSuchElementException(f"未找到元素: {locator}")
         if clear:
             ele.clear()
         ele.send_keys(text)
-        logger.info(f"[Action] 输入消息: {text}")
+        logger.info(f"{LogIcon.ACTION} 输入消息: {text}")
 
     @catch_exception
     @allure.step("input -> W3C ActionChains 物理键盘事件流输入: {text}")
@@ -243,7 +243,7 @@ class BasePage:
         """
         ele = target if isinstance(target, WebElement) else self.find_element(target, timeout=timeout)
         if not ele:
-            logger.error(f"❌ 物理按键输入失败，未找到元素: {target}")
+            logger.error(f"{LogIcon.FAIL} 物理按键输入失败，未找到元素: {target}")
             raise NoSuchElementException(f"无法输入，元素未找到: {target}")
         if clear:
             try:
@@ -251,7 +251,7 @@ class BasePage:
             except Exception:
                 pass
         ActionChains(self.driver).click(ele).send_keys(text).perform()
-        logger.info(f"⌨️ [Action] ActionChains 物理键盘按键输入成功: {text}")
+        logger.info(f"{LogIcon.ACTION} ActionChains 物理键盘按键输入成功: {text}")
         return True
 
     @allure.step("input -> 极速内存注入文本: {text}")
@@ -262,10 +262,10 @@ class BasePage:
         """
         ele = self.find_element(locator)
         if not ele:
-            logger.warning(f"未找到元素: {locator}")
+            logger.warning(f"{LogIcon.WARN} 未找到元素: {locator}")
             raise NoSuchElementException(f"未找到元素: {locator}")
         self.driver.execute_script("mobile: replaceElementValue", {"elementId": ele.id, "text": text})
-        logger.info(f"[Action] 极速注入文本成功: {text}")
+        logger.info(f"{LogIcon.ACTION} 极速注入文本成功: {text}")
 
 
     @allure.step("智能UI安全返回")
@@ -276,49 +276,14 @@ class BasePage:
         2. UI 按钮精准回退：极速定位并点击页面顶部左上角 UI 返回按钮（精准回退 Fragment 栈）。
         3. 系统返回极简兜底：若未找到 UI 按钮，仅在必要时执行一次系统返回。
         """
-        # 1. 软键盘静默收起防遮挡
-        # try:
-        #     if hasattr(self.driver, "is_keyboard_shown") and self.driver.is_keyboard_shown():
-        #         logger.info("📱 检测到虚拟键盘弹出，正在尝试自动收起...")
-        #         self.driver.hide_keyboard()
-        # except Exception:
-        #     pass
-
         # 1. 优先执行系统返回 driver.back()
         try:
             self.driver.back()
-            logger.info("🔙 [Action] 执行系统返回 driver.back()")
+            logger.info(f"{LogIcon.ACTION} 执行系统返回 driver.back()")
             time.sleep(timeout)
             return
         except Exception as e:
-            logger.warning(f"⚠️ [Back] 系统返回未响应或执行失败: {e}")
-
-        # 2. 兜底点击页面内 UI 返回组件
-        # if prefer_ui:
-        #     try:
-        #         pkg = CommonLocator.PACKAGE_ID
-        #         unified_xpath = (
-        #             f"//*[("
-        #             f"@resource-id='{pkg}/back' or "
-        #             f"@resource-id='{pkg}/iv_back' or "
-        #             f"@resource-id='{pkg}/action_back' or "
-        #             f"@resource-id='{pkg}/ps_iv_left_back' or "
-        #             f"@resource-id='{pkg}/back_bnt' or "
-        #             f"@content-desc='返回' or "
-        #             f"@content-desc='转到上一层级' or "
-        #             f"@content-desc='Navigate up' or "
-        #             f"@text='返回'"
-        #             f") and (not(@clickable) or @clickable='true')]"
-        #         )
-        #         elems = self.driver.find_elements(AppiumBy.XPATH, unified_xpath)
-        #         for elem in elems:
-        #             if elem.is_displayed():
-        #                 elem.click()
-        #                 logger.info(f"🔙 [Action] 成功点击 UI 返回组件: {elem.get_attribute('resource-id') or elem.get_attribute('content-desc')}")
-        #                 time.sleep(0.4)
-        #                 return
-        #     except Exception:
-        #         pass
+            logger.warning(f"{LogIcon.WARN} 系统返回未响应或执行失败: {e}")
 
     @allure.step("匹配所有 Toast 弹窗")
     def toast_message(self, expected_toast: str = "", timeout: float = 3.0) -> str:
@@ -337,7 +302,7 @@ class BasePage:
         from utils.cv_recognition.ocr_utils import OcrUtils
 
         locator = CommonLocator.TOAST_MSG
-        logger.info(f"⏳ 开始监听提示框 (期望值: '{expected_toast}', 超时: {timeout}s)")
+        logger.info(f"{LogIcon.WAIT} 开始监听提示框 (期望值: '{expected_toast}', 超时: {timeout}s)")
         
         # 1. 优先通道：XML 定位器快速轮询探测
         end_time = time.time() + timeout
@@ -357,12 +322,12 @@ class BasePage:
                 if toast_text:
                     if expected_toast:
                         if expected_toast in toast_text:
-                            logger.info(f"✅ basePage-get_toast XML 成功捕获预期提示框: {toast_text}")
+                            logger.info(f"{LogIcon.SUCCESS} basePage-get_toast XML 成功捕获预期提示框: {toast_text}")
                             return True
                         else:
-                            logger.debug(f"XML 捕获到无关提示框: {toast_text}，继续监听期望值: '{expected_toast}'")
+                            logger.debug(f"{LogIcon.FIND} XML 捕获到无关提示框: {toast_text}，继续监听期望值: '{expected_toast}'")
                     else:
-                        logger.info(f"✅ basePage-get_toast XML 成功捕获提示框: {toast_text}")
+                        logger.info(f"{LogIcon.SUCCESS} basePage-get_toast XML 成功捕获提示框: {toast_text}")
                         return toast_text
             except Exception:
                 pass
@@ -370,18 +335,18 @@ class BasePage:
             
         # 2. 兜底通道：当 XML 快速轮询结束后，如果指定了 expected_toast 且未能在 XML 中捕获，才执行一次 OCR 降级扫描
         if expected_toast:
-            logger.info("⏳ XML 快速探测结束，未匹配到目标，开始执行 OCR 兜底扫描...")
+            logger.info(f"{LogIcon.WAIT} XML 快速探测结束，未匹配到目标，开始执行 OCR 兜底扫描...")
             try:
                 ocr = OcrUtils(self.driver)
                 ocr_list = ocr.get_all_text()
                 # 优化点：避免全局文本无间隔拼接引发误判，改为遍历每一行进行匹配
                 if any(expected_toast in text for text in ocr_list):
-                    logger.info(f"🎯 basePage-get_toast OCR 成功匹配到屏幕提示文字: '{expected_toast}'")
+                    logger.info(f"{LogIcon.SUCCESS} basePage-get_toast OCR 成功匹配到屏幕提示文字: '{expected_toast}'")
                     return True
             except Exception as e:
-                logger.debug(f"OCR 提示框扫描异常: {e}")
+                logger.debug(f"{LogIcon.WARN} OCR 提示框扫描异常: {e}")
                 
-        logger.warning(f"⏱️ basePage-get_toast 未能捕获到预期【{expected_toast}】的提示框 (XML和OCR通道均未命中)")
+        logger.warning(f"{LogIcon.WARN} basePage-get_toast 未能捕获到预期【{expected_toast}】的提示框 (XML和OCR通道均未命中)")
         return False if expected_toast else ""
 
     @allure.step("获取 Toast 弹窗文本")
@@ -432,16 +397,16 @@ class BasePage:
                 if text:
                     for exp in expected_list:
                         if exp in text:
-                            logger.info(f"✅ [BasePage-wait_element_text] 成功匹配文本: '{text}' (预期包含: '{exp}')")
+                            logger.info(f"{LogIcon.SUCCESS} [BasePage-wait_element_text] 成功匹配文本: '{text}' (预期包含: '{exp}')")
                             return True
             except Exception:
                 pass
             time.sleep(poll_frequency)
 
         if raise_exception:
-            logger.error(f"❌ [BasePage-wait_element_text] 超时 {timeout}s 未等到 {locator} 匹配文本: {expected_text}")
+            logger.error(f"{LogIcon.FAIL} [BasePage-wait_element_text] 超时 {timeout}s 未等到 {locator} 匹配文本: {expected_text}")
         else:
-            logger.warning(f"⚠️ [BasePage-wait_element_text] 未在 {timeout}s 内匹配到文本: {expected_text} (探测判定不存在)")
+            logger.warning(f"{LogIcon.WARN} [BasePage-wait_element_text] 未在 {timeout}s 内匹配到文本: {expected_text} (探测判定不存在)")
         return False
 
 
@@ -453,13 +418,13 @@ class BasePage:
         :param item_locator: 列表/网格内单个元素的定位符
         :return: 包含布局元数据的字典
         """
-        logger.info(f"🔎 正在计算布局指标: 容器={container_locator}, 元素={item_locator}")
+        logger.info(f"{LogIcon.FIND} 正在计算布局指标: 容器={container_locator}, 元素={item_locator}")
         try:
             container = self.find_element(container_locator, 'visibility', timeout=2)
             item = self.find_element(item_locator, 'visibility', timeout=2)
             
             if not container or not item:
-                logger.warning("未能获取到足够的元素进行布局计算")
+                logger.warning(f"{LogIcon.WARN} 未能获取到足够的元素进行布局计算")
                 return {}
 
             c_rect = container.rect
@@ -481,10 +446,10 @@ class BasePage:
                 "stride_y": stride_y,                       # 滑动一行的基准距离（已包含 5% 的行间距冗余）
                 "container_top_y": c_rect['y']              # 容器的顶部 Y 坐标（用于判断第一排元素是否被顶部遮挡/裁切）
             }
-            logger.info(f"✅ 布局指标计算完成: {metrics}")
+            logger.info(f"{LogIcon.SUCCESS} 布局指标计算完成: {metrics}")
             return metrics
         except Exception as e:
-            logger.error(f"❌ 布局指标计算失败: {e}")
+            logger.error(f"{LogIcon.FAIL} 布局指标计算失败: {e}")
             return {}
 
     @allure.step("获取元素中心点坐标")
@@ -501,7 +466,7 @@ class BasePage:
     def click_by_coordinate(self, x: int | float, y: int | float):
         """ 点击固定坐标 """
         self.driver.tap([(x, y)])
-        logger.info(f"[Action] 通过坐标进行点击，点击坐标: {x}, {y}")
+        logger.info(f"{LogIcon.ACTION} 通过坐标进行点击，点击坐标: {x}, {y}")
 
 
     @allure.step("长按元素，获取弹窗")
@@ -516,9 +481,9 @@ class BasePage:
                 'mobile: longClickGesture',
                 {'elementId': found_ele.id, 'duration': hold_time}
             )
-            logger.info("✅ [Gesture] 使用 Appium 原生 longClickGesture 成功长按元素")
+            logger.info(f"{LogIcon.SUCCESS} 使用 Appium 原生 longClickGesture 成功长按元素")
         except Exception as e:
-            logger.warning(f"⚠️ [Gesture] Appium 原生 longClickGesture 失败: {e}，尝试 W3C Action 坐标长按")
+            logger.warning(f"{LogIcon.WARN} Appium 原生 longClickGesture 失败: {e}，尝试 W3C Action 坐标长按")
             # 2. 备用方案：采用精准中心点坐标的 W3C Action 链，规避越界报错
             try:
                 x, y = self.get_element_center(found_ele)
@@ -531,9 +496,9 @@ class BasePage:
                 actions.pointer_action.pause(hold_time / 1000.0)
                 actions.pointer_action.pointer_up()
                 actions.perform()
-                logger.info("✅ [Gesture] 使用 W3C Action 坐标长按成功")
+                logger.info(f"{LogIcon.SUCCESS} 使用 W3C Action 坐标长按成功")
             except Exception as w3c_err:
-                logger.error(f"❌ [Gesture] 长按操作彻底失败: {w3c_err}")
+                logger.error(f"{LogIcon.FAIL} 长按操作彻底失败: {w3c_err}")
                 raise w3c_err
         time.sleep(0.5)
 
@@ -637,10 +602,10 @@ class BasePage:
                 center_x = x
                 center_y = y
             else:
-                logger.error("❌ 坐标强点失败: 必须提供 click_elem 或者具体的 (x, y) 坐标参数")
+                logger.error(f"{LogIcon.FAIL} 坐标强点失败: 必须提供 click_elem 或者具体的 (x, y) 坐标参数")
                 return
 
-            logger.info(f"👉 模拟手指点击屏幕坐标: ({center_x}, {center_y})")
+            logger.info(f"{LogIcon.ACTION} 模拟手指点击屏幕坐标: ({center_x}, {center_y})")
 
             # 3. 使用 W3C ActionChains 执行物理点击 (兼容 Appium 2.x)
             actions, touch_input = self.init_w3c_actions()
@@ -650,10 +615,10 @@ class BasePage:
             actions.w3c_actions.pointer_action.pointer_up()
             actions.perform()
 
-            logger.info("✅ 坐标强点执行完毕")
+            logger.info(f"{LogIcon.SUCCESS} 坐标强点执行完毕")
 
         except Exception as e:
-            logger.warning(f"坐标强点失败，尝试退回原生 click() 兜底: {e}")
+            logger.warning(f"{LogIcon.WARN} 坐标强点失败，尝试退回原生 click() 兜底: {e}")
             if click_elem:
                 click_elem.click()
     
@@ -668,9 +633,9 @@ class BasePage:
         is_changed = True
         if last_source:
             is_changed = (current_source != last_source)
-            logger.info(f"页面 DOM 是否发生变化: {is_changed}")
+            logger.info(f"{LogIcon.FIND} 页面 DOM 是否发生变化: {is_changed}")
             if not is_changed:
-                logger.info("✅ 页面 DOM 已无变化，认定已至边界！")
+                logger.info(f"{LogIcon.SUCCESS} 页面 DOM 已无变化，认定已至边界！")
         return is_changed, current_source
 
     @allure.step("检查指定区域的 DOM 是否发生变化")
@@ -703,10 +668,10 @@ class BasePage:
                 if features:
                     signature = "|".join(features)
                     is_changed = (signature != last_element_source) if last_element_source else True
-                    logger.info(f"⚡ [Fast Detection] 区域子元素状态是否变化: {is_changed} (签名长度: {len(signature)})")
+                    logger.info(f"{LogIcon.FIND} 区域子元素状态是否变化: {is_changed} (签名长度: {len(signature)})")
                     return is_changed, signature
         except Exception as fast_err:
-            logger.debug(f"极速节点状态特征计算失败: {fast_err}，将使用全量 XML 降级兜底...")
+            logger.debug(f"{LogIcon.WARN} 极速节点状态特征计算失败: {fast_err}，将使用全量 XML 降级兜底...")
 
         # 2. 降级兜底：获取 page_source 并做 XML 局部解析 (耗时约 1500-3000ms)
         import xml.etree.ElementTree as ET
@@ -744,11 +709,11 @@ class BasePage:
                 is_changed = (current_element_source != last_element_source) if last_element_source else True
                 return is_changed, current_element_source
             else:
-                logger.warning(f"在当前 DOM 中未找到目标区域: {locator}")
+                logger.warning(f"{LogIcon.WARN} 在当前 DOM 中未找到目标区域: {locator}")
                 return True, ""
                 
         except Exception as e:
-            logger.error(f"降级提取指定区域 XML 失败: {e}")
+            logger.error(f"{LogIcon.FAIL} 降级提取指定区域 XML 失败: {e}")
             return True, ""
 
 
@@ -760,7 +725,7 @@ class BasePage:
         :param toptime: 按下起点后的短暂贴合停顿时间(ms)，默认50毫秒（严防触发 Android 500ms 长按阈值）
         """
         try:
-            logger.info(f"滑动轨迹: ({start_x}, {start_y}) -> ({end_x}, {end_y}) | 时长: {duration}ms | 贴合: {toptime}ms")
+            logger.info(f"{LogIcon.ACTION} 滑动轨迹: ({start_x}, {start_y}) -> ({end_x}, {end_y}) | 时长: {duration}ms | 贴合: {toptime}ms")
             actions, touch_input = self.init_w3c_actions()
 
             # 动作序列: 移动至起点 -> 按下 -> 短暂停顿贴合 -> 平滑移动至终点 -> 终点停顿120ms(初速度归零杀死Fling惯性) -> 抬起手指
@@ -773,7 +738,7 @@ class BasePage:
             actions.perform()
             time.sleep(0.1)
         except Exception as e:
-            logger.error(f"滑动操作失败: {e}")
+            logger.error(f"{LogIcon.FAIL} 滑动操作失败: {e}")
             raise RuntimeError(f"执行手指手势操作失败: {str(e)}")
 
     @allure.step("在指定的坐标边界内容固定按预定距离滑动")
@@ -844,7 +809,7 @@ class BasePage:
             raise ValueError("必须提供有效的安全区域 rect (如容器元素的 rect)")
             
         if x_offset == 0 and y_offset == 0:
-            logger.warning("滑动被忽略：x_offset 和 y_offset 均为 0")
+            logger.warning(f"{LogIcon.WARN} 滑动被忽略：x_offset 和 y_offset 均为 0")
             return
 
         # 1. 计算滑动起点：取传入容器中心点并累加起始偏移量，防止触发系统手势
@@ -874,7 +839,7 @@ class BasePage:
         if isinstance(element, str):
             slid_type = element
             element = None
-        logger.info(f"极速滑动自动探测边界启动 (Max:{max_swipes}次)")
+        logger.info(f"{LogIcon.ACTION} 极速滑动自动探测边界启动 (Max:{max_swipes}次)")
         previous_source = ""
         previous_items_text = []
         
@@ -884,7 +849,7 @@ class BasePage:
                 elems = self.find_elements(item_locator, timeout=1, expect_missing=True)
                 current_items_text = [e.text for e in elems if e.text]
                 if i > 0 and current_items_text and current_items_text == previous_items_text:
-                    logger.info(f"✅ [Swipe] 列表条目指纹无变化，确认已触达边界 (滑动次数: {i})")
+                    logger.info(f"{LogIcon.SUCCESS} 列表条目指纹无变化，确认已触达边界 (滑动次数: {i})")
                     break
                 previous_items_text = current_items_text
             else:
@@ -897,7 +862,7 @@ class BasePage:
                 self.swipe_page(slid_type=slid_type, duration=duration, times=1, toptime=toptime)
             time.sleep(0.2)
         else:
-            logger.warning(f"⚠️ 滑满上限({max_swipes}次)仍见变化，强制挂起停止")
+            logger.warning(f"{LogIcon.WARN} 滑满上限({max_swipes}次)仍见变化，强制挂起停止")
 
     @allure.step("智能滚动查找指定元素")
     def scroll_to_element(
@@ -931,10 +896,10 @@ class BasePage:
             time.sleep(0.3)
             element = self.find_element(locator, timeout=1, raise_exception=False, expect_missing=True)
             if element:
-                logger.info(f"🔍 [Scroll] 滑动第 {i + 1} 次成功找到元素: {locator}")
+                logger.info(f"{LogIcon.SUCCESS} 滑动第 {i + 1} 次成功找到元素: {locator}")
                 return element
 
-        logger.warning(f"⚠️ [Scroll] 滑动 {max_swipes} 次后仍未找到目标元素: {locator}")
+        logger.warning(f"{LogIcon.WARN} 滑动 {max_swipes} 次后仍未找到目标元素: {locator}")
         return None
 
     @allure.step("按键操作: 触发物理/软键盘按键")
@@ -947,22 +912,22 @@ class BasePage:
         try:
             # 方式 A: Appium Android 原生 press_keycode
             if hasattr(self, 'driver') and hasattr(self.driver, 'press_keycode'):
-                logger.info(f"👉 使用 Android Keycode {keycode} 触发按键")
+                logger.info(f"{LogIcon.ACTION} 使用 Android Keycode {keycode} 触发按键")
                 self.driver.press_keycode(keycode)
                 return True
 
             # 方式 B: 通用 Selenium Keys (iOS / Web 兼容回落)
             elif input_locator:
-                logger.info("👉 使用 send_keys(Keys.ENTER) 触发搜索")
+                logger.info(f"{LogIcon.ACTION} 使用 send_keys(Keys.ENTER) 触发搜索")
                 element = self.find_element(*input_locator)
                 element.send_keys(Keys.ENTER)
                 return True
 
             else:
-                logger.warning(f"⚠️ 无法触发 Keycode {keycode}: 当前驱动无 press_keycode 且未传入 input_locator")
+                logger.warning(f"{LogIcon.WARN} 无法触发 Keycode {keycode}: 当前驱动无 press_keycode 且未传入 input_locator")
                 return False
         except Exception as e:
-            logger.error(f"❌ 触发键盘按键 Keycode {keycode} 失败: {e}")
+            logger.error(f"{LogIcon.FAIL} 触发键盘按键 Keycode {keycode} 失败: {e}")
             raise e
     
     @allure.step("软键盘管理: 安全稳健收起软键盘")
@@ -982,18 +947,18 @@ class BasePage:
             if not (hasattr(self.driver, "is_keyboard_shown") and self.driver.is_keyboard_shown()):
                 return True
 
-            logger.info("📱 [Action] 检测到软键盘处于打开状态，正在收起软键盘...")
+            logger.info(f"{LogIcon.ACTION} 检测到软键盘处于打开状态，正在收起软键盘...")
             # 方式 1: 优先尝试 Appium 标准 API
             try:
                 self.driver.hide_keyboard()
                 time.sleep(0.3)
             except Exception as e:
-                logger.debug(f"driver.hide_keyboard() 执行受限: {e}")
+                logger.debug(f"{LogIcon.WARN} driver.hide_keyboard() 执行受限: {e}")
 
             # 方式 2: 若软键盘仍然打开，采用 Android 系统 Keycode 4 (KEYCODE_BACK) 进行物理级收起
             retries = 0
             while hasattr(self.driver, "is_keyboard_shown") and self.driver.is_keyboard_shown() and retries < max_retries:
-                logger.info(f"📱 软键盘仍处于打开状态，启用 KEYCODE_BACK (Keycode 4) 执行第 {retries + 1} 次系统收起...")
+                logger.info(f"{LogIcon.ACTION} 软键盘仍处于打开状态，启用 KEYCODE_BACK (Keycode 4) 执行第 {retries + 1} 次系统收起...")
                 if hasattr(self.driver, "press_keycode"):
                     self.driver.press_keycode(4)
                 elif hasattr(self, "press_keycode"):
@@ -1003,20 +968,20 @@ class BasePage:
 
             is_still_open = hasattr(self.driver, "is_keyboard_shown") and self.driver.is_keyboard_shown()
             if is_still_open:
-                logger.warning("⚠️ 尝试多次收起软键盘后，软键盘状态依然为打开")
+                logger.warning(f"{LogIcon.WARN} 尝试多次收起软键盘后，软键盘状态依然为打开")
                 return False
             else:
-                logger.info("✅ 软键盘已成功收起")
+                logger.info(f"{LogIcon.SUCCESS} 软键盘已成功收起")
                 return True
         except Exception as e:
-            logger.warning(f"⚠️ 收起软键盘异常: {e}")
+            logger.warning(f"{LogIcon.WARN} 收起软键盘异常: {e}")
             return False
     
     @allure.step("读取手机剪贴板内容")
     def paste_clipboard_text(self):
         """读取手机剪贴板内容 (Appium 原生支持)"""
         clipboard_text = self.driver.get_clipboard_text()
-        logger.info(f"剪贴板读取成功: {clipboard_text}")
+        logger.info(f"{LogIcon.SUCCESS} 剪贴板读取成功: {clipboard_text}")
         return clipboard_text
 
     @allure.step("设置网络状态")
@@ -1025,7 +990,7 @@ class BasePage:
         设置网络状态
         :param network_status: 网络状态 (offline/none/wifi/data/mobile/all/online)
         """
-        logger.info(f"设置网络状态为: {network_status}")
+        logger.info(f"{LogIcon.ACTION} 设置网络状态为: {network_status}")
         # Appium 网络连接状态码:
         # 0 (None), 1 (Airplane Mode), 2 (Wifi only), 4 (Data only), 6 (All network on)
         status_map = {
@@ -1040,9 +1005,9 @@ class BasePage:
         val = status_map.get(network_status.lower(), 6)
         try:
             self.driver.set_network_connection(val)
-            logger.info(f"✅ 成功设置网络状态为: {network_status} ({val})")
+            logger.info(f"{LogIcon.SUCCESS} 成功设置网络状态为: {network_status} ({val})")
         except Exception as e:
-            logger.error(f"❌ 设置网络状态失败: {e}")
+            logger.error(f"{LogIcon.FAIL} 设置网络状态失败: {e}")
 
     @allure.step("设置弱网状态 (网络不好)")
     def set_weak_network(self, enable: bool = True):
@@ -1051,14 +1016,14 @@ class BasePage:
         :param enable: True 启用弱网模式 (GPRS/限速)，False 恢复正常网络
         """
         if enable:
-            logger.info("⚡ [Network] 启用弱网环境 (网络不好)")
+            logger.info(f"{LogIcon.ACTION} 启用弱网环境 (网络不好)")
             try:
                 self.driver.set_network_speed("gprs")
             except Exception as e:
-                logger.warning(f"底层环境不支持 set_network_speed，降级为切断网络流模拟: {e}")
+                logger.warning(f"{LogIcon.WARN} 底层环境不支持 set_network_speed，降级为切断网络流模拟: {e}")
                 self.set_network_connection("none")
         else:
-            logger.info("⚡ [Network] 恢复正常全网连接")
+            logger.info(f"{LogIcon.ACTION} 恢复正常全网连接")
             try:
                 self.driver.set_network_speed("full")
             except Exception:
@@ -1099,24 +1064,24 @@ class BasePage:
         """
         # 1. 优先尝试使用物理按键 Keycode 120 (Print Screen / SysRq) 触发系统截屏
         try:
-            logger.info("🎹 尝试发送系统级 Print Screen 按键触发截屏...")
+            logger.info(f"{LogIcon.ACTION} 尝试发送系统级 Print Screen 按键触发截屏...")
             self.driver.press_keycode(120)
             time.sleep(1)
         except Exception as e:
-            logger.warning(f"⚠️ 发送 Print Screen 键值被设备拒绝: {e}，将采用文件注入模拟方式")
+            logger.warning(f"{LogIcon.WARN} 发送 Print Screen 键值被设备拒绝: {e}，将采用文件注入模拟方式")
 
         # 2. 模拟写入截图文件到标准目录，触发 App 监听的 FileObserver
         timestamp = int(time.time())
         phone_path = f"/sdcard/Pictures/Screenshots/screenshot_{timestamp}.png"
         
-        logger.info("📸 正在使用 Appium 原生 push_file 写入模拟截图文件...")
+        logger.info(f"{LogIcon.CAMERA} 正在使用 Appium 原生 push_file 写入模拟截图文件...")
         try:
             # 获取当前屏幕的 base64 数据
             screenshot_b64 = self.driver.get_screenshot_as_base64()
             # 推送到设备标准截图目录
             self.driver.push_file(phone_path, screenshot_b64)
-            logger.info(f"✅ 成功模拟写入截图文件: {phone_path}")
+            logger.info(f"{LogIcon.SUCCESS} 成功模拟写入截图文件: {phone_path}")
             return True
         except Exception as e:
-            logger.error(f"❌ 模拟写入截图文件失败: {e}")
+            logger.error(f"{LogIcon.FAIL} 模拟写入截图文件失败: {e}")
             return False

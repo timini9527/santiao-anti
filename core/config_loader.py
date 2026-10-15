@@ -1,6 +1,6 @@
 import yaml
 import os
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 
 
 class ConfigLoader:
@@ -14,7 +14,7 @@ class ConfigLoader:
     def load_yaml_data(self):
          """加载 YAML 并根据 current_env 组装最终配置"""
          if not os.path.exists(self.config_path):
-             logger.error(f"配置文件不存在: {self.config_path}")
+             logger.error(f"{LogIcon.FAIL} 配置文件不存在: {self.config_path}")
              raise FileNotFoundError(f"配置文件不存在: {self.config_path}")
 
          with open(self.config_path, 'r', encoding='utf-8') as f:
@@ -53,9 +53,9 @@ config = ConfigLoader().data
 
 if __name__ == "__main__":
     # 调试打印
-    print(f"当前环境: {config['env_name']}")
-    print(f"Base URL: {config['base_url']}")
-    print(f"Timeout: {config['timeout']}")
+    logger.info(f"{LogIcon.SETUP} 当前环境配置: {config['env_name']}")
+    logger.info(f"{LogIcon.SETUP} 基础请求地址 Base URL: {config['base_url']}")
+    logger.info(f"{LogIcon.SETUP} 全局超时时间 Timeout: {config['timeout']}")
 
 
 

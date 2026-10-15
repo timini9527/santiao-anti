@@ -1,6 +1,6 @@
 import time
 import re
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from common.base_page import BasePage
 from locators.groups.create.group_create_locator import GroupCreateLocator
 from appium.webdriver.webelement import WebElement
@@ -16,7 +16,7 @@ class GroupCreatePage(GroupSettingPage):
     # 点击进入好友选择页-下一步按钮
     def click_edit_to_next(self) -> None:
         """点击进入好友选择页-下一步"""
-        logger.info("👉 [Action] GroupCreatePage 群详情页 - 点击【进入好友选择页-下一步】")
+        logger.info(f"{LogIcon.ACTION} GroupCreatePage 群详情页 - 点击【进入好友选择页-下一步】")
         self.click(GroupCreateLocator.EDIT_TO_IV)
         time.sleep(0.5)
     
@@ -25,9 +25,9 @@ class GroupCreatePage(GroupSettingPage):
         """获取未勾选的好友"""
         elements = self.find_elements(GroupCreateLocator.UNSELECTED_CHECKBOX_SYSTEM_USER, timeout=timeout, raise_exception=raise_exception)
         if not elements:
-            logger.warning("⚠️ [Action] GroupCreatePage 群详情页 - 未获取到未勾选的好友")
+            logger.warning(f"{LogIcon.WARN} GroupCreatePage 群详情页 - 未获取到未勾选的好友")
             return []
-        logger.info(f"✅ [Action] GroupCreatePage 群详情页 - 获取未勾选的好友成功，共 {len(elements)} 个")
+        logger.info(f"{LogIcon.SUCCESS} GroupCreatePage 群详情页 - 获取未勾选的好友成功，共 {len(elements)} 个")
         return elements
 
     # 获取已勾选的好友
@@ -35,9 +35,9 @@ class GroupCreatePage(GroupSettingPage):
         """获取已勾选的好友"""
         elements = self.find_elements(GroupCreateLocator.SELECTED_CHECKBOX, timeout=2)
         if not elements:
-            logger.warning("⚠️ [Action] GroupCreatePage 群详情页 - 未获取到已勾选的好友")
+            logger.warning(f"{LogIcon.WARN} GroupCreatePage 群详情页 - 未获取到已勾选的好友")
             return []
-        logger.info(f"✅ [Action] GroupCreatePage 群详情页 - 获取已勾选的好友成功，共 {len(elements)} 个")
+        logger.info(f"{LogIcon.SUCCESS} GroupCreatePage 群详情页 - 获取已勾选的好友成功，共 {len(elements)} 个")
         return elements
 
     # 获取 MESSAGE_TEXT 消息文本
@@ -45,9 +45,9 @@ class GroupCreatePage(GroupSettingPage):
         """获取群聊页面消息文本"""
         elements = self.find_elements(GroupCreateLocator.MESSAGE_TEXT, condition='presence', raise_exception=False)
         if not elements:
-            logger.warning("⚠️ [Action] GroupCreatePage 群详情页 - 未获取到消息文本")
+            logger.warning(f"{LogIcon.WARN} GroupCreatePage 群详情页 - 未获取到消息文本")
             return []
-        logger.info(f"✅ [Action] GroupCreatePage 群详情页 - 获取消息文本成功，共 {len(elements)} 个")
+        logger.info(f"{LogIcon.SUCCESS} GroupCreatePage 群详情页 - 获取消息文本成功，共 {len(elements)} 个")
         return [element.get_attribute("text") for element in elements]
 
     # =======================================
@@ -58,16 +58,16 @@ class GroupCreatePage(GroupSettingPage):
         """判断当前是否是群聊页面"""
         match = re.search(r'\((\d+)\)', group_title)
         if match:
-            logger.info(f"✅ 已匹配群聊名称: {match}, 群聊人数: {match.group(1)}")
+            logger.info(f"{LogIcon.SUCCESS} 已匹配群聊名称: {match}, 群聊人数: {match.group(1)}")
             return int(match.group(1))
-        logger.warning(f"⚠️ 未匹配群聊名称: {group_title}, 不是群聊页面")
+        logger.warning(f"{LogIcon.WARN} 未匹配群聊名称: {group_title}, 不是群聊页面")
         return False
     
     # 获取没有进入群聊的异常用户
     def get_abnormal_users(self, message_texts: list[str]) -> list[str]:
         """获取没有进入群聊的异常用户"""
         if not message_texts:
-            logger.warning("⚠️ [Action] GroupCreatePage 群详情页 - 未获取到消息文本")
+            logger.warning(f"{LogIcon.WARN} GroupCreatePage 群详情页 - 未获取到消息文本")
             return []
 
         # 支持过滤多种异常情况的正则列表
@@ -100,13 +100,13 @@ class GroupCreatePage(GroupSettingPage):
         if exclude_names is None:
             exclude_names = []
             
-        logger.info(f"🔍 [Action] 好友选择页 - 开始寻找会话: [需选 {x} 个] | 需排除 {len(exclude_names)} 个")
+        logger.info(f"{LogIcon.FIND} 好友选择页 - 开始寻找会话: [需选 {x} 个] | 需排除 {len(exclude_names)} 个")
         
         last_source = ""
         selected_contacts = 0
         clicked_names = []
 
-        logger.info(f"👉 [Action] 好友选择页 - 点击字母索引栏: {initial}")
+        logger.info(f"{LogIcon.ACTION} 好友选择页 - 点击字母索引栏: {initial}")
         self.click(GroupCreateLocator.get_index_bar_text(initial))
         for i in range(loop_max):
             elements = self.get_unselected_friends(timeout=1, raise_exception=False)
@@ -115,31 +115,31 @@ class GroupCreatePage(GroupSettingPage):
                 try:
                     name = elem.get_attribute("text")
                     if name in exclude_names or name in clicked_names:
-                        logger.info(f"⏭️ [Action] 好友选择页 - 已选择好友: {name}，跳过")
+                        logger.info(f"{LogIcon.STEP} 好友选择页 - 已选择好友: {name}，跳过")
                         continue
-                    logger.info(f"👉 [Action] 好友选择页 - 准备点击好友: {name}")
+                    logger.info(f"{LogIcon.ACTION} 好友选择页 - 准备点击好友: {name}")
                     elem.click()
                     time.sleep(0.1)
                     selected_contacts += 1
                     clicked_names.append(name)
                     
-                    # logger.info(f"✅ [Action] 好友选择页 - 成功点击好友: {name}，已选择 {selected_contacts} 个")
+                    # logger.info(f"{LogIcon.SUCCESS} 好友选择页 - 成功点击好友: {name}，已选择 {selected_contacts} 个")
                     if selected_contacts == x:
-                        logger.info(f"✅ [Action] 好友选择页 - 成功完成本批次选择，共 {selected_contacts} 个")
+                        logger.info(f"{LogIcon.SUCCESS} 好友选择页 - 成功完成本批次选择，共 {selected_contacts} 个")
                         return selected_contacts, clicked_names, initial_letter
                 except Exception as e:
                     continue
 
             is_changed, last_source = self.is_page_source_changed(last_source)
             if not is_changed:
-                logger.warning(f"🛑 [Action] 好友选择页 - 已滑动到底部，仍未找到足够目标")
+                logger.warning(f"{LogIcon.FAIL} 好友选择页 - 已滑动到底部，仍未找到足够目标")
                 break
 
-            logger.info(f"⏳ [Action] 好友选择页 - 第 {i + 1} 次向下滑动寻找...")
+            logger.info(f"{LogIcon.WAIT} 好友选择页 - 第 {i + 1} 次向下滑动寻找...")
             self.swipe_page(slid_type='up', duration=500)
             time.sleep(0.5)
 
-        logger.warning(f"⚠️ [Action] 好友选择页 - 遍历结束，期望选择 {x} 个，实际只选择了 {selected_contacts} 个")
+        logger.warning(f"{LogIcon.WARN} 好友选择页 - 遍历结束，期望选择 {x} 个，实际只选择了 {selected_contacts} 个")
         return selected_contacts, clicked_names, initial_letter
 
     # 通过首个好友名称获取它的首字母
@@ -148,7 +148,7 @@ class GroupCreatePage(GroupSettingPage):
         import pypinyin
 
         if not names:
-            logger.warning("⚠️ [Action] GroupCreatePage 群详情页 - 未获取到好友名称")
+            logger.warning(f"{LogIcon.WARN} GroupCreatePage 群详情页 - 未获取到好友名称")
             return "#"
             
         first_char = names[0]

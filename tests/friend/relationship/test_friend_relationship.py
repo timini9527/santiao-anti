@@ -2,7 +2,7 @@ import time
 import allure
 import pytest
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.friend.add_friend.add_friend_page import AddFriendPage
@@ -56,7 +56,7 @@ class TestFriendRelationship:
             try:
                 mainPage.go_to_main_page()
             except Exception as e:
-                logger.error(f'⚠️ [Teardown] 返回首页失败: {e}')
+                logger.error(f'{LogIcon.WARN} 返回首页失败: {e}')
 
     def _ensure_on_friend_page(self, side='R', raise_exception: bool=True, timeout: int=3, back: bool=True):
         """辅助方法：安全路由并确保指定端（S端或R端）处于‘好友/通讯录’列表页"""
@@ -132,7 +132,7 @@ class TestFriendRelationship:
         """确保双端已建立好友关系的前置辅助方法"""
         is_friend = self._go_to_contact_detail_from_list(RECEIVER_NAME, raise_exception=False, side='S')
         if not is_friend:
-            logger.info('ℹ️ S端与R端当前不是好友，开始建立好友关系')
+            logger.info(f'{LogIcon.ACTION} ℹ️ S端与R端当前不是好友，开始建立好友关系')
             self._sender_send_friend_request(RECEIVER_PHONE, verify_message)
             self._accept_friend_request_in_detail(SENDER_NAME)
             self._go_to_contact_detail_from_list(RECEIVER_NAME, side='S', raise_exception=False)

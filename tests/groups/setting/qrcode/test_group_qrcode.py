@@ -2,7 +2,7 @@ import pytest
 import allure
 import pytest_check as check
 from datetime import datetime, timedelta
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.groups.create.group_create_page import GroupCreatePage
@@ -35,19 +35,19 @@ class TestGroupQrCode:
         is_last_validity_branch = '永久' in current_test
         if is_validity_test:
             if is_last_validity_branch:
-                logger.info('🧹 [Teardown] 二维码修改最后一个分支执行完毕，开始清理返回主页')
+                logger.info(f'{LogIcon.SETUP} 二维码修改最后一个分支执行完毕，开始清理返回主页')
                 try:
                     self.mainPage.go_to_main_page()
                     self.__class__._enter_group_setting_state = False
                 except Exception as e:
-                    logger.error(f'Teardown 失败，未能返回首页: {e}')
+                    logger.error(f'{LogIcon.FAIL} Teardown 失败，未能返回首页: {e}')
             else:
-                logger.info('⚡ [Teardown] 二维码修改参数化中间分支，保持当前页面用于复用')
+                logger.info(f'{LogIcon.ACTION} 二维码修改参数化中间分支，保持当前页面用于复用')
         else:
             try:
                 self.mainPage.go_to_main_page()
             except Exception as e:
-                logger.error(f'Teardown 失败，未能返回首页: {e}')
+                logger.error(f'{LogIcon.FAIL} Teardown 失败，未能返回首页: {e}')
 
     @pytest.fixture
     def restore_qrcode_validity(self):
@@ -64,9 +64,9 @@ class TestGroupQrCode:
             if not is_7d:
                 self.groupQrCodePage.click_change_date_row()
                 self.groupQrCodePage.select_validity_option('7d')
-                logger.info('🧹 [Cleanup] 成功将群二维码有效期恢复为默认的 7天')
+                logger.info(f'{LogIcon.SETUP} 成功将群二维码有效期恢复为默认的 7天')
         except Exception as e:
-            logger.warning(f'⚠️ [Cleanup] 恢复群二维码有效期环境失败: {e}')
+            logger.warning(f'{LogIcon.WARN} 恢复群二维码有效期环境失败: {e}')
 
     def _enter_group(self):
         """进入群聊"""
@@ -76,7 +76,7 @@ class TestGroupQrCode:
     def _enter_group_setting(self):
         """进入群聊设置"""
         if self.__class__._enter_group_setting_state:
-            logger.info('群聊设置已进入，无需再次进入')
+            logger.info(f'{LogIcon.SUCCESS} 群聊设置已进入，无需再次进入')
             return
         with allure.step('1. 进入临时群'):
             self._enter_group()
@@ -106,7 +106,7 @@ class TestGroupQrCode:
                 return
         except Exception:
             pass
-        logger.info('🔄 [Cleanup] 当前不在群二维码页面，正在重新导航进入...')
+        logger.info(f'{LogIcon.ACTION} 当前不在群二维码页面，正在重新导航进入...')
         self.mainPage.go_to_main_page()
         self._enter_group()
         self.chatPage.click_more_button()
@@ -116,7 +116,7 @@ class TestGroupQrCode:
 
     def _verify_validity_text(self, validity_type: str, validity_text: str):
         """验证二维码有效期文本是否符合预期"""
-        logger.info(f"🔍 验证有效期文本: '{validity_text}', 预期类型: '{validity_type}'")
+        logger.info(f"{LogIcon.FIND} 验证有效期文本: '{validity_text}', 预期类型: '{validity_type}'")
         if validity_type == 'forever':
             check.is_true('永久' in validity_text, f"❌ 有效期文本 '{validity_text}' 中未包含 '永久'")
             return

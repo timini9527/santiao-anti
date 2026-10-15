@@ -1,7 +1,7 @@
 import pytest
 import allure
 from pages.personal.other_page import OtherPage
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from utils.file_reader.data_loader import load_yaml_data, load_csv_data
 
 
@@ -20,10 +20,10 @@ class TestOther:
         self.otherPage = OtherPage(driver_sender)
         yield
         try:
-            logger.info('🧹 [Method Teardown] 尝试恢复页面状态至个人信息页...')
+            logger.info(f'{LogIcon.SETUP} [Method Teardown] 尝试恢复页面状态至个人信息页...')
             self.otherPage.back_to_personal_info()
         except Exception as e:
-            logger.error(f'❌ [Method Teardown] 清理状态失败，页面可能卡死: {e}')
+            logger.error(f'{LogIcon.FAIL} [Method Teardown] 清理状态失败，页面可能卡死: {e}')
 
     @allure.story("修改昵称")
     @pytest.mark.parametrize(
@@ -39,7 +39,7 @@ class TestOther:
         expected_msg = case_data.get('msg', '')
         expected_saved_val = case_data['expected'].get('expected_val', input_val)
         allure.dynamic.title(f'[{case_id}] {desc}')
-        logger.info(f"🚀 开始执行测试：[{case_id}] {desc} | 输入值: '{input_val}'")
+        logger.info(f"{LogIcon.ACTION} 开始执行测试：[{case_id}] {desc} | 输入值: '{input_val}'")
 
         with allure.step('1. 获取修改前的昵称并执行环境防呆重置'):
             pre_nickname = self.otherPage.get_nickname()
@@ -187,7 +187,7 @@ class TestOther:
         is_valid = case_data['expect']['valid']
         expected_msg = case_data['expect'].get('msg_key', '')
         allure.dynamic.title(f'[{case_id}] {desc}')
-        logger.info(f"🚀 开始执行邮箱测试: {case_id} - {desc} | 输入值: '{input_email}'")
+        logger.info(f"{LogIcon.ACTION} 开始执行邮箱测试: {case_id} - {desc} | 输入值: '{input_email}'")
 
         with allure.step('1. 获取修改前的初始邮箱'):
             pre_email = self.otherPage.get_email()
@@ -226,7 +226,7 @@ class TestOther:
         expected_area = area_cases['expected']
 
         allure.dynamic.title(f"[{case_id}] 验证设置所在地为: {expected_area}")
-        logger.info(f"🚀 开始执行所在地测试用例：[{case_id}] {province} -> {city} | 期望值: '{expected_area}'")
+        logger.info(f"{LogIcon.ACTION} 开始执行所在地测试用例：[{case_id}] {province} -> {city} | 期望值: '{expected_area}'")
 
         with allure.step(f"1. 进入所在地并级联选择: {province} -> {city} (触发保存闭环)"):
             self.otherPage.set_location(province, city)
@@ -248,7 +248,7 @@ class TestOther:
         import os
         from utils.file_reader.csv_handler import RegionCrawler
 
-        logger.info("🚀 启动地区字典数据全量抓取与归档任务...")
+        logger.info(f"{LogIcon.ACTION} 启动地区字典数据全量抓取与归档任务...")
         with allure.step("1. 点击进入所在地选择页面"):
             self.otherPage.click_location()
 
@@ -260,4 +260,4 @@ class TestOther:
         with allure.step("3. 校验导出的 CSV 文件有效性与数据落盘"):
             assert os.path.exists(output_file), f"CSV 导出文件不存在: {output_file}"
             assert os.path.getsize(output_file) > 0, "导出的 CSV 文件为空！"
-            logger.info(f"✅ 地区数据成功抓取并保存至文件: {output_file}")
+            logger.info(f"{LogIcon.SUCCESS} 地区数据成功抓取并保存至文件: {output_file}")

@@ -1,7 +1,7 @@
 import pytest
 import allure
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.groups.create.group_create_page import GroupCreatePage
@@ -44,10 +44,10 @@ class TestGroupSetting:
         elif 'test_group_name_validation' in current_test_name and '群名称包含敏感词' in current_test_name:
             should_go_home = True
         if should_go_home:
-            logger.info(f'🧹 [Teardown] 用例满足退回首页条件，执行 go_to_main_page: {current_test_name}')
+            logger.info(f'{LogIcon.SETUP} 用例满足退回首页条件，执行 go_to_main_page: {current_test_name}')
             self.mainPage.go_to_main_page()
         else:
-            logger.info(f'⏭️ [Teardown] 用例无需/已自行完成退回首页，略过 Teardown 回收: {current_test_name}')
+            logger.info(f'{LogIcon.STEP} 用例无需/已自行完成退回首页，略过 Teardown 回收: {current_test_name}')
 
     def _create_temp_group(self, friend_list):
         """内部辅助方法：快速创建一个用于测试的临时群聊"""
@@ -99,7 +99,7 @@ class TestGroupSetting:
     def _enter_group_setting_page(self, group_name):
         """进入群设置页面 (使用内存 Flag 限制全局仅进入一次)"""
         if getattr(self.__class__, '_has_entered_setting_page', False):
-            logger.info('⚡ [Setup] 当前已在群聊设置页，跳过重复进入流程')
+            logger.info(f'{LogIcon.ACTION} 当前已在群聊设置页，跳过重复进入流程')
             return
         with allure.step('1. 进入群设置页面'):
             self.chatListPage.enter_chat(group_name)

@@ -2,7 +2,7 @@ import pytest
 import allure
 import time
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.groups.setting.general.group_setting_page import GroupSettingPage
 from pages.groups.setting.manager.group_manager_page import GroupManagerPage
@@ -61,7 +61,7 @@ class TestAdminPermissionsDouble:
                 self.mainS.go_to_main_page()
                 self.mainR.go_to_main_page()
             except Exception as e:
-                logger.warning(f'⚠️ [Cleanup] 环境复原清理失败: {e}')
+                logger.warning(f'{LogIcon.WARN} 环境复原清理失败: {e}')
 
     @pytest.mark.p1
     @allure.severity(allure.severity_level.CRITICAL)

@@ -1,5 +1,6 @@
 import os
 import zipfile
+from core.logger_utils import logger, LogIcon
 
 def zip_clean_project(output_filename, source_dir):
     # 1. 定义需要整文件夹过滤的“黑名单”
@@ -25,8 +26,8 @@ def zip_clean_project(output_filename, source_dir):
                 # 计算相对路径，保持解压后的目录结构清晰
                 arcname = os.path.relpath(file_path, source_dir)
                 zipf.write(file_path, arcname)
-                print(f"已添加: {arcname}")
+                logger.info(f"{LogIcon.ACTION} 已添加: {arcname}")
 
 if __name__ == '__main__':
     zip_clean_project('santiao_0.5-anti.zip', '.')
-    print("打包完成！")
+    logger.info(f"{LogIcon.SUCCESS} 打包完成！输出文件: santiao_0.5-anti.zip")

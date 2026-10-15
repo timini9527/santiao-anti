@@ -3,7 +3,7 @@ import pytest
 import allure
 import pytest_check as check
 from pages.login.login_page import LoginPage
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from utils.file_reader.data_loader import load_yaml_data
 from dataclasses import dataclass
 from utils.cv_recognition.ocr_utils import OcrUtils
@@ -17,7 +17,7 @@ def load_verification_login_test_cases():
             item.pop('priority', None)  # 过滤优先级说明字段
         return cases
     except Exception as e:
-        logger.error(f"加载 YAML 用例失败: {e}")
+        logger.error(f"{LogIcon.FAIL} 加载 YAML 用例失败: {e}")
         return []
 
 @dataclass
@@ -65,13 +65,13 @@ class TestVerificationLogin:
         # 智能页面路由 (Smart Routing)
         if not is_lo_test:
             if not TestVerificationLogin._has_entered_verification_login:
-                logger.info("🚀 首次进入验证码登录表单，执行点击操作。")
+                logger.info(f"{LogIcon.ACTION} 首次进入验证码登录表单，执行点击操作。")
                 self.loginPage.click_phone_login_button()
                 TestVerificationLogin._has_entered_verification_login = True # 上锁
             else:
-                logger.debug("⚡ 检测到已经处于验证码登录表单页，跳过点击，直接开始测试。")
+                logger.debug(f"{LogIcon.ACTION} 检测到已经处于验证码登录表单页，跳过点击，直接开始测试。")
         else:
-            logger.info("👉 探测到 @pytest.mark.no_login_entrance 标签，停留在登录首页，不进入手机号表单。")
+            logger.info(f"{LogIcon.ACTION} 探测到 @pytest.mark.no_login_entrance 标签，停留在登录首页，不进入手机号表单。")
             
         yield
 
@@ -85,7 +85,7 @@ class TestVerificationLogin:
         case = VerificationLoginCaseData(**case_dict)
 
         allure.dynamic.title(f"[{case.id}] 验证码登录场景 - {case.desc}")
-        logger.info(f"🚀 开始执行用例: [{case.id}] {case.desc}")
+        logger.info(f"{LogIcon.ACTION} 开始执行用例: [{case.id}] {case.desc}")
 
         with allure.step("1. 初始化登录环境并输入验证码和账号"):
             self.loginPage.input_account(case.account)
@@ -141,7 +141,7 @@ class TestVerificationLogin:
                     
                     # ⚠️ 如果业务本身就因如‘手机号错误’等后端拦截了获取验证码动作，就不可能进入倒计时和输入验证码的格子了
                     if case.expected_send_toast != "验证码已发送":
-                        logger.info(f"由于获取验证码阶段被业务规则拦截或失败 ('{case.expected_send_toast}')，安全跳出后续倒计时及填验证码流程。")
+                        logger.info(f"{LogIcon.FAIL} 由于获取验证码阶段被业务规则拦截或失败 ('{case.expected_send_toast}')，安全跳出后续倒计时及填验证码流程。")
                         return
             
             with allure.step("3. 验证人机校验 UI 交互状态: 验证码倒计时"):
@@ -168,7 +168,7 @@ class TestVerificationLogin:
         finally:
             with allure.step("5. 环境清理：确保账号登出或重置界面栈"):
                 if self.loginPage.is_login_success():  
-                    logger.info("环境清理：检测到账号处于登录状态，执行强制登出和环境重置...")
+                    logger.info(f"{LogIcon.SETUP} 环境清理：检测到账号处于登录状态，执行强制登出和环境重置...")
                     msg = self.loginPage.logout_if_logged_in()
                     check.equal(msg, '已退出登录', f"⚠️ 环境清理失败：退出登录动作未成功！")
                     
@@ -178,5 +178,5 @@ class TestVerificationLogin:
                     # 对于登录失败（填写错误验证码）的用例，弹窗会停留在四个格子的验证码独立页面中
                     is_in_code_page = self.loginPage.is_on_verification_login_page()
                     if is_in_code_page:
-                        logger.info("当前界面遗留在验证码四宫格输入页，执行点击左上角返回至手机号表单...")
+                        logger.info(f"{LogIcon.FIND} 当前界面遗留在验证码四宫格输入页，执行点击左上角返回至手机号表单...")
                 self.loginPage.click_back_btn()

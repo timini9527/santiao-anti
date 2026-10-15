@@ -1,7 +1,7 @@
 import pytest
 import allure
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.groups.setting.general.group_setting_page import GroupSettingPage
@@ -31,7 +31,7 @@ class TestGroupBotWelcome:
     def cleanup_welcome_settings(self):
         """后置清理：清空群欢迎语，恢复初始状态"""
         yield
-        logger.info('🧹 [Cleanup] 开始清理进群欢迎语设置...')
+        logger.info(f'{LogIcon.SETUP} 开始清理进群欢迎语设置...')
         try:
             self.main_sender.go_to_main_page()
             self.chat_list_sender.enter_chat(GROUP_STRATEGY.name)
@@ -42,9 +42,9 @@ class TestGroupBotWelcome:
             self.group_bot_sender.enter_group_bot()
             self.group_bot_sender.enter_welcome()
             self.group_bot_sender.configure_welcome('')
-            logger.info('🧹 [Cleanup] 成功清空群助手进群欢迎语')
+            logger.info(f'{LogIcon.SETUP} 成功清空群助手进群欢迎语')
         except Exception as e:
-            logger.warning(f'⚠️ [Cleanup] 清理进群欢迎语发生异常: {e}')
+            logger.warning(f'{LogIcon.WARN} 清理进群欢迎语发生异常: {e}')
 
     @pytest.mark.p2
     @allure.severity(allure.severity_level.NORMAL)

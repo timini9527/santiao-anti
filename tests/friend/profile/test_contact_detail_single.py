@@ -2,7 +2,7 @@ import time
 import allure
 import pytest
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.friend.profile.contact_detail_page import ContactDetailPage
@@ -59,7 +59,7 @@ class TestContactDetailSingle:
                 if not self.homePageS.wait_for_friend_page_load(timeout=1):
                     self.contactDetailPageS.click_iv_back()
         except Exception as e:
-            logger.error(f'⚠️ [Teardown] 页面状态恢复失败: {e}')
+            logger.error(f'{LogIcon.WARN} 页面状态恢复失败: {e}')
 
     def _click_contact_by_name(self, name: str, raise_exception: bool=True, search: bool=False) -> bool:
         """点击通讯录好友并等待详情页加载完成"""
@@ -74,12 +74,12 @@ class TestContactDetailSingle:
             if self.contactDetailPageS.wait_for_detail_page_load(timeout=1, raise_exception=raise_exception):
                 current_name = self.contactDetailPageS.get_formatted_friend_name()
                 if current_name == name:
-                    logger.info(f'✨ [Lock] 已在好友 {name} 的资料页，跳过列表查找直接开始测试步骤')
+                    logger.info(f'{LogIcon.STEP} ✨ [Lock] 已在好友 {name} 的资料页，跳过列表查找直接开始测试步骤')
                     return True
                 self.contactDetailPageS.click_iv_back()
                 self.homePageS.wait_for_friend_page_load()
         except Exception as e:
-            logger.warning(f'⚠️ 预检好友详情页状态时发生异常 (将退回列表重新查找): {e}')
+            logger.warning(f'{LogIcon.WARN} 预检好友详情页状态时发生异常 (将退回列表重新查找): {e}')
         return self._click_contact_by_name(name, raise_exception=raise_exception)
 
     def _go_to_remark_setting_page(self, name: str=RECEIVER_NAME):
@@ -136,7 +136,7 @@ class TestContactDetailSingle:
             self.tagGroupPageS.wait_for_group_list_page_load(page_title='0')
             group_names = self.tagGroupPageS.get_group_tag_names(timeout=1, raise_exception=False)
             if not group_names:
-                logger.info('✅ [Action - TagGroup] 分组管理页面分组已全部删除，无需再操作')
+                logger.info(f'{LogIcon.SUCCESS} 分组管理页面分组已全部删除，无需再操作')
                 self.contactDetailPageS.click_iv_back()
                 return
         with allure.step('2. 执行批量清空所有分组操作'):
@@ -333,7 +333,7 @@ class TestContactDetailSingle:
         with allure.step('3. 获取当前标签名称并断言（若无可用标签则自动创建并取消默认勾选）'):
             tag_names = self.remarkSettingPageS.get_tag_names()
             if not tag_names:
-                logger.info('ℹ️ 未发现可用标签，自动创建一个标签')
+                logger.info(f'{LogIcon.ACTION} ℹ️ 未发现可用标签，自动创建一个标签')
                 new_tag = 'qa_auto_toggle'
                 self.remarkSettingPageS.click_add_new_tag()
                 self.remarkSettingPageS.input_tag_name(new_tag)
@@ -376,7 +376,7 @@ class TestContactDetailSingle:
         required_tags = max(select_count, 15)
         if len(tag_names) < required_tags:
             missing_count = required_tags - len(tag_names)
-            logger.info(f'ℹ️ 当前标签数量为 {len(tag_names)}，不足所需 {required_tags} 个。自动新建 {missing_count} 个测试标签...')
+            logger.info(f'{LogIcon.ACTION} ℹ️ 当前标签数量为 {len(tag_names)}，不足所需 {required_tags} 个。自动新建 {missing_count} 个测试标签...')
             for idx in range(missing_count):
                 new_tag = f'qa{int(time.time())}_{idx:02d}'
                 self.remarkSettingPageS.click_add_new_tag()
@@ -452,7 +452,7 @@ class TestContactDetailSingle:
                         self.contactDetailPageS.click_iv_back()
                         self.homePageS.wait_for_friend_page_load(timeout=2)
                     else:
-                        logger.info('当前页面既非详情页也非好友列表页，尝试执行深度自愈退回...')
+                        logger.info(f'{LogIcon.ACTION} 当前页面既非详情页也非好友列表页，尝试执行深度自愈退回...')
                         self.mainPageS.go_to_main_page()
                         self.homePageS.click_bottom_expand_button()
                         self.homePageS.click_friend()

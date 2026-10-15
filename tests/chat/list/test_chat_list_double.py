@@ -3,7 +3,7 @@ import allure
 import pytest
 import concurrent.futures
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.chat.core.chat_page import ChatPage
@@ -76,7 +76,7 @@ class TestChatListDouble:
                 try:
                     main_page.go_to_main_page()
                 except Exception as e:
-                    logger.warning(f'⚡ [Setup] {side_desc} 返回首页异常: {e}')
+                    logger.warning(f'{LogIcon.ACTION} {side_desc} 返回首页异常: {e}')
 
         yield
 
@@ -85,7 +85,7 @@ class TestChatListDouble:
                 try:
                     main_page.go_to_main_page()
                 except Exception as e:
-                    logger.error(f'❌ [Teardown] {side_desc} 清理返回首页失败: {e}')
+                    logger.error(f'{LogIcon.FAIL} {side_desc} 清理返回首页失败: {e}')
 
 
 
@@ -150,12 +150,12 @@ class TestChatListDouble:
 
         with allure.step(f'2. 执行【{call_strategy.desc}】交互信令与动作'):
             if call_strategy.action == "cancel":
-                logger.info("⚡ [Action-Call] 主叫自己主动挂断/取消呼叫")
+                logger.info(f"{LogIcon.ACTION} 主叫自己主动挂断/取消呼叫")
                 self.callS.hangup()
                 self.chatS.click_back_button()
                 self.homeS.wait_home_page()
             elif call_strategy.action == "reject":
-                logger.info("⚡ [Action-Call] 被叫拒绝通话")
+                logger.info(f"{LogIcon.ACTION} 被叫拒绝通话")
                 self.callR.wait_incoming_call_page_load()
                 self.callR.reject()
                 time.sleep(1)
@@ -164,7 +164,7 @@ class TestChatListDouble:
                 self.homeS.wait_home_page()
                 self.homeR.wait_home_page()
             elif call_strategy.action == "accept":
-                logger.info("⚡ [Action-Call] 被叫接听通话，维持产生时长后由主叫主动挂断")
+                logger.info(f"{LogIcon.ACTION} 被叫接听通话，维持产生时长后由主叫主动挂断")
                 self.callR.wait_incoming_call_page_load()
                 self.callR.accept()
                 time.sleep(2)
@@ -174,29 +174,29 @@ class TestChatListDouble:
                 self.homeS.wait_home_page()
                 self.homeR.wait_home_page()
             elif call_strategy.action == "timeout":
-                logger.info("⚡ [Action-Call] 主被超时：被叫保持振铃未接听，等待超时后主叫自动退回聊天页")
+                logger.info(f"{LogIcon.ACTION} 主被超时：被叫保持振铃未接听，等待超时后主叫自动退回聊天页")
                 self.callR.wait_incoming_call_page_load()
                 self.chatS.wait_for_chat_page_load(timeout=65)
                 self.chatS.click_back_button()
                 self.homeS.wait_home_page()
                 self.homeR.wait_home_page()
             elif call_strategy.action == "interrupt":
-                logger.info("⚡ [Action-Call] 双方接通后切断主叫端网络，模拟通话中断")
+                logger.info(f"{LogIcon.ACTION} 双方接通后切断主叫端网络，模拟通话中断")
                 self.callR.wait_incoming_call_page_load()
                 self.callR.accept()
                 time.sleep(2)
                 try:
-                    logger.info("⚡ [Action-Call] 双方接通后切断主叫端网络，模拟通话中断...")
+                    logger.info(f"{LogIcon.ACTION} 双方接通后切断主叫端网络，模拟通话中断...")
                     self.callS.set_network_connection("none")
                     # self.callR.set_network_connection("none")
-                    logger.info("⏳ [Action-Call] 双端并发检测通话中断退出...")
+                    logger.info(f"{LogIcon.WAIT} 双端并发检测通话中断退出...")
                     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
                         future_s = executor.submit(self.chatS.wait_for_chat_page_load, 35)
                         future_r = executor.submit(self.callR.wait_call_page_close, 35)
                         future_s.result()
                         future_r.result()
                 finally:
-                    logger.info("⚡ [Action-Call] 恢复主叫端网络连接...")
+                    logger.info(f"{LogIcon.ACTION} 恢复主叫端网络连接...")
                     self.callS.set_network_connection("all")
                     # self.callR.set_network_connection("all")
                 time.sleep(1)
@@ -240,7 +240,7 @@ class TestChatListDouble:
             self.groupSettingS.wait_for_setting_page_load()
             friend_names = self.groupSettingS.get_friend_names()
             if RECEIVER_NAME in friend_names:
-                logger.info(f"ℹ️ 检测到群成员中已存在接收端【{RECEIVER_NAME}】，执行移出群聊前置清理...")
+                logger.info(f"{LogIcon.SETUP} ℹ️ 检测到群成员中已存在接收端【{RECEIVER_NAME}】，执行移出群聊前置清理...")
                 self.groupSettingS.click_remove_friend_header()
                 self.groupManagerS.click_member_by_search_keyword(name=RECEIVER_NAME)
                 self.groupManagerS.click_edit_finish_button()
@@ -257,7 +257,7 @@ class TestChatListDouble:
 
         with allure.step(f'4. 验证接收端在与【{PRIVATE_USER3.name}】私聊会话列表中展示包含: {expected_text}'):
             actual_content_r = self.homeR.get_message_by_name(PRIVATE_USER3.name, expected_text=expected_text, timeout=10)
-            logger.info(f"接收端与【{PRIVATE_USER3.name}】私聊会话摘要内容: 实际='{actual_content_r}', 预期包含='{expected_text}'")
+            logger.info(f"{LogIcon.ACTION} 接收端与【{PRIVATE_USER3.name}】私聊会话摘要内容: 实际='{actual_content_r}', 预期包含='{expected_text}'")
             check.is_in(expected_text, actual_content_r, 
                         f'❌ 接收端与【{PRIVATE_USER3.name}】私聊会话内容展示不匹配, 预期包含: {expected_text}, 实际为: {actual_content_r}')
 
@@ -279,7 +279,7 @@ class TestChatListDouble:
                 else:
                     invite_msg_text = self.chatR.get_cmd_notification_texts(index=-1) or ""
 
-            logger.info(f"接收端私聊会话内部捕获群邀请确认消息内容: '{invite_msg_text}'")
+            logger.info(f"{LogIcon.ACTION} 接收端私聊会话内部捕获群邀请确认消息内容: '{invite_msg_text}'")
             is_invite_valid = any(kw in invite_msg_text for kw in [target_group, "邀请你加入群聊", expected_text])
             check.is_true(is_invite_valid, 
                         f'❌ 接收端私聊会话内未检测到有效的群邀请确认消息, 实际内容为: {invite_msg_text}')
@@ -317,7 +317,7 @@ class TestChatListDouble:
 
         with allure.step(f'2. 接收端在首页验证群聊呈现强提醒标签: {expected_tag}'):
             actual_tag = self.homeR.get_remind_status_by_name(group_name, timeout=10)
-            logger.info(f"接收端群聊 [{group_name}] 提醒标签: 实际='{actual_tag}', 预期包含='{tag_keyword}'")
+            logger.info(f"{LogIcon.ACTION} 接收端群聊 [{group_name}] 提醒标签: 实际='{actual_tag}', 预期包含='{tag_keyword}'")
             check.is_in(tag_keyword, actual_tag, f'❌ 接收端群会话提醒标签不匹配, 预期包含: {expected_tag}, 实际为: {actual_tag}')
 
         with allure.step('3. 接收端进入群聊查看消息，触发强提醒已读清除'):
@@ -328,7 +328,7 @@ class TestChatListDouble:
 
         with allure.step(f'4. 接收端返回首页，验证【{expected_tag}】强提醒已消失'):
             refreshed_tag = self.homeR.get_remind_status_by_name(group_name, timeout=3)
-            logger.info(f"已读消除后接收端群聊 [{group_name}] 提醒标签刷新为: '{refreshed_tag}'")
+            logger.info(f"{LogIcon.ACTION} 已读消除后接收端群聊 [{group_name}] 提醒标签刷新为: '{refreshed_tag}'")
             check.is_not_in(tag_keyword, refreshed_tag, f'❌ 查看消息返回后强提醒未能清除, 依然包含: {expected_tag}')
 
 
@@ -350,7 +350,7 @@ class TestChatListDouble:
 
         with allure.step(f'2. 接收端在首页验证群聊会话摘要包含: {expected_content}'):
             actual_content = self.homeR.get_message_by_name(group_name, expected_text=expected_content, timeout=10)
-            logger.info(f"接收端群聊 [{group_name}] 消息摘要内容: 实际='{actual_content}', 预期包含='{expected_content}'")
+            logger.info(f"{LogIcon.ACTION} 接收端群聊 [{group_name}] 消息摘要内容: 实际='{actual_content}', 预期包含='{expected_content}'")
             check.is_in(expected_content, actual_content, f'❌ 接收端群会话消息内容不匹配, 预期包含: {expected_content}, 实际为: {actual_content}')
 
 
@@ -396,13 +396,13 @@ class TestChatListDouble:
 
         with allure.step(f'3. 接收端(普通成员)在首页验证无【{tag_keyword}】强提醒权限'):
             actual_tag_r = self.homeR.get_remind_status_by_name(group_name, timeout=1)
-            logger.info(f"接收端(普通成员)群聊 [{group_name}] 首页提醒标签: '{actual_tag_r}'")
+            logger.info(f"{LogIcon.ACTION} 接收端(普通成员)群聊 [{group_name}] 首页提醒标签: '{actual_tag_r}'")
             check.is_not_in(tag_keyword, actual_tag_r, 
                             f'❌ 接收端(普通成员)无审批权限却显示了进群申请强提醒: {actual_tag_r}')
 
         with allure.step(f'4. 发送端(群主)在首页验证展示【{expected_tag}】强提醒'):
             actual_tag_s = self.homeS.get_remind_status_by_name(group_name, timeout=2)
-            logger.info(f"发送端(群主)群聊 [{group_name}] 首页提醒标签: '{actual_tag_s}'")
+            logger.info(f"{LogIcon.ACTION} 发送端(群主)群聊 [{group_name}] 首页提醒标签: '{actual_tag_s}'")
             check.is_in(tag_keyword, actual_tag_s, 
                         f'❌ 发送端(群主)在成员提交进群申请后未检测到【{expected_tag}】强提醒, 实际展示为: {actual_tag_s}')
 

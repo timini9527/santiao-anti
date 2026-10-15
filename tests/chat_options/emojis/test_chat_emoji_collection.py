@@ -5,7 +5,7 @@ from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_page import ChatPage
 from strategy.chat.chat_strategy import PRIVATE_USER1
 from pages.main.main_page import MainPage
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.chat_options.emojis.chat_emoji_page import ChatEmojiPage
 from pages.chat_options.emojis.chat_emoji_manage_page import ChatEmojiManagePage
 from pages.chat_options.emojis.chat_emoji_package_page import ChatEmojiPackagePage
@@ -32,7 +32,7 @@ class TestChatEmojiCollection:
         try:
             self.mainPage.go_to_main_page()
         except Exception as e:
-            logger.error(f'Teardown 失败，未能返回首页: {e}')
+            logger.error(f'{LogIcon.FAIL} Teardown 失败，未能返回首页: {e}')
 
     @pytest.mark.p1
     @allure.severity(allure.severity_level.CRITICAL)
@@ -51,7 +51,7 @@ class TestChatEmojiCollection:
         with allure.step(f'1. 确认 Tab 栏环境，确保有可发送的表情包'):
             tab_emoji_pkgs, added_empkg_count = self.emojiPage._get_top_tab_emoji_package_count()
             if added_empkg_count <= 0:
-                logger.warning(f'本地无可发送表情包，将从商店添加第 {pkg_count} 个表情包作为货源')
+                logger.warning(f'{LogIcon.WARN} 本地无可发送表情包，将从商店添加第 {pkg_count} 个表情包作为货源')
                 self.emojiStorePage.open_emoji_store()
                 added_pkg_names, add_status = self.emojiStorePage.add_emoji_packages(emoji_type, pkg_count)
                 check.is_true(add_status, f'商店加货失败')
@@ -64,7 +64,7 @@ class TestChatEmojiCollection:
                 add_count = tried_count
             else:
                 if emoji_package_count_pre == 0:
-                    logger.info(f'聊天记录为空，先发送 {sent_count} 个表情包')
+                    logger.info(f'{LogIcon.ACTION} 聊天记录为空，先发送 {sent_count} 个表情包')
                     self.emojiPackagePage.sent_emoji_package(emoji_type, sent_count)
                     self.chatPage.enter_emoji_page()
                     empkg_elems, emoji_package_count_aft = self.emojiPackagePage.get_emoji_package_message_elements()
@@ -90,7 +90,7 @@ class TestChatEmojiCollection:
             self.emojiManagePage.open_collection_emoji_manage()
             initial_count = self.emojiManagePage.get_collection_emoji_pkg_all_items()
             if initial_count <= 0:
-                logger.warning('当前收藏夹为空，无法执行删除策略')
+                logger.warning(f'{LogIcon.WARN} 当前收藏夹为空，无法执行删除策略')
                 pytest.skip('收藏夹为空，跳过')
             self.emojiManagePage.enter_manage_page()
         with allure.step(f'2. 执行删除策略: {desc}'):

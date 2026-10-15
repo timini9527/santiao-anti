@@ -2,7 +2,7 @@ import pytest
 import allure
 import time
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.groups.create.group_create_page import GroupCreatePage
@@ -67,7 +67,7 @@ class TestGroupNotice:
                 
         yield
         
-        logger.info("🧹 [Teardown Class] 开始进行群公告环境清理...")
+        logger.info(f"{LogIcon.SETUP} 开始进行群公告环境清理...")
         try:
             self.chatListPage.enter_chat(GROUP_STRATEGY.name)
             desc = self.chatPage.get_group_notice_content()
@@ -76,12 +76,12 @@ class TestGroupNotice:
                 self.groupNoticePage.click_publish_btn()
                 self.groupNoticePage.input_notice_content("")
                 self.groupNoticePage.click_publish_btn()
-                logger.info("✅ [Teardown Class] 已成功清空并删除群公告")
+                logger.info(f"{LogIcon.SUCCESS} 已成功清空并删除群公告")
             else:
-                logger.info("✅ [Teardown Class] 当前无已发布的群公告，无需清理")
+                logger.info(f"{LogIcon.SUCCESS} 当前无已发布的群公告，无需清理")
             self.mainPage.go_to_main_page()
         except Exception as e:
-            logger.error(f"❌ [Teardown Class] 群公告环境清理失败: {e}")
+            logger.error(f"{LogIcon.FAIL} 群公告环境清理失败: {e}")
 
     @pytest.fixture(scope="function", autouse=True)
     def reset_to_main_page(self):

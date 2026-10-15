@@ -2,7 +2,7 @@ import pytest
 import allure
 import time
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.groups.setting.general.group_setting_page import GroupSettingPage
 from pages.groups.setting.manager.group_manager_page import GroupManagerPage
@@ -92,7 +92,7 @@ class TestSpeechManagementDouble:
             try:
                 self._safe_reset_group_manager_env()
             except Exception as e:
-                logger.warning(f'⚠️ [Cleanup] 环境复原过程出现可忽略异常: {e}')
+                logger.warning(f'{LogIcon.WARN} 环境复原过程出现可忽略异常: {e}')
             finally:
                 self.mainS.go_to_main_page()
                 self.mainR.go_to_main_page()
@@ -158,7 +158,7 @@ class TestSpeechManagementDouble:
             self._open_admin_manage()
         names = self.groupManagerS.get_member_names()
         if user_name in names:
-            logger.info(f"🔄 移除管理员身份: {user_name}")
+            logger.info(f"{LogIcon.ACTION} 移除管理员身份: {user_name}")
             self.groupManagerS.click_member_by_name(name=user_name)
             self.groupManagerS.click_sure_button()
             self.groupManagerS.click_sure_content_button()
@@ -175,13 +175,13 @@ class TestSpeechManagementDouble:
             self.groupBotS.toggle_speech_manage_switch(enable=False)
             self.groupBotS.click_save()
         except Exception as e:
-            logger.warning(f"⚠️ [Cleanup] 发言管理总开关重置异常: {e}")
+            logger.warning(f"{LogIcon.WARN} 发言管理总开关重置异常: {e}")
 
         if getattr(self, '_is_admin_assigned', False):
             try:
                 self._remove_admin(PRIVATE_USER1.name)
             except Exception as e:
-                logger.warning(f"⚠️ [Cleanup] 管理员身份清理异常: {e}")
+                logger.warning(f"{LogIcon.WARN} 管理员身份清理异常: {e}")
 
     @staticmethod
     def _assert_last_message_text(
@@ -291,7 +291,7 @@ class TestSpeechManagementDouble:
                         toast = self.chatR.get_toast()
                         check.is_true("本群已开启禁止保存/收藏群内消息" in toast, f"❌ 【收藏/保存】拦截提示不符合预期: '{toast}'")
                     else:
-                        logger.info("✅ 开启限制后长按菜单未展示【收藏】入口，符合隐式权限拦截规则")
+                        logger.info(f"{LogIcon.SUCCESS} 开启限制后长按菜单未展示【收藏】入口，符合隐式权限拦截规则")
 
         with allure.step('3. 群主端关闭发言管理总开关解除限制'):
             self._open_speech_manage()

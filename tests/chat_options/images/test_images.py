@@ -6,7 +6,7 @@ from pages.chat.list.chat_list_page import ChatListPage
 from pages.chat.core.chat_page import ChatPage
 from pages.chat_options.images.chat_image_page import ChatImagePage
 from pages.main.main_page import MainPage
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
 from strategy.chat_options.image_strategy import (
     SELECT_MODES, SEND_OPTIONS,
@@ -30,9 +30,9 @@ class TestChatImages:
         try:
             self.__class__._chat_target = None
             MainPage(driver_sender).go_to_main_page()
-            logger.info("🧹 [Class Teardown] 图片模块全部用例执行完毕，统一返回主页")
+            logger.info(f"{LogIcon.SETUP} [Class Teardown] 图片模块全部用例执行完毕，统一返回主页")
         except Exception as e:
-            logger.error(f"Teardown 失败，未能返回首页: {e}")
+            logger.error(f"{LogIcon.FAIL} Teardown 失败，未能返回首页: {e}")
 
     @pytest.fixture(autouse=True)
     def setup(self, driver_sender):
@@ -46,7 +46,7 @@ class TestChatImages:
         """进入指定的聊天会话（支持同会话直接复用，跨会话自动退回主页重新进入）"""
         if self.__class__._chat_target != chat_name:
             if self.__class__._chat_target is not None:
-                logger.info(f"🔄 [Session Switch] 检测到聊天对象从【{self.__class__._chat_target}】切换为【{chat_name}】，退回首页重新进入")
+                logger.info(f"{LogIcon.ACTION} [Session Switch] 检测到聊天对象从【{self.__class__._chat_target}】切换为【{chat_name}】，退回首页重新进入")
                 self.mainPage.go_to_main_page()
             self.chatListPage.enter_chat(chat_name)
             self.__class__._chat_target = chat_name
@@ -160,7 +160,7 @@ class TestChatImages:
             self.imagePage.click_last_sent_image()
             sent_signature = self.imagePage.get_preview_signature()
             distance = ScreenshotUtils.hamming_distance(preview_signature, sent_signature)
-            logger.info(f"📊 [Image Hash Compare] 发送前 Hash: {preview_signature}, 发送后 Hash: {sent_signature}, 汉明距离: {distance}")
+            logger.info(f"{LogIcon.FIND} [Image Hash Compare] 发送前 Hash: {preview_signature}, 发送后 Hash: {sent_signature}, 汉明距离: {distance}")
             check.is_true(distance <= 5, f"❌ 预览图片与发送图片不一致 (汉明距离 {distance} > 5)")
             self.imagePage.back()
     

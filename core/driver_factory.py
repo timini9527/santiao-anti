@@ -11,7 +11,7 @@ from appium import webdriver
 from appium.webdriver.client_config import AppiumClientConfig
 from appium.options.android import UiAutomator2Options
 from selenium.common.exceptions import WebDriverException
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from utils.file_reader.data_loader import load_yaml_data
 
 
@@ -30,7 +30,7 @@ class DriverFactory:
 
         # 2. 获取当前运行环境 (优先读取系统环境变量，其次读取 devices.yaml 顶层配置，默认 'dev')
         current_env = os.environ.get('ENV') or data.get('current_env', 'dev')
-        logger.info(f"📱 [DriverFactory] 当前指定的执行环境为: {current_env}")
+        logger.info(f"{LogIcon.ACTION} [DriverFactory] 当前指定的执行环境为: {current_env}")
 
         # 3. 获取公共 App 配置
         common_caps = data.get('app', {})
@@ -65,7 +65,7 @@ class DriverFactory:
                     forward_command.extend(["-s", origin_udid])
                 forward_command.extend(["forward", "--remove", f"tcp:{system_port}"])
                 subprocess.run(forward_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                logger.info(f"🧹 [DriverFactory] 已清理原始配置端口的 adb 转发规则: tcp:{system_port}")
+                logger.info(f"{LogIcon.SETUP} [DriverFactory] 已清理原始配置端口的 adb 转发规则: tcp:{system_port}")
                 if origin_udid:
                     subprocess.run(
                         ["adb", "-s", origin_udid, "shell", "am", "force-stop", "io.appium.uiautomator2.server"],
@@ -77,9 +77,9 @@ class DriverFactory:
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL,
                     )
-                    logger.info(f"🧹 [DriverFactory] 已强杀手机端残留的 UiAutomator2 Server 进程 (设备: {origin_udid})")
+                    logger.info(f"{LogIcon.SETUP} [DriverFactory] 已强杀手机端残留的 UiAutomator2 Server 进程 (设备: {origin_udid})")
             except Exception as e:
-                logger.debug(f"⛓️‍💥 [DriverFactory] 清理原始端口残留异常: {e}")
+                logger.debug(f"{LogIcon.WARN} [DriverFactory] 清理原始端口残留异常: {e}")
 
             try:
                 # 优先使用 psutil 检查，因为它可以识别 TIME_WAIT 状态，避免 socket.bind 的假自由判定
@@ -105,14 +105,14 @@ class DriverFactory:
                         except socket.error:
                             continue
             desired_caps['systemPort'] = free_port
-            logger.info(f"🔌 [DriverFactory] 动态分配 systemPort: {free_port} (原始配置: {system_port})")
+            logger.info(f"{LogIcon.SETUP} [DriverFactory] 动态分配 systemPort: {free_port} (原始配置: {system_port})")
         
         # == 支持环境变量与 Web 回执动态覆盖 ==
         env_udid = os.environ.get("REMOTE_UDID")
         env_udid2 = os.environ.get("REMOTE_UDID2")
         env_appium = os.environ.get("REMOTE_APPIUM_URL")
         env_appium2 = os.environ.get("REMOTE_APPIUM_URL2")
-        logger.info(f"⛓️‍💥 [DriverFactory] 环境变量动态覆盖：UDID1={env_udid}, UDID2={env_udid2}, Appium1={env_appium}, Appium2={env_appium2}")
+        logger.info(f"{LogIcon.SETUP} [DriverFactory] 环境变量动态覆盖：UDID1={env_udid}, UDID2={env_udid2}, Appium1={env_appium}, Appium2={env_appium2}")
         
         # 1. 覆盖 UDID
         if 'sender' in device_key.lower():
@@ -121,7 +121,7 @@ class DriverFactory:
         elif 'receiver' in device_key.lower():
             if env_udid2 and env_udid2.strip():
                 desired_caps['udid'] = env_udid2.strip()
-                logger.info(f"⛓️‍💥 [DriverFactory] 使用 REMOTE_UDID2 覆盖 receiver 设备的 UDID: {env_udid2.strip()}")
+                logger.info(f"{LogIcon.SETUP} [DriverFactory] 使用 REMOTE_UDID2 覆盖 receiver 设备的 UDID: {env_udid2.strip()}")
             else:
                 receipt_str = os.environ.get("WEB_RECEIPT_DATA")
                 if receipt_str:
@@ -131,13 +131,14 @@ class DriverFactory:
                         receipt_udid = web_receipt.get("设备1")
                         if receipt_udid and receipt_udid.strip():
                             desired_caps['udid'] = receipt_udid.strip()
-                            logger.info(f"⛓️‍💥 [DriverFactory] 从 Web 回执中成功提取 '设备1' 覆盖 receiver 设备的 UDID: {receipt_udid.strip()}")
+                            logger.info(f"{LogIcon.SETUP} [DriverFactory] 从 Web 回执中成功提取 '设备1' 覆盖 receiver 设备的 UDID: {receipt_udid.strip()}")
                     except Exception as e:
-                        logger.warning(f"⛓️‍💥 [DriverFactory] 解析 WEB_RECEIPT_DATA 动态覆盖设备异常: {e}")
+                        logger.warning(f"{LogIcon.WARN} [DriverFactory] 解析 WEB_RECEIPT_DATA 动态覆盖设备异常: {e}")
 
         # 2. 覆盖 Appium Server 物理连接地址
         appium_url = device_config.get('appiumServerUrl', 'http://localhost:4723/wd/hub')
         target_appium = None
+
         if 'sender' in device_key.lower():
             target_appium = env_appium
         elif 'receiver' in device_key.lower():
@@ -147,21 +148,16 @@ class DriverFactory:
             if not target_appium.startswith("http"):
                 target_appium = f"http://{target_appium}"
             appium_url = target_appium
-            logger.info(f"⛓️‍💥 [DriverFactory] 覆盖 {device_key} Appium 地址为: {appium_url}")
+            logger.info(f"{LogIcon.SETUP} [DriverFactory] 覆盖 {device_key} Appium 地址为: {appium_url}")
 
         # 5. 处理 Appium 2.0 Options
         options = UiAutomator2Options().load_capabilities(desired_caps)
 
-        # logger.info(f"Appium Server URL: {appium_url}")
-
-        # print(f"\n[DriverFactory] 正在启动设备: {device_key} | "
-        #       f"UDID: {desired_caps.get('udid')} | "
-        #       f"Port: {desired_caps.get('systemPort')}")
         logger.debug(
-            f"\n🛸 [DriverFactory] 启动设备: {device_key} | \n"
-            f"UDID: {desired_caps.get('udid')} | \n"
-            f"Port: {desired_caps.get('systemPort')} | \n"
-            f"Appium Server URL: {appium_url}"
+            f"{LogIcon.FIND} \n{LogIcon.SETUP} [DriverFactory] 启动设备: {device_key} | \n"
+            f"{LogIcon.FIND} UDID: {desired_caps.get('udid')} | \n"
+            f"{LogIcon.FIND} Port: {desired_caps.get('systemPort')} | \n"
+            f"{LogIcon.FIND} Appium Server URL: {appium_url}"
         )
 
         # 💡 兜底：清理「新分配端口」可能残留的 adb forward 规则。
@@ -176,9 +172,9 @@ class DriverFactory:
                     forward_command.extend(["-s", selected_udid])
                 forward_command.extend(["forward", "--remove", f"tcp:{system_port}"])
                 subprocess.run(forward_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                logger.info(f"🧹 [DriverFactory] 已清理新分配端口的 adb 转发规则: tcp:{system_port}")
+                logger.info(f"{LogIcon.SETUP} [DriverFactory] 已清理新分配端口的 adb 转发规则: tcp:{system_port}")
             except Exception as e:
-                logger.debug(f"⛓️‍💥 [DriverFactory] 清理新分配端口 adb 转发异常: {e}")
+                logger.debug(f"{LogIcon.WARN} [DriverFactory] 清理新分配端口 adb 转发异常: {e}")
 
         # 💡 在尝试连接 Appium 之前，先进行一次快速网络探测 (3秒超时)，防止 Appium 服务未启动时连接无限挂起导致页面卡死
         try:
@@ -188,7 +184,7 @@ class DriverFactory:
             if "/wd/hub" in parsed_url.path:
                 probe_url = f"{parsed_url.scheme}://{parsed_url.netloc}/wd/hub/status"
             
-            logger.info(f"⛓️‍💥 [DriverFactory] 正在对 Appium 进行连接探测: {probe_url}")
+            logger.info(f"{LogIcon.SETUP} [DriverFactory] 正在对 Appium 进行连接探测: {probe_url}")
             req = urllib.request.Request(probe_url)
             with urllib.request.urlopen(req, timeout=3.0) as resp:
                 pass
@@ -211,8 +207,8 @@ class DriverFactory:
         )
 
         logger.info(
-            f"⌛ [DriverFactory] Appium客户端HTTP超时: "
-            f"{appium_http_timeout}s"
+            f"{LogIcon.WAIT} [DriverFactory] Appium客户端HTTP超时: "
+            f"{LogIcon.WAIT} {appium_http_timeout}s"
         )
         driver = webdriver.Remote(
             command_executor=appium_url,
@@ -303,8 +299,8 @@ class RecoverableDriver:
             return True
         except Exception as error:
             logger.warning(
-                f"⚠️ [DriverRecovery] {self._device_key} 的 UiAutomator2 健康检查失败，"
-                f"准备重建 Session: {type(error).__name__}: {error}"
+                f"{LogIcon.WARN} [DriverRecovery] {self._device_key} 的 UiAutomator2 健康检查失败，"
+                f"{LogIcon.WARN} 准备重建 Session: {type(error).__name__}: {error}"
             )
             self._recover(generation, error)
             return True
@@ -319,8 +315,8 @@ class RecoverableDriver:
                 return
 
             logger.error(
-                f"🔄 [DriverRecovery] 检测到 {self._device_key} 的 UiAutomator2 通信失效，"
-                f"开始单次重建 Session | 原因: {type(cause).__name__}: {cause}"
+                f"{LogIcon.ACTION} [DriverRecovery] 检测到 {self._device_key} 的 UiAutomator2 通信失效，"
+                f"{LogIcon.FAIL} 开始单次重建 Session | 原因: {type(cause).__name__}: {cause}"
             )
             # 不调用旧 driver.quit()：冻结会话的 DELETE 请求可能再次阻塞，或误停随后启动的新服务。
             # _create_driver() 会按设备清理残留 UiAutomator2 进程和 adb forward，再创建全新 Session。
@@ -335,8 +331,8 @@ class RecoverableDriver:
             object.__setattr__(self, "_generation", current_generation + 1)
             object.__setattr__(self, "_last_successful_command_at", time.monotonic())
             logger.info(
-                f"✅ [DriverRecovery] {self._device_key} 的 UiAutomator2 Session 已重建，"
-                f"新 Session ID: {new_driver.session_id}"
+                f"{LogIcon.SUCCESS} [DriverRecovery] {self._device_key} 的 UiAutomator2 Session 已重建，"
+                f"{LogIcon.ACTION} 新 Session ID: {new_driver.session_id}"
             )
 
     def __getattr__(self, name):

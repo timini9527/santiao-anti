@@ -2,7 +2,7 @@ import time
 import pytest
 import allure
 import pytest_check as check
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.groups.setting.general.group_setting_page import GroupSettingPage
@@ -91,7 +91,7 @@ class TestGroupBotKeyword:
         if not is_last:
             return
 
-        logger.info("🧹 [Cleanup] 警告语测试完毕，恢复初始默认警告语并安全返回主页...")
+        logger.info(f"{LogIcon.SETUP} 警告语测试完毕，恢复初始默认警告语并安全返回主页...")
         try:
             current_count = self.botS.get_warning_msg_count()
             if current_count > 7:
@@ -102,9 +102,9 @@ class TestGroupBotKeyword:
             self.botS.toggle_switch(enable=False)
             self.botS.click_save()
             self.mainS.go_to_main_page()
-            logger.info("🧹 [Cleanup] 成功恢复默认警告语并返回主页")
+            logger.info(f"{LogIcon.SETUP} 成功恢复默认警告语并返回主页")
         except Exception as e:
-            logger.warning(f"⚠️ [Cleanup] 警告语后置恢复异常: {e}")
+            logger.warning(f"{LogIcon.WARN} 警告语后置恢复异常: {e}")
             self.mainS.go_to_main_page()
 
     @pytest.fixture
@@ -129,7 +129,7 @@ class TestGroupBotKeyword:
         if not is_last_case:
             return
 
-        logger.info("🧹 [Cleanup] 关键词新增规则验证完毕，执行环境清理并安全返回主页...")
+        logger.info(f"{LogIcon.SETUP} 关键词新增规则验证完毕，执行环境清理并安全返回主页...")
         try:
             self.botS.cancel_keyword_dialog_if_displayed()
             self.botS.clear_all_keywords()
@@ -137,9 +137,9 @@ class TestGroupBotKeyword:
             self.botS.toggle_switch(enable=False)
             self.botS.click_save()
             self.mainS.go_to_main_page()
-            logger.info("🧹 [Cleanup] 成功关闭群助手禁发关键词设置并返回主页")
+            logger.info(f"{LogIcon.SETUP} 成功关闭群助手禁发关键词设置并返回主页")
         except Exception as e:
-            logger.warning(f"⚠️ [Cleanup] 清理禁发关键词设置时发生异常: {e}")
+            logger.warning(f"{LogIcon.WARN} 清理禁发关键词设置时发生异常: {e}")
             self.mainS.go_to_main_page()
 
 
@@ -187,7 +187,7 @@ class TestGroupBotKeyword:
                 self.botS.input_keywords(keyword)
                 self.botS.click_confirm_btn()
             else:
-                logger.info(f"⚠️ [Action-GroupBotPage] 关键词 {keyword} 已存在，跳过新增")
+                logger.info(f"{LogIcon.WARN} 关键词 {keyword} 已存在，跳过新增")
 
         with allure.step(f"3. 校验关键词已成功添加至列表: {expected_word}"):
             keyword_list = self.botS.get_keyword_list()
@@ -267,7 +267,7 @@ class TestGroupBotKeyword:
 
         with allure.step("3. 校验输入框实时过滤或 Toast 拦截"):
             if not actual_text or not any(c.isalnum() for c in actual_text):
-                logger.info(f"✅ 非法字符 '{keyword}' 已被输入框实时过滤拦截 (当前文本为空或纯过滤)")
+                logger.info(f"{LogIcon.SUCCESS} 非法字符 '{keyword}' 已被输入框实时过滤拦截 (当前文本为空或纯过滤)")
                 self.botS.click_cancel_btn()
             else:
                 self.botS.click_confirm_btn()

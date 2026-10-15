@@ -2,7 +2,7 @@ import pytest
 import allure
 import pytest_check as check
 from pages.login.login_page import LoginPage
-from core.logger_utils import logger
+from core.logger_utils import logger, LogIcon
 from utils.cv_recognition.ocr_utils import OcrUtils
 
 @allure.epic('IM核心功能测试')
@@ -19,13 +19,13 @@ class TestOneLogin:
         is_lo_test = current_test_node.get_closest_marker('no_login_entrance') is not None
         if not is_lo_test:
             if not TestOneLogin._has_entered_phone_login:
-                logger.info('🚀 首次进入手机号表单，执行点击操作。')
+                logger.info(f'{LogIcon.ACTION} 首次进入手机号表单，执行点击操作。')
                 self.loginPage.click_phone_login_button()
                 TestOneLogin._has_entered_phone_login = True
             else:
-                logger.debug('⚡ 检测到已经处于手机号表单页，跳过点击，直接开始测试。')
+                logger.debug(f'{LogIcon.ACTION} 检测到已经处于手机号表单页，跳过点击，直接开始测试。')
         else:
-            logger.info('👉 探测到 @pytest.mark.no_login_entrance 标签，停留在登录首页，不进入手机号表单。')
+            logger.info(f'{LogIcon.ACTION} 探测到 @pytest.mark.no_login_entrance 标签，停留在登录首页，不进入手机号表单。')
         yield
 
     @pytest.fixture(autouse=True)
@@ -42,7 +42,7 @@ class TestOneLogin:
     @pytest.mark.no_login_entrance
     def test_login_no_card_one_click(self):
         allure.dynamic.title('无卡状态时，首页点击一键登录验证弹窗')
-        logger.info('🚀 开始执行专属用例: 无卡状态时，一键登录验证')
+        logger.info(f'{LogIcon.ACTION} 开始执行专属用例: 无卡状态时，一键登录验证')
         with allure.step('1. 初始化由于防刷测试环境'):
             self.loginPage.click_one_click_login_button()
         with allure.step('2. 验证Toast'):
