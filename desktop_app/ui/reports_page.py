@@ -23,7 +23,7 @@ from PyQt6.QtWidgets import (
     QComboBox, QMessageBox, QMenu
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer
-from .widgets import RedTrashButton, create_red_trash_icon
+from .widgets import RedTrashButton, create_red_trash_icon, TopStatusPillWidget
 _CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(_CURRENT_DIR))
 if _PROJECT_ROOT not in sys.path:
@@ -230,41 +230,11 @@ class ReportsPage(QWidget):
 
         h_layout.addStretch()
 
-        pill_group = QFrame()
-        pill_group.setObjectName("reportsPillGroup")
-        pill_group.setStyleSheet("QFrame#reportsPillGroup { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 20px; }")
-        pg_layout = QHBoxLayout(pill_group)
-        pg_layout.setContentsMargins(6, 2, 6, 2)
-        pg_layout.setSpacing(10)
-
-        lbl_dev = QLabel("🟢 设备: 1 台在线")
-        lbl_dev.setStyleSheet("color: #059669; font-weight: 700; font-size: 12px;")
-        pg_layout.addWidget(lbl_dev)
-
-        sep1 = QLabel("|")
-        sep1.setStyleSheet("color: #cbd5e1;")
-        pg_layout.addWidget(sep1)
-
-        lbl_case = QLabel("✏️ 用例: 1383 条")
-        lbl_case.setStyleSheet("color: #0284c7; font-weight: 700; font-size: 12px;")
-        pg_layout.addWidget(lbl_case)
-
-        sep2 = QLabel("|")
-        sep2.setStyleSheet("color: #cbd5e1;")
-        pg_layout.addWidget(sep2)
-
-        self.lbl_rep = QLabel(f"📑 报告: {get_reports_count()} 份")
-        self.lbl_rep.setStyleSheet("color: #7c3aed; font-weight: 700; font-size: 12px;")
-        pg_layout.addWidget(self.lbl_rep)
-
-        btn_refresh = QPushButton("🔄")
-        btn_refresh.setFixedSize(24, 24)
-        btn_refresh.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_refresh.setStyleSheet("QPushButton { background: transparent; border: none; font-size: 13px; } QPushButton:hover { background: #e2e8f0; border-radius: 12px; }")
-        btn_refresh.clicked.connect(self.refresh_reports)
-        pg_layout.addWidget(btn_refresh)
-
-        h_layout.addWidget(pill_group)
+        # 右侧药丸状态 Badge 组 (与移动IM控制中心完全公用统一通用控件)
+        self.top_status_pill = TopStatusPillWidget(parent=card)
+        self.lbl_rep = self.top_status_pill.lbl_report
+        self.top_status_pill.refresh_clicked.connect(self.refresh_reports)
+        h_layout.addWidget(self.top_status_pill)
         return card
 
     # ================= 2. 门禁指标 KPI 卡片 =================
@@ -589,14 +559,14 @@ class ReportsPage(QWidget):
             self.history_data = new_list
             self.selected_task = new_list[0]
             self.card_count_val.setText(f"{len(new_list)} 份")
-            self.lbl_rep.setText(f"📑 报告: {len(new_list)} 份")
+            self.top_status_pill.update_report_count(len(new_list))
             self._render_history_items()
             self._on_select_history(self.selected_task)
         else:
             self.history_data = []
             self.selected_task = {}
             self.card_count_val.setText("0 份")
-            self.lbl_rep.setText("📑 报告: 0 份")
+            self.top_status_pill.update_report_count(0)
             self.lbl_curr_report.setText("当前暂无历史测试报告")
             self._render_history_items()
             if hasattr(self, 'allure_dashboard') and self.allure_dashboard:

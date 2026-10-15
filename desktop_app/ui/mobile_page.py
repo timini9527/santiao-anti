@@ -47,6 +47,7 @@ try:
     from ..core.report_scanner import get_reports_count
     from .allure_dashboard import AllureDashboardWidget
     from .receipt_dialog import WebReceiptDialog
+    from .widgets import TopStatusPillWidget
 except (ImportError, ValueError):
     from desktop_app.config import desktop_config
     from desktop_app.core.device_manager import DeviceManager
@@ -56,6 +57,7 @@ except (ImportError, ValueError):
     from desktop_app.core.report_scanner import get_reports_count
     from desktop_app.ui.allure_dashboard import AllureDashboardWidget
     from desktop_app.ui.receipt_dialog import WebReceiptDialog
+    from desktop_app.ui.widgets import TopStatusPillWidget
 
 def _detect_local_lan_ip() -> str:
     """获取本机真实有效局域网 IP"""
@@ -472,64 +474,13 @@ class MobilePage(QWidget):
         h_layout.addWidget(svc_btn_group)
         h_layout.addStretch()
 
-        # 1.3 右侧药丸状态 Badge 组 (用户红框 1:1 对应)
-        pill_group = QFrame()
-        pill_group.setStyleSheet("""
-            QFrame {
-                background-color: #f8fafc;
-                border: 1px solid #e2e8f0;
-                border-radius: 20px;
-                padding: 2px 6px;
-            }
-        """)
-        pg_layout = QHBoxLayout(pill_group)
-        pg_layout.setContentsMargins(6, 2, 6, 2)
-        pg_layout.setSpacing(10)
-
-        # 药丸 1: 设备在线
-        self.lbl_device_pill = QLabel("🟢 设备: 1 台在线")
-        self.lbl_device_pill.setStyleSheet("color: #059669; font-weight: 700; font-size: 12px;")
-        pg_layout.addWidget(self.lbl_device_pill)
-
-        sep1 = QLabel("|")
-        sep1.setStyleSheet("color: #cbd5e1;")
-        pg_layout.addWidget(sep1)
-
-        # 药丸 2: 用例总数
-        self.lbl_case_pill = QLabel(f"✏️ 用例: {self.total_case_count} 条")
-        self.lbl_case_pill.setStyleSheet("color: #0284c7; font-weight: 700; font-size: 12px;")
-        pg_layout.addWidget(self.lbl_case_pill)
-
-        sep2 = QLabel("|")
-        sep2.setStyleSheet("color: #cbd5e1;")
-        pg_layout.addWidget(sep2)
-
-        # 药丸 3: 报告总数 (实时动态读取报告中心真实份数，绝不硬编码)
-        init_rep_count = get_reports_count()
-        self.lbl_report_pill = QLabel(f"📑 报告: {init_rep_count} 份")
-        self.lbl_report_pill.setStyleSheet("color: #7c3aed; font-weight: 700; font-size: 12px;")
-        pg_layout.addWidget(self.lbl_report_pill)
-
-        # 药丸 4: 刷新小按键
-        btn_refresh_top = QPushButton("🔄")
-        btn_refresh_top.setToolTip("一键扫描在线设备、重新收集用例与统计最新报告")
-        btn_refresh_top.setFixedSize(24, 24)
-        btn_refresh_top.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_refresh_top.setStyleSheet("""
-            QPushButton {
-                background-color: transparent;
-                border: none;
-                border-radius: 12px;
-                font-size: 13px;
-            }
-            QPushButton:hover {
-                background-color: #e2e8f0;
-            }
-        """)
-        btn_refresh_top.clicked.connect(self._on_top_refresh_clicked)
-        pg_layout.addWidget(btn_refresh_top)
-
-        h_layout.addWidget(pill_group)
+        # 1.3 右侧药丸状态 Badge 组 (与报告中心完全公用统一通用控件)
+        self.top_status_pill = TopStatusPillWidget(parent=header_card)
+        self.lbl_device_pill = self.top_status_pill.lbl_device
+        self.lbl_case_pill = self.top_status_pill.lbl_case
+        self.lbl_report_pill = self.top_status_pill.lbl_report
+        self.top_status_pill.refresh_clicked.connect(self._on_top_refresh_clicked)
+        h_layout.addWidget(self.top_status_pill)
         return header_card
 
     # ==================== 2. 左边栏构建 (上部用例树 + 下部参数配置) ====================
@@ -1573,7 +1524,10 @@ class MobilePage(QWidget):
 
         if total_collected > 0:
             self.total_case_count = total_collected
-            self.lbl_case_pill.setText(f"✏️ 用例: {self.total_case_count} 条")
+            if hasattr(self, 'top_status_pill'):
+                self.top_status_pill.update_case_count(self.total_case_count)
+            else:
+                self.lbl_case_pill.setText(f"✏️ 用例: {self.total_case_count} 条")
 
         # 初始化应用全树自底向上状态球
         self._update_tree_node_icons()
@@ -1978,7 +1932,10 @@ class MobilePage(QWidget):
         """实时同步报告中心当前实际存在的有效测试报告总份数"""
         try:
             count = get_reports_count()
-            self.lbl_report_pill.setText(f"📑 报告: {count} 份")
+            if hasattr(self, 'top_status_pill'):
+                self.top_status_pill.update_report_count(count)
+            else:
+                self.lbl_report_pill.setText(f"📑 报告: {count} 份")
         except Exception:
             pass
 
@@ -2020,7 +1977,10 @@ class MobilePage(QWidget):
 
         # 更新右上角设备在线药丸
         online_count = len(all_devs) if all_devs else 1
-        self.lbl_device_pill.setText(f"🟢 设备: {online_count} 台在线")
+        if hasattr(self, 'top_status_pill'):
+            self.top_status_pill.update_device_count(online_count)
+        else:
+            self.lbl_device_pill.setText(f"🟢 设备: {online_count} 台在线")
 
     def _detect_single_device(self, target_idx: int):
         details = DeviceManager.scan_connected_devices()
@@ -3071,7 +3031,10 @@ class MobilePage(QWidget):
 
             # 极速内存同步界面药丸与设备下拉选项 (无需二次全量扫盘，0 毫秒完成)
             if connected_devices:
-                self.lbl_device_pill.setText(f"🟢 设备: {len(connected_devices)} 台在线")
+                if hasattr(self, 'top_status_pill'):
+                    self.top_status_pill.update_device_count(len(connected_devices))
+                else:
+                    self.lbl_device_pill.setText(f"🟢 设备: {len(connected_devices)} 台在线")
                 dev_ids = [d.split()[0] for d in connected_devices]
                 for dev_id in dev_ids:
                     if self.combo_udid1.findText(dev_id) == -1:
@@ -3083,7 +3046,10 @@ class MobilePage(QWidget):
                     if len(dev_ids) > 1:
                         self.combo_udid2.setEditText(dev_ids[1])
             else:
-                self.lbl_device_pill.setText("⚪ 设备: 0 台在线")
+                if hasattr(self, 'top_status_pill'):
+                    self.top_status_pill.update_device_count(0)
+                else:
+                    self.lbl_device_pill.setText("⚪ 设备: 0 台在线")
 
             # 格式化设备输出
             self.append_log(f"    - 检测到移动设备在线数量: {len(connected_devices)} 台")
