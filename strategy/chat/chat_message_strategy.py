@@ -21,7 +21,7 @@ class MessageTypeStrategy:
     
     TEXT = MessageStrategy("text", ["复制", "收藏", "转发", "多选", "回复", "撤回/删除"], "_prepare_text_msg")
     EMOJI = MessageStrategy("emoji", ["复制", "收藏", "转发", "多选", "回复", "撤回/删除"], "_prepare_emoji_msg")
-    IMAGE = MessageStrategy("image", ["收藏", "转发", "多选", "回复", "撤回/删除"], "_prepare_image_msg")
+    IMAGE = MessageStrategy("image", ["收藏", "转发", "多选", "回复", "撤回/删除", "添加表情"], "_prepare_image_msg")
     VOICE = MessageStrategy("voice", ["多选", "回复", "撤回/删除", "听筒"], "_prepare_voice_msg")
     VIDEO = MessageStrategy("video", ["转发", "多选", "撤回/删除"], "_prepare_video_msg")
     POSITION = MessageStrategy("position", ["转发", "多选", "撤回/删除"], "_prepare_position_msg")

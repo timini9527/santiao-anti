@@ -41,9 +41,11 @@ class ReportHistoryItem(QFrame):
     clicked = pyqtSignal(dict)
     delete_requested = pyqtSignal(dict)
 
-    def __init__(self, data: Dict[str, Any], is_selected: bool = False, parent=None):
+    def __init__(self, data: Dict[str, Any], index: int = 1, is_selected: bool = False, parent=None):
         super().__init__(parent)
         self.data = data
+        self.index = index
+        self.data["index"] = index
         self.is_selected = is_selected
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.init_ui()
@@ -57,6 +59,18 @@ class ReportHistoryItem(QFrame):
 
         top_row = QHBoxLayout()
         top_row.setSpacing(6)
+
+        # 报告序号徽章 (例如 1, 2, 3...)
+        self.lbl_idx = QLabel(f"{self.index}")
+        self.lbl_idx.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_idx.setMinimumWidth(20)
+        self.lbl_idx.setFixedHeight(18)
+        self.lbl_idx.setToolTip(f"报告序号: 第 {self.index} 份")
+        self.lbl_idx.setStyleSheet(
+            "background-color: #f1f5f9; color: #475569; font-weight: 800; font-size: 10px; "
+            "padding: 0 4px; border-radius: 4px; border: 1px solid #cbd5e1;"
+        )
+        top_row.addWidget(self.lbl_idx)
 
         lbl_tag = QLabel("Allure")
         lbl_tag.setStyleSheet("background-color: #2563eb; color: #ffffff; font-weight: 800; font-size: 9px; padding: 1px 4px; border-radius: 3px;")
@@ -99,6 +113,11 @@ class ReportHistoryItem(QFrame):
                 }
             """)
             self.lbl_id.setStyleSheet("font-weight: 800; color: #1d4ed8; font-size: 11px; font-family: monospace;")
+            if hasattr(self, "lbl_idx"):
+                self.lbl_idx.setStyleSheet(
+                    "background-color: #eff6ff; color: #1d4ed8; font-weight: 800; font-size: 10px; "
+                    "padding: 0 4px; border-radius: 4px; border: 1px solid #93c5fd;"
+                )
         else:
             self.setStyleSheet("""
                 QFrame#reportHistoryItem {
@@ -112,6 +131,11 @@ class ReportHistoryItem(QFrame):
                 }
             """)
             self.lbl_id.setStyleSheet("font-weight: 700; color: #0f172a; font-size: 11px; font-family: monospace;")
+            if hasattr(self, "lbl_idx"):
+                self.lbl_idx.setStyleSheet(
+                    "background-color: #f1f5f9; color: #475569; font-weight: 800; font-size: 10px; "
+                    "padding: 0 4px; border-radius: 4px; border: 1px solid #cbd5e1;"
+                )
 
 
 class ReportsPage(QWidget):
@@ -325,7 +349,7 @@ class ReportsPage(QWidget):
 
         for idx, r in enumerate(self.history_data):
             is_active = (r.get("task_id") == self.selected_task.get("task_id"))
-            item = ReportHistoryItem(r, is_selected=is_active)
+            item = ReportHistoryItem(r, index=idx + 1, is_selected=is_active)
             item.clicked.connect(self._on_select_history)
             item.delete_requested.connect(self._delete_single_report)
             self.history_items.append(item)
@@ -447,7 +471,9 @@ class ReportsPage(QWidget):
         for item in self.history_items:
             item.set_selected(item.data.get("task_id") == task_data.get("task_id"))
 
-        self.lbl_curr_report.setText(f"当前报告: {task_data.get('task_id', '未选择')}   生成时间: {task_data.get('time', '')}")
+        curr_idx = task_data.get("index", "")
+        prefix = f"[#{curr_idx}] " if curr_idx else ""
+        self.lbl_curr_report.setText(f"当前报告: {prefix}{task_data.get('task_id', '未选择')}   生成时间: {task_data.get('time', '')}")
 
         # 核心：精准动态加载并呈现该历史任务的真实测试报告
         task_id = task_data.get("task_id", "")

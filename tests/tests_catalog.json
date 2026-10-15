@@ -359,7 +359,7 @@
           },
           {
             "name": "test_long_press_action_copy",
-            "display_name": "长按菜单操作专项：复制",
+            "display_name": "长按菜单操作专项：复制-状态：已完成",
             "params": [
               "私聊模式-文本消息",
               "私聊模式-Emoji消息",
@@ -370,7 +370,7 @@
           },
           {
             "name": "test_long_press_action_collection",
-            "display_name": "长按菜单操作专项：收藏",
+            "display_name": "长按菜单操作专项：收藏-状态：已完成",
             "params": [
               "私聊模式-文本消息",
               "私聊模式-Emoji消息",
@@ -383,7 +383,7 @@
           },
           {
             "name": "test_long_press_action_forward",
-            "display_name": "长按菜单操作专项：转发",
+            "display_name": "长按菜单操作专项：转发-状态：已完成",
             "params": [
               "私聊模式-消息类型-text",
               "私聊模式-消息类型-emoji",
@@ -406,7 +406,7 @@
           },
           {
             "name": "test_long_press_action_multi_select",
-            "display_name": "长按菜单操作专项：多选",
+            "display_name": "长按菜单操作专项：多选-状态：已完成",
             "params": [
               "私聊模式-逐条转发-0-跟随列表长度-全量消息类型",
               "私聊模式-逐条转发-0-上限100与超限101-全量消息类型",
@@ -421,16 +421,18 @@
           },
           {
             "name": "test_long_press_action_add_emoji",
-            "display_name": "长按菜单操作专项：添加表情",
+            "display_name": "长按菜单操作专项：添加表情-状态：已完成",
             "params": [
               "私聊模式-表情包消息",
-              "群聊模式-表情包消息"
+              "私聊模式-图片消息",
+              "群聊模式-表情包消息",
+              "群聊模式-图片消息"
             ],
             "priority": "P2"
           },
           {
             "name": "test_long_press_action_recall",
-            "display_name": "长按菜单操作专项：撤回",
+            "display_name": "长按菜单操作专项：撤回-状态：已完成",
             "params": [
               "私聊模式-消息类型-text",
               "私聊模式-消息类型-emoji",
@@ -455,7 +457,7 @@
           },
           {
             "name": "test_long_press_action_delete",
-            "display_name": "长按菜单操作专项：删除",
+            "display_name": "长按菜单操作专项：删除-状态：已完成",
             "params": [
               "私聊模式-全量消息类型",
               "群聊模式-全量消息类型"

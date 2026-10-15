@@ -91,6 +91,7 @@ class TestChatLongPress:
     @pytest.mark.p1
     @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('长按菜单操作专项：复制')
+    @allure.title('长按菜单操作专项：复制-状态：已完成')
     @pytest.mark.parametrize(
         'msg_type', [
             pytest.param('text', id='文本消息'),
@@ -123,6 +124,7 @@ class TestChatLongPress:
     @pytest.mark.p1
     @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('长按菜单操作专项：收藏')
+    @allure.title('长按菜单操作专项：收藏-状态：已完成')
     @pytest.mark.parametrize(
         'msg_type', [
             pytest.param('text', id='文本消息'),
@@ -176,6 +178,7 @@ class TestChatLongPress:
     @pytest.mark.p1
     @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('长按菜单操作专项：转发')
+    @allure.title('长按菜单操作专项：转发-状态：已完成')
     @pytest.mark.parametrize(
         'msg_type', [
             pytest.param(t, id=f'消息类型-{t}')
@@ -222,6 +225,7 @@ class TestChatLongPress:
     @pytest.mark.p2
     @allure.severity(allure.severity_level.NORMAL)
     @allure.story('长按菜单操作专项：多选')
+    @allure.title('长按菜单操作专项：多选-状态：已完成')
     @pytest.mark.parametrize(
         'msg_list', [
             pytest.param(['text', 'emoji', 'image', 'voice', 'video', 'position', 'card', 'file', 'package'], 
@@ -327,9 +331,11 @@ class TestChatLongPress:
     @pytest.mark.p2
     @allure.severity(allure.severity_level.NORMAL)
     @allure.story('长按菜单操作专项：添加表情')
+    @allure.title('长按菜单操作专项：添加表情-状态：已完成')
     @pytest.mark.parametrize(
         'msg_type', [
-            pytest.param('package', id='表情包消息')
+            pytest.param('package', id='表情包消息'),
+            pytest.param('image', id='图片消息')
         ])
     @pytest.mark.parametrize(
         'strategy', [
@@ -337,27 +343,31 @@ class TestChatLongPress:
             pytest.param(GROUP_STRATEGY, id='群聊模式')
         ])
     def test_long_press_action_add_emoji(self, strategy, msg_type):
-        """添加表情专项测试：仅第三方表情包(Package)支持添加到自定义表情。"""
-        with allure.step(f'1. 进入聊天页面'):
+        """添加表情专项测试：验证第三方表情包(Package)与图片消息(Image)长按添加表情功能。"""
+        with allure.step('1. 进入聊天页面'):
             self.chatListPage.enter_chat(strategy.name)
-            self.chatPage.send_message(f'【{msg_type}】长按【添加表情】功能专项')
-        with allure.step('2. 前置准备：移除全部已添加的表情包'):
+
+        with allure.step('2. 前置准备：清理已添加表情包环境'):
             is_revoked = self.messageBuilder._prepare_collection_emoji_msg()
-            check.is_true(is_revoked, f'❌ 表情包移除失败')
-        with allure.step(f'3. 前置准备：进入聊天页面并发送一条【{msg_type}】消息'):
+            check.is_true(is_revoked, '❌ 清理已添加表情包失败')
+
+        with allure.step(f'3. 发送一条【{msg_type}】待测消息'):
             self._prepare_message(msg_type)
-        with allure.step(f'4. 执行长按并点击【添加表情】'):
+
+        with allure.step(f'4. 执行长按【{msg_type}】消息并点击【添加表情】'):
             self.longPressPage.long_press_last_message(msg_type=msg_type)
             is_ok = self.longPressPage._execute_and_verify_menu_item('添加表情')
-            check.is_true(is_ok, '❌ 长按点击【添加表情】失败')
-        with allure.step(f'5. 结果验证：验证添加表情效果'):
+            check.is_true(is_ok, f'❌ 长按点击【{msg_type}】的【添加表情】菜单失败')
+
+        with allure.step('5. 结果验证：验证添加表情效果'):
             has_pkg = self.messageBuilder._prepare_has_pkg_msg()
-            check.is_true(has_pkg, f'❌ 【{msg_type}】消息添加表情失败')
+            check.is_true(has_pkg, f'❌ 【{msg_type}】消息添加表情失败，自定义表情面板中未检索到新增项')
 
 
     @pytest.mark.p1
     @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('长按菜单操作专项：撤回')
+    @allure.title('长按菜单操作专项：撤回-状态：已完成')
     @pytest.mark.parametrize(
         'msg_type', [
             pytest.param(t, id=f'消息类型-{t}')
@@ -394,6 +404,7 @@ class TestChatLongPress:
     @pytest.mark.p1
     @allure.severity(allure.severity_level.CRITICAL)
     @allure.story('长按菜单操作专项：删除')
+    @allure.title('长按菜单操作专项：删除-状态：已完成')
     @pytest.mark.parametrize(
         'msg_list', [
             pytest.param(['text', 'emoji', 'image', 'voice', 'video', 'position', 'card', 'file', 'package'], id='全量消息类型')
@@ -404,6 +415,7 @@ class TestChatLongPress:
             pytest.param(GROUP_STRATEGY, id='群聊模式')
         ])
     def test_long_press_action_delete(self, strategy, msg_list):
+        allure.dynamic.title(f'【删除专项】 {strategy.desc} - 批量处理')
         with allure.step(f'1. 进入聊天页面'):
             self.chatListPage.enter_chat(strategy.name)
             self.chatPage.send_message(f'【{msg_list}】长按【删除】功能专项')
@@ -425,7 +437,12 @@ class TestChatLongPress:
         with allure.step(f'3. 集中火力：准备多条不同消息并预存数据'):
             for m_type in valid_msg_list:
                 try:
-                    self._prepare_message(m_type)
+                    is_ready = self._prepare_message(m_type, raise_skip=False)
+                    if not is_ready:
+                        logger.warning(f"{LogIcon.WARN} 消息【{m_type}】准备未成功，跳过发送该类型，继续发送后续消息")
+                        self.chatPage.back_to_chat_page()
+                        continue
+
                     pre_data[m_type] = self.messageBuilder.get_message_feature(m_type, expect_missing=False)
                     if m_type == 'file':
                         file_status = pre_data[m_type].get('文件状态', '')
@@ -433,14 +450,9 @@ class TestChatLongPress:
                             check.is_in('发送成功', file_status, f'❌ 文件消息发送失败')
                             continue
                     successfully_sent_types.append(m_type)
-                except Exception as e:
-                    logger.error(f"{LogIcon.FAIL} 发送 {m_type} 消息过程中崩溃: {e}")
-                    for _ in range(5):
-                        if self.chatPage.is_element_exist(ChatLocator.ADD_BUTTON, timeout=1):
-                            logger.info(f"{LogIcon.SUCCESS} 已成功从 {m_type} 失败状态恢复到聊天页面，继续执行下一类型")
-                            break
-                        logger.warning(f"{LogIcon.WARN} {m_type} 测试卡在其他页面，正在尝试按返回键恢复...")
-                        self.chatPage.back_to_chat_page()
+                except (Exception, pytest.skip.Exception) as e:
+                    logger.warning(f"{LogIcon.WARN} 发送【{m_type}】消息过程中发生异常: {e}，跳过发送该类型，继续发送后续消息")
+                    self.chatPage.back_to_chat_page()
 
         if not successfully_sent_types:
             pytest.fail('❌ 所有类型的消息发送均失败，无法进行后续验证！')
