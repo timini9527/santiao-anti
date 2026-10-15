@@ -82,6 +82,75 @@ ALLURE_LABEL = _rerun_cfg.get("allure_label", True)
 # Session 级重跑计数器
 _session_rerun_count = 0
 
+def _get_item_unified_title(item) -> str:
+    """提取用例优先级并统一构建与左侧用例树 100% 保持一致的规范用例标题"""
+    import re
+    priority = "P2"
+    for marker in item.iter_markers():
+        m_name = marker.name.lower()
+        if m_name in ("p0", "p1", "p2", "p3", "p4"):
+            priority = m_name.upper()
+            break
+    if priority == "P2":
+        for marker in item.iter_markers(name="allure_label"):
+            if marker.kwargs.get("label_type") == "severity":
+                sev = str(marker.args[0]).upper() if marker.args else ""
+                sev_map = {'BLOCKER': 'P0', 'CRITICAL': 'P1', 'NORMAL': 'P2', 'MINOR': 'P3', 'TRIVIAL': 'P4'}
+                for k, v in sev_map.items():
+                    if k in sev:
+                        priority = v
+                        break
+
+    if hasattr(item, "callspec") and item.callspec.id:
+        param_id = str(item.callspec.id)
+        return f"[{priority}] [{param_id}]"
+
+    base_title = ""
+    for marker in item.iter_markers(name="allure_title"):
+        if marker.args:
+            base_title = str(marker.args[0])
+            break
+    if not base_title and getattr(item, "function", None) and item.function.__doc__:
+        base_title = item.function.__doc__.strip().split("\n")[0].strip()
+    if not base_title:
+        base_title = item.name
+
+    base_title = re.sub(r"^\[P[0-4]\]\s*", "", base_title).strip()
+    return f"[{priority}] {base_title}"
+
+
+def _apply_allure_unified_title(item):
+    """
+    用例全生命周期核心保障：
+    统一确保当前用例在 Allure 报告中的标题与左侧用例树展示标题 100% 保持完全一致：
+    - 参数化子用例：[优先级] [参数项名] (例: [P2] [私聊模式-逐条转发-0-上限100与超限101-全量消息类型])
+    - 普通测试用例：[优先级] 用例显示名称 (例: [P0] 验证App启动状态与基础会话流转-状态：已完成)
+    直接注入 AllureListener 底层 test_result.name，免疫任何静态装饰器覆盖与执行阶段跳过。
+    """
+    try:
+        title = _get_item_unified_title(item)
+        allure.dynamic.title(title)
+        listener = item.config.pluginmanager.get_plugin("allure_listener")
+        if listener and hasattr(listener, "allure_logger"):
+            test_result = listener.allure_logger.get_test(None)
+            if test_result:
+                test_result.name = title
+    except Exception:
+        pass
+
+
+def pytest_runtest_setup(item):
+    """用例执行前统一同步 Allure 标题与左侧用例树保持一致"""
+    _apply_allure_unified_title(item)
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_call(item):
+    """用例执行后立即重新锁定标题，杜绝用例内部或装饰器篡改标题"""
+    yield
+    _apply_allure_unified_title(item)
+
+
 #TODO：失败自动重跑截图功能待验证
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_makereport(item, call):
@@ -92,6 +161,9 @@ def pytest_runtest_makereport(item, call):
     global _session_rerun_count
     outcome = yield
     report = outcome.get_result()
+
+    # 无论处于 setup / call / teardown 哪一阶段，均统一确保最终 Allure 报告标题与左侧用例树标题 100% 严格一致
+    _apply_allure_unified_title(item)
 
     # 只处理 "call" 阶段的结果（跳过 setup / teardown）
     if report.when != "call":

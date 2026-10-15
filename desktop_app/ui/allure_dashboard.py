@@ -15,12 +15,13 @@
    - 本次测试执行用例的动态明细滚动清单 (名称、状态图标、耗时)
 4. 动态测试套列表、动态缺陷类别卡片与真实运行环境卡片
 """
+from __future__ import annotations
 import os
 import re
 import glob
 import json
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
@@ -248,11 +249,16 @@ class AllureReportParser:
                         cd = json.load(f)
                     dur = cd.get("time", {}).get("duration", 0)
                     dur_str = f"{dur}ms" if dur < 1000 else f"{dur/1000.0:.1f}s"
+                    stop_ts = cd.get("time", {}).get("stop", 0)
+                    finish_time = datetime.fromtimestamp(stop_ts / 1000.0).strftime("%H:%M:%S") if stop_ts else ""
                     data["cases"].append({
                         "name": cd.get("name", "未命名用例"),
                         "fullName": cd.get("fullName", ""),
                         "status": cd.get("status", "unknown"),
                         "duration": dur_str,
+                        "finish_time": finish_time,
+                        "stop": stop_ts,
+                        "labels": cd.get("labels", []),
                         "parameters": cd.get("parameters", [])
                     })
                 except Exception:
@@ -320,12 +326,16 @@ class AllureReportParser:
 
                 dur = (sp - st) if (sp and st and sp >= st) else 0
                 dur_str = f"{dur}ms" if dur < 1000 else f"{dur/1000.0:.1f}s"
+                finish_time = datetime.fromtimestamp(sp / 1000.0).strftime("%H:%M:%S") if sp else ""
 
                 data["cases"].append({
                     "name": cd.get("name", "未命名用例"),
                     "fullName": cd.get("fullName", ""),
                     "status": status,
                     "duration": dur_str,
+                    "finish_time": finish_time,
+                    "stop": sp,
+                    "labels": cd.get("labels", []),
                     "parameters": cd.get("parameters", [])
                 })
             except Exception:
@@ -438,6 +448,107 @@ class AllureDonutWidget(QWidget):
         painter.setFont(font_pct)
         pct_text = f"{self.percent}%"
         painter.drawText(QRectF(cx - 45.0, cy - 18.0, 90.0, 36.0), Qt.AlignmentFlag.AlignCenter, pct_text)
+
+
+class TestCatalogIndex:
+    """用例元数据目录索引缓存，用于执行结果名称与左侧树1:1精准对齐"""
+    _loaded = False
+    _func_map: Dict[str, Dict[str, Any]] = {}
+
+    @classmethod
+    def get_info(cls, func_name: str, class_name: str = "") -> Optional[Dict[str, Any]]:
+        cls._ensure_loaded()
+        if class_name:
+            key = f"{class_name}::{func_name}"
+            if key in cls._func_map:
+                return cls._func_map[key]
+        return cls._func_map.get(func_name)
+
+    @classmethod
+    def _ensure_loaded(cls):
+        if cls._loaded:
+            return
+        cls._loaded = True
+        try:
+            from web_platform.backend.paths import PROJECT_ROOT
+            cat_file = os.path.join(PROJECT_ROOT, "tests", "tests_catalog.json")
+            if not os.path.exists(cat_file):
+                return
+            with open(cat_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            for file_obj in data:
+                for cls_obj in file_obj.get("classes", []):
+                    c_name = cls_obj.get("name", "")
+                    c_pri = cls_obj.get("priority", "P2")
+                    for t in cls_obj.get("tests", []):
+                        f_name = t.get("name", "")
+                        t_pri = t.get("priority", c_pri)
+                        info = {
+                            "display_name": t.get("display_name", f_name),
+                            "priority": t_pri,
+                            "params": t.get("params", [])
+                        }
+                        cls._func_map[f"{c_name}::{f_name}"] = info
+                        if f_name not in cls._func_map:
+                            cls._func_map[f_name] = info
+                for t in file_obj.get("tests", []):
+                    f_name = t.get("name", "")
+                    info = {
+                        "display_name": t.get("display_name", f_name),
+                        "priority": t.get("priority", "P2"),
+                        "params": t.get("params", [])
+                    }
+                    cls._func_map[f_name] = info
+        except Exception:
+            pass
+
+    @classmethod
+    def match_case_to_param(cls, func_name: str, class_name: str, case_dict: Dict[str, Any]) -> Tuple[Optional[str], str]:
+        """
+        1:1 标准精准映射：
+        将 Allure 测试用例直接与用例树中的参数化子项进行 1:1 对齐，杜绝任何画蛇添足的模糊猜测。
+        """
+        import re
+        cat_info = cls.get_info(func_name, class_name)
+        priority = "P2"
+        if not cat_info:
+            return None, priority
+
+        priority = cat_info.get("priority", "P2")
+        params_list = cat_info.get("params", [])
+        if not params_list:
+            return None, priority
+
+        raw_name = case_dict.get("name", "")
+
+        # 1. 直接命中规范标题或携带 [参数名] 的名称 (例如 [P2] [私聊模式-...] 或 test_xxx[私聊模式-...])
+        m = re.search(r"\[([^\]]+)\](?:\s*$)?", raw_name)
+        if m:
+            candidate = m.group(1).strip()
+            if candidate in params_list:
+                return candidate, priority
+
+        # 2. 检查名称是否直接完全包含参数项字面量
+        for p_item in params_list:
+            if p_item in raw_name:
+                return p_item, priority
+
+        # 3. 提取 case_dict 实际参数并拼接对比
+        case_params = case_dict.get("parameters", [])
+        if case_params:
+            param_vals = [str(p.get("value", "")).strip().strip("'\"") for p in case_params if p.get("value") is not None]
+            combined_vals = " ".join(param_vals)
+            for p_item in params_list:
+                # 若参数项的所有拆分子段都在实际入参中出现，则 1:1 命中
+                sub_parts = [sp.strip() for sp in p_item.split("-") if sp.strip()]
+                if sub_parts and all(sp in combined_vals or sp in raw_name for sp in sub_parts):
+                    return p_item, priority
+
+        # 4. 若参数列表只有 1 项，直接返回
+        if len(params_list) == 1:
+            return params_list[0], priority
+
+        return None, priority
 
 
 class AllureDashboardWidget(QFrame):
@@ -1031,47 +1142,93 @@ class AllureDashboardWidget(QFrame):
         # 3. 动态按新视角重绘当前用例明细列表
         self._render_cases_detail_list(self.current_data)
 
+
+
+    @staticmethod
+    def _format_case_time(c: Dict[str, Any]) -> str:
+        """格式化用例执行完成后的时间信息 (包含完成时刻与执行耗时)"""
+        finish_time = c.get("finish_time", "")
+        duration = c.get("duration", "")
+        if finish_time and duration:
+            return f"{finish_time} ({duration})"
+        elif finish_time:
+            return finish_time
+        elif duration:
+            return f"耗时 {duration}"
+        return ""
+
     @staticmethod
     def _format_case_full_title(c: Dict[str, Any]) -> str:
         """
-        智能格式化执行用例名称：
-        若包含参数或子用例标识 (sub_name 或 parameters)，自动拼接参数化后缀，
-        与左侧用例树的子用例/孙子用例严格 1:1 保持一致，彻底告别千篇一律的通用函数名。
+        格式化执行用例标题，确保与左侧用例树 100% 保持完全一致：
+        - 参数化子项：[优先级] [参数名称]，例如 [P2] [私聊模式-合并转发-1-选100个边界-全量消息类型]
+        - 普通用例项：[优先级] 用例显示名称，例如 [P0] 【名片发送】发送好友名片-状态：已完成
         """
         raw_name = c.get("name", "未命名用例")
-        sub_name = c.get("sub_name")
-        if sub_name:
-            sub_tag = sub_name if sub_name.startswith("[") else f"[{sub_name}]"
-            if sub_tag not in raw_name:
-                return f"{raw_name} {sub_tag}"
+
+        # 1. 如果标题已经具备规范的 [P0]/[P1]/[P2]/[P3]/[P4] 前缀，直接使用
+        if re.match(r"^\[P[0-4]\]\s+", raw_name):
             return raw_name
 
-        parameters = c.get("parameters", [])
-        if parameters:
-            parts = []
-            for p in parameters:
-                val = str(p.get("value", ""))
-                # 1. 优先提取 desc='xxx' (如 ChatSessionStrategy(desc='私聊模式', ...))
-                m_desc = re.search(r"desc=['\"]([^'\"]+)['\"]", val)
-                if m_desc:
-                    parts.append(m_desc.group(1))
-                    continue
-                # 2. 优先提取 title='xxx' 或 'title': 'xxx'
-                m_title = re.search(r"['\"]title['\"]\s*:\s*['\"]([^'\"]+)['\"]", val)
-                if m_title:
-                    parts.append(m_title.group(1))
-                    continue
-                # 3. 基础字符串清理
-                clean_v = val.strip("'\"")
-                if len(clean_v) > 30 and ("(" in clean_v or "{" in clean_v):
-                    continue
-                if clean_v and clean_v != "None":
-                    parts.append(clean_v)
+        # 2. 提取优先级标签 (优先读取 labels 中的 tag/severity)
+        priority = "P2"
+        labels = c.get("labels", [])
+        for lbl in labels:
+            ln = lbl.get("name")
+            lv = str(lbl.get("value", "")).lower()
+            if ln == "tag" and lv in ("p0", "p1", "p2", "p3", "p4"):
+                priority = lv.upper()
+                break
+        if priority == "P2":
+            for lbl in labels:
+                if lbl.get("name") == "severity":
+                    sev = str(lbl.get("value", "")).upper()
+                    sev_map = {'BLOCKER': 'P0', 'CRITICAL': 'P1', 'NORMAL': 'P2', 'MINOR': 'P3', 'TRIVIAL': 'P4'}
+                    for k, v in sev_map.items():
+                        if k in sev:
+                            priority = v
+                            break
+
+        # 3. 提取 fullName 中的类名与函数名
+        full_name = c.get("fullName", "")
+        func_name = ""
+        class_name = ""
+        if "#" in full_name:
+            left_part, func_name = full_name.split("#", 1)
+            parts = left_part.split(".")
             if parts:
-                sub_tag = f"[{'-'.join(parts)}]"
-                if sub_tag not in raw_name:
-                    return f"{raw_name} {sub_tag}"
-        return raw_name
+                class_name = parts[-1]
+        elif "::" in full_name:
+            parts = full_name.split("::")
+            func_name = parts[-1]
+            if len(parts) >= 2 and parts[-2].startswith("Test"):
+                class_name = parts[-2]
+
+        # 4. 如果 raw_name 中自带 [xxx] 参数项后缀，如 test_xxx[私聊模式-合并转发-1-选100个边界-全量消息类型]
+        m_param_in_raw = re.search(r"\[([^\]]+)\]$", raw_name)
+        if m_param_in_raw:
+            param_part = m_param_in_raw.group(1).strip()
+            return f"[{priority}] [{param_part}]"
+
+        # 5. 查询测试用例元数据索引库进行 1:1 高精度正交特征与互斥消解匹配
+        matched_param, p_from_cat = TestCatalogIndex.match_case_to_param(func_name, class_name, c)
+        if p_from_cat:
+            priority = p_from_cat
+        if matched_param:
+            return f"[{priority}] [{matched_param}]"
+
+        cat_info = TestCatalogIndex.get_info(func_name, class_name)
+        if cat_info:
+            priority = cat_info.get("priority", priority)
+            disp_name = cat_info.get("display_name", "")
+            if disp_name:
+                disp_name = re.sub(r"^\[P[0-4]\]\s*", "", disp_name).strip()
+                return f"[{priority}] {disp_name}"
+
+        # 6. 安全兜底格式化
+        clean_name = re.sub(r"^\[P[0-4]\]\s*", "", raw_name).strip()
+        clean_name = re.sub(r"\s*\[[\d\w,\s\'-_]+\]$", "", clean_name).strip()
+        return f"[{priority}] {clean_name}"
 
     def _render_cases_detail_list(self, data: Optional[Dict[str, Any]] = None):
         """根据当前激活视角 (业务精简视角 / 开发完整视角) 动态精细化渲染用例明细清单"""
@@ -1121,6 +1278,13 @@ class AllureDashboardWidget(QFrame):
                     row.addWidget(lbl_c_name)
                     row.addStretch()
 
+                    # 渲染用例执行完成后的时间
+                    time_str = self._format_case_time(c)
+                    if time_str:
+                        lbl_c_time = QLabel(time_str)
+                        lbl_c_time.setStyleSheet("color: #94a3b8; font-size: 11px; font-weight: 500; margin-right: 4px;")
+                        row.addWidget(lbl_c_time)
+
                     lbl_tag = QLabel("需修复" if st == "failed" else "异常中断")
                     lbl_tag.setStyleSheet("background: #fee2e2; color: #b91c1c; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 3px;")
                     row.addWidget(lbl_tag)
@@ -1142,6 +1306,14 @@ class AllureDashboardWidget(QFrame):
                         lbl_c_name.setStyleSheet("color: #334155; font-size: 11px;")
                         row.addWidget(lbl_c_name)
                         row.addStretch()
+
+                        # 渲染用例执行完成后的时间
+                        time_str = self._format_case_time(c)
+                        if time_str:
+                            lbl_c_time = QLabel(time_str)
+                            lbl_c_time.setStyleSheet("color: #64748b; font-size: 11px; font-weight: 500; margin-right: 4px;")
+                            row.addWidget(lbl_c_time)
+
                         lbl_st = QLabel("通过")
                         lbl_st.setStyleSheet("color: #059669; font-size: 10px; font-weight: 600;")
                         row.addWidget(lbl_st)
@@ -1169,6 +1341,14 @@ class AllureDashboardWidget(QFrame):
                     lbl_c_name.setStyleSheet("color: #0f172a; font-size: 11px;")
                     row.addWidget(lbl_c_name)
                     row.addStretch()
+
+                    # 渲染用例执行完成后的时间
+                    time_str = self._format_case_time(c)
+                    if time_str:
+                        lbl_c_time = QLabel(time_str)
+                        lbl_c_time.setStyleSheet("color: #64748b; font-size: 11px; font-weight: 500; margin-right: 4px;")
+                        row.addWidget(lbl_c_time)
+
                     lbl_st = QLabel("已验证" if status == "passed" else "跳过")
                     st_col = "#059669" if status == "passed" else "#94a3b8"
                     lbl_st.setStyleSheet(f"color: {st_col}; font-size: 10px; font-weight: 600;")
@@ -1206,9 +1386,16 @@ class AllureDashboardWidget(QFrame):
                 row.addWidget(lbl_c_name)
                 row.addStretch()
 
-                lbl_c_dur = QLabel(f"{c.get('duration', '')}")
-                lbl_c_dur.setStyleSheet(f"color: {st_color}; font-size: 10px; font-weight: 700;")
-                row.addWidget(lbl_c_dur)
+                # 渲染用例执行完成后的时间 (优先展示 完成时刻 + 耗时)
+                time_str = self._format_case_time(c)
+                if time_str:
+                    lbl_c_time = QLabel(time_str)
+                    lbl_c_time.setStyleSheet(f"color: {st_color}; font-size: 10px; font-weight: 700;")
+                    row.addWidget(lbl_c_time)
+                else:
+                    lbl_c_dur = QLabel(f"{c.get('duration', '')}")
+                    lbl_c_dur.setStyleSheet(f"color: {st_color}; font-size: 10px; font-weight: 700;")
+                    row.addWidget(lbl_c_dur)
 
                 container = QWidget()
                 container.setLayout(row)

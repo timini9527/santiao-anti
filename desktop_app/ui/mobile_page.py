@@ -27,10 +27,10 @@ from PyQt6.QtWidgets import (
     QLineEdit, QComboBox, QCheckBox, QPushButton, QRadioButton,
     QButtonGroup, QTreeWidget, QTreeWidgetItem, QSplitter,
     QPlainTextEdit, QMessageBox, QFrame, QScrollArea, QApplication,
-    QHeaderView, QSizePolicy, QDialog, QTextBrowser, QProgressBar
+    QHeaderView, QSizePolicy, QDialog, QTextBrowser, QProgressBar, QTextEdit
 )
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QTextCursor, QFont
+from PyQt6.QtCore import Qt, QTimer, QEvent
+from PyQt6.QtGui import QTextCursor, QFont, QTextDocument, QTextCharFormat, QColor, QKeySequence, QShortcut
 
 # 工业级运行时环境自愈：自适应注入项目根路径，同时完美兼容主程序模块化导入与独立脚本运行调试
 _CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -283,6 +283,9 @@ class MobilePage(QWidget):
         self._last_log_height = 240
         self._auto_scroll = True
         self.web_receipt_fields: List[Dict[str, str]] = []
+        self._log_search_matches: List[QTextCursor] = []
+        self._log_search_index: int = -1
+        self._search_timer_pending: bool = False
 
         self._is_loading_config = True
         self.init_ui()
@@ -1049,6 +1052,87 @@ class MobilePage(QWidget):
 
         header_row.addStretch()
 
+        # 日志检索胶囊工具框 (搜索输入、匹配统计、上/下导航键)
+        search_box = QFrame()
+        search_box.setStyleSheet("""
+            QFrame {
+                background: #ffffff;
+                border: 1px solid #cbd5e1;
+                border-radius: 4px;
+            }
+            QFrame:hover {
+                border-color: #3b82f6;
+            }
+        """)
+        s_layout = QHBoxLayout(search_box)
+        s_layout.setContentsMargins(4, 1, 4, 1)
+        s_layout.setSpacing(3)
+
+        self.edit_log_search = QLineEdit()
+        self.edit_log_search.setPlaceholderText("🔍 搜索日志...")
+        self.edit_log_search.setFixedWidth(120)
+        self.edit_log_search.setStyleSheet("""
+            QLineEdit {
+                border: none;
+                background: transparent;
+                font-size: 11px;
+                color: #0f172a;
+                padding: 1px 2px;
+            }
+        """)
+        self.edit_log_search.textChanged.connect(self._on_log_search_changed)
+        self.edit_log_search.returnPressed.connect(self._search_log_next)
+        s_layout.addWidget(self.edit_log_search)
+
+        self.lbl_log_search_count = QLabel("0/0")
+        self.lbl_log_search_count.setStyleSheet("color: #64748b; font-size: 10px; font-weight: 600; min-width: 28px; border: none; background: transparent;")
+        self.lbl_log_search_count.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        s_layout.addWidget(self.lbl_log_search_count)
+
+        btn_search_prev = QPushButton("▲")
+        btn_search_prev.setToolTip("定位到上一个匹配项 (Shift+Enter)")
+        btn_search_prev.setFixedSize(18, 18)
+        btn_search_prev.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_search_prev.setStyleSheet("""
+            QPushButton {
+                border: none;
+                background: transparent;
+                color: #475569;
+                font-size: 9px;
+                font-weight: bold;
+                border-radius: 2px;
+            }
+            QPushButton:hover {
+                background: #e2e8f0;
+                color: #0f172a;
+            }
+        """)
+        btn_search_prev.clicked.connect(self._search_log_prev)
+        s_layout.addWidget(btn_search_prev)
+
+        btn_search_next = QPushButton("▼")
+        btn_search_next.setToolTip("定位到下一个匹配项 (Enter)")
+        btn_search_next.setFixedSize(18, 18)
+        btn_search_next.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_search_next.setStyleSheet("""
+            QPushButton {
+                border: none;
+                background: transparent;
+                color: #475569;
+                font-size: 9px;
+                font-weight: bold;
+                border-radius: 2px;
+            }
+            QPushButton:hover {
+                background: #e2e8f0;
+                color: #0f172a;
+            }
+        """)
+        btn_search_next.clicked.connect(self._search_log_next)
+        s_layout.addWidget(btn_search_next)
+
+        header_row.addWidget(search_box)
+
         # 自动滚屏胶囊按钮
         self.btn_toggle_autoscroll = QPushButton("🟢 自动滚屏")
         self.btn_toggle_autoscroll.setProperty("class", "btn-mini")
@@ -1518,8 +1602,12 @@ class MobilePage(QWidget):
         """
         if status == "passed":
             ball = "🟢"
-        elif status in ("failed", "broken", "error"):
+        elif status == "failed":
             ball = "🔴"
+        elif status in ("broken", "error"):
+            ball = "🟠"
+        elif status in ("skipped", "ignored", "canceled"):
+            ball = "⚪"
         else:
             ball = "⚪"
 
@@ -1550,13 +1638,13 @@ class MobilePage(QWidget):
         priority = test.get("priority", "P2")
         params = test.get("params", [])
 
-        # 状态匹配：默认空心球 ⚪ ⚙️，通过 🟢 ⚙️，失败/异常 🔴 ⚙️
+        # 状态匹配：默认空心球 ⚪ ⚙️，通过 🟢 ⚙️，失败 🔴 ⚙️，异常 🟠 ⚙️，跳过 ⚪ ⚙️
         status = self.node_status_map.get(node_id, "")
 
         test_item = QTreeWidgetItem(parent)
         test_item.setText(0, self._format_test_node_text(status, test_display, priority=priority))
         p_desc = self._get_priority_desc(priority)
-        status_desc = "通过" if status == "passed" else ("失败" if status in ("failed", "broken", "error") else "未执行")
+        status_desc = "通过" if status == "passed" else ("失败" if status == "failed" else ("异常" if status in ("broken", "error") else ("跳过" if status in ("skipped", "ignored", "canceled") else "未执行")))
         test_item.setToolTip(0, f"用例: {test_display}\n节点: {node_id}\n优先级: {p_desc}\n状态: {status_desc}")
         test_item.setData(0, Qt.ItemDataRole.UserRole, {
             "type": "test",
@@ -1579,7 +1667,7 @@ class MobilePage(QWidget):
                 sub_item = QTreeWidgetItem(test_item)
                 sub_node = f"{node_id}[{p}]"
                 sub_status = self.node_status_map.get(sub_node, "")
-                sub_status_desc = "通过" if sub_status == "passed" else ("失败" if sub_status in ("failed", "broken", "error") else "未执行")
+                sub_status_desc = "通过" if sub_status == "passed" else ("失败" if sub_status == "failed" else ("异常" if sub_status in ("broken", "error") else ("跳过" if sub_status in ("skipped", "ignored", "canceled") else "未执行")))
 
                 sub_item.setText(0, self._format_node_display_text(sub_status, "param", str(p), priority=priority))
                 sub_item.setToolTip(0, f"参数项: {p}\n父用例: {test_display}\n节点: {sub_node}\n优先级: {p_desc}\n状态: {sub_status_desc}")
@@ -2122,7 +2210,7 @@ class MobilePage(QWidget):
         """
         工业级多维精准对齐算法：
         将测试用例树节点 (target / node_name) 与 Allure 报告中的真实执行用例进行多维特征映射，
-        精准提取其独立运行状态 (passed / failed / broken 等)，杜绝参数化子用例相互覆盖与污染。
+        精准提取其独立运行状态 (passed / failed / broken / skipped)，杜绝参数化子用例相互覆盖与污染。
         """
         if not cases:
             return ""
@@ -2134,6 +2222,10 @@ class MobilePage(QWidget):
         # 2. 提取 target 的函数名与核心标识
         raw_target = target.split("[")[0].strip()
         func_name = raw_target.split("::")[-1].strip()
+        class_name = ""
+        parts = raw_target.split("::")
+        if len(parts) >= 2 and parts[-2].startswith("Test"):
+            class_name = parts[-2]
 
         # 3. 候选 cases 过滤：必须归属于同一个测试函数
         candidates = []
@@ -2166,6 +2258,17 @@ class MobilePage(QWidget):
             param_str = node_name.strip()
 
         if param_str:
+            # 优先使用 TestCatalogIndex 进行高精度正交特征推断与互斥消解匹配
+            try:
+                from desktop_app.ui.allure_dashboard import TestCatalogIndex
+                for c in candidates:
+                    matched_p, _ = TestCatalogIndex.match_case_to_param(func_name, class_name, c)
+                    if matched_p and (matched_p == param_str or matched_p == node_name):
+                        return c.get("status", "")
+            except Exception:
+                pass
+
+            # 兜底：特征加权评分匹配
             tokens = [t.strip().lower() for t in re.split(r"[-_,/ \[\]]+", param_str) if t.strip()]
             best_case = None
             best_score = -999.0
@@ -2218,11 +2321,60 @@ class MobilePage(QWidget):
     ):
         """
         遍历整棵用例树，将 Allure 报告中的真实执行结果多维精准对齐并同步到树节点的 node_status_map 中：
-        :param cases: Allure 测试报告中的用例列表
-        :param scope_checker: 可选的作用域判断函数，传入 target 返回 bool；若为 None 则全量对齐
+        支持高精度双向映射缓存，确保 failed / broken / passed / skipped 状态 100% 精准无遗漏同步。
         """
         if not cases:
             return
+
+        # 1. 建立基于 Allure 实际执行结果的 1:1 展示标题与状态映射字典
+        title_to_status: Dict[str, str] = {}
+        allure_matched_cache: Dict[str, str] = {}
+        try:
+            from desktop_app.ui.allure_dashboard import TestCatalogIndex
+            for c in cases:
+                st = c.get("status", "")
+                c_title = ""
+                if hasattr(self, 'allure_dashboard') and self.allure_dashboard:
+                    c_title = self.allure_dashboard._format_case_full_title(c)
+                if not c_title:
+                    c_title = c.get("name", "")
+                raw_n = c.get("name", "")
+                if raw_n:
+                    title_to_status[raw_n] = st
+                    m_b = re.search(r"\[([^\]]+)\](?:\s*$)?", raw_n)
+                    if m_b:
+                        title_to_status[m_b.group(1).strip()] = st
+                if c_title:
+                    title_to_status[c_title] = st
+                    # 同时保留无优先级前缀版本，保证双向百分百兼容
+                    c_clean = re.sub(r"^\[P[0-4]\]\s*", "", c_title).strip()
+                    title_to_status[c_clean] = st
+                    m_b2 = re.search(r"\[([^\]]+)\](?:\s*$)?", c_clean)
+                    if m_b2:
+                        title_to_status[m_b2.group(1).strip()] = st
+
+                fn = c.get("fullName", "")
+                func_name = ""
+                class_name = ""
+                if "#" in fn:
+                    left, func_name = fn.split("#", 1)
+                    class_name = left.split(".")[-1]
+                elif "::" in fn:
+                    p = fn.split("::")
+                    func_name = p[-1]
+                    if len(p) >= 2:
+                        class_name = p[-2]
+                func_name = func_name.split("[")[0].strip()
+
+                matched_p, _ = TestCatalogIndex.match_case_to_param(func_name, class_name, c)
+                if matched_p:
+                    allure_matched_cache[f"{func_name}::[{matched_p}]"] = st
+                    allure_matched_cache[f"{class_name}::{func_name}::[{matched_p}]"] = st
+                else:
+                    allure_matched_cache[func_name] = st
+                    allure_matched_cache[f"{class_name}::{func_name}"] = st
+        except Exception:
+            pass
 
         def sync_item(item: QTreeWidgetItem):
             data = item.data(0, Qt.ItemDataRole.UserRole)
@@ -2230,12 +2382,44 @@ class MobilePage(QWidget):
                 target = data.get("target", "")
                 node_type = data.get("type", "")
                 node_name = data.get("name", "")
+                priority = data.get("priority", "P2")
                 has_children = item.childCount() > 0
 
                 if scope_checker is None or scope_checker(target):
-                    matched = self._match_single_case_status(
-                        target, node_type, node_name, cases, has_children=has_children
-                    )
+                    matched = ""
+                    # 规则 1：核心优先依据——每一个测试用例展示的标题是什么，就按一模一样的标题直接同步状态
+                    node_title = f"[{priority}] [{node_name}]" if node_type == "param" else f"[{priority}] {node_name}"
+                    if node_title in title_to_status:
+                        matched = title_to_status[node_title]
+                    elif f"[{node_name}]" in title_to_status:
+                        matched = title_to_status[f"[{node_name}]"]
+                    elif node_name in title_to_status:
+                        matched = title_to_status[node_name]
+
+                    # 规则 2：若标题未直接命中，通过函数名与参数标识反向缓存精准对齐
+                    if not matched:
+                        raw_target = target.split("[")[0].strip()
+                        f_name = raw_target.split("::")[-1].strip()
+                        c_name = ""
+                        parts = raw_target.split("::")
+                        if len(parts) >= 2 and parts[-2].startswith("Test"):
+                            c_name = parts[-2]
+
+                        if node_type == "param":
+                            k1 = f"{f_name}::[{node_name}]"
+                            k2 = f"{c_name}::{f_name}::[{node_name}]"
+                            matched = allure_matched_cache.get(k2) or allure_matched_cache.get(k1, "")
+                        elif node_type == "test" and not has_children:
+                            k1 = f_name
+                            k2 = f"{c_name}::{f_name}"
+                            matched = allure_matched_cache.get(k2) or allure_matched_cache.get(k1, "")
+
+                    # 规则 3：若仍未命中，调用通用匹配算法兜底
+                    if not matched:
+                        matched = self._match_single_case_status(
+                            target, node_type, node_name, cases, has_children=has_children
+                        )
+
                     if matched:
                         self.node_status_map[target] = matched
 
@@ -2384,11 +2568,20 @@ class MobilePage(QWidget):
                 if run_type == "single_param" and locked_parent and target == locked_parent:
                     curr_status = self.node_status_map.get(target, "")
                 elif child_statuses:
-                    # 规则 2 & 规则 3：只要里面有一个测试用例不通过，就不会是绿色 (failed)
-                    if any(s in ("failed", "broken", "error") for s in child_statuses):
+                    # 规则 1：只要包含任一失败 -> 聚合为失败 🔴
+                    if any(s == "failed" for s in child_statuses):
                         curr_status = "failed"
-                    # 规则 2 & 规则 3：只有全部用例通过才能显示绿色 (所有子项已执行且全部为 passed)
+                    # 规则 2：无失败但包含任一异常中断 -> 聚合为异常 🟠
+                    elif any(s in ("broken", "error") for s in child_statuses):
+                        curr_status = "broken"
+                    # 规则 3：全部子项已执行且全部通过 -> 聚合为通过 🟢
                     elif len(child_statuses) == item.childCount() and all(s == "passed" for s in child_statuses):
+                        curr_status = "passed"
+                    # 规则 4：全部子项已执行且全部跳过 -> 聚合为跳过 ⚪
+                    elif len(child_statuses) == item.childCount() and all(s in ("skipped", "ignored", "canceled") for s in child_statuses):
+                        curr_status = "skipped"
+                    # 规则 5：包含通过且其余全部为跳过 -> 聚合为通过 🟢
+                    elif child_statuses and all(s in ("passed", "skipped", "ignored", "canceled") for s in child_statuses) and any(s == "passed" for s in child_statuses):
                         curr_status = "passed"
                     else:
                         curr_status = ""
@@ -2403,10 +2596,10 @@ class MobilePage(QWidget):
             if node_type == "category":
                 item.setToolTip(0, f"一级测试目录: {target}\n包含 {count} 个测试用例")
             elif node_type == "file":
-                status_desc = "通过" if curr_status == "passed" else ("失败" if curr_status in ("failed", "broken", "error") else "未执行")
+                status_desc = "通过" if curr_status == "passed" else ("失败" if curr_status == "failed" else ("异常" if curr_status in ("broken", "error") else ("跳过" if curr_status in ("skipped", "ignored", "canceled") else "未执行")))
                 item.setToolTip(0, f"二级测试文件: {target}\n名称: {name}\n包含 {count} 个测试用例\n状态: {status_desc}")
             else:
-                status_desc = "通过" if curr_status == "passed" else ("失败" if curr_status in ("failed", "broken", "error") else "未执行")
+                status_desc = "通过" if curr_status == "passed" else ("失败" if curr_status == "failed" else ("异常" if curr_status in ("broken", "error") else ("跳过" if curr_status in ("skipped", "ignored", "canceled") else "未执行")))
                 p_desc_str = f"\n优先级: {self._get_priority_desc(priority)}" if priority else ""
                 item.setToolTip(0, f"类型: {node_type}\n名称: {name}\n节点: {target}{p_desc_str}\n状态: {status_desc}")
 
@@ -2490,9 +2683,117 @@ class MobilePage(QWidget):
         self.console.appendPlainText(cleaned)
         if getattr(self, "_auto_scroll", True):
             self._scroll_to_bottom()
+        # 若当前搜索框有内容，延迟重新搜一次以更新计数
+        if hasattr(self, "edit_log_search") and self.edit_log_search.text().strip():
+            if not getattr(self, "_search_timer_pending", False):
+                self._search_timer_pending = True
+                QTimer.singleShot(300, self._re_evaluate_log_search)
+
+    def _re_evaluate_log_search(self):
+        self._search_timer_pending = False
+        if hasattr(self, "edit_log_search"):
+            txt = self.edit_log_search.text().strip()
+            if txt:
+                self._on_log_search_changed(txt)
 
     def clear_console(self):
         self.console.clear()
+        self._log_search_matches = []
+        self._log_search_index = -1
+        if hasattr(self, "lbl_log_search_count"):
+            self.lbl_log_search_count.setText("0/0")
+        if hasattr(self, "console"):
+            self.console.setExtraSelections([])
+
+    def _on_log_search_changed(self, text: str):
+        """搜索日志内容变化响应槽"""
+        text = text.strip()
+        self._log_search_matches = []
+        self._log_search_index = -1
+
+        if not text:
+            if hasattr(self, "lbl_log_search_count"):
+                self.lbl_log_search_count.setText("0/0")
+            if hasattr(self, "console"):
+                self.console.setExtraSelections([])
+            return
+
+        doc = self.console.document()
+        cursor = QTextCursor(doc)
+        matches = []
+        while True:
+            cursor = doc.find(text, cursor)
+            if cursor.isNull():
+                break
+            matches.append(QTextCursor(cursor))
+
+        self._log_search_matches = matches
+        if matches:
+            self._log_search_index = 0
+            self._apply_log_search_selection()
+        else:
+            if hasattr(self, "lbl_log_search_count"):
+                self.lbl_log_search_count.setText("0/0")
+            if hasattr(self, "console"):
+                self.console.setExtraSelections([])
+
+    def _apply_log_search_selection(self):
+        """高亮并定位当前搜索项到日志视窗"""
+        total = len(self._log_search_matches)
+        if total == 0 or self._log_search_index < 0:
+            if hasattr(self, "lbl_log_search_count"):
+                self.lbl_log_search_count.setText("0/0")
+            if hasattr(self, "console"):
+                self.console.setExtraSelections([])
+            return
+
+        idx = self._log_search_index
+        if hasattr(self, "lbl_log_search_count"):
+            self.lbl_log_search_count.setText(f"{idx + 1}/{total}")
+
+        # 所有匹配项浅色高亮
+        fmt_all = QTextCharFormat()
+        fmt_all.setBackground(QColor("#fef08a"))
+        fmt_all.setForeground(QColor("#0f172a"))
+
+        # 当前匹配项亮橙色醒目高亮
+        fmt_curr = QTextCharFormat()
+        fmt_curr.setBackground(QColor("#f59e0b"))
+        fmt_curr.setForeground(QColor("#ffffff"))
+        fmt_curr.setFontWeight(QFont.Weight.Bold)
+
+        selections = []
+        for i, cur in enumerate(self._log_search_matches):
+            sel = QTextEdit.ExtraSelection()
+            sel.cursor = cur
+            sel.format = fmt_curr if i == idx else fmt_all
+            selections.append(sel)
+
+        self.console.setExtraSelections(selections)
+
+        curr_cursor = self._log_search_matches[idx]
+        self.console.setTextCursor(curr_cursor)
+        self.console.ensureCursorVisible()
+
+    def _search_log_next(self):
+        """定位下一个匹配项"""
+        if not getattr(self, "_log_search_matches", None):
+            txt = self.edit_log_search.text().strip() if hasattr(self, "edit_log_search") else ""
+            if txt:
+                self._on_log_search_changed(txt)
+            return
+        self._log_search_index = (self._log_search_index + 1) % len(self._log_search_matches)
+        self._apply_log_search_selection()
+
+    def _search_log_prev(self):
+        """定位上一个匹配项"""
+        if not getattr(self, "_log_search_matches", None):
+            txt = self.edit_log_search.text().strip() if hasattr(self, "edit_log_search") else ""
+            if txt:
+                self._on_log_search_changed(txt)
+            return
+        self._log_search_index = (self._log_search_index - 1 + len(self._log_search_matches)) % len(self._log_search_matches)
+        self._apply_log_search_selection()
 
     def _copy_logs(self):
         text = self.console.toPlainText()

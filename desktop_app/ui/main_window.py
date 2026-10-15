@@ -588,4 +588,15 @@ class MainWindow(QMainWindow):
             self.page_mobile.save_layout_state()
 
         desktop_config.save()
+
+        # 主窗口关闭时，确保彻底清理所有残留顶层窗口 (如未退出的启动闪屏、浮动模态等)
+        from PyQt6.QtWidgets import QApplication
+        for widget in QApplication.topLevelWidgets():
+            if widget is not self:
+                try:
+                    widget.close()
+                    widget.deleteLater()
+                except Exception:
+                    pass
+
         super().closeEvent(event)

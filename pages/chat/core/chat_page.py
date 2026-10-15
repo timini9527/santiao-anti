@@ -386,10 +386,10 @@ class ChatPage(BasePage):
     # 三、消息发送与状态监控相关 (Message Sending & Status Monitoring)
     # ==============================================================================
     # 聊天列表-点击“导航到底部新消息”指示器按钮
-    def click_new_message_indicator(self) -> None:
+    def click_new_message_indicator(self, timeout: int = 2) -> None:
         """点击‘导航到底部新消息’指示器按钮，滚动到底部新消息处"""
         logger.info(f"{LogIcon.ACTION} 准备点击‘导航到底部新消息’指示器按钮")
-        if not self.is_element_exist(ChatLocator.NEW_MESSAGE_INDICATOR, timeout=1, expect_missing=True):
+        if not self.is_element_exist(ChatLocator.NEW_MESSAGE_INDICATOR, timeout=timeout, expect_missing=True):
             logger.info(f"{LogIcon.ACTION} 未检测到底部新消息指示器，无需点击")
             return
         self.click(ChatLocator.NEW_MESSAGE_INDICATOR)
@@ -1652,7 +1652,7 @@ class ChatPage(BasePage):
                 return current_selected
 
             logger.warning(f"{LogIcon.WARN} 当前屏幕消息不足或已全部勾选，尝试向下滑动加载更多...")
-            self.swipe_page(slid_type="down", duration=600)
+            self.swipe_page(slid_type="down", duration=500)
             swipes += 1
 
         final_count = self.get_select_num()

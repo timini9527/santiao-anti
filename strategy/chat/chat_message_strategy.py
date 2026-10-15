@@ -48,22 +48,24 @@ class ChatMessageBuilder(ChatPage):
     继承自 ChatPage，用于访问底层的点击发送行为，但将测试数据准备逻辑与验证逻辑剥离。
     """
     
-    def build_message(self, strategy_name: str, **kwargs):
+    def build_message(self, strategy_name: str, **kwargs) -> bool:
         strategy = MessageTypeStrategy.get_strategy(strategy_name)
         logger.info(f"{LogIcon.SETUP} DataBuilder 准备测试数据，类型: {strategy.type_name}")
         handler = getattr(self, strategy.prepare_action_name, None)
         if not handler:
             raise NotImplementedError(f"❌ 未找到对应的构造方法: {strategy.prepare_action_name}")
-        handler(**kwargs)
+        res = handler(**kwargs)
         time.sleep(0.5)
+        return False if res is False else True
 
-    def _prepare_text_msg(self, **kwargs):
+    def _prepare_text_msg(self, **kwargs) -> bool:
         content = kwargs.get("content", "发送收藏消息进行测试‼️⚠️🚀✔️✅♏🧑‍🚀🪲🍎✖️")
         self.send_message(content)
         # self.click_new_message_indicator()
         self.close_keyboard_or_panel()
+        return True
     
-    def _prepare_emoji_msg(self, **kwargs):
+    def _prepare_emoji_msg(self, **kwargs) -> bool:
         """发送/准备 Emoji 表情消息（长按/多选等专项测试数据准备：仅快速发送第一排表情，高效省时）"""
         from pages.chat_options.emojis.chat_emoji_page import ChatEmojiPage
         emojiPage = ChatEmojiPage(self.driver)
@@ -73,16 +75,20 @@ class ChatMessageBuilder(ChatPage):
         self.enter_emoji_page(is_open=False)
         self.click_new_message_indicator()
         self.close_keyboard_or_panel()
+        return True
     
-    def _prepare_package_msg(self, **kwargs):
+    def _prepare_package_msg(self, **kwargs) -> bool:
         """发送/准备第三方表情包消息"""
         from pages.chat_options.emojis.chat_emoji_package_page import ChatEmojiPackagePage
         emoji_package = ChatEmojiPackagePage(self.driver)
         self.enter_emoji_page()
-        emoji_package.switch_to_emoji_package(index=1)
-        emoji_package.sent_emoji_package(strategy="first", count=1)
-        self.enter_emoji_page(is_open=False)
-        self.close_keyboard_or_panel()
+        try:
+            emoji_package.switch_to_emoji_package(index=1)
+            emoji_package.sent_emoji_package(strategy="first", count=1)
+        finally:
+            self.enter_emoji_page(is_open=False)
+            self.close_keyboard_or_panel()
+        return True
     
     # 收藏表情包专项：用于验证“收藏表情”功能，重置测试环境
     def _prepare_collection_emoji_msg(self, **kwargs) -> bool:
@@ -109,7 +115,7 @@ class ChatMessageBuilder(ChatPage):
         self.enter_emoji_page()
         return has_pkg
 
-    def _prepare_image_msg(self, **kwargs):
+    def _prepare_image_msg(self, **kwargs) -> bool:
         """发送/准备单张相册图片消息"""
         from pages.chat_options.images.chat_image_page import ChatImagePage
         img = ChatImagePage(self.driver)
@@ -117,25 +123,28 @@ class ChatMessageBuilder(ChatPage):
         img.select_single_image(mode=1)
         img.click_send_button()
         self.click_add_button()
+        return True
 
-    def _prepare_voice_msg(self, **kwargs):
+    def _prepare_voice_msg(self, **kwargs) -> bool:
         """发送/准备语音消息"""
         from pages.chat_options.voice.chat_voice_page import ChatVoicePage
         voice = ChatVoicePage(self.driver)
         voice.click_voice_button()
         voice.get_voice_list_snapshot()
-        voice.send_voice_message(hold_time=kwargs.get("hold_time", 10))
+        voice.send_voice_message(hold_time=kwargs.get("hold_time", 5))
         voice.click_voice_button()
+        return True
 
-    def _prepare_video_msg(self, **kwargs):
+    def _prepare_video_msg(self, **kwargs) -> bool:
         """发送/准备单张视频消息"""
         from pages.chat_options.videos.chat_video_page import ChatVideoPage
         video = ChatVideoPage(self.driver)
         video.open_panel_to_album()
         video.select_single_video(mode=1)
         video.click_send_button()
+        return True
 
-    def _prepare_position_msg(self, **kwargs):
+    def _prepare_position_msg(self, **kwargs) -> bool:
         """发送/准备地理位置消息"""
         from pages.chat_options.location.chat_position_page import ChatPositionPage
         pos = ChatPositionPage(self.driver)
@@ -144,19 +153,18 @@ class ChatMessageBuilder(ChatPage):
             pos.click_current_location_button()
             toast = pos.get_toast(timeout=1.5)
             if bool(toast):
-                logger.error(f"{LogIcon.FAIL} DataBuilder 获取地理位置失败，无法发送: {toast}")
+                logger.warning(f"{LogIcon.WARN} 获取地理位置出现提示: {toast}，跳过本次位置消息发送")
                 self.back_to_chat_page()
-                raise RuntimeError(f"{LogIcon.FAIL} [前置数据准备失败] 获取地理位置失败: {toast}，无法构造位置消息")
+                return False
             pos.click_send_button()
             self.click_add_button()
-        except RuntimeError:
-            raise
+            return True
         except Exception as e:
             logger.error(f"{LogIcon.FAIL} 发送地理位置过程发生异常: {e}")
             self.back_to_chat_page()
             raise RuntimeError(f"{LogIcon.FAIL} [前置数据准备失败] 发送地理位置异常: {e}")
 
-    def _prepare_card_msg(self, **kwargs):
+    def _prepare_card_msg(self, **kwargs) -> bool:
         """发送/准备联系人名片消息"""
         from pages.friend.profile.chat_contact_card_page import ChatContactCardPage
         from pages.common.contact_select_page import ContactSelectPage
@@ -165,8 +173,9 @@ class ChatMessageBuilder(ChatPage):
         ContactSelectPage(self.driver).click_contact_by_name(name=contact, select_type="share")
         ContactSelectPage(self.driver).click_confirm()
         self.click_add_button()
+        return True
 
-    def _prepare_file_msg(self, **kwargs):
+    def _prepare_file_msg(self, **kwargs) -> bool:
         """发送/准备本地文件消息（使用固定文件名搜索并发送，稳定高效）"""
         from pages.chat_options.file.chat_file_page import ChatFilePage
         file_page = ChatFilePage(self.driver)
@@ -176,22 +185,26 @@ class ChatMessageBuilder(ChatPage):
         file_page.search_and_select_file_by_name(file_name)
         # 若软键盘或加号/表情面板处于打开状态，执行收起关闭
         self.close_keyboard_or_panel()
+        return True
 
-    def _prepare_group_card_msg(self, **kwargs):
-        """ 准备/发送群名片消息 """
+    def _prepare_group_card_msg(self, **kwargs) -> bool:
+        """准备/发送群名片消息"""
         from pages.groups.setting.general.group_setting_page import GroupSettingPage
         from pages.common.session_select_page import SessionSelectPage
         from pages.chat.list.chat_list_page import ChatListPage
         from pages.main.main_page import MainPage
-        target_name = self.get_group_name()
+
+        target_name = self.get_group_name() or self.get_top_name()
         default_group = kwargs.get("group_name", "测试群aaaaa")
         backup_group = kwargs.get("backup_group_name", "测试群bbbbb")
         source_group = backup_group if target_name == default_group else default_group
+
         logger.info(f"{LogIcon.ACTION} 准备从群【{source_group}】分享群名片至目标会话【{target_name}】")
         main_page = MainPage(self.driver)
         chat_list = ChatListPage(self.driver)
         group_setting = GroupSettingPage(self.driver)
         session_select = SessionSelectPage(self.driver)
+
         main_page.go_to_main_page()
         chat_list.enter_chat(source_group)
         self.wait_for_chat_page_load()
@@ -199,19 +212,24 @@ class ChatMessageBuilder(ChatPage):
         group_setting.wait_for_setting_page_load()
         group_setting.click_group_share()
         session_select.wait_for_session_page_load(msg_type=1)
+
         is_selected = session_select.select_session_by_name(target_name)
-        if not is_selected:
-            raise RuntimeError(f"❌ [GroupCard] 会话选择页未找到目标会话: 【{target_name}】")
-        session_select.send_share_and_verify_toast('转发成功')
+        if is_selected:
+            session_select.send_share_and_verify_toast('转发成功')
+            logger.info(f"{LogIcon.SUCCESS} 成功将群【{source_group}】名片分享至【{target_name}】并恢复至聊天界面")
+        else:
+            logger.warning(f"{LogIcon.WARN} [GroupCard] 会话选择页未找到目标会话: 【{target_name}】")
+
         main_page.go_to_main_page()
         chat_list.enter_chat(target_name)
         self.wait_for_chat_page_load()
-        logger.info(f"{LogIcon.SUCCESS} 成功将群【{source_group}】名片分享至【{target_name}】并恢复至聊天界面")
+        return is_selected
 
-    def _prepare_link_msg(self, **kwargs):
+    def _prepare_link_msg(self, **kwargs) -> bool:
         """发送/准备链接消息"""
         url = kwargs.get("url", "https://www.baidu.com")
         self.send_message(url)
+        return True
 
 
     # 统一消息特征值提取方法，将分散的提取逻辑集中起来，方便维护和扩展

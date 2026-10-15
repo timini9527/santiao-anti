@@ -96,17 +96,40 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     err_msg = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
     print(err_msg, file=sys.stderr)
     try:
-        from PyQt6.QtWidgets import QMessageBox
+        from PyQt6.QtWidgets import QMessageBox, QSplashScreen
         from PyQt6.QtCore import Qt
+
+        # 1. 彻底关闭并销毁任何遗留的闪屏/Splash窗口，杜绝闪屏死在屏幕上
+        for widget in QApplication.topLevelWidgets():
+            if isinstance(widget, QSplashScreen) or widget.inherits("QSplashScreen"):
+                try:
+                    widget.close()
+                    widget.deleteLater()
+                except Exception:
+                    pass
+
+        # 2. 异常提示窗口强制设置最上层置顶展示
         msg_box = QMessageBox()
         msg_box.setIcon(QMessageBox.Icon.Critical)
         msg_box.setWindowTitle("程序运行异常")
         msg_box.setText(f"检测到启动错误:\n\n{err_msg}")
         msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
-        # 强制设置置顶窗口标志，确保异常弹窗始终置于所有窗口最上层，避免被编辑器或后台窗口遮挡
+
+        # 强制设置置顶标志
         msg_box.setWindowFlags(msg_box.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
+        msg_box.show()
         msg_box.raise_()
         msg_box.activateWindow()
+
+        # Windows 原生 Win32 API 强制置顶 (HWND_TOPMOST = -1, SWP_NOMOVE | SWP_NOSIZE)
+        if sys.platform == "win32":
+            try:
+                ctypes.windll.user32.SetWindowPos(
+                    int(msg_box.winId()), -1, 0, 0, 0, 0, 0x0001 | 0x0002
+                )
+            except Exception:
+                pass
+
         msg_box.exec()
     except Exception:
         pass
@@ -304,23 +327,35 @@ def run_app():
     splash.show()
     splash.update_progress(25, "正在初始化自动化引擎与运行时环境...")
 
-    splash.update_progress(65, "正在装载控制台架构与测试工作台...")
-    window = MainWindow()
-    if icon_path:
-        window.setWindowIcon(QIcon(icon_path))
+    window = None
+    try:
+        splash.update_progress(65, "正在装载控制台架构与测试工作台...")
+        window = MainWindow()
+        if icon_path:
+            window.setWindowIcon(QIcon(icon_path))
 
-    splash.update_progress(100, "就绪，正在呈现主工作台...")
-    window.show()
+        splash.update_progress(100, "就绪，正在呈现主工作台...")
+        window.show()
 
-    # 强制向 Win32 HWND 写入任务栏原生高清图标
-    if sys.platform == "win32" and icon_path and icon_path.endswith(".ico"):
-        apply_win32_window_icon(int(window.winId()), icon_path)
+        # 强制向 Win32 HWND 写入任务栏原生高清图标
+        if sys.platform == "win32" and icon_path and icon_path.endswith(".ico"):
+            apply_win32_window_icon(int(window.winId()), icon_path)
 
-    # 平滑过渡并移交主窗口焦点
-    splash.finish(window)
+        # 平滑过渡并移交主窗口焦点，并确保闪屏彻底关闭销毁
+        splash.finish(window)
+        splash.close()
+        splash.deleteLater()
+    except Exception:
+        if splash:
+            try:
+                splash.close()
+                splash.deleteLater()
+            except Exception:
+                pass
+        raise
 
     # 再次刷新以防 finish 过程覆盖任务栏图标
-    if sys.platform == "win32" and icon_path and icon_path.endswith(".ico"):
+    if sys.platform == "win32" and icon_path and icon_path.endswith(".ico") and window:
         apply_win32_window_icon(int(window.winId()), icon_path)
 
     sys.exit(app.exec())
