@@ -49,6 +49,19 @@ class DriverFactory:
         desired_caps = copy.deepcopy(common_caps)
         desired_caps.update(device_config)
         
+        # 🌐 鸿蒙平台分发 (HarmonyOS NEXT 6.0+)
+        platform_name = str(desired_caps.get('platformName', 'Android')).lower()
+        if platform_name in ('harmonyos', 'openharmony'):
+            harmony_common = data.get('harmony_app', {})
+            merged_caps = copy.deepcopy(harmony_common)
+            merged_caps.update(desired_caps)
+            from core.harmony_driver import HarmonyDriver
+            logger.info(f"{LogIcon.SETUP} [DriverFactory] 识别到鸿蒙平台设备 ({device_key})，构建 HarmonyDriver 驱动实例")
+            h_driver = HarmonyDriver(merged_caps)
+            h_driver._factory_device_key = device_key
+            h_driver._factory_udid = merged_caps.get("udid")
+            return h_driver
+
         # 🔌 动态分配 free systemPort 解决 Windows TCP TIME_WAIT 导致第一次重启失败的问题
         system_port = desired_caps.get('systemPort')
         if system_port:
@@ -249,7 +262,7 @@ class RecoverableDriver:
 
     @staticmethod
     def _is_uiautomator2_proxy_error(error: WebDriverException) -> bool:
-        """只识别服务端代理/Instrumentation 故障，避免把定位器错误当成设备故障。"""
+        """只识别服务端代理/Instrumentation 故障或鸿蒙 HDC 脱机，避免把定位器错误当成设备故障。"""
         message = str(error).lower()
         proxy_timeout = (
             "could not proxy command to the remote server" in message
@@ -261,13 +274,23 @@ class RecoverableDriver:
                 "uiautomator2 server is not running",
                 "instrumentation process is not running",
                 "the instrumentation process cannot be initialized",
+                "hdc 失败",
+                "target not found",
+                "hdc server",
             )
         )
         return proxy_timeout or server_stopped
 
-    def _probe_uiautomator2(self, timeout: float) -> None:
-        """优先绕过 Appium 直连 UiAutomator2，快速判断手机端服务是否还能响应。"""
+    def _probe_driver_health(self, timeout: float) -> None:
+        """根据当前驱动类型（Android/HarmonyOS）自适应探测健康状态"""
         driver = object.__getattribute__(self, "_driver")
+        # 鸿蒙驱动探活：优先调用其内置的 is_healthy 状态检查
+        if hasattr(driver, "is_healthy"):
+            if not driver.is_healthy():
+                raise ConnectionError(f"鸿蒙设备 HDC 离线或服务异常 (设备: {getattr(driver, 'udid', '')})")
+            return
+
+        # Android UiAutomator2 探活：优先直连本地端口
         system_port = getattr(driver, "_factory_system_port", None)
         appium_url = getattr(driver, "_factory_appium_url", "")
         parsed_url = urlparse(appium_url)
@@ -294,12 +317,14 @@ class RecoverableDriver:
 
         generation = object.__getattribute__(self, "_generation")
         try:
-            self._probe_uiautomator2(timeout)
+            self._probe_driver_health(timeout)
             object.__setattr__(self, "_last_successful_command_at", time.monotonic())
             return True
         except Exception as error:
+            driver = object.__getattribute__(self, "_driver")
+            driver_type = "HarmonyOS" if hasattr(driver, "is_healthy") else "UiAutomator2"
             logger.warning(
-                f"{LogIcon.WARN} [DriverRecovery] {self._device_key} 的 UiAutomator2 健康检查失败，"
+                f"{LogIcon.WARN} [DriverRecovery] {self._device_key} 的 {driver_type} 健康检查失败，"
                 f"{LogIcon.WARN} 准备重建 Session: {type(error).__name__}: {error}"
             )
             self._recover(generation, error)

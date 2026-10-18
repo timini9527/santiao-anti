@@ -40,6 +40,16 @@ app:
   # UiAutomator2 Settings
   "appium:settings[waitForIdleTimeout]": 0
   "appium:settings[waitForSelectorTimeout]": 500
+
+harmony_app:
+  # --- 鸿蒙应用与引擎配置 (HarmonyOS NEXT 6.0+) ---
+  "platformName": "HarmonyOS"
+  "bundleName": "com.santiaohms.im"
+  "abilityName": "EntryAbility"
+  "moduleName": "phone"
+  "hdcExecTimeout": 20000
+  "launchTimeout": 30000
+
   
   # adb -s 3B65BN02GU600000 shell settings put global cached_apps_freezer disabled
   # adb -s 3B65BN02GU600000 shell svc power stayon true
@@ -57,6 +67,14 @@ app:
 
 devices:
   dev:
+    harmony_sender:
+      platformName: "HarmonyOS"
+      udid: "4UQ9K25530068061"
+      deviceName: "HarmonyPhone"
+      bundleName: "com.santiaohms.im"
+      abilityName: "EntryAbility"
+      moduleName: "phone"
+
     sender:
       platformName: "Android"
       # udid: "192.168.1.29:5554"

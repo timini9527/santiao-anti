@@ -25,14 +25,16 @@ class MainPage(BasePage):
         return bool(self.find_elements(HomeLocator.BOTTOM, timeout=0.1, raise_exception=False, expect_missing=True))
 
     def is_app_in_foreground(self) -> bool:
-        """检查当前被测应用是否处于前台运行状态"""
+        """检查当前被测应用是否处于前台运行状态 (自适应 Android 与 HarmonyOS)"""
+        target_pkg = getattr(self.driver, "current_package", self.APP_PACKAGE)
         try:
             # 状态枚举：4 表示 RUNNING_IN_FOREGROUND
-            app_state = self.driver.query_app_state(self.APP_PACKAGE)
+            app_state = self.driver.query_app_state(target_pkg)
             return app_state == 4
         except Exception:
             try:
-                return self.driver.current_package == self.APP_PACKAGE
+                pkg = getattr(self.driver, "current_package", "")
+                return pkg in (self.APP_PACKAGE, target_pkg, "com.santiaohms.im")
             except Exception:
                 return False
 
@@ -80,19 +82,20 @@ class MainPage(BasePage):
         return False
 
     def ensure_app_alive_and_ready(self) -> bool:
-        """兜底保障：检查应用进程存活状态，若未在前台运行则自动热拉起并就绪"""
+        """兜底保障：检查应用进程存活状态，若未在前台运行则自动热拉起并就绪 (自适应 Android 与 HarmonyOS)"""
+        target_pkg = getattr(self.driver, "current_package", self.APP_PACKAGE)
         try:
             # App 状态：0=NOT_INSTALLED, 1=NOT_RUNNING, 2=BACKGROUND_SUSPENDED, 3=BACKGROUND, 4=FOREGROUND
-            app_state = self.driver.query_app_state(self.APP_PACKAGE)
+            app_state = self.driver.query_app_state(target_pkg)
             if app_state != 4:
                 logger.warning(f"{LogIcon.WARN} 🚨 [StateHealer] App 未在前台运行 (State={app_state})，执行自动热唤醒拉起...")
-                self.driver.activate_app(self.APP_PACKAGE)
+                self.driver.activate_app(target_pkg)
                 time.sleep(0.5)
                 return self.wait_for_main_page_load(timeout=3.0)
         except Exception as e:
             logger.warning(f"{LogIcon.WARN} [StateHealer] 查询应用状态异常: {e}")
             try:
-                self.driver.activate_app(self.APP_PACKAGE)
+                self.driver.activate_app(target_pkg)
                 time.sleep(0.5)
             except Exception:
                 pass
