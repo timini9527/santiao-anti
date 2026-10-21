@@ -999,20 +999,88 @@ class HarmonyDriver:
 
     @staticmethod
     def _read_png_file(file_path: str) -> bytes:
-        """读取并校验 PNG 文件，防止空文件或 JPEG 被误报为截图成功。"""
+        """读取并校验 PNG 文件，若底层拉取为 JPEG 则自动无损转换为标准 PNG 数据。"""
         try:
             with open(file_path, "rb") as image_file:
                 image_data = image_file.read()
         except OSError as error:
             raise HarmonyCommandError(f"读取截图文件失败: {error}") from error
 
-        if not image_data.startswith(b"\x89PNG\r\n\x1a\n"):
-            raise HarmonyCommandError("截图文件为空或不是有效 PNG 数据")
-        return image_data
+        if not image_data:
+            raise HarmonyCommandError("截图文件为空")
+
+        # 1. 规范 PNG 格式直接返回
+        if image_data.startswith(b"\x89PNG\r\n\x1a\n"):
+            return image_data
+
+        # 2. 若底层通过 snapshot_display 产出了 JPEG 格式，自适应无损转换为标准 PNG
+        if image_data.startswith(b"\xff\xd8"):
+            try:
+                from PIL import Image
+                import io
+
+                with Image.open(io.BytesIO(image_data)) as img:
+                    png_buf = io.BytesIO()
+                    img.save(png_buf, format="PNG")
+                    png_data = png_buf.getvalue()
+                    try:
+                        with open(file_path, "wb") as f_out:
+                            f_out.write(png_data)
+                    except Exception:
+                        pass
+                    return png_data
+            except Exception as conv_err:
+                logger.debug(
+                    f"{LogIcon.WARN} [HarmonyDriver] JPEG 转 PNG 兼容处理异常: {conv_err}"
+                )
+
+        raise HarmonyCommandError("截图文件不是有效的 PNG 或 JPEG 图像数据")
 
     def _capture_screenshot_via_hdc(self, local_path: str) -> None:
-        """通过 HDC 抓取截图，并在成功或失败后清理远端临时文件。"""
-        remote_path = f"/data/local/tmp/santiao_screen_{uuid.uuid4().hex}.png"
+        """通过 HDC 抓取截图，优先采用底层 snapshot_display 静默截屏，若不可用则平滑降级至 uitest screenCap 兜底。"""
+        uid = uuid.uuid4().hex
+        # 1. 优先尝试显存直接静默截屏 (snapshot_display 规范要求后缀必须为 .jpeg)
+        remote_shot = f"/data/local/tmp/santiao_screen_{uid}.jpeg"
+        try:
+            self.execute_hdc_shell(f"snapshot_display -f {remote_shot}")
+            self.execute_hdc(
+                ("file", "recv", remote_shot, os.path.abspath(local_path))
+            )
+            if os.path.exists(local_path) and os.path.getsize(local_path) > 100:
+                return
+        except Exception:
+            pass
+        finally:
+            try:
+                self.execute_hdc_shell(
+                    f"rm -f {remote_shot}",
+                    timeout=min(1.0, self.hdc_timeout),
+                )
+            except Exception:
+                pass
+
+        # 2. 备用静默截屏 (显式指定主屏 0)
+        remote_shot = f"/data/local/tmp/santiao_screen_{uid}_d0.jpeg"
+        try:
+            self.execute_hdc_shell(f"snapshot_display -d 0 -f {remote_shot}")
+            self.execute_hdc(
+                ("file", "recv", remote_shot, os.path.abspath(local_path))
+            )
+            if os.path.exists(local_path) and os.path.getsize(local_path) > 100:
+                return
+        except Exception:
+            pass
+        finally:
+            try:
+                self.execute_hdc_shell(
+                    f"rm -f {remote_shot}",
+                    timeout=min(1.0, self.hdc_timeout),
+                )
+            except Exception:
+                pass
+
+        # 3. 终极安全兜底方案：uitest screenCap
+        remote_path = f"/data/local/tmp/santiao_screen_{uid}_cap.png"
         try:
             self.execute_hdc_shell(f"uitest screenCap -p {remote_path}")
             self.execute_hdc(
