@@ -1,6 +1,9 @@
-# devices.yaml
-current_env: "dev"  # 当前执行环境：dev 或 test
-# current_env: "test" 
+# --- 测试环境与三端平台配置 (支持 Android / HarmonyOS / iOS) ---
+current_env: "dev"              # 默认执行环境：dev 或 test
+# current_env: "test"
+# current_platform: "android"   # 默认单端平台：android / harmonyos / ios (多设备交互时各设备以自身节点的 platformName 为准)
+current_platform: "harmonyos"
+# current_platform: "ios"
 
 server:
   host: "127.0.0.1"
@@ -50,23 +53,22 @@ harmony_app:
   "hdcExecTimeout": 20000
   "launchTimeout": 30000
 
-  
-  # adb -s 3B65BN02GU600000 shell settings put global cached_apps_freezer disabled
-  # adb -s 3B65BN02GU600000 shell svc power stayon true
-  # adb -s 3B65BN02GU600000 reboot
-  # adb -s 3B65BN02GU600000 wait-for-device
-  # adb -s 3B65BN02GU600000 shell settings get global cached_apps_freezer
-
-  # 1. 彻底禁用系统深度休眠与电量低功耗拦截（所有安卓通用）
-  # adb -s 3B65BN02GU600000 shell dumpsys deviceidle disable
-
-  # 2. 将 Appium 的通信服务永久加入系统电池保护白名单
-  # adb -s 3B65BN02GU600000 shell dumpsys deviceidle whitelist +io.appium.uiautomator2.server
-  # adb -s 3B65BN02GU600000 shell dumpsys deviceidle whitelist +io.appium.settings
-
+ios_app:
+  # --- iOS 应用与引擎配置 (XCUITest) ---
+  "appium:automationName": "XCUITest"
+  "appium:platformName": "iOS"
+  "appium:bundleId": "com.santiaotalk.im"
+  "appium:newCommandTimeout": 120
+  "appium:noReset": true
+  "appium:fullReset": false
+  "appium:wdaLaunchTimeout": 60000
+  "appium:wdaConnectionTimeout": 60000
+  "appium:waitForQuiescence": false
+  "appium:shouldTerminateApp": false
 
 devices:
   dev:
+    # --- 鸿蒙环境设备 ---
     harmony_sender:
       platformName: "HarmonyOS"
       udid: "4UQ9K25530068061"
@@ -74,6 +76,35 @@ devices:
       bundleName: "com.santiaohms.im"
       abilityName: "EntryAbility"
       moduleName: "phone"
+      lock_password: "1111"
+
+    harmony_receiver:
+      platformName: "HarmonyOS"
+      udid: "4UQ9K25530068062"
+      deviceName: "HarmonyReceiverPhone"
+      bundleName: "com.santiaohms.im"
+      abilityName: "EntryAbility"
+      moduleName: "phone"
+      lock_password: "1111"
+
+    # --- iOS 环境设备 ---
+    ios_sender:
+      platformName: "iOS"
+      udid: "00008101-001234567890001E"  # iOS 主测/发送方 UDID
+      deviceName: "iPhone 15 Pro"
+      platformVersion: "17.0"
+      wdaLocalPort: 8100                  # 关键！iOS XCUITest 通信端口，必须唯一
+      appiumServerUrl: "http://127.0.0.1:4725"
+
+    ios_receiver:
+      platformName: "iOS"
+      udid: "00008101-001234567890002E"  # iOS 接收方 UDID
+      deviceName: "iPhone 14"
+      platformVersion: "16.5"
+      wdaLocalPort: 8101
+      appiumServerUrl: "http://127.0.0.1:4726"
+
+    # --- 安卓环境设备 ---
 
     sender:
       platformName: "Android"
@@ -82,8 +113,8 @@ devices:
       udid: "3B65BN02GU600000"  
       # udid: "192.168.1.111:45845"
       # platformVersion: "16.0"
-      # udid: "emulator-5554"   # 模拟器
-      # udid: "emulator-5556"   # 模拟器
+      # udid: "emulator-5554"
+      # udid: "emulator-5556"
       deviceName: "SenderPhone"
       systemPort: 8200          # 关键！Android UIA2 通信端口，必须唯一
       appiumServerUrl: "http://127.0.0.1:4723"
@@ -97,8 +128,8 @@ devices:
       udid: "nzwcvo9ls87hws7t"
       # udid: "192.168.1.111:33417"  
       # udid: "192.168.1.29:36457"
-      # udid: "emulator-5558"   # 模拟器  
-      # udid: "emulator-5560"     # 模拟器（注意：此处的 udid 优先被 Web 回执中的 "设备1" 动态覆盖）
+      # udid: "emulator-5558"  
+      # udid: "emulator-5560"  
       deviceName: "ReceiverPhone"
       systemPort: 8201         # 关键！必须与 Sender 不同
       appiumServerUrl: "http://127.0.0.1:4724" # 建议启动两个Appium服务避免拥堵
@@ -107,56 +138,92 @@ devices:
 
     device3:
       platformName: "Android"
-      udid: "emulator-5556"     # 模拟器3
+      udid: "emulator-5556"     
       deviceName: "Device3Phone"
       systemPort: 8202
       appiumServerUrl: "http://127.0.0.1:4725"
 
     device4:
       platformName: "Android"
-      udid: "emulator-5558"     # 模拟器4
+      udid: "emulator-5558"     
       deviceName: "Device4Phone"
       systemPort: 8203
       appiumServerUrl: "http://127.0.0.1:4726"
 
     device5:
       platformName: "Android"
-      udid: "emulator-5562"     # 模拟器5
+      udid: "emulator-5562"     
       deviceName: "Device5Phone"
       systemPort: 8204
       appiumServerUrl: "http://127.0.0.1:4727"
 
     device6:
       platformName: "Android"
-      udid: "emulator-5564"     # 模拟器6
+      udid: "emulator-5564"     
       deviceName: "Device6Phone"
       systemPort: 8205
       appiumServerUrl: "http://127.0.0.1:4728"
 
     device7:
       platformName: "Android"
-      udid: "emulator-5566"     # 模拟器7
+      udid: "emulator-5566"   
       deviceName: "Device7Phone"
       systemPort: 8206
       appiumServerUrl: "http://127.0.0.1:4729"
 
     device8:
       platformName: "Android"
-      udid: "emulator-5568"     # 模拟器8
+      udid: "emulator-5568"   
       deviceName: "Device8Phone"
       systemPort: 8207
       appiumServerUrl: "http://127.0.0.1:4730"
 
     device9:
       platformName: "Android"
-      udid: "emulator-5572"     # 模拟器9
-      # udid: "192.168.1.16:5555"     # 模拟器9
+      udid: "emulator-5572" 
       deviceName: "Device9Phone"
       systemPort: 8208
       appiumServerUrl: "http://127.0.0.1:4731"
 
 
   test:
+    # --- 鸿蒙环境设备 ---
+    harmony_sender:
+      platformName: "HarmonyOS"
+      udid: "4UQ9K25530068061"
+      deviceName: "HarmonyPhone"
+      bundleName: "com.santiaohms.im"
+      abilityName: "EntryAbility"
+      moduleName: "phone"
+      lock_password: "1111"
+
+    harmony_receiver:
+      platformName: "HarmonyOS"
+      udid: "4UQ9K25530068062"
+      deviceName: "HarmonyReceiverPhone"
+      bundleName: "com.santiaohms.im"
+      abilityName: "EntryAbility"
+      moduleName: "phone"
+      lock_password: "1111"
+
+    # --- iOS 环境设备 ---
+    ios_sender:
+      platformName: "iOS"
+      udid: "00008101-001234567890001E"
+      deviceName: "iPhone 15 Pro"
+      platformVersion: "17.0"
+      wdaLocalPort: 8100
+      appiumServerUrl: "http://127.0.0.1:4725"
+
+    ios_receiver:
+      platformName: "iOS"
+      udid: "00008101-001234567890002E"
+      deviceName: "iPhone 14"
+      platformVersion: "16.5"
+      wdaLocalPort: 8101
+      appiumServerUrl: "http://127.0.0.1:4726"
+
+    # --- 安卓环境设备 ---
     sender:
       platformName: "Android"
       platformVersion: "12.0"

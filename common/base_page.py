@@ -471,10 +471,18 @@ class BasePage:
 
     @allure.step("长按元素，获取弹窗")
     @allure.step("有多条数据存在时, 长按某一条, 获取弹窗")
-    def long_press_action(self, found_ele: WebElement, hold_time: int = 1000):
+    def long_press_action(self, found_ele: WebElement, hold_time: int = 1000) -> None:
         """
-        长按元素，兼容 Appium 原生 longClickGesture 与 W3C Action 坐标长按
+        长按元素，兼容鸿蒙原生长按、Appium longClickGesture 与 W3C Action
         """
+        native_long_click = getattr(found_ele, "long_click", None)
+        if getattr(found_ele, "_is_harmony_element", False) and callable(native_long_click):
+            # 鸿蒙元素自身负责坐标校验和恢复代理转发，不进入 Appium/W3C 调用链。
+            native_long_click()
+            logger.info(f"{LogIcon.SUCCESS} 使用鸿蒙原生元素长按成功")
+            time.sleep(0.5)
+            return
+
         try:
             # 1. 优先使用 Appium 原生的 longClickGesture 绕过 USB 模拟限制与坐标序列化错误
             self.driver.execute_script(
@@ -582,10 +590,10 @@ class BasePage:
         # 执行整套动作
         actions.perform()
     
-    @allure.step("W3C 标准的坐标强点 (模拟人类手指真实触摸)")
-    def tap_point(self, click_elem: WebElement = None, x: float = None, y: float = None, duration: int = 300):
+    @allure.step("跨平台坐标强点 (模拟人类手指真实触摸)")
+    def tap_point(self, click_elem: WebElement = None, x: float = None, y: float = None, duration: int = 300) -> None:
         """
-        [W3C 标准] 模拟手指触摸指定坐标点 (模拟人类手指真实触摸)
+        按驱动能力选择鸿蒙原生手势或 W3C Action 模拟坐标触摸。
         :param click_elem: 点击元素（如果传入，将自动计算元素的中心点坐标）
         :param x: 目标点的 X 坐标（在不传入 click_elem 时必须提供）
         :param y: 目标点的 Y 坐标（在不传入 click_elem 时必须提供）
@@ -607,6 +615,15 @@ class BasePage:
 
             logger.info(f"{LogIcon.ACTION} 模拟手指点击屏幕坐标: ({center_x}, {center_y})")
 
+            if getattr(self.driver, "supports_native_gestures", False):
+                # HarmonyDriver 不实现 W3C execute 协议，直接使用设备原生坐标手势。
+                self.driver.tap(
+                    [(int(center_x), int(center_y))],
+                    duration=duration,
+                )
+                logger.info(f"{LogIcon.SUCCESS} 鸿蒙原生坐标点击执行完毕")
+                return
+
             # 3. 使用 W3C ActionChains 执行物理点击 (兼容 Appium 2.x)
             actions, touch_input = self.init_w3c_actions()
             actions.w3c_actions.pointer_action.move_to_location(center_x, center_y)
@@ -618,6 +635,9 @@ class BasePage:
             logger.info(f"{LogIcon.SUCCESS} 坐标强点执行完毕")
 
         except Exception as e:
+            if getattr(self.driver, "supports_native_gestures", False):
+                # 原生动作结果未知时禁止再调用 click()，避免一次操作被重复注入。
+                raise
             logger.warning(f"{LogIcon.WARN} 坐标强点失败，尝试退回原生 click() 兜底: {e}")
             if click_elem:
                 click_elem.click()
@@ -718,12 +738,22 @@ class BasePage:
 
 
     @allure.step("执行滑动操作")
-    def swipe(self, start_x: int, start_y: int, end_x: int, end_y: int, duration: int = 500, toptime: int = 50):
+    def swipe(self, start_x: int, start_y: int, end_x: int, end_y: int, duration: int = 500, toptime: int = 50) -> None:
         """
-        核心滑动执行器 (W3C 标准)
+        核心滑动执行器：鸿蒙使用原生手势，Android 使用 W3C Action。
         :param duration: 滑动持续时间，默认500毫秒
         :param toptime: 按下起点后的短暂贴合停顿时间(ms)，默认50毫秒（严防触发 Android 500ms 长按阈值）
         """
+        if getattr(self.driver, "supports_native_gestures", False):
+            # 鸿蒙走原生滑动，避免 Selenium ActionBuilder 调用不存在的 execute 接口。
+            logger.info(
+                f"{LogIcon.ACTION} 鸿蒙原生滑动: ({start_x}, {start_y}) -> "
+                f"({end_x}, {end_y}) | 时长: {duration}ms"
+            )
+            self.driver.swipe(start_x, start_y, end_x, end_y, duration)
+            time.sleep(0.1)
+            return
+
         try:
             logger.info(f"{LogIcon.ACTION} 滑动轨迹: ({start_x}, {start_y}) -> ({end_x}, {end_y}) | 时长: {duration}ms | 贴合: {toptime}ms")
             actions, touch_input = self.init_w3c_actions()

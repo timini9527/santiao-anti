@@ -129,11 +129,11 @@ GROUP_STRATEGY5 = ChatSessionStrategy(
 
 
 TEST_PRIVATE_USERS = [
-    ChatSessionStrategy(
-        desc="私聊模式",
-        name="003",
-        phone="19200000003"
-    ),
+    # ChatSessionStrategy(
+    #     desc="私聊模式",
+    #     name="003",
+    #     phone="19200000003"
+    # ),
     # ChatSessionStrategy(
     #     desc="私聊模式",
     #     name="19200000064",
@@ -149,14 +149,14 @@ TEST_PRIVATE_USERS = [
     #     name="19200000612",
     #     phone="19200000612"
     # ),
-    # *(
-    #     ChatSessionStrategy(
-    #         desc="私聊模式",
-    #         name=f"测试13{i}",
-    #         phone=f"1920000013{i}"
-    #     )
-    #     for i in range(0, 6)
-    # ),
+    *(
+        ChatSessionStrategy(
+            desc="私聊模式",
+            name=f"测试13{i}",
+            phone=f"1920000013{i}"
+        )
+        for i in range(0, 6)
+    ),
     # ChatSessionStrategy(
     #     desc="私聊模式",
     #     # name="测试0225",

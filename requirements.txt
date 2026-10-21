@@ -15,6 +15,9 @@ allure_python_commons==2.15.2
 # 3. 移动端与 Web 端自动化驱动
 Appium_Python_Client==5.2.7
 selenium==4.41.0
+# 鸿蒙驱动及界面树 XPath 解析由项目代码直接导入，需作为显式依赖固定版本。
+hmnextauto==1.7.0
+lxml==6.0.2
 
 # 4. 接口测试与流量抓包
 Requests==2.32.5

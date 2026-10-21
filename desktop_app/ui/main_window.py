@@ -30,6 +30,7 @@ from .web_page import WebPage
 from .api_page import ApiPage
 from .devices_page import DevicesPage
 from .reports_page import ReportsPage
+from .inspector_page import InspectorPage
 
 class BrandLogoWidget(QWidget):
     """
@@ -124,7 +125,7 @@ class HighEndNavButton(QWidget):
         self.is_active = False
         self.is_hovered = False
 
-        self.setFixedSize(58, 68 if index in (2, 3, 4) else 58)
+        self.setFixedSize(58, 62)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
     def set_active(self, active: bool):
@@ -154,58 +155,57 @@ class HighEndNavButton(QWidget):
 
         w = float(self.width())
         h = float(self.height())
-        rect = QRectF(1.0, 1.0, w - 2.0, h - 2.0)
+        cx = w / 2.0
 
-        # 1. 绘制背景与外边框 (白底专属高定配色)
-        if self.is_active:
-            # 激活态：浅天蓝柔光底色 + 精致科技蓝描边
-            painter.setBrush(QColor("#eff6ff"))
-            painter.setPen(QPen(QColor("#bfdbfe"), 1.2))
-            painter.drawRoundedRect(rect, 10.0, 10.0)
-        elif self.is_hovered:
-            # 悬停态：浅淡高级冷灰
-            painter.setBrush(QColor("#f1f5f9"))
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.drawRoundedRect(rect, 10.0, 10.0)
-        else:
-            # 未激活态：通透白底无背景
-            painter.setBrush(Qt.BrushStyle.NoBrush)
-            painter.setPen(Qt.PenStyle.NoPen)
+        # 1. 绘制标准圆角正方形图标容器 (Squircle Icon Tile: 38x38, border-radius: 9px)
+        tile_size = 38.0
+        tile_x = (w - tile_size) / 2.0
+        tile_y = 3.0
+        tile_rect = QRectF(tile_x, tile_y, tile_size, tile_size)
+        cy_icon = tile_y + tile_size / 2.0  # 22.0
 
-        # 2. 确定主题色 (白底专属)
         if self.is_active:
-            main_color = QColor("#2563eb")   # 皇家科技亮蓝
+            # 激活态：圆角正方形高饱和科技蓝底色 + 纯白高光矢量图标
+            painter.setBrush(QColor("#2563eb"))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawRoundedRect(tile_rect, 9.0, 9.0)
+            icon_color = QColor("#ffffff")
             text_color = QColor("#2563eb")
         elif self.is_hovered:
-            main_color = QColor("#1e293b")   # 悬停深石板色
+            # 悬停态：浅淡高级冷灰底色 + 细描边
+            painter.setBrush(QColor("#f1f5f9"))
+            painter.setPen(QPen(QColor("#cbd5e1"), 1.0))
+            painter.drawRoundedRect(tile_rect, 9.0, 9.0)
+            icon_color = QColor("#1e293b")
             text_color = QColor("#1e293b")
         else:
-            main_color = QColor("#64748b")   # 未激活高雅冷灰
+            # 未激活态：极淡白灰背景 + 精致极细浅灰边框
+            painter.setBrush(QColor("#f8fafc"))
+            painter.setPen(QPen(QColor("#e2e8f0"), 1.0))
+            painter.drawRoundedRect(tile_rect, 9.0, 9.0)
+            icon_color = QColor("#64748b")
             text_color = QColor("#64748b")
 
-        # 3. 绘制上方高精密矢量线框图标 (中心位于 cx, cy_icon)
-        cx = w / 2.0
-        cy_icon = 24.0 if self.index in (2, 3, 4) else 20.0
-        icon_pen = QPen(main_color, 1.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
+        # 2. 在圆角正方形容器内居中绘制高精密矢量线框图标
+        icon_pen = QPen(icon_color, 1.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
         painter.setPen(icon_pen)
         painter.setBrush(Qt.BrushStyle.NoBrush)
 
-        self._draw_vector_icon(painter, cx, cy_icon, main_color)
+        self._draw_vector_icon(painter, cx, cy_icon, icon_color)
 
-        # 4. 绘制右上角微型药丸胶囊 Badge
-        self._draw_badge(painter, cx, cy_icon)
+        # 3. 绘制依附在圆角正方形右上角边缘的微型胶囊 Badge
+        self._draw_badge(painter, tile_x + tile_size, tile_y)
 
-        # 5. 绘制下方中文标题
+        # 4. 绘制下方中文标题
         font_text = QFont("-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif", 8)
-        font_text.setWeight(QFont.Weight.Bold if self.is_active else QFont.Weight.DemiBold)
+        font_text.setWeight(QFont.Weight.Bold if self.is_active else QFont.Weight.Medium)
         painter.setFont(font_text)
         painter.setPen(text_color)
-        text_y = 42.0 if self.index in (2, 3, 4) else 36.0
-        text_rect = QRectF(0, text_y, w, 18.0)
+        text_rect = QRectF(0, 44.0, w, 16.0)
         painter.drawText(text_rect, Qt.AlignmentFlag.AlignCenter, self.title)
 
     def _draw_vector_icon(self, painter: QPainter, cx: float, cy: float, color: QColor):
-        """绘制 5 大高级科技线框矢量图标"""
+        """绘制 6 大高级科技线框矢量图标"""
         t = self.icon_type
 
         if t == "core":
@@ -236,10 +236,8 @@ class HighEndNavButton(QWidget):
 
         elif t == "im":
             # 接口压测：两个交错穿插扣合的圆角胶囊链条环
-            # 左环
             left_rect = QRectF(cx - 7.5, cy - 6.0, 9.5, 7.0)
             painter.drawRoundedRect(left_rect, 2.5, 2.5)
-            # 右环
             right_rect = QRectF(cx - 1.5, cy - 2.0, 9.5, 7.0)
             painter.drawRoundedRect(right_rect, 2.5, 2.5)
 
@@ -276,8 +274,20 @@ class HighEndNavButton(QWidget):
             painter.drawLine(QPointF(cx, cy + 4.0), QPointF(cx - 4.5, cy + 8.5))
             painter.drawLine(QPointF(cx, cy + 4.0), QPointF(cx + 4.5, cy + 8.5))
 
-    def _draw_badge(self, painter: QPainter, cx: float, cy: float):
-        """精准贴合在图标右上角的彩色微型胶囊 Badge (白底高清晰版)"""
+        elif t == "tool":
+            # UI 审查：精密科技放大镜 + 中心准星瞄准十字
+            # 镜面外环 (略偏左上方)
+            glass_rect = QRectF(cx - 7.0, cy - 8.5, 11.5, 11.5)
+            painter.drawEllipse(glass_rect)
+            # 准星微型十字 (中心坐标: cx - 1.25, cy - 2.75)
+            mcx, mcy = cx - 1.25, cy - 2.75
+            painter.drawLine(QPointF(mcx - 2.0, mcy), QPointF(mcx + 2.0, mcy))
+            painter.drawLine(QPointF(mcx, mcy - 2.0), QPointF(mcx, mcy + 2.0))
+            # 倾斜镜柄
+            painter.drawLine(QPointF(cx + 2.5, cy + 1.0), QPointF(cx + 7.5, cy + 6.0))
+
+    def _draw_badge(self, painter: QPainter, anchor_x: float, anchor_y: float):
+        """精准贴合在圆角正方形右上角的彩色微型胶囊 Badge (白底高清晰版)"""
         tag_text = self.tag
         tag_lower = tag_text.lower()
 
@@ -294,17 +304,23 @@ class HighEndNavButton(QWidget):
         elif tag_lower == "grid":
             bg_color = QColor("#7c3aed")     # 极客紫
             badge_w = 20.0
+        elif tag_lower == "tool":
+            bg_color = QColor("#0284c7")     # 科技亮天蓝
+            badge_w = 20.0
         else:
             bg_color = QColor("#d97706")     # 琥珀金
             badge_w = 23.0
 
         badge_h = 10.5
-        badge_x = cx + 3.0
-        badge_y = cy - 12.0
+        badge_x = anchor_x - badge_w + 3.0
+        badge_y = anchor_y - 2.5
         badge_rect = QRectF(badge_x, badge_y, badge_w, badge_h)
 
+        if self.is_active:
+            painter.setPen(QPen(QColor("#ffffff"), 1.0))
+        else:
+            painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QBrush(bg_color))
-        painter.setPen(Qt.PenStyle.NoPen)
         painter.drawRoundedRect(badge_rect, 3.2, 3.2)
 
         # 徽标纯白文字
@@ -320,7 +336,7 @@ class ModernSidebar(QFrame):
     纯白高定奢华侧边栏导航：
     1. 纯白底色 #ffffff，右侧边缘 1px solid #e2e8f0 精致分割线
     2. 顶部图 2 品牌 Logo (SanT 艺术字 + 字母 a 顶部翡翠绿呼吸光球)
-    3. 5 大高定线框按键 (未激活冷灰石板色、悬停微灰、激活浅天蓝柔光底)
+    3. 6 大高定圆角正方形线框按键 (未激活冷灰石板色、悬停微灰、激活高亮科技蓝底)
     4. 底部精致浅灰边框端口胶囊 (● 8000)
     """
     page_changed = pyqtSignal(int)
@@ -337,26 +353,25 @@ class ModernSidebar(QFrame):
     def init_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 14, 0, 16)
-        layout.setSpacing(8)
+        layout.setSpacing(6)
         layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
 
         # 1. 顶部品牌标识：全面升级为图 2 样式 (SanT 艺术字 + 翡翠绿光球)
         self.brand_logo = BrandLogoWidget(self)
         layout.addWidget(self.brand_logo, alignment=Qt.AlignmentFlag.AlignCenter)
-        layout.addSpacing(4)
+        layout.addSpacing(6)
 
-        # 2. 导航按键组 (严格对齐：移动 IM, Web 测试, 接口压测, 设备矩阵, 报告中心)
+        # 2. 导航按键组 (严格对齐：移动 IM, Web 测试, 接口压测, 设备矩阵, 报告中心, UI 审查)
         nav_defs = [
             {"title": "移动 IM", "tag": "Core", "icon": "core", "index": 0},
             {"title": "Web 测试", "tag": "UI", "icon": "ui", "index": 1},
             {"title": "接口压测", "tag": "IM", "icon": "im", "index": 2},
             {"title": "设备矩阵", "tag": "Grid", "icon": "grid", "index": 3},
             {"title": "报告中心", "tag": "Allure", "icon": "allure", "index": 4},
+            {"title": "UI 审查", "tag": "Tool", "icon": "tool", "index": 5},
         ]
 
         for item in nav_defs:
-            if item["index"] in (3, 4):
-                layout.addSpacing(4)
             btn = HighEndNavButton(item["index"], item["icon"], item["title"], item["tag"])
             btn.clicked.connect(self._on_item_clicked)
             if item["index"] == 0:
@@ -489,12 +504,14 @@ class MainWindow(QMainWindow):
         self.page_api = ApiPage()
         self.page_devices = DevicesPage()
         self.page_reports = ReportsPage()
+        self.page_inspector = InspectorPage()
 
-        self.stacked_widget.addWidget(self.page_mobile)   # index 0
-        self.stacked_widget.addWidget(self.page_web)      # index 1
-        self.stacked_widget.addWidget(self.page_api)      # index 2
-        self.stacked_widget.addWidget(self.page_devices)  # index 3
-        self.stacked_widget.addWidget(self.page_reports)  # index 4
+        self.stacked_widget.addWidget(self.page_mobile)     # index 0
+        self.stacked_widget.addWidget(self.page_web)        # index 1
+        self.stacked_widget.addWidget(self.page_api)        # index 2
+        self.stacked_widget.addWidget(self.page_devices)    # index 3
+        self.stacked_widget.addWidget(self.page_reports)    # index 4
+        self.stacked_widget.addWidget(self.page_inspector)  # index 5
 
         root_layout.addWidget(self.stacked_widget, stretch=1)
 
@@ -540,6 +557,8 @@ class MainWindow(QMainWindow):
             if hasattr(self.page_reports, "top_status_pill"):
                 self.page_reports.top_status_pill.refresh_all()
             self.page_reports.refresh_reports()
+        elif index == 5 and hasattr(self.page_inspector, "on_page_activated"):
+            self.page_inspector.on_page_activated()
 
     def showEvent(self, event):
         super().showEvent(event)

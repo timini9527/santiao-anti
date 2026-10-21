@@ -29,23 +29,50 @@ def _get_default_env() -> str:
         return "dev"
 
 
+def _get_default_platform() -> str:
+    """从 config/devices.yaml 中读取默认的目标测试平台 (如 android, harmonyos, ios)"""
+    try:
+        config_path = os.path.join(os.path.dirname(__file__), "config", "devices.yaml")
+        with open(config_path, "r", encoding="utf-8") as f:
+            raw_data = yaml.safe_load(f)
+            return raw_data.get("current_platform", "android")
+    except Exception:
+        return "android"
+
+
 def pytest_addoption(parser):
-    """注册命令行参数 --env，允许动态指定执行环境 (如 dev, test)"""
+    """注册命令行参数 --env 与 --platform，允许动态指定执行环境与目标设备平台"""
     parser.addoption(
         "--env",
         action="store",
         default=_get_default_env(),
         help="运行环境可选值: dev, test (默认读取 devices.yaml 中的配置)"
     )
+    parser.addoption(
+        "--platform",
+        action="store",
+        default=None,
+        help="目标设备平台可选值: android, harmonyos (默认读取 devices.yaml 中的 current_platform)"
+    )
 
 
 def pytest_configure(config):
-    """在测试启动时，将命令行传入的环境同步到系统环境变量 ENV，确保全局统一"""
+    """在测试启动时，将命令行传入的环境与平台同步到系统环境变量，确保全局统一"""
     env = config.getoption("--env")
     if env:
         os.environ["ENV"] = env
         os.environ["TEST_ENV"] = env
         logger.info(f"{LogIcon.SETUP} 全局测试环境已设定为: {env}")
+
+    platform = config.getoption("--platform")
+    if platform:
+        os.environ["PLATFORM"] = platform.strip().lower()
+        logger.info(f"{LogIcon.SETUP} 命令行参数已动态覆盖目标测试平台为: {os.environ['PLATFORM']}")
+    else:
+        def_plat = _get_default_platform()
+        os.environ.setdefault("PLATFORM", def_plat.strip().lower())
+        logger.info(f"{LogIcon.SETUP} 全局目标测试平台已初始化为: {os.environ['PLATFORM']}")
+
 
 
 # ============================================================
@@ -255,7 +282,12 @@ def prepare_api_token():
 _DRIVER_FIXTURE_NAMES = (
     "driver_sender",
     "driver_receiver",
+    "driver_android_sender",
+    "driver_android_receiver",
     "driver_harmony_sender",
+    "driver_harmony_receiver",
+    "driver_ios_sender",
+    "driver_ios_receiver",
     "driver_harmony",
     "driver_device3",
     "driver_device4",
@@ -280,19 +312,59 @@ def ensure_driver_session_health(request):
             health_check(timeout=2.0)
 
 
-# --- Driver Fixtures ---
+# --- Driver Fixtures (支持 Android / HarmonyOS / iOS 三端独立或协同交互) ---
 @pytest.fixture(scope="session")
 def driver_harmony_sender():
     """ 启动鸿蒙主测/发送方设备 (Session 级别，热启动模式下保持存活) """
     driver = DriverFactory.get_driver('harmony_sender')
-    # 热启动自愈：确保初始状态处于主页面（若已在主页 0s 瞬时放行）
-    MainPage(driver).go_to_main_page(timeout=0.3, max_retries=3)
     try:
         yield driver
     finally:
-        logger.info(f"{LogIcon.SETUP} 关闭鸿蒙设备驱动 (harmony_sender)")
+        logger.info(f"{LogIcon.SETUP} 关闭鸿蒙发送方设备驱动 (harmony_sender)")
         if os.environ.get("DEBUG_MODE") == "1":
             logger.info(f"{LogIcon.FIND} [DEBUG 模式] 已保留鸿蒙会话存活，未主动退出。")
+        else:
+            driver.quit()
+
+
+@pytest.fixture(scope="session")
+def driver_harmony_receiver():
+    """ 启动鸿蒙接收方设备 (Session 级别，热启动模式下保持存活) """
+    driver = DriverFactory.get_driver('harmony_receiver')
+    try:
+        yield driver
+    finally:
+        logger.info(f"{LogIcon.SETUP} 关闭鸿蒙接收方设备驱动 (harmony_receiver)")
+        if os.environ.get("DEBUG_MODE") == "1":
+            logger.info(f"{LogIcon.FIND} [DEBUG 模式] 已保留鸿蒙会话存活，未主动退出。")
+        else:
+            driver.quit()
+
+
+@pytest.fixture(scope="session")
+def driver_ios_sender():
+    """ 启动 iOS 主测/发送方设备 (Session 级别，热启动模式下保持存活) """
+    driver = DriverFactory.get_driver('ios_sender')
+    try:
+        yield driver
+    finally:
+        logger.info(f"{LogIcon.SETUP} 关闭 iOS 发送方设备驱动 (ios_sender)")
+        if os.environ.get("DEBUG_MODE") == "1":
+            logger.info(f"{LogIcon.FIND} [DEBUG 模式] 已保留 iOS 会话存活，未主动退出。")
+        else:
+            driver.quit()
+
+
+@pytest.fixture(scope="session")
+def driver_ios_receiver():
+    """ 启动 iOS 接收方设备 (Session 级别，热启动模式下保持存活) """
+    driver = DriverFactory.get_driver('ios_receiver')
+    try:
+        yield driver
+    finally:
+        logger.info(f"{LogIcon.SETUP} 关闭 iOS 接收方设备驱动 (ios_receiver)")
+        if os.environ.get("DEBUG_MODE") == "1":
+            logger.info(f"{LogIcon.FIND} [DEBUG 模式] 已保留 iOS 会话存活，未主动退出。")
         else:
             driver.quit()
 
@@ -327,6 +399,19 @@ def driver_receiver():
             logger.info(f"{LogIcon.FIND} [DEBUG 模式] 已保留 Appium Driver 存活，未主动退出。您可以随时使用 Inspector 连接。")
         else:
             driver.quit()
+
+
+@pytest.fixture(scope="session")
+def driver_android_sender(driver_sender):
+    """ 启动安卓主测/发送方设备 (显式端前缀别名，等价于 driver_sender) """
+    return driver_sender
+
+
+@pytest.fixture(scope="session")
+def driver_android_receiver(driver_receiver):
+    """ 启动安卓接收方设备 (显式端前缀别名，等价于 driver_receiver) """
+    return driver_receiver
+
 
 @pytest.fixture(scope="session")
 def driver_device3():

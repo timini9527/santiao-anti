@@ -416,7 +416,7 @@ class TestChatMultiDevice:
             logger.info(f"{LogIcon.ACTION} [Combined Test] 启动阶段一：多设备群聊并发发送...")
             self._run_async_multi_device_send(
                 device_sessions_map=device_groups_map,
-                loop_count=1,
+                loop_count=2,
                 interval=0.2,
                 session_type="群聊"
             )
@@ -430,7 +430,7 @@ class TestChatMultiDevice:
             logger.info(f"{LogIcon.ACTION} [Combined Test] 启动阶段二：多设备单聊并发发送...")
             self._run_async_multi_device_send(
                 device_sessions_map=device_users_map,
-                loop_count=1,
+                loop_count=2,
                 interval=0.2,
                 session_type="单聊"
             )

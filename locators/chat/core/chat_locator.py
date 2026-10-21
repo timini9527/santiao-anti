@@ -2,7 +2,7 @@ from appium.webdriver.common.appiumby import AppiumBy
 from locators.common.common_locator import CommonLocator
 
 
-class ChatLocator:
+class _ChatLocatorAndroid:
     PACKAGE_ID = CommonLocator.PACKAGE_ID
 
     # ==================================================================================================================
@@ -228,3 +228,16 @@ class ChatLocator:
     def get_message_item_by_text(cls, text: str):
         """通过传入的文本内容精确定位消息气泡"""
         return (AppiumBy.ANDROID_UIAUTOMATOR, f'new UiSelector().text("{text}")')
+
+
+# =========================================================================
+# 跨端通用定位器透明代理 (自动识别 Android / HarmonyOS NEXT)
+# =========================================================================
+from core.locator_manager import DynamicLocatorProxy
+from locators.chat.core.chat_locator_hos import ChatLocatorHos
+
+ChatLocator = DynamicLocatorProxy(
+    android_cls=_ChatLocatorAndroid,
+    harmony_cls=ChatLocatorHos
+)
+

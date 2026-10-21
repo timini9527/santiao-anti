@@ -470,9 +470,23 @@ class TestCatalogIndex:
             return
         cls._loaded = True
         try:
-            from web_platform.backend.paths import PROJECT_ROOT
-            cat_file = os.path.join(PROJECT_ROOT, "tests", "tests_catalog.json")
-            if not os.path.exists(cat_file):
+            cat_file = None
+            try:
+                from web_platform.backend.paths import PROJECT_ROOT
+                cand = os.path.join(PROJECT_ROOT, "tests", "tests_catalog.json")
+                if os.path.exists(cand):
+                    cat_file = cand
+            except Exception:
+                pass
+
+            if not cat_file or not os.path.exists(cat_file):
+                cur_dir = os.path.dirname(os.path.abspath(__file__))
+                alt_root = os.path.abspath(os.path.join(cur_dir, "..", ".."))
+                cand2 = os.path.join(alt_root, "tests", "tests_catalog.json")
+                if os.path.exists(cand2):
+                    cat_file = cand2
+
+            if not cat_file or not os.path.exists(cat_file):
                 return
             with open(cat_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -501,6 +515,56 @@ class TestCatalogIndex:
                     cls._func_map[f_name] = info
         except Exception:
             pass
+
+    @classmethod
+    def get_case_level3_title(cls, case_dict: Dict[str, Any]) -> str:
+        """
+        获取当前用例对应的三级标题（业务用例名称），保证与左侧用例树 1:1 完全对齐。
+        优先级：
+        1. tests_catalog.json 中的 display_name (例如：文本内容检索 - 消息存在-状态：已完成)
+        2. Allure 中的 story 标签 (方法级别业务说明)
+        3. Allure 中的 description 或清洗后的用例名
+        """
+        cls._ensure_loaded()
+        full_name = case_dict.get("fullName", "")
+        func_name = ""
+        class_name = ""
+        if "#" in full_name:
+            left_part, func_name = full_name.split("#", 1)
+            parts = left_part.split(".")
+            if parts:
+                class_name = parts[-1]
+        elif "::" in full_name:
+            parts = full_name.split("::")
+            func_name = parts[-1]
+            if len(parts) >= 2 and parts[-2].startswith("Test"):
+                class_name = parts[-2]
+
+        # 1. 优先从用例目录元数据库中获取三级标题
+        cat_info = cls.get_info(func_name, class_name)
+        if cat_info and cat_info.get("display_name"):
+            disp_name = cat_info["display_name"].strip()
+            disp_name = re.sub(r"^\[P[0-4]\]\s*", "", disp_name).strip()
+            if disp_name:
+                return disp_name
+
+        # 2. 从 Allure 结果中的 labels 提取 story
+        labels = case_dict.get("labels", [])
+        stories = [lbl.get("value", "") for lbl in labels if lbl.get("name") == "story" and lbl.get("value")]
+        if stories:
+            return str(stories[0]).strip()
+
+        # 3. 兜底清洗 raw_name
+        raw_name = case_dict.get("name", "")
+        clean_name = re.sub(r"^\[P[0-4]\]\s*", "", raw_name).strip()
+        clean_name = re.sub(r"\s*\[[\d\w,\s\'-_]+\]$", "", clean_name).strip()
+        if clean_name and clean_name != raw_name:
+            return clean_name
+
+        if func_name:
+            return func_name.replace("test_", "").replace("_", " ")
+
+        return raw_name
 
     @classmethod
     def match_case_to_param(cls, func_name: str, class_name: str, case_dict: Dict[str, Any]) -> Tuple[Optional[str], str]:
@@ -1230,6 +1294,28 @@ class AllureDashboardWidget(QFrame):
         clean_name = re.sub(r"\s*\[[\d\w,\s\'-_]+\]$", "", clean_name).strip()
         return f"[{priority}] {clean_name}"
 
+    @staticmethod
+    def _get_summary_level3_title(cases: List[Dict[str, Any]]) -> str:
+        """从当前批次测试用例集合中智能提炼三级标题（业务用例名称）"""
+        if not cases:
+            return ""
+        titles: List[str] = []
+        seen = set()
+        for c in cases:
+            t = TestCatalogIndex.get_case_level3_title(c)
+            if t and t not in seen:
+                seen.add(t)
+                titles.append(t)
+
+        if not titles:
+            return ""
+        if len(titles) == 1:
+            return titles[0]
+        elif len(titles) == 2:
+            return f"{titles[0]} / {titles[1]}"
+        else:
+            return f"{titles[0]} 等 {len(titles)} 项测试用例"
+
     def _render_cases_detail_list(self, data: Optional[Dict[str, Any]] = None):
         """根据当前激活视角 (业务精简视角 / 开发完整视角) 动态精细化渲染用例明细清单"""
         target_data = data if data is not None else self.current_data
@@ -1254,13 +1340,21 @@ class AllureDashboardWidget(QFrame):
             defects = [c for c in cases if c.get("status") in ("failed", "broken")]
             passed_cases = [c for c in cases if c.get("status") == "passed"]
             skipped_cases = [c for c in cases if c.get("status") == "skipped"]
+            level3_title = self._get_summary_level3_title(cases)
 
             if defects:
                 # 顶部警示条
                 warn_card = QFrame()
-                warn_card.setStyleSheet("background-color: #fef2f2; border: 1px solid #fecdd3; border-radius: 6px; padding: 6px 10px;")
-                warn_l = QHBoxLayout(warn_card)
+                warn_card.setStyleSheet("background-color: #fef2f2; border: 1px solid #fecdd3; border-radius: 6px; padding: 8px 12px;")
+                warn_l = QVBoxLayout(warn_card)
                 warn_l.setContentsMargins(0, 0, 0, 0)
+                warn_l.setSpacing(4)
+
+                if level3_title:
+                    lbl_lvl3 = QLabel(level3_title)
+                    lbl_lvl3.setStyleSheet("color: #9f1239; font-size: 13px; font-weight: 800;")
+                    warn_l.addWidget(lbl_lvl3)
+
                 lbl_warn = QLabel(f"⚠️ 发现 {len(defects)} 项业务阻断/异常缺陷，请优先验收排查：")
                 lbl_warn.setStyleSheet("color: #e11d48; font-size: 11px; font-weight: 700;")
                 warn_l.addWidget(lbl_warn)
@@ -1323,11 +1417,18 @@ class AllureDashboardWidget(QFrame):
             else:
                 # 全部通过的大横幅卡片
                 ok_card = QFrame()
-                ok_card.setStyleSheet("background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px; padding: 6px 10px;")
-                ok_l = QHBoxLayout(ok_card)
+                ok_card.setStyleSheet("background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px; padding: 8px 12px;")
+                ok_l = QVBoxLayout(ok_card)
                 ok_l.setContentsMargins(0, 0, 0, 0)
+                ok_l.setSpacing(4)
+
+                if level3_title:
+                    lbl_lvl3 = QLabel(level3_title)
+                    lbl_lvl3.setStyleSheet("color: #065f46; font-size: 13px; font-weight: 800;")
+                    ok_l.addWidget(lbl_lvl3)
+
                 lbl_ok = QLabel(f"🎉 业务验收全部通过！共验证 {len(cases)} 项核心业务功能")
-                lbl_ok.setStyleSheet("color: #059669; font-size: 11px; font-weight: 700;")
+                lbl_ok.setStyleSheet("color: #059669; font-size: 11px; font-weight: 600;")
                 ok_l.addWidget(lbl_ok)
                 self.cases_list_layout.addWidget(ok_card)
 
@@ -1359,7 +1460,9 @@ class AllureDashboardWidget(QFrame):
         else:
             # ================= 开发完整视角 =================
             # 面向测试开发：全量用例节点、毫秒级执行耗时、底层状态全开
-            top_tech = QLabel(f"🧪 全量用例节点清单 ({len(cases)} items | 毫秒级耗时追踪)")
+            level3_title = self._get_summary_level3_title(cases)
+            title_prefix = f"【{level3_title}】 " if level3_title else ""
+            top_tech = QLabel(f"🧪 {title_prefix}全量用例节点清单 ({len(cases)} items | 毫秒级耗时追踪)")
             top_tech.setStyleSheet("color: #475569; font-size: 11px; font-weight: 700; margin-bottom: 2px;")
             self.cases_list_layout.addWidget(top_tech)
 

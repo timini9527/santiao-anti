@@ -6,6 +6,7 @@ import subprocess
 import threading
 import time
 import urllib.request
+from typing import Any
 from urllib.parse import urlparse
 from appium import webdriver
 from appium.webdriver.client_config import AppiumClientConfig
@@ -28,39 +29,113 @@ class DriverFactory:
         # 1. 加载所有配置
         data = load_yaml_data("devices.yaml")
 
-        # 2. 获取当前运行环境 (优先读取系统环境变量，其次读取 devices.yaml 顶层配置，默认 'dev')
+        # 2. 获取当前测试环境与设备配置集
         current_env = os.environ.get('ENV') or data.get('current_env', 'dev')
-        logger.info(f"{LogIcon.ACTION} [DriverFactory] 当前指定的执行环境为: {current_env}")
+        logger.info(f"{LogIcon.ACTION} [DriverFactory] 当前测试环境: [{current_env}], 请求设备: [{device_key}]")
 
-        # 3. 获取公共 App 配置
-        common_caps = data.get('app', {})
-
-        # 4. 获取指定环境的设备配置
         env_config = data.get('devices', {}).get(current_env)
         if not env_config:
             raise ValueError(f"在 devices.yaml 的 devices 下找不到环境配置: {current_env}")
 
-        device_config = env_config.get(device_key)
-        if not device_config:
-            raise ValueError(f"在 devices.yaml 的 '{current_env}' 环境下找不到设备配置: {device_key}")
+        clean_key = str(device_key).strip()
+        actual_key = clean_key
 
-        # 5. 合并 Capability (深拷贝防止污染)
-        # 优先级：设备配置 > 公共配置
-        desired_caps = copy.deepcopy(common_caps)
-        desired_caps.update(device_config)
-        
-        # 🌐 鸿蒙平台分发 (HarmonyOS NEXT 6.0+)
-        platform_name = str(desired_caps.get('platformName', 'Android')).lower()
-        if platform_name in ('harmonyos', 'openharmony'):
+        # 3. 平台智能路由与别名映射
+        target_platform = (os.environ.get('PLATFORM') or data.get('current_platform') or 'android').strip().lower()
+
+        # 规则 1：通用角色 (sender / receiver) 根据当前目标测试平台自动智能路由
+        if clean_key in ('sender', 'receiver'):
+            if target_platform in ('harmonyos', 'openharmony', 'hos'):
+                target_key = f'harmony_{clean_key}'
+                if target_key in env_config:
+                    actual_key = target_key
+                    logger.info(f"{LogIcon.SETUP} [DriverFactory] 当前测试平台为鸿蒙，通用角色 '{clean_key}' 智能路由至: '{actual_key}'")
+            elif target_platform in ('ios', 'apple'):
+                target_key = f'ios_{clean_key}'
+                if target_key in env_config:
+                    actual_key = target_key
+                    logger.info(f"{LogIcon.SETUP} [DriverFactory] 当前测试平台为 iOS，通用角色 '{clean_key}' 智能路由至: '{actual_key}'")
+
+        # 规则 2：显式端别名映射 (android_sender -> sender)
+        elif clean_key == 'android_sender' and 'sender' in env_config:
+            actual_key = 'sender'
+        elif clean_key == 'android_receiver' and 'receiver' in env_config:
+            actual_key = 'receiver'
+
+        # 从当前环境中提取最终设备配置
+        device_config = env_config.get(actual_key)
+        if not device_config:
+            raise ValueError(f"在 devices.yaml 的 '{current_env}' 环境下找不到设备配置: {clean_key} (最终路由: {actual_key})")
+
+        # 4. 判定设备的真实所属平台（以设备自身配置的 platformName 为最高准则，支持异构三端多设备共存交互）
+        raw_platform = str(device_config.get('platformName') or '').strip().lower()
+        if not raw_platform:
+            if 'harmony' in actual_key.lower():
+                raw_platform = 'harmonyos'
+            elif 'ios' in actual_key.lower():
+                raw_platform = 'ios'
+            else:
+                raw_platform = 'android'
+
+        from core.locator_manager import LocatorPlatformManager
+
+        # =========================================================================
+        # 🌐 平台一：鸿蒙原生环境 (HarmonyOS NEXT 6.0+)
+        # =========================================================================
+        if raw_platform in ('harmonyos', 'openharmony', 'hos'):
+            LocatorPlatformManager.set_current_platform('harmonyos')
             harmony_common = data.get('harmony_app', {})
             merged_caps = copy.deepcopy(harmony_common)
-            merged_caps.update(desired_caps)
+            merged_caps.update(device_config)
+
             from core.harmony_driver import HarmonyDriver
-            logger.info(f"{LogIcon.SETUP} [DriverFactory] 识别到鸿蒙平台设备 ({device_key})，构建 HarmonyDriver 驱动实例")
+            logger.info(f"{LogIcon.SETUP} [DriverFactory] 识别到鸿蒙平台设备 ({actual_key})，构建 HarmonyDriver 实例")
             h_driver = HarmonyDriver(merged_caps)
             h_driver._factory_device_key = device_key
+            h_driver._factory_env = current_env
             h_driver._factory_udid = merged_caps.get("udid")
+            h_driver._platform_name = "harmonyos"
             return h_driver
+
+        # =========================================================================
+        # 🌐 平台二：iOS 环境 (XCUITest)
+        # =========================================================================
+        if raw_platform in ('ios', 'apple'):
+            LocatorPlatformManager.set_current_platform('ios')
+            ios_common = data.get('ios_app', {})
+            desired_caps = copy.deepcopy(ios_common)
+            desired_caps.update(device_config)
+
+            from appium.options.ios import XCUITestOptions
+            options = XCUITestOptions().load_capabilities(desired_caps)
+            appium_url = device_config.get('appiumServerUrl', 'http://127.0.0.1:4725')
+
+            logger.info(f"{LogIcon.SETUP} [DriverFactory] 识别到 iOS 平台设备 ({actual_key})，构建 XCUITest 驱动实例")
+            appium_http_timeout = 95
+            client_config = AppiumClientConfig(
+                remote_server_addr=appium_url,
+                timeout=appium_http_timeout,
+            )
+            driver = webdriver.Remote(
+                command_executor=appium_url,
+                options=options,
+                client_config=client_config,
+            )
+            driver.implicitly_wait(0)
+            driver._factory_device_key = device_key
+            driver._factory_appium_url = appium_url
+            driver._factory_udid = desired_caps.get("udid")
+            driver._factory_env = current_env
+            driver._platform_name = "ios"
+            return driver
+
+        # =========================================================================
+        # 🌐 平台三：Android 环境 (UiAutomator2)
+        # =========================================================================
+        LocatorPlatformManager.set_current_platform('android')
+        common_caps = data.get('app', {})
+        desired_caps = copy.deepcopy(common_caps)
+        desired_caps.update(device_config)
 
         # 🔌 动态分配 free systemPort 解决 Windows TCP TIME_WAIT 导致第一次重启失败的问题
         system_port = desired_caps.get('systemPort')
@@ -235,6 +310,8 @@ class DriverFactory:
         driver._factory_system_port = system_port
         driver._factory_appium_url = appium_url
         driver._factory_udid = desired_caps.get("udid")
+        driver._factory_env = current_env
+        driver._platform_name = "android"
         return driver
 
 
@@ -242,11 +319,11 @@ class DriverFactory:
 
 
 class UiAutomator2RecoveryError(WebDriverException):
-    """UiAutomator2 会话失效且已完成一次重建，当前用例应从 setup 重跑。"""
+    """移动端驱动会话失效且已完成一次重建，当前用例应从 setup 重跑。"""
 
 
 class RecoverableDriver:
-    """对外保持同一个 Driver 引用，底层 UiAutomator2 Session 失效时可原子替换。"""
+    """保持同一 Driver 引用，并在 Android 或鸿蒙通信失效时原子替换底层会话。"""
 
     # teardown 方法失败时不能触发重建，否则测试结束阶段可能反而创建一个新 Session。
     _NO_RECOVERY_METHODS = {"close", "quit", "stop_client"}
@@ -254,19 +331,35 @@ class RecoverableDriver:
     _HEALTH_CHECK_IDLE_SECONDS = 30.0
 
     def __init__(self, device_key: str):
+        driver = DriverFactory._create_driver(device_key)
         object.__setattr__(self, "_device_key", device_key)
-        object.__setattr__(self, "_driver", DriverFactory._create_driver(device_key))
+        object.__setattr__(self, "_driver", driver)
+        object.__setattr__(self, "_platform_name", getattr(driver, "_platform_name", "android"))
         object.__setattr__(self, "_generation", 0)
         object.__setattr__(self, "_recovery_lock", threading.Lock())
         object.__setattr__(self, "_last_successful_command_at", time.monotonic())
 
     @staticmethod
-    def _is_uiautomator2_proxy_error(error: WebDriverException) -> bool:
-        """只识别服务端代理/Instrumentation 故障或鸿蒙 HDC 脱机，避免把定位器错误当成设备故障。"""
+    def _is_recoverable_transport_error(error: WebDriverException) -> bool:
+        """只识别通信层故障，避免把定位器或业务错误误判为会话失效。"""
+        if getattr(error, "command_outcome_unknown", False):
+            # 结果未知的点击、输入等动作不能触发整条用例自动重跑。
+            return False
+        if getattr(error, "recoverable_transport_error", False):
+            return True
+
         message = str(error).lower()
         proxy_timeout = (
             "could not proxy command to the remote server" in message
-            and any(marker in message for marker in ("timeout of", "timed out", "socket hang up", "econnrefused"))
+            and any(
+                marker in message
+                for marker in (
+                    "timeout of",
+                    "timed out",
+                    "socket hang up",
+                    "econnrefused",
+                )
+            )
         )
         server_stopped = any(
             marker in message
@@ -276,21 +369,30 @@ class RecoverableDriver:
                 "the instrumentation process cannot be initialized",
                 "hdc 失败",
                 "target not found",
+                "device not found",
+                "no devices",
                 "hdc server",
             )
         )
         return proxy_timeout or server_stopped
 
     def _probe_driver_health(self, timeout: float) -> None:
-        """根据当前驱动类型（Android/HarmonyOS）自适应探测健康状态"""
+        """根据当前驱动类型（Android/HarmonyOS/iOS）自适应探测健康状态"""
         driver = object.__getattribute__(self, "_driver")
-        # 鸿蒙驱动探活：优先调用其内置的 is_healthy 状态检查
-        if hasattr(driver, "is_healthy"):
-            if not driver.is_healthy():
+        plat = getattr(driver, "_platform_name", "")
+
+        # 1. 鸿蒙探活同时检查设备在线状态和 UiTest 界面树服务
+        if plat == "harmonyos" or hasattr(driver, "is_healthy"):
+            if not driver.is_healthy(timeout=timeout):
                 raise ConnectionError(f"鸿蒙设备 HDC 离线或服务异常 (设备: {getattr(driver, 'udid', '')})")
             return
 
-        # Android UiAutomator2 探活：优先直连本地端口
+        # 2. iOS 探活：轻量级窗口命令探测
+        if plat == "ios":
+            driver.get_window_size()
+            return
+
+        # 3. Android UiAutomator2 探活：优先直连本地端口
         system_port = getattr(driver, "_factory_system_port", None)
         appium_url = getattr(driver, "_factory_appium_url", "")
         parsed_url = urlparse(appium_url)
@@ -322,7 +424,8 @@ class RecoverableDriver:
             return True
         except Exception as error:
             driver = object.__getattribute__(self, "_driver")
-            driver_type = "HarmonyOS" if hasattr(driver, "is_healthy") else "UiAutomator2"
+            plat = getattr(driver, "_platform_name", "")
+            driver_type = "HarmonyOS" if plat == "harmonyos" else ("iOS" if plat == "ios" else "UiAutomator2")
             logger.warning(
                 f"{LogIcon.WARN} [DriverRecovery] {self._device_key} 的 {driver_type} 健康检查失败，"
                 f"{LogIcon.WARN} 准备重建 Session: {type(error).__name__}: {error}"
@@ -339,51 +442,95 @@ class RecoverableDriver:
             if current_generation != failed_generation:
                 return
 
+            old_driver = object.__getattribute__(self, "_driver")
+            is_harmony = getattr(old_driver, "_is_harmony_driver", False)
+            driver_type = "HarmonyOS" if is_harmony else "UiAutomator2"
             logger.error(
-                f"{LogIcon.ACTION} [DriverRecovery] 检测到 {self._device_key} 的 UiAutomator2 通信失效，"
-                f"{LogIcon.FAIL} 开始单次重建 Session | 原因: {type(cause).__name__}: {cause}"
+                f"{LogIcon.ACTION} [DriverRecovery] 检测到 {self._device_key} 的 "
+                f"{driver_type} 通信失效，{LogIcon.FAIL} 开始单次重建 Session | "
+                f"原因: {type(cause).__name__}: {cause}"
             )
-            # 不调用旧 driver.quit()：冻结会话的 DELETE 请求可能再次阻塞，或误停随后启动的新服务。
-            # _create_driver() 会按设备清理残留 UiAutomator2 进程和 adb forward，再创建全新 Session。
+
+            if is_harmony:
+                # HMNextAuto 按设备缓存 Driver；先关闭旧实例才能真正建立新连接。
+                try:
+                    old_driver.quit()
+                except Exception as close_error:
+                    logger.warning(
+                        f"{LogIcon.WARN} [DriverRecovery] 关闭旧鸿蒙会话失败，"
+                        f"继续尝试重建: {type(close_error).__name__}: {close_error}"
+                    )
+            # Android 不主动 quit 冻结会话，工厂会清理 UiAutomator2 与端口残留。
             try:
                 new_driver = DriverFactory._create_driver(self._device_key)
             except Exception as recovery_error:
                 raise UiAutomator2RecoveryError(
-                    f"{self._device_key} 的 UiAutomator2 Session 重建失败: {recovery_error}"
+                    f"{self._device_key} 的 {driver_type} Session 重建失败: "
+                    f"{recovery_error}"
                 ) from recovery_error
 
             object.__setattr__(self, "_driver", new_driver)
+            object.__setattr__(self, "_platform_name", getattr(new_driver, "_platform_name", "android"))
             object.__setattr__(self, "_generation", current_generation + 1)
             object.__setattr__(self, "_last_successful_command_at", time.monotonic())
             logger.info(
-                f"{LogIcon.SUCCESS} [DriverRecovery] {self._device_key} 的 UiAutomator2 Session 已重建，"
+                f"{LogIcon.SUCCESS} [DriverRecovery] {self._device_key} 的 "
+                f"{driver_type} Session 已重建，"
                 f"{LogIcon.ACTION} 新 Session ID: {new_driver.session_id}"
             )
 
-    def __getattr__(self, name):
+    def _bind_recoverable_result(self, result: Any) -> Any:
+        """让鸿蒙元素后续动作继续经过当前 RecoverableDriver 代理。"""
+        result_items = result if isinstance(result, (list, tuple)) else (result,)
+        for item in result_items:
+            bind_driver = getattr(item, "_bind_command_driver", None)
+            if callable(bind_driver):
+                bind_driver(self)
+        return result
+
+    def _raise_after_recovery(
+        self,
+        generation: int,
+        error: WebDriverException,
+        failed_driver: Any,
+    ) -> None:
+        """按异常类型决定是否重建，并阻止当前业务步骤在新页面继续执行。"""
+        if not self._is_recoverable_transport_error(error):
+            raise error
+
+        plat = getattr(failed_driver, "_platform_name", "")
+        driver_type = "HarmonyOS" if plat == "harmonyos" else ("iOS" if plat == "ios" else "UiAutomator2")
+        self._recover(generation, error)
+        raise UiAutomator2RecoveryError(
+            f"{self._device_key} 的 {driver_type} Session 已自动重建；"
+            "为避免在错误页面继续执行，当前用例需要从 setup 重跑一次"
+        ) from error
+
+    def __getattr__(self, name: str) -> Any:
         # Page Object 始终持有本代理；属性和命令在调用时再解析到当前底层 Driver。
         driver = object.__getattribute__(self, "_driver")
-        attribute = getattr(driver, name)
+        generation = object.__getattribute__(self, "_generation")
+        try:
+            attribute = getattr(driver, name)
+        except WebDriverException as error:
+            self._raise_after_recovery(generation, error, driver)
         if not callable(attribute) or name in self._NO_RECOVERY_METHODS:
             return attribute
 
-        def guarded_command(*args, **kwargs):
+        def guarded_command(*args: Any, **kwargs: Any) -> Any:
             current_driver = object.__getattribute__(self, "_driver")
-            generation = object.__getattribute__(self, "_generation")
+            current_generation = object.__getattribute__(self, "_generation")
             try:
                 result = getattr(current_driver, name)(*args, **kwargs)
+                result = self._bind_recoverable_result(result)
                 object.__setattr__(self, "_last_successful_command_at", time.monotonic())
                 return result
             except WebDriverException as error:
-                if not self._is_uiautomator2_proxy_error(error):
-                    raise
-
-                self._recover(generation, error)
-                # 新 Session 可能重新启动到主页面，不能在原业务步骤后直接继续执行。
-                raise UiAutomator2RecoveryError(
-                    f"{self._device_key} 的 UiAutomator2 Session 已自动重建；"
-                    "为避免在错误页面继续执行，当前用例需要从 setup 重跑一次"
-                ) from error
+                self._raise_after_recovery(
+                    current_generation,
+                    error,
+                    current_driver,
+                )
 
         return guarded_command
 

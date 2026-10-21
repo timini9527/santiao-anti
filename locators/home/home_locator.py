@@ -2,7 +2,7 @@ from appium.webdriver.common.appiumby import AppiumBy
 from locators.common.common_locator import CommonLocator
 
 
-class HomeLocator:
+class _HomeLocatorAndroid:
     PACKAGE_ID = CommonLocator.PACKAGE_ID
 
     # 顶部左上角菜单
@@ -205,3 +205,15 @@ class HomeLocator:
         return (AppiumBy.XPATH, 
                 f'//*[@resource-id="{cls.CONVERSATION_ID}" and .//*[@resource-id="{cls.CONVERSATION_NAME_ID}" and contains(@text, "{name}")]]'
                 f'//*[@resource-id="{cls.CONVERSATION_USER_NAME_ID}"]')
+
+
+# =========================================================================
+# 跨端通用定位器透明代理 (自动识别 Android / HarmonyOS NEXT)
+# =========================================================================
+from core.locator_manager import DynamicLocatorProxy
+from locators.home.home_locator_hos import HomeLocatorHos
+
+HomeLocator = DynamicLocatorProxy(
+    android_cls=_HomeLocatorAndroid,
+    harmony_cls=HomeLocatorHos
+)

@@ -15,6 +15,8 @@ from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2
 from utils.file_reader.data_loader import load_yaml_data
 CHAT_DATA = load_yaml_data('chat/chat.yaml').get('test_data')
 
+
+
 class BaseSmokeChat:
     """单聊及聊天设置/长按/搜索测试基类，统一管理 Page 实例化与后置清理"""
 
@@ -40,6 +42,8 @@ class BaseSmokeChat:
         self.chatListPage.enter_chat(name)
         self.chatSettingPage.click_more_button()
         self.chatSettingPage.wait_for_setting_page_load()
+
+
 
 @allure.epic('IM核心功能测试')
 @allure.feature('冒烟测试-单聊-基础与设置')

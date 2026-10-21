@@ -1,6 +1,6 @@
 [
   {
-    "file": "tests/test_demo.py",
+    "file": "tests/test_demo_android.py",
     "display_name": "验证App启动状态与基础会话流转-状态：已完成",
     "classes": [],
     "tests": [
@@ -11,6 +11,38 @@
         "priority": "P2"
       }
     ]
+  },
+  {
+    "file": "tests/test_demo_harmony.py",
+    "display_name": "冒烟测试-鸿蒙端-主页与生命周期",
+    "classes": [
+      {
+        "name": "TestSmokeHarmony",
+        "display_name": "冒烟测试-鸿蒙端-主页与生命周期",
+        "priority": "P2",
+        "tests": [
+          {
+            "name": "test_harmony_launch_and_home_render",
+            "display_name": "验证鸿蒙端App冷启动与主页核心元素渲染-状态：已完成",
+            "params": [],
+            "priority": "P0"
+          },
+          {
+            "name": "test_harmony_drawer_menu_interaction",
+            "display_name": "验证鸿蒙端主页侧滑抽屉菜单打开与返回-状态：已完成",
+            "params": [],
+            "priority": "P1"
+          },
+          {
+            "name": "test_harmony_add_button_expand",
+            "display_name": "验证鸿蒙端主页右上角加号菜单展开交互-状态：已完成",
+            "params": [],
+            "priority": "P1"
+          }
+        ]
+      }
+    ],
+    "tests": []
   },
   {
     "file": "tests/chat/core/test_chat.py",

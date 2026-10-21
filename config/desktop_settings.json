@@ -9,7 +9,7 @@
     "group_chat_name": "",
     "env": "dev",
     "debug_mode": false,
-    "role": "tech",
+    "role": "business",
     "selected_test_file": "",
     "auto_scroll_log": false,
     "splitter_h_sizes": [
@@ -17,11 +17,11 @@
       1069
     ],
     "splitter_v_sizes": [
-      573,
-      340
+      638,
+      275
     ],
     "log_collapsed": false,
-    "last_log_height": 340,
+    "last_log_height": 275,
     "params_collapsed": true,
     "node_status_map": {
       "tests/chat/core/test_chat/TestChat::test_send_text_message": "passed",
@@ -263,9 +263,14 @@
       "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress",
       "tests/chat/search/test_chat_search.py",
       "tests/chat/search/test_chat_search.py::TestChatSearch",
-      "tests/chat/search/test_chat_search.py::TestChatSearch::test_search_by_text_content_and_locate",
+      "tests/chat/search/test_chat_search.py::TestChatSearch::test_search_by_date_calendar",
       "tests/chat/setting/test_chat_setting.py",
-      "tests/chat/setting/test_chat_setting.py::TestChatSetting"
+      "tests/chat/setting/test_chat_setting.py::TestChatSetting",
+      "tests/chat/setting/test_chat_setting.py::TestChatSetting::test_get_chat_nickname",
+      "tests/chat/setting/test_chat_setting.py::TestChatSetting::test_chat_password_switch",
+      "tests/chat/setting/test_chat_setting.py::TestChatSetting::test_screenshot_notification_switch",
+      "tests/chat/setting/test_chat_setting.py::TestChatSetting::test_recall_notification_switch",
+      "tests/chat/setting/test_chat_setting.py::TestChatSetting::test_clear_chat_records"
     ],
     "web_receipt_fields": [
       {
@@ -294,7 +299,7 @@
   },
   "window": {
     "x": 280,
-    "y": 439,
+    "y": 1059,
     "width": 1406,
     "height": 864,
     "maximized": true

@@ -4,7 +4,7 @@ from locators.common.common_locator import CommonLocator
 
 
 """ 左边侧滑页面定位器 """
-class SideSlipLocator(CommonLocator):
+class _SideSlipLocatorAndroid(CommonLocator):
     """
     首页左侧侧滑抽屉页面 (Navigation Drawer) 元素定位器
     基于最新 UI 树结构对齐 (DrawerLayout -> nav_view -> ScrollView)
@@ -73,6 +73,19 @@ class SideSlipLocator(CommonLocator):
     def get_menu_item_by_text(cls, menu_text: str) -> tuple:
         """根据菜单文案动态检索侧滑菜单项容器或文本"""
         return (AppiumBy.XPATH, f'//*[@resource-id="{cls.PACKAGE_ID}/nav_view"]//*[contains(@text, "{menu_text}")]')
+
+
+# =========================================================================
+# 跨端通用定位器透明代理 (自动识别 Android / HarmonyOS NEXT)
+# =========================================================================
+from core.locator_manager import DynamicLocatorProxy
+from locators.home.side_slip_locator_hos import SideSlipLocatorHos
+
+SideSlipLocator = DynamicLocatorProxy(
+    android_cls=_SideSlipLocatorAndroid,
+    harmony_cls=SideSlipLocatorHos
+)
+
 
 
 
