@@ -172,6 +172,39 @@ class AppRuntimeBridge:
                 }
             });
             return success;
+        },
+        // 批量管道高速发送接口：单次 RPC 传输批次数组，App 内部执行原生微秒循环直投 Netty
+        sendBatchTextMessage: function(messagesJson) {
+            var sent = 0;
+            Java.perform(function() {
+                try {
+                    if (!WebSocketMgr) {
+                        WebSocketMgr = Java.use('com.network.lib.socket.WebSocketManager').INSTANCE.value;
+                    }
+                    if (WebSocketMgr) {
+                        var list = JSON.parse(messagesJson);
+                        var len = list.length;
+                        for (var i = 0; i < len; i++) {
+                            var item = list[i];
+                            var ok = WebSocketMgr.sendTextMessage(
+                                item.chatId,
+                                item.chatType,
+                                item.fromCustId,
+                                item.fromCustName,
+                                item.toCustId,
+                                item.content,
+                                0, null, null, null, false, false
+                            );
+                            if (ok) {
+                                sent++;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.log("[Bridge] 批量管道发送底层异常: " + e.toString());
+                }
+            });
+            return sent;
         }
     };
     """
@@ -314,6 +347,27 @@ class AppRuntimeBridge:
                     content,
                 )
             )
+
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(self._executor, _invoke)
+
+    async def send_batch_text(self, items: List[Dict[str, Any]]) -> int:
+        """通过 App 运行时活动长连接批量高速管道投递消息（单次 RPC 传输）。
+        
+        Args:
+            items: 消息字典列表，每一项包含 chatId, chatType, fromCustId, fromCustName, toCustId, content
+            
+        Returns:
+            int: 成功入队 Netty 通道的消息总数。
+        """
+        if not items:
+            return 0
+        await self.ensure_connected()
+        assert self._script is not None
+
+        def _invoke() -> int:
+            payload_json = json.dumps(items, ensure_ascii=False)
+            return int(self._script.exports_sync.send_batch_text_message(payload_json))
 
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(self._executor, _invoke)
@@ -476,6 +530,33 @@ class IMClient:
         finally:
             self._sem.release()
 
+    async def send_batch_to_targets(self, items: List[Tuple[SessionTarget, str]]) -> int:
+        """向批量会话目标投递消息（微秒级批处理管道）。
+        
+        Args:
+            items: 元素为 (SessionTarget, 文本内容) 的批次列表
+            
+        Returns:
+            int: 成功投递入队 Netty 通道的消息数量。
+        """
+        if not items:
+            return 0
+        rpc_items = []
+        for tgt, text in items:
+            rpc_items.append({
+                "chatId": "0" if tgt.chat_type == ChatType.SINGLE else tgt.chat_id,
+                "chatType": int(tgt.chat_type),
+                "fromCustId": self.sender_cust_id,
+                "fromCustName": self.sender_name,
+                "toCustId": tgt.to_cust_id if tgt.chat_type == ChatType.SINGLE else "0",
+                "content": text,
+            })
+        await self._sem.acquire()
+        try:
+            return await self.bridge.send_batch_text(rpc_items)
+        finally:
+            self._sem.release()
+
     async def send_message(
         self,
         conversation_id: str,
@@ -546,20 +627,22 @@ class IMClient:
         *,
         messages_per_target: Optional[int] = None,
         targets: Optional[List[SessionTarget]] = None,
-        concurrency: int = 200,
-        report_interval: int = 20000,
+        concurrency: int = 20,
+        batch_size: int = 50,
+        report_interval: int = 1000,
         delay_between_msg: float = 0.0,
         use_csv_data: bool = True,
     ) -> Dict[str, Any]:
-        """【多会话流式并发压测引擎】全面支持总量轮询打散与多会话齐步等量并发。
+        """【多会话流式并发压测引擎】全面支持批量高速管道、总量轮询打散与齐步等量并发。
         
         Args:
             messages: 总消息数（如 100,000）或消息文本可迭代集合（总量轮询打散模式）。
             messages_per_target: 每个目标会话独立发送的消息总数（多会话齐步等量并发模式）。
             targets: 压测目标会话池。
-            concurrency: 并发协程数量。
+            concurrency: 并发协程数量（批量管道模式下 15~20 即可吃满通道）。
+            batch_size: 批处理管道大小（单次 RPC 注入的消息数量，默认 50，大幅降低 IPC 开销）。
             report_interval: 统计聚合打点间隔。
-            delay_between_msg: 消息间隔。
+            delay_between_msg: 批次间额外延时（压测通常设为 0）。
             use_csv_data: 是否使用 data_loader 从 data/chat/chat_messages.csv 提取真实业务语料。
         """
         active_targets = targets or self.targets
@@ -573,21 +656,21 @@ class IMClient:
         # 计算预期发送总数与压测模式
         if messages_per_target is not None:
             total_count = num_targets * messages_per_target
-            mode_desc = f"多会话齐步等量并行 (每个会话各发 {messages_per_target:,} 条，总计 {total_count:,} 条)"
+            mode_desc = f"多会话齐步等量并行 (每个会话各发 {messages_per_target:,} 条，总计 {total_count:,} 条 | 批处理管道 Batch={batch_size})"
         elif isinstance(messages, int):
             total_count = messages
-            mode_desc = f"总量打散轮询压测 (总计 {messages:,} 条，每会话约 {messages // num_targets:,} 条)"
+            mode_desc = f"总量打散轮询压测 (总计 {messages:,} 条，每会话约 {messages // num_targets:,} 条 | 批处理管道 Batch={batch_size})"
         elif hasattr(messages, "__len__"):
             total_count = len(messages)
-            mode_desc = f"自定义消息集轮询 (总计 {total_count:,} 条)"
+            mode_desc = f"自定义消息集轮询 (总计 {total_count:,} 条 | 批处理管道 Batch={batch_size})"
         elif use_csv_data and corpus_len > 0:
             total_count = corpus_len
-            mode_desc = f"CSV 真实语料全量发送 (总计 {total_count:,} 条)"
+            mode_desc = f"CSV 真实语料全量发送 (总计 {total_count:,} 条 | 批处理管道 Batch={batch_size})"
         else:
             total_count = 100000
-            mode_desc = "流式压测"
+            mode_desc = f"流式压测 (批处理管道 Batch={batch_size})"
 
-        queue: asyncio.Queue[Optional[Tuple[SessionTarget, str]]] = asyncio.Queue(maxsize=concurrency * 4)
+        queue: asyncio.Queue[Optional[List[Tuple[SessionTarget, str]]]] = asyncio.Queue(maxsize=concurrency * 4)
         sent_count = 0
         success_count = 0
         fail_count = 0
@@ -597,8 +680,25 @@ class IMClient:
         last_report_time = start_time
         last_report_count = 0
 
-        async def producer() -> None:
+        batch_buffer: List[Tuple[SessionTarget, str]] = []
+
+        async def flush_buffer() -> None:
+            nonlocal batch_buffer
+            if batch_buffer:
+                await queue.put(list(batch_buffer))
+                batch_buffer.clear()
+
+        async def emit_item(tgt: SessionTarget, text: str) -> None:
             nonlocal sent_count
+            sent_count += 1
+            if batch_size > 1:
+                batch_buffer.append((tgt, text))
+                if len(batch_buffer) >= batch_size:
+                    await flush_buffer()
+            else:
+                await queue.put([(tgt, text)])
+
+        async def producer() -> None:
             if messages_per_target is not None:
                 # 【多会话齐步等量调度】：每轮交错推进各个会话的第 k 条，并发协程池同频消化
                 for round_idx in range(1, messages_per_target + 1):
@@ -607,8 +707,7 @@ class IMClient:
                             msg_body = corpus[sent_count % corpus_len]
                         else:
                             msg_body = f"[{tgt.name}] 并发压测第 {round_idx}/{messages_per_target} 条 ({time.strftime('%H:%M:%S')})"
-                        await queue.put((tgt, msg_body))
-                        sent_count += 1
+                        await emit_item(tgt, msg_body)
             elif isinstance(messages, int):
                 # 【总量轮询调度】：按序号循环取模打散到各个会话
                 for i in range(messages):
@@ -617,18 +716,19 @@ class IMClient:
                         msg_body = corpus[i % corpus_len]
                     else:
                         msg_body = f"PerfMsg-{i + 1} to [{tgt.name}] ({time.strftime('%H:%M:%S')})"
-                    await queue.put((tgt, msg_body))
-                    sent_count += 1
+                    await emit_item(tgt, msg_body)
             elif messages is not None:
                 for i, item in enumerate(messages):
                     tgt = active_targets[i % num_targets]
-                    await queue.put((tgt, item))
-                    sent_count += 1
+                    await emit_item(tgt, item)
             elif use_csv_data and corpus_len > 0:
                 for i, text in enumerate(corpus):
                     tgt = active_targets[i % num_targets]
-                    await queue.put((tgt, text))
-                    sent_count += 1
+                    await emit_item(tgt, text)
+
+            if batch_size > 1:
+                await flush_buffer()
+
             # 放入结束标记
             for _ in range(concurrency):
                 await queue.put(None)
@@ -636,31 +736,34 @@ class IMClient:
         async def worker() -> None:
             nonlocal success_count, fail_count, last_report_time, last_report_count
             while True:
-                task_item = await queue.get()
-                if task_item is None:
+                batch_items = await queue.get()
+                if batch_items is None:
                     queue.task_done()
                     break
-                tgt, text = task_item
                 try:
-                    res = await self.send_to_target(tgt, text)
-                    if res.get("ok") is True:
-                        success_count += 1
+                    sent = await self.send_batch_to_targets(batch_items)
+                    success_count += sent
+                    failed_items = len(batch_items) - sent
+                    fail_count += failed_items
+                    for tgt, _ in batch_items:
                         target_success_map[tgt.name] = target_success_map.get(tgt.name, 0) + 1
-                    else:
-                        fail_count += 1
                 except Exception:
-                    fail_count += 1
+                    fail_count += len(batch_items)
                 finally:
                     queue.task_done()
                     if delay_between_msg > 0:
                         await asyncio.sleep(delay_between_msg)
                     
                     completed = success_count + fail_count
-                    if report_interval > 0 and (completed % report_interval == 0 or completed == total_count):
+                    if report_interval > 0 and (
+                        (completed - last_report_count >= report_interval)
+                        or (last_report_count == 0 and completed > 0)
+                        or (completed >= total_count)
+                    ):
                         now = time.time()
                         elapsed_total = max(0.001, now - start_time)
                         elapsed_interval = max(0.001, now - last_report_time)
-                        interval_items = completed - last_report_count
+                        interval_items = max(1, completed - last_report_count)
                         instant_tps = interval_items / elapsed_interval
                         pct = (completed / total_count * 100) if total_count > 0 else 0.0
                         total_str = f"/{total_count:,}" if total_count > 0 else ""
@@ -713,8 +816,9 @@ class IMClient:
         count_per_target: int = 100,
         *,
         targets: Optional[List[SessionTarget]] = None,
-        concurrency: int = 200,
-        report_interval: int = 20000,
+        concurrency: int = 20,
+        batch_size: int = 50,
+        report_interval: int = 1000,
         delay_between_msg: float = 0.0,
         use_csv_data: bool = True,
     ) -> Dict[str, Any]:
@@ -724,6 +828,7 @@ class IMClient:
             count_per_target: 每个会话各自需要发送的消息总数（例如每个会话各发 100 条）。
             targets: 压测目标会话池。
             concurrency: 并发协程数量。
+            batch_size: 批处理管道大小（单次 RPC 注入的消息数量，默认 50，提升上百倍吞吐）。
             report_interval: 统计聚合打点间隔。
             delay_between_msg: 消息间隔。
             use_csv_data: 是否使用 data_loader 从 data/chat/chat_messages.csv 提取真实业务语料。
@@ -732,6 +837,7 @@ class IMClient:
             messages_per_target=count_per_target,
             targets=targets,
             concurrency=concurrency,
+            batch_size=batch_size,
             report_interval=report_interval,
             delay_between_msg=delay_between_msg,
             use_csv_data=use_csv_data,
@@ -762,7 +868,7 @@ class IMClientCluster:
         self,
         device_configs: List[DeviceAccountConfig],
         common_targets: Optional[List[SessionTarget]] = None,
-        concurrency_per_device: int = 50,
+        concurrency_per_device: int = 20,
     ) -> None:
         self.device_configs = device_configs
         self.common_targets = common_targets or []
@@ -809,7 +915,8 @@ class IMClientCluster:
     async def send_matrix(
         self,
         count_per_target: int = 100,
-        report_interval: int = 200,
+        batch_size: int = 50,
+        report_interval: int = 1000,
         use_csv_data: bool = True,
     ) -> List[Dict[str, Any]]:
         """【多设备集群齐步等量并行压测】
@@ -817,15 +924,16 @@ class IMClientCluster:
         所有参战模拟器设备【完全同时同频】向各自配置的目标会话池齐步发射：
         - 每台设备各自向自己的专属群与单聊目标发送 count_per_target 条；
         - 总计投递量由各设备装配的会话总数相加计算。
+        - 开启 batch_size 极速管道，突破 IPC 瓶颈。
         - 默认通过 data_loader 加载 data/chat/chat_messages.csv 真实业务语料。
         """
         total_cluster_msgs = sum(len(c.targets) * count_per_target for c in self.clients)
         print(f"💥 [多机集群协同开火] {len(self.clients)} 台设备同时启动齐步矩阵压测！")
         print(f"   🎯 调度模式: 设备专属群聊对齐 (设备1->群001, 设备2->群002, 依次类推) + 公共单聊并发")
         print(f"   📂 消息内容数据源: {'data/chat/chat_messages.csv (data_loader 工具加载)' if use_csv_data else '内置测试标头'}")
+        print(f"   🚀 批处理管道: 开启 (Batch={batch_size} 条/RPC) | 单机并发协程: {self.concurrency_per_device}")
         print(f"   📦 单机单会话配额: {count_per_target:,} 条")
         print(f"   🌊 全集群总消息投放量: {total_cluster_msgs:,} 条真实消息")
-        print(f"   ⚡ 单机并发协程数: {self.concurrency_per_device} (集群总并发: {self.concurrency_per_device * len(self.clients)})")
         print("--------------------------------------------------")
 
         start_time = time.time()
@@ -833,6 +941,7 @@ class IMClientCluster:
             c.send_matrix(
                 count_per_target=count_per_target,
                 concurrency=self.concurrency_per_device,
+                batch_size=batch_size,
                 report_interval=report_interval,
                 use_csv_data=use_csv_data,
             )
@@ -982,7 +1091,8 @@ if __name__ == "__main__":
         USE_CLUSTER = True
 
         # 每台设备对各自会话（专属群聊+公共单聊）发送的消息数量（如设为 20 条）
-        COUNT_PER_TARGET = 100000
+        COUNT_PER_TARGET = 1000
+        # COUNT_PER_TARGET = 28572
 
         if USE_CLUSTER:
             # =========================================================
@@ -1001,7 +1111,8 @@ if __name__ == "__main__":
 
             await cluster.send_matrix(
                 count_per_target=COUNT_PER_TARGET,
-                report_interval=35,
+                batch_size=50,
+                report_interval=200,
             )
             await cluster.stop()
 
@@ -1026,8 +1137,9 @@ if __name__ == "__main__":
 
             await client.send_matrix(
                 count_per_target=COUNT_PER_TARGET,
-                concurrency=200,
-                report_interval=35,
+                concurrency=20,
+                batch_size=50,
+                report_interval=200,
             )
             await client.stop()
 
