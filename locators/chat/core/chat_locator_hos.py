@@ -16,27 +16,27 @@ class ChatLocatorHos:
     MESSAGES_LIST_ITEM = (AppiumBy.XPATH, "//List")
 
     # 消息单行容器 (每个消息气泡所属的 ListItem 容器)
-    MESSAGE_LAYOUT_XPATH = "//List/ListItem"
+    MESSAGE_LAYOUT_XPATH = "//ListItem//Row[2]"
     MESSAGE_LAYOUT_ITEM = (AppiumBy.XPATH, MESSAGE_LAYOUT_XPATH)
 
     # 消息行内头像 (统一头像图片，位于卡片边缘首个 Image)
     AVATAR_ID = "__MessageAvatar__"
-    AVATAR_ITEM = (AppiumBy.XPATH, "//ListItem//Image[1]")
+    AVATAR_ITEM = (AppiumBy.XPATH, "//ListItem//Row[2]//Stack/Image")
 
     # 已读未读标识 (位于发送方消息气泡旁侧)
     READ_STATUS_ID = "__MessageReadStatus__"
-    READ_STATUS_ITEM = (AppiumBy.XPATH, "//ListItem//Text[contains(@text, '已读') or contains(@text, '未读')]")
+    READ_STATUS_ITEM = (AppiumBy.XPATH, "//ListItem//Row[3]/Text")
 
     # 发送状态 / 发送失败叹号红点
     FAIL_MSG_ID = "__MessageDeliveryFail__"
     FAIL_MSG = (
         AppiumBy.XPATH,
-        "//ListItem//Image[contains(@id, 'fail') or contains(@id, 'error') or contains(@id, 'warning')]"
+        "//ListItem//Row/Column/Row/Image"
     )
 
     # 群聊页面显示发送者用户昵称 (气泡上方显示的用户名文本)
     GROUP_CHAT_USER_NAME_ID = "__MessageSenderName__"
-    GROUP_CHAT_USER_NAME_ITEM = (AppiumBy.XPATH, "//ListItem//Row[1]//Text[1]")
+    GROUP_CHAT_USER_NAME_ITEM = (AppiumBy.XPATH, "//ListItem//Row[2]//Column/Row/Text")
 
     # ==================================================================================================================
     # 2. 核心消息类型定位器（一物一元组，严格映射各类型气泡）
@@ -45,26 +45,29 @@ class ChatLocatorHos:
     MESSAGE_CONTENT_ID = "__TextMessageContent__"
     MESSAGE_CONTENT_ITEM = (
         AppiumBy.XPATH,
-        "//ListItem//Row[.//Text]//Text[not(contains(@text, ':')) and not(contains(@text, '已读')) and not(contains(@text, '未读'))]"
+        "//ListItem//Row//JsView/Column//Text"
     )
     TEXT_MESSAGE_VIEW_XPATH = MESSAGE_CONTENT_ITEM
 
     # 2.2 图片 / 动态表情包
     IMAGE_ID = "__ImageMessageContent__"
-    IMAGE_ITEM = (AppiumBy.XPATH, "//ListItem//Image")
+    IMAGE_ITEM = (AppiumBy.XPATH, "//ListItem//Row[2]//Stack//__Common__/Stack/Image")
     PREVIEW_IMAGE_ID = "__ImagePreview__"
-    PREVIEW_IMAGE_ITEM = (AppiumBy.XPATH, "//Image")
+    PREVIEW_IMAGE_ITEM = (AppiumBy.XPATH, "//ListItem//Row//Stack/Stack/__Common__/Image")
+    # 预览图片保存按钮
     IV_DOWNLOAD_ID = "__ImageDownload__"
-    IV_DOWNLOAD_ITEM = (AppiumBy.XPATH, "//Image[contains(@id, 'download')] | //Button[contains(@text, '下载')]")
+    IV_DOWNLOAD_ITEM = (AppiumBy.XPATH, "//Dialog//Stack//SaveButton[@text='保存']")
+    # 预览图片顶部数字（如 1/6）
+    IV_IMAGE_PAGE_TEXT = (AppiumBy.XPATH, "//Dialog//Stack/Row/Text")
 
-    # 2.3 视频消息
+    # 2.3 视频消息与时长
     VIDEO_PLAY_BUTTON_ID = "__VideoPlayButton__"
     VIDEO_PLAY_BUTTON_ITEM = (
         AppiumBy.XPATH,
-        "//ListItem//Video | //ListItem//Image[contains(@id, 'video') or contains(@id, 'play')]"
+        "//ListItem//Row[2]//Stack/Stack[2]"
     )
     VIDEO_DURATION_ID = "__VideoDuration__"
-    VIDEO_DURATION_ITEM = (AppiumBy.XPATH, "//ListItem//Text[contains(@text, ':')]")
+    VIDEO_DURATION_ITEM = (AppiumBy.XPATH, "//ListItem//Row[2]//Stack/Stack[2]//Text")
 
     # 2.4 语音消息 (语音播放条与时长气泡)
     AUDIO_BUBBLE_ID = "__AudioBubble__"

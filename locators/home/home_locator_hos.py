@@ -211,12 +211,14 @@ class HomeLocatorHos:
     @classmethod
     def get_status_tag_by_name(cls, name: str, tag: str = "") -> tuple[str, str]:
         """
-        获取指定会话的前缀状态标签 (公用统一支持: 草稿、未读/已读、进群申请、@所有人、有人@我)
+        获取指定会话的前缀状态标签 (公用统一支持: [草稿]、[未读]、[已读]、[进群申请]、[@所有人]、[@我])
         :param name: 会话或联系人名称
-        :param tag: 可选指定特定标签过滤文本 (如 '草稿'、'未读'、'已读'、'进群申请'、'@所有人'、'有人@我')；留空则匹配任意状态标签
+        :param tag: 可选指定特定标签过滤文本 (如 '草稿'、'未读'、'已读'、'进群申请'、'@所有人'、'@我')；留空则匹配任意状态标签
         """
         if tag:
-            return (AppiumBy.XPATH, f"//ListItem//Row[1]//Text[1][@text='{name}']//ancestor::Row[1]/following-sibling::Row//Row/Text[@text='{tag}']")
+            return (AppiumBy.XPATH, 
+                    f"//ListItem//Row[1]//Text[1][@text='{name}']//ancestor::Row[1]/following-sibling::Row//Row/Text[@text='{tag}']"
+                    )
         return (
             AppiumBy.XPATH,
             f"//ListItem//Row[1]//Text[1][@text='{name}']//ancestor::Row[1]/following-sibling::Row//Row/Text[@text]"
