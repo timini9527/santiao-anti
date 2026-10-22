@@ -745,10 +745,12 @@ class IMClient:
                     success_count += sent
                     failed_items = len(batch_items) - sent
                     fail_count += failed_items
-                    for tgt, _ in batch_items:
-                        target_success_map[tgt.name] = target_success_map.get(tgt.name, 0) + 1
-                except Exception:
+                    if sent > 0:
+                        for tgt, _ in batch_items[:sent]:
+                            target_success_map[tgt.name] = target_success_map.get(tgt.name, 0) + 1
+                except Exception as e:
                     fail_count += len(batch_items)
+                    print(f"❌ [📱 {self.sender_name} | {self.device_id}] 批次投递异常: {e}")
                 finally:
                     queue.task_done()
                     if delay_between_msg > 0:
@@ -1091,17 +1093,19 @@ if __name__ == "__main__":
         USE_CLUSTER = True
 
         # 每台设备对各自会话（专属群聊+公共单聊）发送的消息数量（如设为 20 条）
-        COUNT_PER_TARGET = 1000
+        COUNT_PER_TARGET = 100
         # COUNT_PER_TARGET = 28572
 
         if USE_CLUSTER:
             # =========================================================
             # 【集群模式】：5 台模拟器同时协同，各自对应专属群聊齐步开火
             # =========================================================
+            # 架构优化：批量管道模式下（Batch=50），单设备开启 2 个 worker 即可形成极致双缓冲流水线
+            # 杜绝 50 个 worker 并发争抢 Frida GumJS 单线程锁引发的严重排队与 SIGSEGV 崩溃
             cluster = IMClientCluster(
                 device_configs=CLUSTER_DEVICES,
                 common_targets=COMMON_SINGLE_TARGETS,
-                concurrency_per_device=50,
+                concurrency_per_device=2,
             )
 
             started = await cluster.start()
