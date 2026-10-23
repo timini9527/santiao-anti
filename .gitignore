@@ -60,3 +60,9 @@ qa_studio_next/
 qa_studio_platform/
 test.png
 test_shot.png
+local_databases/
+libsnapshot_util.z.so
+snapshot_display_bin
+chat_records.txt
+friends_list.txt
+chat_history.html

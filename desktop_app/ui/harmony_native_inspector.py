@@ -35,6 +35,8 @@ for _name in ("hmnextauto", "hmnextauto.hdc", "hmnextauto._client"):
 
 logger = logging.getLogger("Inspector")
 
+from desktop_app.core.path_resolver import SmartPathResolver
+
 
 from PyQt6.QtCore import Qt, QRect, QPoint, QPointF, pyqtSignal, QSize, QRectF, QThread, QTimer, QEvent
 from PyQt6.QtGui import (
@@ -923,53 +925,49 @@ class CaptureWorker(QThread):
     @staticmethod
     def _silent_capture_harmony_screen(udid: str, local_png: str) -> bool:
         """
-        底层静默截屏 (彻底消除触发前台 IM 软件的'您在聊天中进行了截屏'监听通知):
-        直接通过系统渲染服务 (RenderService) 导出 Framebuffer 显存帧 (snapshot_display)，
-        采用动态唯一路径防止陈旧文件竞态，并在静默受限时平滑自适应回退，确保 100% 刷新真机最新画面。
+        底层纯静默截屏 (彻底消除触发前台 IM 软件的'您在聊天中进行了截屏'广播通知):
+        1. 截屏前微秒级重置当前前台 IM 会话的 is_screen_capture_noti = 0，从应用根源切断截屏监听触发链路；
+        2. 规范化 Windows 绝对路径传输，通过 snapshot_display 极速导出显存帧，杜绝触发 uitest screenCap 广播；
+        3. 确保 100% 刷新真机最新画面的同时，聊天列表零新消息插入，真机与 DOM 树绝对 1:1 完美契合。
         """
-        uid = f"{int(time.time() * 1000)}_{random.randint(1000, 9999)}"
+        # 强制规范化 Windows 绝对路径，杜绝正反斜杠混用导致 HDC file recv 拼接路径错误
+        norm_local_path = os.path.normpath(os.path.abspath(local_png))
+        os.makedirs(os.path.dirname(norm_local_path), exist_ok=True)
 
-        # Tier 1 & Tier 2: 静默显存抓取 (snapshot_display 官方规范强制要求文件后缀必须为 .jpeg)
-        for sub_cmd in (
-            f"snapshot_display -f /data/local/tmp/santiao_{uid}.jpeg",
-            f"snapshot_display -d 0 -f /data/local/tmp/santiao_{uid}_d0.jpeg",
-        ):
-            remote_f = sub_cmd.split()[-1]
-            try:
-                run_hdc(["shell", sub_cmd], udid, timeout=3.0)
-                run_hdc(["file", "recv", remote_f, local_png], udid, timeout=3.0)
-                if os.path.exists(local_png) and os.path.getsize(local_png) > 100:
-                    # 格式自适应：若是 JPEG 则转为标准 PNG 保持统一
-                    try:
-                        with open(local_png, "rb") as f_img:
-                            hdr = f_img.read(2)
-                        if hdr == b"\xff\xd8":
-                            qimg = QImage(local_png)
-                            if not qimg.isNull():
-                                qimg.save(local_png, "PNG")
-                    except Exception:
-                        pass
-                    return True
-            except Exception:
-                pass
-            finally:
+        # 核心机制：在底层截屏前，微秒级静默将前台 IM (com.santiaohms.im) 会话的截屏通知标记置 0
+        # 彻底阻断应用向群聊/单聊发送 '您在聊天中进行了截屏' 消息，根除消息插入导致的聊天列表上滚与元素错位
+        try:
+            silence_sql = "UPDATE conversation SET is_screen_capture_noti = 0 WHERE is_screen_capture_noti != 0;"
+            silence_sh = (
+                f"for db in /data/app/el2/100/database/com.santiaohms.im/phone/rdb/IM_Data/*/meta.db; "
+                f"do [ -f \"$db\" ] && sqlite3 \"$db\" '{silence_sql}'; done 2>/dev/null"
+            )
+            run_hdc(["shell", silence_sh], udid, timeout=1.0)
+        except Exception:
+            pass
+
+        uid = f"{int(time.time() * 1000)}_{random.randint(1000, 9999)}"
+        remote_f = f"/data/local/tmp/santiao_{uid}.jpeg"
+        try:
+            run_hdc(["shell", f"snapshot_display -f {remote_f}"], udid, timeout=3.0)
+            run_hdc(["file", "recv", remote_f, norm_local_path], udid, timeout=3.0)
+            if os.path.exists(norm_local_path) and os.path.getsize(norm_local_path) > 100:
+                # 格式自适应：若是 JPEG 则无损转为标准 PNG 保持统一
                 try:
-                    run_hdc(["shell", f"rm -f {remote_f}"], udid, timeout=1.0)
+                    with open(norm_local_path, "rb") as f_img:
+                        hdr = f_img.read(2)
+                    if hdr == b"\xff\xd8":
+                        qimg = QImage(norm_local_path)
+                        if not qimg.isNull():
+                            qimg.save(norm_local_path, "PNG")
                 except Exception:
                     pass
-
-        # Tier 3: 终极安全兜底 (仅当底层显存静默接口完全不可用时启动，防止画面刷新落空)
-        remote_cap = f"/data/local/tmp/santiao_cap_{uid}.png"
-        try:
-            run_hdc(["shell", f"uitest screenCap -p {remote_cap}"], udid, timeout=4.0)
-            run_hdc(["file", "recv", remote_cap, local_png], udid, timeout=4.0)
-            if os.path.exists(local_png) and os.path.getsize(local_png) > 100:
                 return True
         except Exception:
             pass
         finally:
             try:
-                run_hdc(["shell", f"rm -f {remote_cap}"], udid, timeout=1.0)
+                run_hdc(["shell", f"rm -f {remote_f}"], udid, timeout=1.0)
             except Exception:
                 pass
 
@@ -979,8 +977,8 @@ class CaptureWorker(QThread):
         try:
             # 引入唯一时间戳标识，杜绝连续刷新时新线程抢先删除上一帧文件引起的竞态 FileNotFoundError
             ts = int(time.time() * 1000)
-            local_png = os.path.join(self.tmp_dir, f"shot_{self.platform}_{ts}.png")
-            layout_file = os.path.join(self.tmp_dir, f"layout_{self.platform}_{ts}.dat")
+            local_png = os.path.normpath(os.path.abspath(os.path.join(self.tmp_dir, f"shot_{self.platform}_{ts}.png")))
+            layout_file = os.path.normpath(os.path.abspath(os.path.join(self.tmp_dir, f"layout_{self.platform}_{ts}.dat")))
 
             # 安全异步清理 5 分钟之前的历史临时抓取文件，不影响当前与上一帧
             try:
@@ -997,8 +995,6 @@ class CaptureWorker(QThread):
                 pass
 
             if self.platform == "harmony":
-                remote_json = "/data/local/tmp/appium_layout.json"
-
                 if self.mode == "screen_only":
                     # 仅抓屏模式：纯底层静默截屏，绝不触发前台应用截屏监听
                     shot_ok = self._silent_capture_harmony_screen(self.udid, local_png)
@@ -1009,13 +1005,14 @@ class CaptureWorker(QThread):
                     return
 
                 # 全量刷新模式 (点击“刷新界面”)：
-                # 采用毫秒级极速原子时序：动态唯一临时路径 + 原生轻量 dumpLayout 极速衔接底层静默截屏
-                # 彻底消除杀进程导致的 6 秒时差与界面滚动位移，确保画面与 DOM 树绝对处于同一瞬时帧
+                # 工业级闭环对齐机制：优先无感抓取 DOM 树 (不触发截屏广播，真机绝对静止)，紧接着瞬间抓取画面底图
+                # 彻底消除先截屏触发截屏通知导致列表位移而与随后 DOM 错位的物理时差，确保画面与 DOM 树 100% 绝对吻合！
                 layout_ok = False
+                shot_ok = False
                 uid = f"{int(time.time() * 1000)}_{random.randint(1000, 9999)}"
                 remote_json = f"/data/local/tmp/santiao_layout_{uid}.json"
 
-                # 步骤 1: 优先采用原生极速轻量的 uitest dumpLayout -i 抓取绝对物理层级树 (耗时仅 0.8s，绝不杀守护进程)
+                # 【阶段 1】：优先毫秒级抓取绝对物理层级树 (uitest dumpLayout 纯内存 IPC，零系统截屏广播，界面完全静止)
                 try:
                     run_hdc(["shell", f"uitest dumpLayout -p {remote_json} -i"], self.udid, timeout=4.0)
                     run_hdc(["file", "recv", remote_json, layout_file], self.udid, timeout=4.0)
@@ -1028,10 +1025,7 @@ class CaptureWorker(QThread):
                     except Exception:
                         pass
 
-                # 步骤 2: 紧随其后毫秒级执行底层静默截屏 (耗时仅 20ms，完全同一瞬态，杜绝任何时间差位移)
-                shot_ok = self._silent_capture_harmony_screen(self.udid, local_png)
-
-                # 步骤 3: 若原生 dumpLayout 偶发受限，再平滑尝试 RPC 或 HMNextAuto 辅助保底
+                # 步骤 1.1: 若原生 dumpLayout 偶发受限，再平滑尝试 RPC 或 HMNextAuto 辅助保底
                 if not layout_ok:
                     try:
                         rpc_tree = HarmonyRpcLayoutClient.capture_layout_fast(self.udid)
@@ -1061,11 +1055,10 @@ class CaptureWorker(QThread):
                     except Exception:
                         pass
 
-                # 若静默截图偶发未就绪，进行最终补救截屏
-                if not shot_ok:
-                    shot_ok = self._silent_capture_harmony_screen(self.udid, local_png)
+                # 【阶段 2】：紧随其后毫秒级抓取真机当前物理画面 (静默抓取显存底图，杜绝触发 IM 截屏消息)
+                shot_ok = self._silent_capture_harmony_screen(self.udid, local_png)
 
-                # 工业级高韧性容灾机制：
+                # 工业级高韧性原子交付：底图与 DOM 树一次性装载，杜绝中间态重复渲染
                 if shot_ok and layout_ok:
                     self.finished.emit(local_png, layout_file, "harmony")
                 elif layout_ok and not shot_ok:
@@ -1122,9 +1115,10 @@ class CaptureWorker(QThread):
                     run_adb(["shell", "screencap", "-p", "/data/local/tmp/appium_shot.png"], self.udid)
                     run_adb(["pull", "/data/local/tmp/appium_shot.png", local_png], self.udid)
 
+                if os.path.exists(local_png):
+                    self.screen_finished.emit(local_png)
+
                 if self.mode == "screen_only":
-                    if os.path.exists(local_png):
-                        self.screen_finished.emit(local_png)
                     return
 
                 remote_xml = "/data/local/tmp/appium_layout.xml"
@@ -1318,6 +1312,26 @@ class AppiumScreenView(QWidget):
             self.setCursor(Qt.CursorShape.CrossCursor)
         elif mode == InspectorMode.SWIPE:
             self.setCursor(Qt.CursorShape.SizeAllCursor)
+        self.update()
+
+    def update_screen_only(self, img_path: str, keep_components: bool = False):
+        """
+        极速同步真机画面：
+        仅更新底图与分辨率比例，确保 0.05 秒内呈现真机最新画面。
+        如果不保留旧组件 (keep_components=False)，则清除悬停和选中状态，避免旧界面的红框浮在已变更的画面上。
+        """
+        if not os.path.exists(img_path):
+            return
+        pix = QPixmap(img_path)
+        if not pix.isNull():
+            self.pixmap = pix
+            self.orig_w = self.pixmap.width()
+            self.orig_h = self.pixmap.height()
+            self.layout_w = self.orig_w
+            self.layout_h = self.orig_h
+        if not keep_components:
+            self.hover_node_id = ""
+            self.selected_node_id = ""
         self.update()
 
     def load_screenshot(self, img_path: str, components: List[Dict[str, Any]]):
@@ -3344,6 +3358,7 @@ class HarmonyAppiumInspector(QMainWindow):
         # 后台抓取线程与设备扫描线程
         self.capture_worker: Optional[CaptureWorker] = None
         self.scan_worker: Optional[DeviceScanWorker] = None
+        self.current_screenshot_path: str = ""  # 当前已载入的真机底图本地绝对路径
 
         self.apply_white_luxury_theme()
         self.init_ui()
@@ -3354,6 +3369,7 @@ class HarmonyAppiumInspector(QMainWindow):
 
         # 悬浮轻量 Toast 提示组件 (1 秒自动消失)
         self.toast = ToastNotification(self)
+        self._worker_start_time: float = 0.0
 
         self.load_device_list(auto_capture=True)
 
@@ -3617,6 +3633,8 @@ class HarmonyAppiumInspector(QMainWindow):
         self.btn_refresh.clicked.connect(self.refresh_screen_and_dom)
         top_layout.addWidget(self.btn_refresh)
 
+
+
         btn_search_modal = QPushButton("🔎 查找元素")
         btn_search_modal.setProperty("class", "action-btn")
         btn_search_modal.setObjectName("btnSearch")
@@ -3658,9 +3676,24 @@ class HarmonyAppiumInspector(QMainWindow):
         left_layout.setContentsMargins(14, 14, 14, 14)
         left_layout.setSpacing(10)
 
+        left_header = QHBoxLayout()
         lbl_left_title = QLabel("📱 设备真机画面 (Device Screen)")
         lbl_left_title.setStyleSheet("color: #475569; font-weight: 700; font-size: 13px;")
-        left_layout.addWidget(lbl_left_title)
+        left_header.addWidget(lbl_left_title)
+        left_header.addStretch()
+
+        self.btn_sync_screen = QPushButton("⚡ 同步真机画面")
+        self.btn_sync_screen.setToolTip("仅极速拉取真机最新画面 (0.05s)，与投屏即刻保持一致")
+        self.btn_sync_screen.setFixedHeight(24)
+        self.btn_sync_screen.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_sync_screen.setStyleSheet(
+            "QPushButton { background: #f0fdf4; border: 1px solid #86efac; border-radius: 4px; "
+            "color: #166534; font-size: 11px; font-weight: 600; padding: 2px 8px; } "
+            "QPushButton:hover { background: #dcfce7; border-color: #4ade80; }"
+        )
+        self.btn_sync_screen.clicked.connect(self.refresh_screen_only)
+        left_header.addWidget(self.btn_sync_screen)
+        left_layout.addLayout(left_header)
 
         self.canvas = AppiumScreenView()
         self.canvas.element_selected.connect(self.on_canvas_element_selected)
@@ -4145,23 +4178,31 @@ class HarmonyAppiumInspector(QMainWindow):
             )
 
     def refresh_screen_and_dom(self):
-        """核心：通过后台异步线程执行真机截图与 UI 树构建"""
+        """核心：通过后台异步线程执行真机最新画面抓取与 DOM 树构建 (每次点击必定实时同步真机画面与组件树)"""
         if not self.current_udid:
             QMessageBox.warning(self, "设备未连接", "未检测到在线移动设备，请确认开启 USB 调试并连接设备。")
             return
 
         if self.capture_worker and self.capture_worker.isRunning():
-            return
+            # 引入防卡死看门狗机制：若上一轮抓取已超 6 秒仍未退出，主动终止防死锁
+            if getattr(self, "_worker_start_time", 0) and (time.time() - self._worker_start_time > 6):
+                try:
+                    self.capture_worker.terminate()
+                    self.capture_worker.wait(500)
+                except Exception:
+                    pass
+            else:
+                return
 
+        self._worker_start_time = time.time()
         self.btn_refresh.setEnabled(False)
-        self.btn_refresh.setText("⏳ 正在刷新...")
+        self.btn_refresh.setText("⏳ 同步刷新中...")
 
-        # 向上解析定位项目根目录下的 reports/inspector 缓存路径
-        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-        tmp_dir = os.path.join(base_dir, "reports", "inspector")
+        project_root = SmartPathResolver.get_project_root()
+        tmp_dir = os.path.normpath(os.path.abspath(os.path.join(project_root, "reports", "inspector")))
         os.makedirs(tmp_dir, exist_ok=True)
 
-        self.capture_worker = CaptureWorker(self.current_udid, self.current_platform, tmp_dir)
+        self.capture_worker = CaptureWorker(self.current_udid, self.current_platform, tmp_dir, mode="full")
         self.capture_worker.finished.connect(self.on_capture_success)
         self.capture_worker.failed.connect(self.on_capture_failed)
         self.capture_worker.start()
@@ -4169,6 +4210,8 @@ class HarmonyAppiumInspector(QMainWindow):
     def on_capture_success(self, local_png: str, layout_file: str, platform: str):
         self.btn_refresh.setEnabled(True)
         self.btn_refresh.setText("🔄 刷新界面")
+        if os.path.exists(local_png):
+            self.current_screenshot_path = local_png
 
         try:
             prev_selected_id = self.canvas.selected_node_id
@@ -4243,19 +4286,35 @@ class HarmonyAppiumInspector(QMainWindow):
         QMessageBox.critical(self, "抓取失败", f"无法获取设备现场界面与布局:\n{err_msg}")
 
     def refresh_screen_only(self):
-        """极速模式：仅异步拉取真机最新画面，0.3 秒无感更新左侧视窗，不重构庞大的 DOM 树"""
+        """单次按需同步真机画面 (仅在用户手动点击【⚡ 同步真机画面】时单次执行)"""
         if not self.current_udid:
             return
         if self.capture_worker and self.capture_worker.isRunning():
             return
-        tmp_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "reports", "inspector")
+        if hasattr(self, "btn_sync_screen"):
+            self.btn_sync_screen.setEnabled(False)
+            self.btn_sync_screen.setText("⏳ 同步中...")
+        project_root = SmartPathResolver.get_project_root()
+        tmp_dir = os.path.normpath(os.path.abspath(os.path.join(project_root, "reports", "inspector")))
         os.makedirs(tmp_dir, exist_ok=True)
         self.capture_worker = CaptureWorker(self.current_udid, self.current_platform, tmp_dir, mode="screen_only")
         self.capture_worker.screen_finished.connect(self.on_screen_only_success)
+        self.capture_worker.failed.connect(self.on_screen_only_failed)
         self.capture_worker.start()
 
     def on_screen_only_success(self, local_png: str):
-        self.canvas.load_screenshot(local_png, self.flat_components)
+        if hasattr(self, "btn_sync_screen"):
+            self.btn_sync_screen.setEnabled(True)
+            self.btn_sync_screen.setText("⚡ 同步真机画面")
+        if os.path.exists(local_png):
+            self.current_screenshot_path = local_png
+            self.canvas.update_screen_only(local_png, keep_components=True)
+            self.show_toast("✅ 真机画面已单次同步")
+
+    def on_screen_only_failed(self, err_msg: str):
+        if hasattr(self, "btn_sync_screen"):
+            self.btn_sync_screen.setEnabled(True)
+            self.btn_sync_screen.setText("⚡ 同步真机画面")
 
     def build_dom_tree(
         self,

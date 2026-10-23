@@ -92,6 +92,21 @@ def post_build_cleanup(dist_app_dir: str):
             except Exception as e:
                 print(f"[产物净化] 清理 {dll_name} 提示: {e}")
 
+    # 深度自愈：彻底根治 Python 3.12/3.13 下 PyInstaller 对 pkg_resources 运行时 hook 扫描 setuptools 缺失资源导致的崩溃
+    try:
+        import setuptools._vendor.jaraco.text as j_text
+        src_text_dir = os.path.dirname(j_text.__file__)
+        src_lorem = os.path.join(src_text_dir, "Lorem ipsum.txt")
+        if os.path.exists(src_lorem):
+            dst_text_dir = os.path.join(internal_dir, "setuptools", "_vendor", "jaraco", "text")
+            os.makedirs(dst_text_dir, exist_ok=True)
+            dst_lorem = os.path.join(dst_text_dir, "Lorem ipsum.txt")
+            if not os.path.exists(dst_lorem):
+                shutil.copy2(src_lorem, dst_lorem)
+                print("[产物自愈] 已自动补全 pkg_resources 扫描依赖资源: Lorem ipsum.txt")
+    except Exception as e:
+        pass
+
 
 def ensure_clean_native_build(dist_app_dir: str):
     """
@@ -395,6 +410,8 @@ def build(build_installer: bool = BUILD_INSTALLER):
         "--hidden-import=PyQt6.QtWidgets",
         "--hidden-import=pytest",
         "--hidden-import=allure_pytest",
+        "--collect-data=setuptools",
+        "--copy-metadata=setuptools",
         main_entry
     ]
 

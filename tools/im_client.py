@@ -113,6 +113,10 @@ class SessionTarget:
         return int(self.chat_type) == int(ChatType.GROUP)
 
 
+# 批次元素：(会话目标, 文本内容)
+BatchItem = Tuple[SessionTarget, str]
+
+
 # ---------------------------------------------------------------------------
 # 2. 真机底层长连接协议桥接驱动 (AppRuntimeBridge)
 # ---------------------------------------------------------------------------
@@ -129,6 +133,30 @@ class AppRuntimeBridge:
     # 注入到 App 运行时的微秒级发送桥接脚本（通用支持单聊与群聊）
     _BRIDGE_JS = """
     var WebSocketMgr = null;
+    var SocketClientPendingField = null;
+
+    function getPendingCount() {
+        var count = 0;
+        Java.perform(function() {
+            try {
+                if (!WebSocketMgr) {
+                    WebSocketMgr = Java.use('com.network.lib.socket.WebSocketManager').INSTANCE.value;
+                }
+                if (WebSocketMgr && WebSocketMgr.socketClient) {
+                    var sc = WebSocketMgr.socketClient.value;
+                    if (sc) {
+                        if (!SocketClientPendingField) {
+                            SocketClientPendingField = Java.use('com.network.lib.socket.SocketClient').class.getDeclaredField('pendingMessages');
+                            SocketClientPendingField.setAccessible(true);
+                        }
+                        var map = Java.cast(SocketClientPendingField.get(sc), Java.use('java.util.Map'));
+                        count = map.size();
+                    }
+                }
+            } catch (e) {}
+        });
+        return count;
+    }
 
     rpc.exports = {
         init: function() {
@@ -142,6 +170,10 @@ class AppRuntimeBridge:
                 }
             });
             return ok;
+        },
+        // 获取底层 SocketClient 当前在途等待服务端 ACK 的消息总数
+        getInflightCount: function() {
+            return getPendingCount();
         },
         // 通用发送入口：自动适配单聊 (chatType=1) 与群聊 (chatType=2)
         sendTextMessage: function(chatId, chatType, fromCustId, fromCustName, toCustId, content) {
@@ -173,18 +205,21 @@ class AppRuntimeBridge:
             });
             return success;
         },
-        // 批量管道高速发送接口：单次 RPC 传输批次数组，App 内部执行原生微秒循环直投 Netty
+        // 批量管道高速发送接口：单次 RPC 传输批次数组，App 内部执行原生循环直投 Netty
+        // 返回逐条回执：rejected 为同步拒收或未执行（未进入 Netty，可安全重发）；unknown 为抛异常、结果未知（禁止重放）
+        // 快速失败：通道一旦拒收立即停止本批，避免对不可写通道持续冲击并产生大量本地失败记录
         sendBatchTextMessage: function(messagesJson) {
-            var sent = 0;
+            var list = JSON.parse(messagesJson);
+            var len = list.length;
+            var result = {rejected: [], unknown: []};
             Java.perform(function() {
+                var i = 0;
                 try {
                     if (!WebSocketMgr) {
                         WebSocketMgr = Java.use('com.network.lib.socket.WebSocketManager').INSTANCE.value;
                     }
                     if (WebSocketMgr) {
-                        var list = JSON.parse(messagesJson);
-                        var len = list.length;
-                        for (var i = 0; i < len; i++) {
+                        for (; i < len; i++) {
                             var item = list[i];
                             var ok = WebSocketMgr.sendTextMessage(
                                 item.chatId,
@@ -195,16 +230,22 @@ class AppRuntimeBridge:
                                 item.content,
                                 0, null, null, null, false, false
                             );
-                            if (ok) {
-                                sent++;
+                            if (!ok) {
+                                break;
                             }
                         }
                     }
                 } catch (e) {
                     console.log("[Bridge] 批量管道发送底层异常: " + e.toString());
+                    result.unknown.push(i);
+                    i++;
+                }
+                for (; i < len; i++) {
+                    result.rejected.push(i);
                 }
             });
-            return sent;
+            result.inflight = getPendingCount();
+            return result;
         }
     };
     """
@@ -235,31 +276,42 @@ class AppRuntimeBridge:
     def _ensure_frida_server_running(self) -> None:
         """检查并确保目标设备上的 frida-server 处于 root 守护运行状态，具备断线自愈能力。"""
         try:
-            out = subprocess.check_output(f"adb -s {self.device_id} shell ps -A", shell=True, text=True, stderr=subprocess.DEVNULL)
+            # 增加 timeout=2.0 刚性超时，杜绝 ADB 离线设备无限期阻塞
+            out = subprocess.check_output(
+                f"adb -s {self.device_id} shell ps -A",
+                shell=True, text=True, stderr=subprocess.DEVNULL, timeout=2.0
+            )
             if "frida-server" not in out:
                 # 自动尝试提权为 root 模式并拉起守护进程
-                subprocess.run(f"adb -s {self.device_id} root", shell=True, capture_output=True)
+                subprocess.run(f"adb -s {self.device_id} root", shell=True, capture_output=True, timeout=3.0)
                 time.sleep(0.3)
-                subprocess.Popen(f"adb -s {self.device_id} shell /data/local/tmp/frida-server -D", shell=True)
-                time.sleep(0.6)
+                # 核心防卡死：彻底隔离标准输入输出管道，杜绝 Windows 控制台句柄继承死锁卡住 Terminal
+                subprocess.Popen(
+                    f"adb -s {self.device_id} shell /data/local/tmp/frida-server -D",
+                    shell=True,
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                time.sleep(0.5)
         except Exception:
             pass
 
     def _find_target_pid(self) -> Optional[int]:
         """优先通过 ADB 原生 pidof 精准获取目标 PID，彻底规避模拟器中进程名乱码问题；多级降级检索。"""
-        # 1. 原生 pidof 精准匹配
+        # 1. 原生 pidof 精准匹配 (超时 2 秒)
         try:
             cmd = f"adb -s {self.device_id} shell pidof {self.package_name}"
-            out = subprocess.check_output(cmd, shell=True, text=True, stderr=subprocess.DEVNULL).strip()
+            out = subprocess.check_output(cmd, shell=True, text=True, stderr=subprocess.DEVNULL, timeout=2.0).strip()
             if out:
                 return int(out.split()[0])
         except Exception:
             pass
 
-        # 2. 原生 ps -A 匹配
+        # 2. 原生 ps -A 匹配 (超时 2 秒)
         try:
             cmd = f"adb -s {self.device_id} shell ps -A"
-            out = subprocess.check_output(cmd, shell=True, text=True, stderr=subprocess.DEVNULL)
+            out = subprocess.check_output(cmd, shell=True, text=True, stderr=subprocess.DEVNULL, timeout=2.0)
             for line in out.splitlines():
                 if self.package_name in line:
                     parts = line.split()
@@ -268,9 +320,9 @@ class AppRuntimeBridge:
         except Exception:
             pass
 
-        # 3. Frida 自身枚举降级
+        # 3. Frida 自身枚举降级 (超时 2 秒)
         try:
-            device = frida.get_device_manager().get_device(self.device_id)
+            device = frida.get_device_manager().get_device(self.device_id, timeout=2)
             for p in device.enumerate_processes():
                 if p.name == self.package_name or p.name == "3T":
                     return p.pid
@@ -280,14 +332,14 @@ class AppRuntimeBridge:
         return None
 
     def connect(self) -> bool:
-        """连接目标设备上的三条 IM 进程并初始化注入桥。"""
+        """连接目标设备上的三条 IM 进程并初始化注入桥（全链路超时与防死锁）。"""
         try:
             self._ensure_frida_server_running()
             target_pid = self._find_target_pid()
             if target_pid is None:
                 raise ProcessLookupError(f"设备 {self.device_id} 上未找到三条 IM 运行进程 ({self.package_name})，请确认 App 前台处于运行状态")
 
-            device = frida.get_device_manager().get_device(self.device_id)
+            device = frida.get_device_manager().get_device(self.device_id, timeout=3)
             self._session = device.attach(target_pid)
             full_source = self._assemble_script_source()
             self._script = self._session.create_script(full_source)
@@ -351,23 +403,36 @@ class AppRuntimeBridge:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(self._executor, _invoke)
 
-    async def send_batch_text(self, items: List[Dict[str, Any]]) -> int:
-        """通过 App 运行时活动长连接批量高速管道投递消息（单次 RPC 传输）。
-        
-        Args:
-            items: 消息字典列表，每一项包含 chatId, chatType, fromCustId, fromCustName, toCustId, content
-            
-        Returns:
-            int: 成功入队 Netty 通道的消息总数。
-        """
-        if not items:
-            return 0
+    async def get_inflight(self) -> int:
+        """获取底层长连接当前在途未确认消息数（服务端 ACK 尚未返回的队列大小）。"""
         await self.ensure_connected()
         assert self._script is not None
 
         def _invoke() -> int:
+            return int(self._script.exports_sync.get_inflight_count())
+
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(self._executor, _invoke)
+
+    async def send_batch_text(self, items: List[Dict[str, Any]]) -> Tuple[List[int], List[int], int]:
+        """通过 App 运行时活动长连接批量高速管道投递消息（单次 RPC 传输）。
+        Args:
+            items: 消息字典列表，每一项包含 chatId, chatType, fromCustId, fromCustName, toCustId, content
+        Returns:
+            Tuple[List[int], List[int], int]: (同步拒收索引, 抛异常未知索引, 最新在途未确认消息数)
+        """
+        if not items:
+            return [], [], 0
+        await self.ensure_connected()
+        assert self._script is not None
+
+        def _invoke() -> Tuple[List[int], List[int], int]:
             payload_json = json.dumps(items, ensure_ascii=False)
-            return int(self._script.exports_sync.send_batch_text_message(payload_json))
+            res: Dict[str, Any] = self._script.exports_sync.send_batch_text_message(payload_json)
+            rejected = [int(i) for i in res.get("rejected", [])]
+            unknown = [int(i) for i in res.get("unknown", [])]
+            inflight = int(res.get("inflight", 0))
+            return rejected, unknown, inflight
 
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(self._executor, _invoke)
@@ -530,17 +595,27 @@ class IMClient:
         finally:
             self._sem.release()
 
-    async def send_batch_to_targets(self, items: List[Tuple[SessionTarget, str]]) -> int:
-        """向批量会话目标投递消息（微秒级批处理管道）。
-        
+    async def wait_for_ack_window(self, low_watermark: int = 35, timeout: float = 2.0) -> int:
+        """非阻塞等待服务端 ACK 回流释放发送窗口（在途降至低水位以下）。"""
+        start = time.time()
+        while time.time() - start < timeout:
+            inflight = await self.bridge.get_inflight()
+            if inflight <= low_watermark:
+                return inflight
+            await asyncio.sleep(0.015)
+        return await self.bridge.get_inflight()
+
+    async def send_batch_to_targets(
+        self, items: List[BatchItem]
+    ) -> Tuple[List[BatchItem], List[BatchItem], List[BatchItem], int]:
+        """向批量会话目标投递消息（批处理管道，逐条回执与在途感知）。
         Args:
             items: 元素为 (SessionTarget, 文本内容) 的批次列表
-            
         Returns:
-            int: 成功投递入队 Netty 通道的消息数量。
+            Tuple: (成功入队列表, 同步拒收可安全重发列表, 结果未知禁止重放列表, 最新在途未确认数)。
         """
         if not items:
-            return 0
+            return [], [], [], 0
         rpc_items = []
         for tgt, text in items:
             rpc_items.append({
@@ -553,9 +628,12 @@ class IMClient:
             })
         await self._sem.acquire()
         try:
-            return await self.bridge.send_batch_text(rpc_items)
+            rejected_idx, unknown_idx, inflight = await self.bridge.send_batch_text(rpc_items)
         finally:
             self._sem.release()
+        rejected_set, unknown_set = set(rejected_idx), set(unknown_idx)
+        succeeded = [it for i, it in enumerate(items) if i not in rejected_set and i not in unknown_set]
+        return succeeded, [items[i] for i in rejected_idx], [items[i] for i in unknown_idx], inflight
 
     async def send_message(
         self,
@@ -632,6 +710,11 @@ class IMClient:
         report_interval: int = 1000,
         delay_between_msg: float = 0.0,
         use_csv_data: bool = True,
+        max_retries: int = 4,
+        retry_backoff: float = 0.2,
+        max_pace: float = 1.0,
+        high_watermark: int = 80,
+        low_watermark: int = 35,
     ) -> Dict[str, Any]:
         """【多会话流式并发压测引擎】全面支持批量高速管道、总量轮询打散与齐步等量并发。
         
@@ -644,6 +727,11 @@ class IMClient:
             report_interval: 统计聚合打点间隔。
             delay_between_msg: 批次间额外延时（压测通常设为 0）。
             use_csv_data: 是否使用 data_loader 从 data/chat/chat_messages.csv 提取真实业务语料。
+            max_retries: 同步拒收消息的最大重发次数（仅重发未进入 Netty 的消息，结果未知的消息禁止重放）。
+            retry_backoff: 重发指数退避基数（秒），第 n 次重发等待 retry_backoff * 2^(n-1)，上限 max_pace。
+            max_pace: 自适应批次间隔上限（秒），拒收时间隔翻倍、顺畅时每批加性回落 10ms 至 delay_between_msg（标准 AIMD）。
+            high_watermark: 底层长连接在途消息高水位线（默认 80），达到该阈值主动收油门等待服务端 ACK。
+            low_watermark: 底层长连接在途消息低水位线（默认 35），排空至该值后继续全速推进。
         """
         active_targets = targets or self.targets
         if not active_targets:
@@ -656,16 +744,17 @@ class IMClient:
         # 计算预期发送总数与压测模式
         if messages_per_target is not None:
             total_count = num_targets * messages_per_target
-            mode_desc = f"多会话齐步等量并行 (每个会话各发 {messages_per_target:,} 条，总计 {total_count:,} 条 | 批处理管道 Batch={batch_size})"
+            mode_desc = f"多会话齐步同频并发 (每个会话完整发送前 {messages_per_target:,} 条语料，总计 {total_count:,} 条 | 批处理管道 Batch={batch_size})"
         elif isinstance(messages, int):
-            total_count = messages
-            mode_desc = f"总量打散轮询压测 (总计 {messages:,} 条，每会话约 {messages // num_targets:,} 条 | 批处理管道 Batch={batch_size})"
+            quota = max(1, messages // num_targets)
+            total_count = quota * num_targets
+            mode_desc = f"总量按会话顺序切分投递 (总计 {total_count:,} 条，每会话依次发送 {quota:,} 条 | 批处理管道 Batch={batch_size})"
         elif hasattr(messages, "__len__"):
-            total_count = len(messages)
-            mode_desc = f"自定义消息集轮询 (总计 {total_count:,} 条 | 批处理管道 Batch={batch_size})"
+            total_count = len(messages) * num_targets
+            mode_desc = f"自定义消息集按会话依次投递 (每会话发送 {len(messages):,} 条，总计 {total_count:,} 条 | 批处理管道 Batch={batch_size})"
         elif use_csv_data and corpus_len > 0:
-            total_count = corpus_len
-            mode_desc = f"CSV 真实语料全量发送 (总计 {total_count:,} 条 | 批处理管道 Batch={batch_size})"
+            total_count = corpus_len * num_targets
+            mode_desc = f"CSV 语料按会话依次发送 (每会话发送 {corpus_len:,} 条，总计 {total_count:,} 条 | 批处理管道 Batch={batch_size})"
         else:
             total_count = 100000
             mode_desc = f"流式压测 (批处理管道 Batch={batch_size})"
@@ -674,6 +763,9 @@ class IMClient:
         sent_count = 0
         success_count = 0
         fail_count = 0
+        retry_count = 0
+        # AIMD 自适应节奏：拒收即乘性放大间隔让 ACK 回流排空窗口，顺畅后渐进回落到基础节奏
+        pace = max(0.0, delay_between_msg)
         target_success_map: Dict[str, int] = {t.name: 0 for t in active_targets}
 
         start_time = time.time()
@@ -700,61 +792,96 @@ class IMClient:
 
         async def producer() -> None:
             if messages_per_target is not None:
-                # 【多会话齐步等量调度】：每轮交错推进各个会话的第 k 条，并发协程池同频消化
-                for round_idx in range(1, messages_per_target + 1):
-                    for tgt in active_targets:
-                        if use_csv_data and corpus_len > 0:
-                            msg_body = corpus[sent_count % corpus_len]
-                        else:
-                            msg_body = f"[{tgt.name}] 并发压测第 {round_idx}/{messages_per_target} 条 ({time.strftime('%H:%M:%S')})"
-                        await emit_item(tgt, msg_body)
-            elif isinstance(messages, int):
-                # 【总量轮询调度】：按序号循环取模打散到各个会话
-                for i in range(messages):
-                    tgt = active_targets[i % num_targets]
+                # 【多会话齐步同频并发调度】：
+                # 所有会话在第 k 轮同时齐步发送对应第 k 条真实语料 (例如第 1 轮全会话齐步发第 1 条，第 10 轮全会话齐步发第 10 条)
+                # 既确保所有会话均各自独立完整发送第 1~N 条消息，又保持多会话齐步开火的最大并发吞吐！
+                for round_idx in range(messages_per_target):
                     if use_csv_data and corpus_len > 0:
-                        msg_body = corpus[i % corpus_len]
+                        msg_body = corpus[round_idx % corpus_len]
                     else:
-                        msg_body = f"PerfMsg-{i + 1} to [{tgt.name}] ({time.strftime('%H:%M:%S')})"
-                    await emit_item(tgt, msg_body)
+                        msg_body = f"并发压测第 {round_idx + 1}/{messages_per_target} 条 ({time.strftime('%H:%M:%S')})"
+                    for tgt in active_targets:
+                        await emit_item(tgt, msg_body)
+
+            elif isinstance(messages, int):
+                # 【总量按会话顺序切分投递】：每个会话分 quota 条依次发送
+                quota_per_target = max(1, messages // num_targets)
+                for tgt in active_targets:
+                    for msg_idx in range(quota_per_target):
+                        if use_csv_data and corpus_len > 0:
+                            msg_body = corpus[msg_idx % corpus_len]
+                        else:
+                            msg_body = f"[{tgt.name}] 消息第 {msg_idx + 1}/{quota_per_target} 条 ({time.strftime('%H:%M:%S')})"
+                        await emit_item(tgt, msg_body)
+                    if batch_size > 1:
+                        await flush_buffer()
             elif messages is not None:
-                for i, item in enumerate(messages):
-                    tgt = active_targets[i % num_targets]
-                    await emit_item(tgt, item)
+                # 【自定义消息序列】：每个会话按顺序发送全量消息列表
+                for tgt in active_targets:
+                    for item in messages:
+                        await emit_item(tgt, item)
+                    if batch_size > 1:
+                        await flush_buffer()
             elif use_csv_data and corpus_len > 0:
-                for i, text in enumerate(corpus):
-                    tgt = active_targets[i % num_targets]
-                    await emit_item(tgt, text)
+                # 【CSV 语料全量顺序发送】：每个会话按顺序发送全量语料
+                for tgt in active_targets:
+                    for text in corpus:
+                        await emit_item(tgt, text)
+                    if batch_size > 1:
+                        await flush_buffer()
 
             if batch_size > 1:
                 await flush_buffer()
+
 
             # 放入结束标记
             for _ in range(concurrency):
                 await queue.put(None)
 
         async def worker() -> None:
-            nonlocal success_count, fail_count, last_report_time, last_report_count
+            nonlocal success_count, fail_count, retry_count, pace, last_report_time, last_report_count
+            current_inflight = 0
             while True:
+                # 1. 窗口主动保护：发送前若在途依然处于高水位（>=80），主动挂起等待 ACK 回流排空
+                if current_inflight >= high_watermark:
+                    current_inflight = await self.wait_for_ack_window(low_watermark=low_watermark, timeout=1.5)
+
                 batch_items = await queue.get()
                 if batch_items is None:
                     queue.task_done()
                     break
+                pending: List[BatchItem] = batch_items
                 try:
-                    sent = await self.send_batch_to_targets(batch_items)
-                    success_count += sent
-                    failed_items = len(batch_items) - sent
-                    fail_count += failed_items
-                    if sent > 0:
-                        for tgt, _ in batch_items[:sent]:
+                    for attempt in range(max_retries + 1):
+                        succeeded, rejected, unknown, current_inflight = await self.send_batch_to_targets(pending)
+                        success_count += len(succeeded)
+                        fail_count += len(unknown)
+                        for tgt, _ in succeeded:
                             target_success_map[tgt.name] = target_success_map.get(tgt.name, 0) + 1
+                        pending = rejected
+                        if not rejected:
+                            # 投递顺畅：加性回落，缓慢逼近通道可持续容量
+                            pace = max(delay_between_msg, pace - 0.01)
+                            # 如果投递后在途达到高水位，立即触发窗口等待
+                            if current_inflight >= high_watermark:
+                                current_inflight = await self.wait_for_ack_window(low_watermark=low_watermark, timeout=1.5)
+                            break
+                        pace = min(max_pace, max(pace * 2, 0.05))
+                        if attempt == max_retries:
+                            fail_count += len(rejected)
+                            pending = []
+                            break
+                        # 仅重发同步拒收（未进入 Netty）的消息，指数退避等待服务端 ACK 回流释放发送窗口
+                        retry_count += len(rejected)
+                        await asyncio.sleep(min(max_pace, retry_backoff * (2 ** attempt)))
+                        current_inflight = await self.wait_for_ack_window(low_watermark=low_watermark, timeout=1.0)
                 except Exception as e:
-                    fail_count += len(batch_items)
+                    fail_count += len(pending)
                     print(f"❌ [📱 {self.sender_name} | {self.device_id}] 批次投递异常: {e}")
                 finally:
                     queue.task_done()
-                    if delay_between_msg > 0:
-                        await asyncio.sleep(delay_between_msg)
+                    if pace > 0:
+                        await asyncio.sleep(pace)
                     
                     completed = success_count + fail_count
                     if report_interval > 0 and (
@@ -771,8 +898,8 @@ class IMClient:
                         total_str = f"/{total_count:,}" if total_count > 0 else ""
                         print(
                             f"[📱 {self.sender_name} | {self.device_id}] 进度: {completed:,}{total_str} ({pct:5.1f}%) | "
-                            f"瞬时吞吐: {instant_tps:,.0f} msg/s | 累计成功: {success_count:,} | "
-                            f"失败: {fail_count} | 总耗时: {elapsed_total:.2f}s"
+                            f"瞬时吞吐: {instant_tps:,.0f} msg/s | 在途: {current_inflight:2d} | 累计成功: {success_count:,} | "
+                            f"失败: {fail_count} | 重发: {retry_count} | 节奏: {pace * 1000:.0f}ms | 总耗时: {elapsed_total:.2f}s"
                         )
                         last_report_time = now
                         last_report_count = completed
@@ -792,6 +919,7 @@ class IMClient:
             "total_sent": sent_count,
             "success": success_count,
             "fail": fail_count,
+            "retried": retry_count,
             "duration_seconds": round(total_time, 2),
             "average_tps": round(avg_tps, 1),
             "distribution": target_success_map,
@@ -804,6 +932,7 @@ class IMClient:
         print(f"  📦 发送总量: {sent_count:,} 条")
         print(f"  ✅ 成功到达: {success_count:,} 条")
         print(f"  ❌ 发送受阻: {fail_count:,} 条")
+        print(f"  🔁 拒收重发: {retry_count:,} 次")
         print(f"  ⏱️ 执行总耗时: {total_time:.2f} 秒")
         print(f"  ⚡ 综合平均吞吐 (TPS): {avg_tps:,.1f} msg/s")
         print("  📋 各会话到达分布:")
@@ -908,7 +1037,15 @@ class IMClientCluster:
             print(f"   {i}. 设备: 【{cfg.device_id}】 -> 账号: 【{cfg.sender_name}】 | 专属群: 【{group_name}】 (目标总数: {len(client.targets)} 个)")
         print("==================================================")
 
-        tasks = [c.start() for c in self.clients]
+        async def _safe_start(c: IMClient) -> bool:
+            try:
+                # 8 秒刚性挂接超时：杜绝离线或异常设备无限期卡死主事件循环
+                return await asyncio.wait_for(c.start(), timeout=8.0)
+            except Exception as e:
+                print(f"[IM 客户端] ⚠️ 设备 【{c.device_id}】 挂接超时或异常: {e}，自动隔离跳过")
+                return False
+
+        tasks = [_safe_start(c) for c in self.clients]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         ready_clients = [c for c, r in zip(self.clients, results) if r is True]
         print(f"📊 集群通道就绪结果: {len(ready_clients)}/{len(self.clients)} 台设备挂接成功\n")
@@ -917,23 +1054,30 @@ class IMClientCluster:
     async def send_matrix(
         self,
         count_per_target: int = 100,
-        batch_size: int = 50,
+        batch_size: int = 20,
         report_interval: int = 1000,
+        delay_between_batches: float = 0.02,
         use_csv_data: bool = True,
     ) -> List[Dict[str, Any]]:
         """【多设备集群齐步等量并行压测】
         
         所有参战模拟器设备【完全同时同频】向各自配置的目标会话池齐步发射：
+        - 自动隔离 offline 异常设备，仅对健康就绪的客户端投递任务；
         - 每台设备各自向自己的专属群与单聊目标发送 count_per_target 条；
-        - 总计投递量由各设备装配的会话总数相加计算。
-        - 开启 batch_size 极速管道，突破 IPC 瓶颈。
+        - 总计投递量由实际在线的设备装配会话相加计算。
+        - 开启 batch_size 极速管道 + delay_between_batches 批次微延时，彻底规避原生 socket 冲垮。
         - 默认通过 data_loader 加载 data/chat/chat_messages.csv 真实业务语料。
         """
-        total_cluster_msgs = sum(len(c.targets) * count_per_target for c in self.clients)
-        print(f"💥 [多机集群协同开火] {len(self.clients)} 台设备同时启动齐步矩阵压测！")
-        print(f"   🎯 调度模式: 设备专属群聊对齐 (设备1->群001, 设备2->群002, 依次类推) + 公共单聊并发")
+        active_clients = [c for c in self.clients if c._is_started and c.bridge._is_ready]
+        if not active_clients:
+            print("❌ 当前集群中没有就绪的活动客户端，请确认模拟器处于在线状态且 App 正在运行。")
+            return []
+
+        total_cluster_msgs = sum(len(c.targets) * count_per_target for c in active_clients)
+        print(f"💥 [多机集群协同开火] {len(active_clients)} 台健康设备启动齐步矩阵压测！")
+        print(f"   🎯 调度模式: 设备专属群聊对齐 + 公共单聊并发 (已自动隔离离线设备)")
         print(f"   📂 消息内容数据源: {'data/chat/chat_messages.csv (data_loader 工具加载)' if use_csv_data else '内置测试标头'}")
-        print(f"   🚀 批处理管道: 开启 (Batch={batch_size} 条/RPC) | 单机并发协程: {self.concurrency_per_device}")
+        print(f"   🚀 批处理管道: 开启 (Batch={batch_size} 条/RPC, 批次间防爆微延时: {delay_between_batches*1000:.0f}ms)")
         print(f"   📦 单机单会话配额: {count_per_target:,} 条")
         print(f"   🌊 全集群总消息投放量: {total_cluster_msgs:,} 条真实消息")
         print("--------------------------------------------------")
@@ -945,9 +1089,10 @@ class IMClientCluster:
                 concurrency=self.concurrency_per_device,
                 batch_size=batch_size,
                 report_interval=report_interval,
+                delay_between_msg=delay_between_batches,
                 use_csv_data=use_csv_data,
             )
-            for c in self.clients
+            for c in active_clients
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         total_time = max(0.001, time.time() - start_time)
@@ -1093,19 +1238,19 @@ if __name__ == "__main__":
         USE_CLUSTER = True
 
         # 每台设备对各自会话（专属群聊+公共单聊）发送的消息数量（如设为 20 条）
-        COUNT_PER_TARGET = 100
+        COUNT_PER_TARGET = 1000
         # COUNT_PER_TARGET = 28572
 
         if USE_CLUSTER:
             # =========================================================
             # 【集群模式】：5 台模拟器同时协同，各自对应专属群聊齐步开火
             # =========================================================
-            # 架构优化：批量管道模式下（Batch=50），单设备开启 2 个 worker 即可形成极致双缓冲流水线
-            # 杜绝 50 个 worker 并发争抢 Frida GumJS 单线程锁引发的严重排队与 SIGSEGV 崩溃
+            # 工业级稳态流水线：单设备单协程顺序投递（concurrency=1）+ 适度批次（Batch=20）+ 批次微延时（20ms）
+            # 彻底杜绝多协程对 Frida GumJS 单线程事件循环的锁争抢与突发洪峰导致的底层 socket 线程 SIGSEGV 崩溃
             cluster = IMClientCluster(
                 device_configs=CLUSTER_DEVICES,
                 common_targets=COMMON_SINGLE_TARGETS,
-                concurrency_per_device=2,
+                concurrency_per_device=1,
             )
 
             started = await cluster.start()
@@ -1115,8 +1260,9 @@ if __name__ == "__main__":
 
             await cluster.send_matrix(
                 count_per_target=COUNT_PER_TARGET,
-                batch_size=50,
+                batch_size=20,               # 黄金批次大小（每批打包 10 条）
                 report_interval=200,
+                delay_between_batches=0.12,  # 基础节奏 120ms，拒收时 AIMD 自适应放大（上限 1s）
             )
             await cluster.stop()
 

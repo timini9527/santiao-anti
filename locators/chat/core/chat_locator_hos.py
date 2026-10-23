@@ -73,26 +73,26 @@ class ChatLocatorHos:
     AUDIO_BUBBLE_ID = "__AudioBubble__"
     AUDIO_BUBBLE = (
         AppiumBy.XPATH,
-        "//ListItem//Row[.//Image and .//Text[contains(@text, '\"') or contains(@text, 's') or contains(@text, '秒')]]"
+        "//ListItem//Row//Row/Text"
     )
 
     # 2.5 定位消息 (位置卡片容器、标题与副标题)
     LOCATION_CARD_ID = "__LocationCard__"
-    LOCATION_CARD_ITEM = (AppiumBy.XPATH, "//ListItem//Column[.//Text and .//Image]")
+    LOCATION_CARD_ITEM = (AppiumBy.XPATH, "//ListItem//Row//Row/Stack/Column/Stack")
     LOCATION_MESSAGE_TITLE_ID = "__LocationTitle__"
-    LOCATION_MESSAGE_TITLE = (AppiumBy.XPATH, "//ListItem//Column//Text[1]")
+    LOCATION_MESSAGE_TITLE = (AppiumBy.XPATH, "//ListItem//Row//Row/Stack/Column/Stack/Row/following-sibling::Column/Text[1]")
     LOCATION_MESSAGE_SUBTITLE_ID = "__LocationSubtitle__"
-    LOCATION_MESSAGE_SUBTITLE = (AppiumBy.XPATH, "//ListItem//Column//Text[2]")
+    LOCATION_MESSAGE_SUBTITLE = (AppiumBy.XPATH, "//ListItem//Row//Row/Stack/Column/Stack/Row/following-sibling::Column/Text[2]")
 
     # 2.6 名片消息 (个人名片卡片容器、昵称与ST账号)
     PROFILE_CARD_ID = "__ProfileCard__"
-    PROFILE_CARD_ITEM = (AppiumBy.XPATH, "//ListItem//Column[.//Text[contains(@text, '名片') or contains(@text, '个人名片')]]")
+    PROFILE_CARD_ITEM = (AppiumBy.XPATH, "//ListItem//Row//__Common__/Column")
     CARD_NICKNAME_ID = "__CardNickname__"
-    CARD_NICKNAME_ITEM = (AppiumBy.XPATH, "//ListItem//Column//Text[1]")
+    CARD_NICKNAME_ITEM = (AppiumBy.XPATH, "//ListItem//Row//__Common__/Column//Row/Column/Row[1]/Text")
     CARD_ST_ID = "__CardSTNumber__"
-    CARD_ST_ITEM = (AppiumBy.XPATH, "//ListItem//Column//Text[2]")
+    CARD_ST_ITEM = (AppiumBy.XPATH, "//ListItem//Row//__Common__/Column//Row/Column/Row[2]/Text")
     CARD_TAG_ID = "__CardTag__"
-    CARD_TAG = (AppiumBy.XPATH, "//ListItem//Column//Text[contains(@text, '名片')]")
+    CARD_TAG = (AppiumBy.XPATH, "//ListItem//Row//__Common__/Column/Row/Text")
 
     # 2.7 文件消息 (文件卡片容器、文件名、文件大小与状态)
     FILE_CARD_ID = "__FileCard__"
