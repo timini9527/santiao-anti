@@ -110,7 +110,7 @@ class ChatLocatorHos:
 
     # 2.8 聊天记录（合并转发）卡片
     MERGE_CARD_ID = "__MergeCard__"
-    MERGE_CARD_MSG = (AppiumBy.XPATH, "//ListItem//Column[.//Text[contains(@text, '聊天记录')]]")
+    MERGE_CARD_MSG = (AppiumBy.XPATH, "//ListItem//Row//Column/Text[contains(@text,'聊天记录')]/parent::Column")
     MERGE_CARD_TITLE = (AppiumBy.XPATH, "//ListItem//Column//Text[contains(@text, '聊天记录')]")
     MERGE_CARD_PREVIEW = (AppiumBy.XPATH, "//ListItem//Column//Text[2]")
     MERGE_CARD_KIND = (AppiumBy.XPATH, "//ListItem//Column//Text[last()]")

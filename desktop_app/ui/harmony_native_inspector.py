@@ -5623,15 +5623,6 @@ class HarmonyAppiumInspector(QMainWindow):
         self.btn_mode_tap.setChecked(mode == InspectorMode.TAP)
         self.canvas.set_mode(mode)
 
-    def action_back(self):
-        if self.current_udid:
-            DeviceController.key_back(self.current_platform, self.current_udid)
-            self.refresh_screen_and_dom()
-
-    def action_home(self):
-        if self.current_udid:
-            DeviceController.key_home(self.current_platform, self.current_udid)
-            self.refresh_screen_and_dom()
 
     def copy_xml_source(self):
         if self.xml_root is not None:
@@ -5891,10 +5882,6 @@ class HarmonyAppiumInspector(QMainWindow):
         text = self.edit_live_input.text()
         self.direct_send_keys_to_element(curr_id, text)
 
-    def action_element_tap(self):
-        curr_id = self.canvas.selected_node_id
-        if curr_id:
-            self.direct_tap_element(curr_id)
 
     def direct_tap_element(self, node_id: str):
         comp = self.comp_map.get(node_id)
@@ -5903,14 +5890,6 @@ class HarmonyAppiumInspector(QMainWindow):
             DeviceController.tap(self.current_platform, self.current_udid, cx, cy)
             self.refresh_screen_and_dom()
 
-    def action_element_send_keys(self):
-        curr_id = self.canvas.selected_node_id
-        if curr_id:
-            comp = self.comp_map.get(curr_id, {})
-            curr_text = comp.get("text", "")
-            text, ok = QInputDialog.getText(self, "输入文本", "请输入要发送至该元素的文本内容:", text=curr_text)
-            if ok:
-                self.direct_send_keys_to_element(curr_id, text)
 
     def direct_send_keys_to_element(self, node_id: str, text: str):
         """
