@@ -92,7 +92,7 @@ class _ChatLocatorAndroid:
     MERGE_CARD_MSG = (AppiumBy.ID, MERGE_CARD_ID)                                       # 合并转发卡片容器
     MERGE_CARD_TITLE = (AppiumBy.ID, f'{PACKAGE_ID}/merge_title')                       # 合并转发标题
     MERGE_CARD_PREVIEW = (AppiumBy.ID, f'{PACKAGE_ID}/merge_preview')                   # 合并转发预览文本
-    MERGE_CARD_KIND = (AppiumBy.ID, f'{PACKAGE_ID}/merge_kind')                         # 合并转发类型标签
+    MERGE_CARD_KIND = (AppiumBy.ID, f'{PACKAGE_ID}/merge_kind')                         # 合并转发类型底部标签文本
 
     # 9. 停用账号/封禁提示
     DISABLE_MESSAGE_TIP = (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("对方账号无法使用 详情")')

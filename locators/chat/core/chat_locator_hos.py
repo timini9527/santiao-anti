@@ -38,6 +38,8 @@ class ChatLocatorHos:
     GROUP_CHAT_USER_NAME_ID = "__MessageSenderName__"
     GROUP_CHAT_USER_NAME_ITEM = (AppiumBy.XPATH, "//ListItem//Row[2]//Column/Row/Text")
 
+
+
     # ==================================================================================================================
     # 2. 核心消息类型定位器（一物一元组，严格映射各类型气泡）
     # ==================================================================================================================
@@ -111,21 +113,21 @@ class ChatLocatorHos:
     # 2.8 聊天记录（合并转发）卡片
     MERGE_CARD_ID = "__MergeCard__"
     MERGE_CARD_MSG = (AppiumBy.XPATH, "//ListItem//Row//Column/Text[contains(@text,'聊天记录')]/parent::Column")
-    MERGE_CARD_TITLE = (AppiumBy.XPATH, "//ListItem//Column//Text[contains(@text, '聊天记录')]")
-    MERGE_CARD_PREVIEW = (AppiumBy.XPATH, "//ListItem//Column//Text[2]")
-    MERGE_CARD_KIND = (AppiumBy.XPATH, "//ListItem//Column//Text[last()]")
+    MERGE_CARD_TITLE = (AppiumBy.XPATH, "//ListItem//Column//Text[contains(@text, '的聊天记录')]")
+    MERGE_CARD_PREVIEW = (AppiumBy.XPATH, "//ListItem//Column//Text[contains(@text, '的聊天记录')]/following-sibling::Text")
+    MERGE_CARD_KIND = (AppiumBy.XPATH, "//ListItem//Column//Text[contains(@text, '的聊天记录')]/following-sibling::Text[last()]")
 
-    # 2.9 停用账号 / 封禁提示
+    # 2.9 停用账号 / 封禁提示 //NavDestination//Stack/Stack/__Common__/Stack/Column//Image
     DISABLE_MESSAGE_TIP = (
         AppiumBy.XPATH,
-        "//Text[contains(@text, '对方账号无法使用') or contains(@text, '已被封禁') or contains(@text, '无法查看')]"
+        "//Text[@text='对方账号已无法使用 详情']"
     )
 
-    # 2.10 音视频通话记录卡片 (Call Card)
+    # 2.10 音视频通话记录卡片 (Call Card) TODO：鸿蒙还没有做，等待优化
     CALL_CARD_ID = "__CallCard__"
     CALL_CARD_ITEM = (
         AppiumBy.XPATH,
-        "//ListItem//Row[.//Text[contains(@text, '通话') or contains(@text, '未接') or contains(@text, '取消')]]"
+        "//ListItem//Row//Stack/Text"
     )
     CALL_TITLE_ID = "__CallTitle__"
     CALL_TITLE_ITEM = (
@@ -135,44 +137,46 @@ class ChatLocatorHos:
     CALL_SUBTITLE_ID = "__CallSubtitle__"
     CALL_SUBTITLE_ITEM = (AppiumBy.XPATH, "//ListItem//Text[contains(@text, '轻触回拨') or contains(@text, '再次呼叫')]")
 
+
+
     # ==================================================================================================================
     # 3. 聊天页面顶部全局导航栏 (Top Navigation Bar)
     # ==================================================================================================================
     # 顶部左侧返回按钮 (NavDestination 标题栏首个图标)
     TOP_BACK_BUTTON = (
         AppiumBy.XPATH,
-        "(//NavDestinationTitleBar//Image)[1] | (//NavDestination//Image)[1] | //Row[1]/Image[1]"
+        "//NavDestination//Stack/Stack/__Common__//Row//Row/Image"
     )
     TOP_BACK_BNT = TOP_BACK_BUTTON
 
     # 顶部返回按钮未读数背景与角标文本
     TOP_BACK_UNREAD_BG = (AppiumBy.XPATH, "//NavDestinationTitleBar//Badge | //Row[1]//Badge")
-    TOP_BACK_UNREAD_BADGE = (AppiumBy.XPATH, "//NavDestinationTitleBar//Badge/Text | //Row[1]//Badge/Text")
+    TOP_BACK_UNREAD_BADGE = (AppiumBy.XPATH, "//NavDestination//Stack/Stack/__Common__//Row//Row/Text")
 
     # 顶部聊天对象昵称 / 群名称
     TOP_USER_NAME_ID = "__TopUserName__"
     TOP_USER_NAME = (
         AppiumBy.XPATH,
-        "//NavDestinationTitleBar//Text[1] | //NavDestination//Row[1]//Text[1]"
+        "//NavDestination//Stack/Stack/__Common__/Stack/Column/Row/Text"
     )
     TOP_USER_NAME_XPATH = TOP_USER_NAME
 
     # 顶部群聊短号 / 群 ID 文本
     TOP_SHORT_NUMBER = (
         AppiumBy.XPATH,
-        "//NavDestinationTitleBar//Text[contains(@text, 'ID:') or contains(@text, '号:')]"
+        "//NavDestination//Stack/Stack/__Common__/Stack/Column/Text"
     )
 
-    # 顶部群聊人数统计 (如 "(40)")
+    # 顶部群聊人数统计 (如 "大群(40)")
     GROUP_NUMBER_COUNT = (
         AppiumBy.XPATH,
-        "//NavDestinationTitleBar//Text[contains(@text, '(') and contains(@text, ')')]"
+        "//NavDestination//Stack/Stack/__Common__/Stack/Column/Row/Text"
     )
 
     # 顶部右上角更多 "..." 菜单入口按钮 (单聊/群聊信息设置中心)
     TOP_MORE_BUTTON = (
         AppiumBy.XPATH,
-        "(//NavDestinationTitleBar//Image)[last()] | (//NavDestination//Image)[last()] | //Row[1]/Image[last()]"
+        "//NavDestination//Stack/Stack/__Common__/Stack/Row/Column//Stack/Image"
     )
 
     # ==================================================================================================================
