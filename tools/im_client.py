@@ -935,7 +935,7 @@ class IMClient:
         print(f"  🔁 拒收重发: {retry_count:,} 次")
         print(f"  ⏱️ 执行总耗时: {total_time:.2f} 秒")
         print(f"  ⚡ 综合平均吞吐 (TPS): {avg_tps:,.1f} msg/s")
-        print("  📋 各会话到达分布:")
+        print(f"  📋 各会话到达分布:")
         for t_name, count in target_success_map.items():
             expected_info = f" (预期: {messages_per_target:,} 条)" if messages_per_target is not None else ""
             print(f"    - 【{t_name}】: {count:,} 条{expected_info}")

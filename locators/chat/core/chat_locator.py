@@ -80,12 +80,12 @@ class _ChatLocatorAndroid:
     FILE_CARD_ITEM = (AppiumBy.ID, FILE_CARD_ID)                                        # 文件卡片容器
     FILE_NAME_ID = f'{PACKAGE_ID}/file_name'
     FILE_NAME_ITEM = (AppiumBy.ID, FILE_NAME_ID)                                        # 文件名
+    FILE_STATUS_ID = f'{PACKAGE_ID}/file_status'
+    FILE_STATUS_ITEM = (AppiumBy.ID, FILE_STATUS_ID)                                    # 文件状态
     FILE_SIZE_ID = f'{PACKAGE_ID}/file_meta'
     FILE_SIZE_ITEM = (AppiumBy.ID, FILE_SIZE_ID)                                        # 文件大小/元数据
     FILE_LINE_ID = f'{PACKAGE_ID}/file_line'
     FILE_LINE_ITEM = (AppiumBy.ID, FILE_LINE_ID)                                        # 分隔线
-    FILE_STATUS_ID = f'{PACKAGE_ID}/file_status'
-    FILE_STATUS_ITEM = (AppiumBy.ID, FILE_STATUS_ID)                                    # 文件状态
 
     # 8. 聊天记录（合并转发）卡片
     MERGE_CARD_ID = f'{PACKAGE_ID}/merge_card'

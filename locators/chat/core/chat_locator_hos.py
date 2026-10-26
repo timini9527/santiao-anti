@@ -94,17 +94,19 @@ class ChatLocatorHos:
     CARD_TAG_ID = "__CardTag__"
     CARD_TAG = (AppiumBy.XPATH, "//ListItem//Row//__Common__/Column/Row/Text")
 
-    # 2.7 文件消息 (文件卡片容器、文件名、文件大小与状态)
+    # 2.7 文件消息 (文件卡片容器、文件名、文件大小、状态、分割线、文件图标)
     FILE_CARD_ID = "__FileCard__"
-    FILE_CARD_ITEM = (AppiumBy.XPATH, "//ListItem//Row[.//Image and .//Column[.//Text]]")
+    FILE_CARD_ITEM = (AppiumBy.XPATH, "//ListItem//Row/Column/Row//Stack//Stack/Column/Row/Column")
     FILE_NAME_ID = "__FileName__"
-    FILE_NAME_ITEM = (AppiumBy.XPATH, "//ListItem//Column/Text[1]")
-    FILE_SIZE_ID = "__FileSize__"
-    FILE_SIZE_ITEM = (AppiumBy.XPATH, "//ListItem//Column/Text[2]")
-    FILE_LINE_ID = "__FileLine__"
-    FILE_LINE_ITEM = (AppiumBy.XPATH, "//ListItem//Divider | //ListItem//Row/following-sibling::*")
+    FILE_NAME_ITEM = (AppiumBy.XPATH, "//ListItem//Row/Column/Row//Stack//Stack/Column/Row/Column/Text")
     FILE_STATUS_ID = "__FileStatus__"
-    FILE_STATUS_ITEM = (AppiumBy.XPATH, "//ListItem//Column/Text[last()]")
+    FILE_STATUS_ITEM = (AppiumBy.XPATH, "//ListItem//Row/Column/Row//Stack//Stack/Column/Row/Column/Text")
+    FILE_SIZE_ID = "__FileSize__"
+    FILE_SIZE_ITEM = (AppiumBy.XPATH, "//ListItem//Row/Column/Row//Stack//Stack/Column/Row/Column/Row/Text[last()]")
+    FILE_LINE_ID = "__FileLine__"
+    FILE_LINE_ITEM = (AppiumBy.XPATH, "//ListItem//Row/Column/Row//Stack//Stack/Column/Row/Column/Row/Divider")
+    FILE_ICON_ID = "__FileIcon__"
+    FILE_ICON_ITEM = (AppiumBy.XPATH, "//ListItem//Row/Column/Row//Stack//Stack/Column/Row/Image")
 
     # 2.8 聊天记录（合并转发）卡片
     MERGE_CARD_ID = "__MergeCard__"
