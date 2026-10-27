@@ -39,7 +39,6 @@ class ChatLocatorHos:
     GROUP_CHAT_USER_NAME_ITEM = (AppiumBy.XPATH, "//ListItem//Row[2]//Column/Row/Text")
 
 
-
     # ==================================================================================================================
     # 2. 核心消息类型定位器（一物一元组，严格映射各类型气泡）
     # ==================================================================================================================
@@ -138,7 +137,6 @@ class ChatLocatorHos:
     CALL_SUBTITLE_ITEM = (AppiumBy.XPATH, "//ListItem//Text[contains(@text, '轻触回拨') or contains(@text, '再次呼叫')]")
 
 
-
     # ==================================================================================================================
     # 3. 聊天页面顶部全局导航栏 (Top Navigation Bar)
     # ==================================================================================================================
@@ -179,21 +177,22 @@ class ChatLocatorHos:
         "//NavDestination//Stack/Stack/__Common__/Stack/Row/Column//Stack/Image"
     )
 
+
     # ==================================================================================================================
     # 4. 聊天页面底部输入交互区域 (Bottom Input Bar)
     # ==================================================================================================================
     # 底部输入整行容器
-    CHAT_INPUT = (AppiumBy.XPATH, "//Row[.//TextInput or .//TextArea]")
+    CHAT_INPUT = (AppiumBy.XPATH, "//NavDestination//Stack/__Common__//Column/Stack/Column/Row")
 
     # 文本输入框 (TextInput / TextArea)
-    CHAT_INPUT_CONTENT = (AppiumBy.XPATH, "//TextInput | //TextArea")
+    CHAT_INPUT_CONTENT = (AppiumBy.XPATH, "")
     CHAT_INPUT_BOX = (AppiumBy.XPATH, "//TextInput | //TextArea")
-    TEXT_INPUT = (AppiumBy.XPATH, "//TextInput | //TextArea")
+    TEXT_INPUT = (AppiumBy.XPATH, "//NavDestination//Stack/__Common__//Column/Stack/Column/Row//RichEditor")
 
     # 语音 / 键盘切换按钮
     VOICE_BUTTON = (
         AppiumBy.XPATH,
-        "//Row[.//TextInput or .//TextArea]//Image[1] | //Image[@id='voice' or contains(@text, '语音')]"
+        "//NavDestination//Stack/__Common__//Column/Stack/Column/Row/Column/Stack/Image"
     )
 
     # 表情按钮
@@ -205,7 +204,7 @@ class ChatLocatorHos:
     # 扩展 "+" 号更多功能面板展开按钮
     ADD_BUTTON = (
         AppiumBy.XPATH,
-        "//Row[.//TextInput or .//TextArea]//Image[last()] | //Image[@id='more']"
+        "//NavDestination//Stack/__Common__//Column/Stack/Column/Row/Stack/Image"
     )
     INPUT_MORE_PAGER = (AppiumBy.XPATH, "//Grid | //Scroll[.//Text[@text='图片' or @text='拍摄']]")
     INPUT_MORE_SCROLLABLE_INDICATOR = (AppiumBy.XPATH, "//Swiper")
@@ -213,28 +212,31 @@ class ChatLocatorHos:
     # 发送按钮 (文本变动后显示为 "发送")
     SEND_BUTTON = (
         AppiumBy.XPATH,
-        "//Button[.//Text[@text='发送']] | //Text[@text='发送'] | //Button[@text='发送']"
+        "//NavDestination//Stack/__Common__//Column/Stack/Column/Row/Row//Row/Stack/Image"
     )
 
     # 底部新消息悬浮定位提示 (如 "X 条新消息" 气泡)
     NEW_MESSAGE_INDICATOR = (
         AppiumBy.XPATH,
-        "//Row[.//Text[contains(@text, '新消息') or contains(@text, '底部')]]"
+        "//NavDestination//Stack//__Common__/Stack/Stack/Stack/Image"
     )
 
     # 禁言状态输入区域
-    NOT_IN_INPUT_BOX = (AppiumBy.XPATH, "//Row[.//Text[contains(@text, '禁言') or contains(@text, '无法发言')]]")
-    TPV_1 = (AppiumBy.XPATH, "//Row[.//Text[contains(@text, '禁言')]]//Image[1]")
-    TV_NOT_IN_TIPS_TITLE = (AppiumBy.XPATH, "//Text[contains(@text, '全员禁言中') or contains(@text, '已被禁言')]")
+    NOT_IN_INPUT_BOX = (AppiumBy.XPATH, "//NavDestination//Stack//__Common__/Stack/Column/Row/Row")
     TV_NOT_IN_TIPS = (AppiumBy.XPATH, "//Text[contains(@text, '禁言')]")
-    TPV_2 = (AppiumBy.XPATH, "//Row[.//Text[contains(@text, '禁言')]]//Image[2]")
-    TPV_3 = (AppiumBy.XPATH, "//Row[.//Text[contains(@text, '禁言')]]//Image[3]")
+    TV_NOT_IN_TIPS_TITLE = (AppiumBy.XPATH, "//NavDestination//Stack//__Common__/Stack/Column/Row/Row/Text")
+    TPV_1 = (AppiumBy.XPATH, "//NavDestination//Stack//__Common__/Stack/Column/Row/Stack")
+    TPV_2 = (AppiumBy.XPATH, "//NavDestination//Stack//__Common__/Stack/Column/Row/Row/Image")
+    TPV_3 = (AppiumBy.XPATH, "//NavDestination//Stack//__Common__/Stack/Column/Row/Stack[last()]")
+
 
     # ==================================================================================================================
     # 5. 聊天页面【多选模式】底部操作栏 (Multi-Select Menu)
     # ==================================================================================================================
     # 已勾选消息计数文本 (如 "已选择 2 项")
-    TV_SELECT_NUM = (AppiumBy.XPATH, "//Text[contains(@text, '已选择') or contains(@text, '项')]")
+    TV_SELECT_CANCLE = (AppiumBy.XPATH, "//NavDestination//Stack//__Common__/Stack/Row/Column/Row/Text")
+    TV_SELECT_NUM = (AppiumBy.XPATH, "//NavDestination//Stack//__Common__/Stack/Row/Column[2]/Row/Text")
+    
 
     # 列表单行勾选圈选复选框
     BT_SLEECT_ID = "__MessageSelectionCheckbox__"
@@ -242,15 +244,15 @@ class ChatLocatorHos:
     BT_SELECT_NOT_FAIL = BT_SELECT
 
     # 底部合并转发与删除按钮
-    IV_SHARE = (AppiumBy.XPATH, "//Image[contains(@id, 'share')] | //Text[@text='转发'] | //Button[.//Text[@text='转发']]")
-    IV_DELETE = (AppiumBy.XPATH, "//Image[contains(@id, 'delete')] | //Text[@text='删除'] | //Button[.//Text[@text='删除']]")
+    IV_SHARE = (AppiumBy.XPATH, "//NavDestination//Stack/Column/Row/Image")
+    IV_DELETE = (AppiumBy.XPATH, "//NavDestination//Stack/Column/Row/Image[2]")
 
     # 转发方式底部弹窗 (ActionSheet / Dialog)
-    DESIGN_BOTTOM_SHEET = (AppiumBy.XPATH, "//Dialog | //ActionSheet")
-    TV_FORWARD_ONE_BY_ONE = (AppiumBy.XPATH, "//Text[@text='逐条转发'] | //Button[.//Text[@text='逐条转发']]")
-    TV_FORWARD_COMBINE = (AppiumBy.XPATH, "//Text[@text='合并转发'] | //Button[.//Text[@text='合并转发']]")
-    TV_CONFIRM = (AppiumBy.XPATH, "//Text[@text='确定'] | //Button[.//Text[@text='确定']]")
-    TV_CANCEL = (AppiumBy.XPATH, "//Text[@text='取消'] | //Button[.//Text[@text='取消']]")
+    DESIGN_BOTTOM_SHEET = (AppiumBy.XPATH, "//Dialog")
+    TV_FORWARD_ONE_BY_ONE = (AppiumBy.XPATH, "//Dialog//Column/Text[@text='逐条转发']")
+    TV_FORWARD_COMBINE = (AppiumBy.XPATH, "//Dialog//Column/Text[@text='合并转发']")
+    TV_CONFIRM = (AppiumBy.XPATH, "//Dialog//Column/Text[@text='确定']")
+    TV_CANCEL = (AppiumBy.XPATH, "//Dialog//Column/Text[@text='取消']")
 
     # ==================================================================================================================
     # 6. 聊天记录（合并转发）详情页内部结构 (Chat History Detail Page)

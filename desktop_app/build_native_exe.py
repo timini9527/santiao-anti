@@ -176,6 +176,14 @@ Source: "{allure_info['home_dir']}\\*"; DestDir: "{{app}}\\allure-cli"; Flags: i
     bat_src = os.path.join(PROJECT_ROOT, "start_appium_batch.bat")
     vbs_src = os.path.join(PROJECT_ROOT, "start_appium_silent.vbs")
 
+    # 内置真机端推流与驱动扩展资产 (scrcpy-server / harmony so)
+    assets_src = os.path.join(CURRENT_DIR, "assets")
+    assets_section = ""
+    if os.path.isdir(assets_src):
+        assets_section = f"""; 5. 内置真机端推流与驱动扩展资产 (scrcpy-server / harmony so)
+Source: "{assets_src}\\*"; DestDir: "{{app}}\\desktop_app\\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
+"""
+
     iss_content = f"""[Setup]
 AppName=三条IM自动化测试控制台
 AppVersion=0.9.9
@@ -215,6 +223,7 @@ Source: "{PROJECT_ROOT}\\test_docs\\*"; DestDir: "{{app}}\\test_docs"; Flags: ig
 
 {python_section}
 {allure_section}
+{assets_section}
 
 [Icons]
 Name: "{{autoprograms}}\\三条IM自动化测试控制台"; Filename: "{{app}}\\三条IM自动化测试控制台.exe"
@@ -230,6 +239,8 @@ Type: filesandordirs; Name: "{{app}}\\logs"
 Type: filesandordirs; Name: "{{app}}\\_internal"
 Type: filesandordirs; Name: "{{app}}\\python_runtime"
 Type: filesandordirs; Name: "{{app}}\\allure-cli"
+Type: filesandordirs; Name: "{{app}}\\bin"
+Type: filesandordirs; Name: "{{app}}\\desktop_app"
 Type: filesandordirs; Name: "{{app}}"
 
 [Code]
@@ -380,11 +391,12 @@ def build(build_installer: bool = BUILD_INSTALLER):
         f"--paths={PROJECT_ROOT}",
         f"--icon={icon_ico}", # 注入专属品牌高清图标到生成的 Windows exe 资源段
         f"--add-data={os.path.join(CURRENT_DIR, 'resources')};desktop_app/resources",
+        f"--add-data={os.path.join(CURRENT_DIR, 'assets')};desktop_app/assets",
+        f"--add-data={os.path.join(PROJECT_ROOT, 'bin')};bin",
         "--hidden-import=desktop_app",
         "--hidden-import=desktop_app.style",
         "--hidden-import=desktop_app.config",
         "--hidden-import=desktop_app.core",
-        "--hidden-import=desktop_app.core.path_resolver",
         "--hidden-import=desktop_app.core.path_resolver",
         "--hidden-import=desktop_app.core.device_manager",
         "--hidden-import=desktop_app.core.test_collector",
@@ -410,6 +422,18 @@ def build(build_installer: bool = BUILD_INSTALLER):
         "--hidden-import=PyQt6.QtWidgets",
         "--hidden-import=pytest",
         "--hidden-import=allure_pytest",
+        "--hidden-import=av",
+        "--hidden-import=pymobiledevice3",
+        "--hidden-import=pymobiledevice3.remote.userspace_tunnel",
+        "--hidden-import=pymobiledevice3.services.dvt.instruments.dvt_provider",
+        "--hidden-import=pymobiledevice3.services.dvt.instruments.screenshot",
+        "--hidden-import=uiautomator2",
+        "--hidden-import=grpc",
+        "--collect-all=av",
+        "--collect-all=pymobiledevice3",
+        "--collect-all=uiautomator2",
+        "--copy-metadata=av",
+        "--copy-metadata=pymobiledevice3",
         "--collect-data=setuptools",
         "--copy-metadata=setuptools",
         main_entry

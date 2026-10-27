@@ -263,34 +263,91 @@ class SmartPathResolver:
         return cls._cached_allure_cli
 
     @classmethod
+    def get_asset_path(cls, subpath: str) -> Optional[str]:
+        """
+        全场景鲁棒定位项目/运行时内置资产文件 (支持源码开发态、PyInstaller 打包态与 Inno Setup 安装态)。
+        subpath 示例: "desktop_app/assets/android/scrcpy-server" 或 "desktop_app/assets/harmony/agent.so"
+        """
+        subpath_norm = subpath.replace("/", os.sep)
+        candidates = []
+
+        # 1. 打包运行态：优先检索 _internal 与 sys._MEIPASS 以及同级目录
+        if getattr(sys, "frozen", False):
+            meipass = getattr(sys, "_MEIPASS", "")
+            if meipass and os.path.isdir(meipass):
+                candidates.append(os.path.join(meipass, subpath_norm))
+            exe_dir = os.path.dirname(os.path.abspath(sys.executable))
+            candidates.append(os.path.join(exe_dir, "_internal", subpath_norm))
+            candidates.append(os.path.join(exe_dir, subpath_norm))
+
+        # 2. 源码开发态与安装态外层目录
+        root = cls.get_project_root()
+        candidates.append(os.path.join(root, subpath_norm))
+
+        for cand in candidates:
+            if os.path.isfile(cand) or os.path.isdir(cand):
+                return os.path.abspath(cand)
+
+        return None
+
+    @classmethod
     def discover_mobile_toolchain(cls, force_refresh: bool = False) -> Dict[str, Optional[str]]:
         """
         定位移动端调试工具链 (ADB / HDC)。
-        通过环境变量与 cmd 命令查找，找不到即返回 None。
+        优先级策略 (傻瓜式开箱即用闭环):
+        1. 优先检索程序安装目录或项目根目录下的内置 bin/ 目录 (免装 SDK、零配置开箱即用)；
+        2. 检索环境变量 (ANDROID_HOME / HDC_HOME)；
+        3. 检索系统 PATH 命令 (where adb / where hdc)；找不到返回 None。
         """
         if not force_refresh and cls._cached_mobile_toolchain:
             return cls._cached_mobile_toolchain
 
         tools: Dict[str, Optional[str]] = {"adb": None, "hdc": None}
 
-        # ADB 查找: ANDROID_HOME 环境变量 -> cmd 命令 where adb
-        android_home = os.environ.get("ANDROID_HOME", "").strip() or os.environ.get("ANDROID_SDK_ROOT", "").strip()
-        if android_home and os.path.isdir(android_home):
-            adb_file = os.path.join(android_home, "platform-tools", "adb.exe" if sys.platform == "win32" else "adb")
-            if os.path.isfile(adb_file):
-                tools["adb"] = os.path.abspath(adb_file)
+        # 0. 优先检测内置绿色 bin/ 工具链目录 (涵盖 _internal、sys._MEIPASS、exe_dir 与项目根目录)
+        root = cls.get_project_root()
+        bin_candidates = [
+            os.path.join(root, "bin"),
+            os.path.join(os.path.dirname(root), "bin")
+        ]
+        if getattr(sys, "frozen", False):
+            meipass = getattr(sys, "_MEIPASS", "")
+            if meipass and os.path.isdir(meipass):
+                bin_candidates.insert(0, os.path.join(meipass, "bin"))
+            exe_dir = os.path.dirname(os.path.abspath(sys.executable))
+            bin_candidates.insert(0, os.path.join(exe_dir, "_internal", "bin"))
+            bin_candidates.insert(0, os.path.join(exe_dir, "bin"))
+
+        for b_dir in bin_candidates:
+            if not os.path.isdir(b_dir):
+                continue
+            cand_adb = os.path.join(b_dir, "adb.exe" if sys.platform == "win32" else "adb")
+            cand_hdc = os.path.join(b_dir, "hdc.exe" if sys.platform == "win32" else "hdc")
+            if not tools["adb"] and os.path.isfile(cand_adb):
+                tools["adb"] = os.path.abspath(cand_adb)
+            if not tools["hdc"] and os.path.isfile(cand_hdc):
+                tools["hdc"] = os.path.abspath(cand_hdc)
+
+        # 1. ADB 降级检索: ANDROID_HOME 环境变量 -> cmd 命令 where adb
+        if not tools["adb"]:
+            android_home = os.environ.get("ANDROID_HOME", "").strip() or os.environ.get("ANDROID_SDK_ROOT", "").strip()
+            if android_home and os.path.isdir(android_home):
+                adb_file = os.path.join(android_home, "platform-tools", "adb.exe" if sys.platform == "win32" else "adb")
+                if os.path.isfile(adb_file):
+                    tools["adb"] = os.path.abspath(adb_file)
 
         if not tools["adb"]:
             tools["adb"] = cls._find_cmd("adb")
 
-        # HDC 查找: HDC_HOME 环境变量 -> cmd 命令 where hdc
-        hdc_home = os.environ.get("HDC_HOME", "").strip() or os.environ.get("OHOS_BASE_SDK_HOME", "").strip()
-        if hdc_home and os.path.isdir(hdc_home):
-            for sub in ["toolchains/hdc.exe", "hdc.exe"]:
-                hdc_file = os.path.join(hdc_home, sub.replace("/", os.sep))
-                if os.path.isfile(hdc_file):
-                    tools["hdc"] = os.path.abspath(hdc_file)
-                    break
+        # 2. HDC 降级检索: HDC_HOME 环境变量 -> cmd 命令 where hdc
+        if not tools["hdc"]:
+            hdc_home = os.environ.get("HDC_HOME", "").strip() or os.environ.get("OHOS_BASE_SDK_HOME", "").strip()
+            if hdc_home and os.path.isdir(hdc_home):
+                for sub in ["toolchains/hdc.exe", "hdc.exe"]:
+                    hdc_file = os.path.join(hdc_home, sub.replace("/", os.sep))
+                    if os.path.isfile(hdc_file):
+                        tools["hdc"] = os.path.abspath(hdc_file)
+                        break
 
         if not tools["hdc"]:
             tools["hdc"] = cls._find_cmd("hdc")
@@ -307,11 +364,11 @@ class SmartPathResolver:
         """
         source_root = os.path.abspath(source_root)
 
-        # 1. 严格限定必须同步的测试业务模块白名单
+        # 1. 严格限定必须同步的测试业务模块白名单 (包含绿色工具链 bin)
         candidate_dirs = [
             "tests", "pages", "locators", "common", "core",
             "business_helpers", "config", "data", "utils", "apis",
-            "resources", "strategy", "performance", "IOS"
+            "resources", "strategy", "performance", "IOS", "bin"
         ]
         business_dirs = [
             d for d in candidate_dirs

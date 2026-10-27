@@ -2875,11 +2875,13 @@ class MobilePage(QWidget):
             if sys.platform == "win32":
                 if launch_file.suffix.lower() == ".vbs":
                     # 若为 VBS 文件，显式调用 Windows Script Host 解释器 wscript.exe，绝不使用 os.startfile (彻底杜绝记事本关联)
-                    wscript_bin = shutil.which("wscript") or r"C:\Windows\System32\wscript.exe"
+                    sys_root = os.environ.get("SystemRoot", r"C:\Windows")
+                    wscript_bin = shutil.which("wscript") or os.path.join(sys_root, "System32", "wscript.exe")
                     subprocess.Popen([wscript_bin, str(launch_file)], cwd=work_dir)
                 else:
                     # 针对批处理文件，使用 cmd.exe /c 结合 CREATE_NO_WINDOW 原生创建无窗口后台进程
-                    cmd_bin = shutil.which("cmd") or r"C:\Windows\System32\cmd.exe"
+                    sys_root = os.environ.get("SystemRoot", r"C:\Windows")
+                    cmd_bin = shutil.which("cmd") or os.path.join(sys_root, "System32", "cmd.exe")
                     subprocess.Popen([cmd_bin, "/c", str(launch_file)], cwd=work_dir, creationflags=create_no_window)
             else:
                 subprocess.Popen(["bash", str(launch_file)], cwd=work_dir)

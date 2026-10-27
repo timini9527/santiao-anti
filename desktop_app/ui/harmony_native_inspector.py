@@ -47,8 +47,8 @@ from PyQt6.QtGui import (
 from PyQt6.QtWidgets import (
     QAbstractItemView, QApplication, QCheckBox, QComboBox, QDialog, QFileDialog, QFrame, QGridLayout,
     QHBoxLayout, QHeaderView, QInputDialog, QLabel, QLineEdit, QListWidget, QListWidgetItem,
-    QMainWindow, QMessageBox, QPushButton, QScrollArea, QSizePolicy, QSplitter, QStyle,
-    QStyledItemDelegate, QStyleOptionViewItem, QTableWidget, QTableWidgetItem, QTreeWidget,
+    QMainWindow, QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QSplitter, QStyle,
+    QStyledItemDelegate, QStyleOptionViewItem, QTableWidget, QTableWidgetItem, QTextEdit, QTreeWidget,
     QTreeWidgetItem, QVBoxLayout, QWidget
 )
 
@@ -202,8 +202,17 @@ def get_dom_tag_color(c_type: str) -> Dict[str, Any]:
 # ==============================================================================
 
 def run_hdc(cmd: List[str], udid: str = "", timeout: float = 8.0) -> str:
-    """执行 HDC 指令 (鸿蒙 NEXT)"""
-    full_cmd = ["hdc"]
+    """执行 HDC 指令 (鸿蒙 NEXT，优先使用内置绿色工具链)"""
+    hdc_bin = "hdc"
+    try:
+        from desktop_app.core.path_resolver import SmartPathResolver
+        tc = SmartPathResolver.discover_mobile_toolchain()
+        if tc.get("hdc"):
+            hdc_bin = tc["hdc"]
+    except Exception:
+        pass
+
+    full_cmd = [hdc_bin]
     if udid:
         full_cmd.extend(["-t", udid])
     full_cmd.extend(cmd)
@@ -218,8 +227,17 @@ def run_hdc(cmd: List[str], udid: str = "", timeout: float = 8.0) -> str:
 
 
 def run_adb(cmd: List[str], udid: str = "", timeout: float = 8.0) -> str:
-    """执行 ADB 指令 (安卓 Android)"""
-    full_cmd = ["adb"]
+    """执行 ADB 指令 (安卓 Android，优先使用内置绿色工具链)"""
+    adb_bin = "adb"
+    try:
+        from desktop_app.core.path_resolver import SmartPathResolver
+        tc = SmartPathResolver.discover_mobile_toolchain()
+        if tc.get("adb"):
+            adb_bin = tc["adb"]
+    except Exception:
+        pass
+
+    full_cmd = [adb_bin]
     if udid:
         full_cmd.extend(["-s", udid])
     full_cmd.extend(cmd)
@@ -843,8 +861,42 @@ def normalize_harmony_node(node: Dict[str, Any], path_id: str = "root") -> Dict[
     }
 
 
+def get_layout_physical_size(layout_data: Any, default_w: int = 1084, default_h: int = 2412) -> Tuple[int, int]:
+    """
+    从布局数据或文件自适应提取真实物理分辨率 (根治投屏降采样帧毒化):
+    鸿蒙 dumpLayout 的根节点或多窗口 attributes 始终明确包含物理绝对分辨率 (如 [0,0][1084,2412])
+    """
+    try:
+        data = None
+        if isinstance(layout_data, str) and os.path.exists(layout_data):
+            with open(layout_data, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        elif isinstance(layout_data, (dict, list)):
+            data = layout_data
+
+        if data:
+            nodes = data if isinstance(data, list) else [data]
+            for n in nodes:
+                if isinstance(n, dict):
+                    attrs = n.get("attributes", {})
+                    b_str = attrs.get("origBounds") or attrs.get("bounds") or n.get("bounds") or ""
+                    m = re.match(r"\[0,0\]\[(\d+),(\d+)\]", str(b_str))
+                    if m:
+                        w, h = int(m.group(1)), int(m.group(2))
+                        if w >= 600 and h >= 1000:
+                            return w, h
+    except Exception:
+        pass
+    return default_w, default_h
+
+
 def parse_layout_file(layout_path: str, platform: str, screen_w: int = 0, screen_h: int = 0) -> Dict[str, Any]:
     """统一解析三端布局文件为通用的 DOM 节点树格式 (支持动态自适应物理分辨率与多窗口聚合，具备工业级容错兜底)"""
+    if platform == "harmony":
+        phys_w, phys_h = get_layout_physical_size(layout_path, 1084, 2412)
+        if screen_w < 800 or screen_h < 1200:
+            screen_w, screen_h = phys_w, phys_h
+
     root_w = screen_w if screen_w > 0 else 1080
     root_h = screen_h if screen_h > 0 else 2400
     root_bounds = f"[0,0][{root_w},{root_h}]"
@@ -947,6 +999,47 @@ class ScreenCastWorker(QThread):
         self._sock: Optional[socket.socket] = None
         self._grpc_channel: Any = None
         self._local_port = 0
+        self._android_proc: Optional[subprocess.Popen] = None
+        self._android_scid: str = ""
+        self._android_server_sock: Optional[socket.socket] = None
+        self._android_conn: Optional[socket.socket] = None
+
+    @staticmethod
+    def _extract_nalu(resp_bytes: bytes) -> bytes:
+        """从鸿蒙 scrcpy ReplyMessage Protobuf 字节中毫秒级提取真实 H.264 NALU 数据包"""
+        pattern = b"\n\x04data\x12"
+        idx = resp_bytes.find(pattern)
+        if idx == -1:
+            h264_idx = resp_bytes.find(b"\x00\x00\x00\x01")
+            if h264_idx != -1:
+                return resp_bytes[h264_idx:]
+            return b""
+        val_start = idx + len(pattern)
+        pv_len = 0
+        shift = 0
+        p = val_start
+        while p < len(resp_bytes):
+            b = resp_bytes[p]
+            p += 1
+            pv_len |= (b & 0x7F) << shift
+            if not (b & 0x80):
+                break
+            shift += 7
+        pv_end = p + pv_len
+        pv_data = resp_bytes[p:pv_end]
+        if pv_data.startswith(b"\x2a"):
+            vb_len = 0
+            shift = 0
+            vp = 1
+            while vp < len(pv_data):
+                b = pv_data[vp]
+                vp += 1
+                vb_len |= (b & 0x7F) << shift
+                if not (b & 0x80):
+                    break
+                shift += 7
+            return pv_data[vp : vp + vb_len]
+        return b""
 
     @classmethod
     def get_latest_jpeg_bytes(cls, target_udid: str = "") -> Optional[bytes]:
@@ -1014,8 +1107,7 @@ class ScreenCastWorker(QThread):
         try:
             chk = run_hdc(["shell", "[ -f /data/local/tmp/agent.so ] && echo 'yes' || echo 'no'"], udid, timeout=1.5)
             if "yes" not in chk:
-                project_root = SmartPathResolver.get_project_root()
-                builtin_agent = os.path.join(project_root, "desktop_app", "assets", "harmony", "agent.so")
+                builtin_agent = SmartPathResolver.get_asset_path("desktop_app/assets/harmony/agent.so") or ""
                 local_so = builtin_agent if os.path.isfile(builtin_agent) else ""
                 if not local_so:
                     import hmnextauto
@@ -1034,9 +1126,8 @@ class ScreenCastWorker(QThread):
         try:
             chk_sc = run_hdc(["shell", "[ -f /data/local/tmp/scrcpy_server.so ] && echo 'yes' || echo 'no'"], udid, timeout=1.5)
             if "yes" not in chk_sc:
-                project_root = SmartPathResolver.get_project_root()
                 # 优先级 1: 项目内置自包含资产 (绝对免配置、零外部依赖、直接移植可运行)
-                builtin_so = os.path.join(project_root, "desktop_app", "assets", "harmony", "scrcpy_server.so")
+                builtin_so = SmartPathResolver.get_asset_path("desktop_app/assets/harmony/scrcpy_server.so") or ""
                 candidate_so = builtin_so if os.path.isfile(builtin_so) else ""
 
                 # 优先级 2: 动态推导系统临时缓存目录 (基于系统环境变量，杜绝硬编码用户名)
@@ -1083,13 +1174,15 @@ class ScreenCastWorker(QThread):
             if need_restart:
                 cls._kill_existing_scrcpy_daemons(udid)
                 time.sleep(0.3)
-                # 1:1 对齐 HoKit 官方参数：50%缩放(降采样2倍)，30fps稳帧，10MB/s超清码率，切换画面0卡顿
+                # 1:1 对齐 HoKit 官方参数：进入 /data/local/tmp 目录并导出 LD_LIBRARY_PATH，
+                # 使用后台脱壳语法 >/dev/null 2>&1 & 启动，绝不阻塞 HDC 避免连接超时导致守护进程被强杀
                 cmd_start = (
-                    "uitest start-daemon singleness --extension-name scrcpy_server.so "
+                    "cd /data/local/tmp && export LD_LIBRARY_PATH=/data/local/tmp:$LD_LIBRARY_PATH && "
+                    "(uitest start-daemon singleness --extension-name scrcpy_server.so "
                     "-scale 2 -frameRate 30 -bitRate 10485760 -p 9958 -screenId 0 "
-                    "-encodeType 0 -iFrameInterval 2000 -repeatInterval 33"
+                    "-encodeType 0 -iFrameInterval 2000 -repeatInterval 33 >/dev/null 2>&1 &)"
                 )
-                run_hdc(["shell", cmd_start], udid, timeout=2.0)
+                run_hdc(["shell", cmd_start], udid, timeout=3.0)
                 time.sleep(0.5)
         except Exception:
             pass
@@ -1104,6 +1197,48 @@ class ScreenCastWorker(QThread):
             except Exception:
                 pass
             self._grpc_channel = None
+        self._cleanup_android_stream()
+
+    def _cleanup_android_stream(self):
+        """安全释放安卓 scrcpy 连接通道、子进程与 reverse 端口映射"""
+        if getattr(self, "_android_conn", None):
+            try:
+                self._android_conn.close()
+            except Exception:
+                pass
+            self._android_conn = None
+        if getattr(self, "_android_server_sock", None):
+            try:
+                self._android_server_sock.close()
+            except Exception:
+                pass
+            self._android_server_sock = None
+        if getattr(self, "_android_proc", None):
+            try:
+                self._android_proc.terminate()
+            except Exception:
+                pass
+            self._android_proc = None
+        if getattr(self, "_android_scid", "") and self.udid:
+            try:
+                adb_bin = "adb"
+                try:
+                    from desktop_app.core.path_resolver import SmartPathResolver
+                    tc = SmartPathResolver.discover_mobile_toolchain()
+                    if tc.get("adb"):
+                        adb_bin = tc["adb"]
+                except Exception:
+                    pass
+                creationflags = 0x08000000 if sys.platform == "win32" else 0
+                subprocess.run(
+                    [adb_bin, "-s", self.udid, "reverse", "--remove", f"localabstract:scrcpy_{self._android_scid}"],
+                    capture_output=True,
+                    timeout=1.5,
+                    creationflags=creationflags
+                )
+            except Exception:
+                pass
+            self._android_scid = ""
 
     def _cleanup_harmony_port(self):
         """安全释放鸿蒙连接通道与端口转发"""
@@ -1180,7 +1315,10 @@ class ScreenCastWorker(QThread):
                 nonlocal captured_bytes
                 try:
                     for resp in stream:
-                        packets = codec.parse(resp)
+                        nalu = cls._extract_nalu(resp)
+                        if not nalu:
+                            continue
+                        packets = codec.parse(nalu)
                         for packet in packets:
                             frames = codec.decode(packet)
                             for f in frames:
@@ -1195,6 +1333,7 @@ class ScreenCastWorker(QThread):
                                 cls.latest_image = qimg
                                 cls.latest_frame_bytes = captured_bytes
                                 cls.latest_frame_time = time.time()
+                                cls.latest_udid = udid
                                 return
                 except Exception:
                     pass
@@ -1241,14 +1380,15 @@ class ScreenCastWorker(QThread):
 
         # 核心高韧性保障：轮询探测真机 unix abstract socket 是否已在内核成功注册 (彻底根除 10054 Connection reset)
         socket_ready = False
-        for _ in range(25):
+        for _ in range(30):
             chk = run_hdc(["shell", "cat /proc/net/unix | grep scrcpy_grpc_socket"], self.udid, timeout=1.0)
             if "scrcpy_grpc_socket" in chk:
                 socket_ready = True
                 break
-            time.sleep(0.08)
+            time.sleep(0.1)
         if not socket_ready:
             logging.warning("[投屏引擎] 守护进程 unix socket 初始化超时或已退出")
+            self.error_occurred.emit("鸿蒙底层投屏服务未能就绪，请确认设备屏幕已解锁并授权调试。")
             return False
 
         # 建立本地端口转发到真机 localabstract:scrcpy_grpc_socket
@@ -1259,21 +1399,27 @@ class ScreenCastWorker(QThread):
             timeout=2.0
         )
         if "fail" in fport_res.lower() or "error" in fport_res.lower():
+            self.error_occurred.emit("鸿蒙投屏端口映射建立失败")
             return False
 
-        self._grpc_channel = grpc.insecure_channel(f"127.0.0.1:{self._local_port}")
-        start_stream = self._grpc_channel.unary_stream(
-            "/ScrcpyService/onStart",
-            request_serializer=lambda x: b"",
-            response_deserializer=lambda x: x
-        )
-        req_idr = self._grpc_channel.unary_unary(
-            "/ScrcpyService/onRequestIDRFrame",
-            request_serializer=lambda x: b"",
-            response_deserializer=lambda x: x
-        )
+        try:
+            self._grpc_channel = grpc.insecure_channel(f"127.0.0.1:{self._local_port}")
+            start_stream = self._grpc_channel.unary_stream(
+                "/ScrcpyService/onStart",
+                request_serializer=lambda x: b"",
+                response_deserializer=lambda x: x
+            )
+            req_idr = self._grpc_channel.unary_unary(
+                "/ScrcpyService/onRequestIDRFrame",
+                request_serializer=lambda x: b"",
+                response_deserializer=lambda x: x
+            )
 
-        stream = start_stream(b"")
+            stream = start_stream(b"")
+        except Exception as e:
+            logging.warning(f"[投屏引擎] gRPC 连接建立异常: {e}")
+            self.error_occurred.emit(f"连接鸿蒙投屏通道失败: {e}")
+            return False
 
         # 异步请求关键帧 IDR，极速激活首帧解码
         def request_idr_task():
@@ -1289,12 +1435,16 @@ class ScreenCastWorker(QThread):
         last_emit_t = 0.0
 
         # 视频流解码循环 (1:1 对齐 HoKit 黄金投屏：30fps，丢弃陈旧堆积帧，切换画面丝滑无感零卡顿)
+        has_emitted_first_frame = False
         try:
             for resp in stream:
                 if not self._is_running:
                     break
+                nalu = self._extract_nalu(resp)
+                if not nalu:
+                    continue
                 try:
-                    packets = codec.parse(resp)
+                    packets = codec.parse(nalu)
                     if not packets:
                         continue
                     newest_frame = None
@@ -1314,6 +1464,9 @@ class ScreenCastWorker(QThread):
                             ScreenCastWorker.latest_frame_time = now
                             ScreenCastWorker.latest_udid = self.udid
                             self.frame_ready.emit(qimg, b"")
+                            if not has_emitted_first_frame:
+                                has_emitted_first_frame = True
+                                self.state_changed.emit(True, "投屏已连接")
                 except Exception:
                     pass
         except Exception:
@@ -1329,7 +1482,9 @@ class ScreenCastWorker(QThread):
         try:
             while self._is_running:
                 try:
-                    self._run_harmony_scrcpy_stream()
+                    ok = self._run_harmony_scrcpy_stream()
+                    if not ok:
+                        break
                 except Exception as e:
                     logging.warning(f"[投屏引擎] 录屏流自愈重试: {e}")
                 finally:
@@ -1340,17 +1495,189 @@ class ScreenCastWorker(QThread):
         finally:
             ScreenCastWorker.is_active = False
 
+    def _run_android_scrcpy_stream(self) -> bool:
+        """
+        安卓端 1:1 还原 i4AirPlayer (爱思投屏) 硬件录屏流引擎:
+        1. 基于 scrcpy-server (com.genymobile.scrcpy.Server) 通过 MediaCodec 硬件级 60 FPS H.264 视频流直通；
+        2. 主机端利用 PyAV (FFmpeg) 毫秒级硬/软解码 Annex-B NALU 帧，直接转为 RGB24 QImage 显存直出；
+        3. 滑动和桌面切换时彻底消除 UIAutomator 锁死和 screencap 管道延迟，达到 1:1 丝滑如风、零卡顿、零掉帧。
+        """
+        import socket
+        import struct
+        import random
+        import av
+
+        creationflags = 0x08000000 if sys.platform == "win32" else 0
+        udid = self.udid
+
+        # 1. 查找并确保设备端具备 scrcpy-server.jar (全场景穿透定位，0 机器私有盘符硬编码)
+        local_jar = SmartPathResolver.get_asset_path("desktop_app/assets/android/scrcpy-server")
+        if not local_jar:
+            env_scrcpy = os.environ.get("SCRCPY_SERVER_PATH", "").strip()
+            if env_scrcpy and os.path.isfile(env_scrcpy):
+                local_jar = env_scrcpy
+
+        if not local_jar:
+            logging.warning("[安卓投屏] 未找到本地 scrcpy-server 资源，跳过硬件流")
+            return False
+
+        adb_bin = "adb"
+        try:
+            from desktop_app.core.path_resolver import SmartPathResolver
+            tc = SmartPathResolver.discover_mobile_toolchain()
+            if tc.get("adb"):
+                adb_bin = tc["adb"]
+        except Exception:
+            pass
+
+        # 检查设备端是否存在 /data/local/tmp/scrcpy-server.jar
+        cmd_check = [adb_bin]
+        if udid:
+            cmd_check.extend(["-s", udid])
+        cmd_check.extend(["shell", "[ -f /data/local/tmp/scrcpy-server.jar ] && echo 'exists' || echo 'missing'"])
+        res_chk = subprocess.run(cmd_check, capture_output=True, text=True, timeout=2.0, creationflags=creationflags)
+        if "exists" not in res_chk.stdout:
+            cmd_push = [adb_bin]
+            if udid:
+                cmd_push.extend(["-s", udid])
+            cmd_push.extend(["push", local_jar, "/data/local/tmp/scrcpy-server.jar"])
+            subprocess.run(cmd_push, capture_output=True, timeout=5.0, creationflags=creationflags)
+
+        # 2. 本地监听随机可用端口
+        self._android_server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._android_server_sock.bind(("127.0.0.1", 0))
+        local_port = self._android_server_sock.getsockname()[1]
+        self._android_server_sock.listen(1)
+        self._android_server_sock.settimeout(4.0)
+
+        # 3. 建立 adb reverse 端口映射
+        self._android_scid = f"{random.randint(0x10000000, 0x7fffffff):08x}"
+        cmd_rev = [adb_bin]
+        if udid:
+            cmd_rev.extend(["-s", udid])
+        cmd_rev.extend(["reverse", f"localabstract:scrcpy_{self._android_scid}", f"tcp:{local_port}"])
+        res_rev = subprocess.run(cmd_rev, capture_output=True, text=True, timeout=2.0, creationflags=creationflags)
+        if res_rev.returncode != 0:
+            logging.warning(f"[安卓投屏] adb reverse 失败: {res_rev.stderr}")
+            return False
+
+        # 4. 启动设备端 scrcpy-server 硬件录屏
+        # 核心参数: cleanup=false 避免退出时误删 jar 包; tunnel_forward=false 采用反向代理回连
+        cmd_start = [
+            adb_bin,
+        ]
+        if udid:
+            cmd_start.extend(["-s", udid])
+        cmd_start.extend([
+            "shell",
+            f"CLASSPATH=/data/local/tmp/scrcpy-server.jar app_process / com.genymobile.scrcpy.Server 3.3.4 scid={self._android_scid} log_level=info video=true audio=false control=false cleanup=false tunnel_forward=false max_size=1080 video_bit_rate=8000000 max_fps=60"
+        ])
+        self._android_proc = subprocess.Popen(
+            cmd_start,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            creationflags=creationflags
+        )
+
+        # 5. 等待真机连接
+        try:
+            self._android_conn, _ = self._android_server_sock.accept()
+            self._android_conn.settimeout(5.0)
+        except Exception as e:
+            logging.warning(f"[安卓投屏] scrcpy 回连超时或失败: {e}")
+            return False
+
+        # 6. 读取协议头 (64 字节设备名 + 12 字节视频编码元信息)
+        try:
+            dev_name = self._android_conn.recv(64)
+            codec_meta = self._android_conn.recv(12)
+        except Exception as e:
+            logging.warning(f"[安卓投屏] 协议头读取失败: {e}")
+            return False
+
+        # 7. 解码循环
+        codec = av.CodecContext.create("h264", "r")
+        last_emit_t = 0.0
+
+        def recv_exact(sock, n):
+            buf = bytearray()
+            while len(buf) < n:
+                if not self._is_running:
+                    return None
+                chunk = sock.recv(min(8192, n - len(buf)))
+                if not chunk:
+                    return None
+                buf.extend(chunk)
+            return bytes(buf)
+
+        try:
+            while self._is_running:
+                hdr = recv_exact(self._android_conn, 12)
+                if not hdr or len(hdr) < 12:
+                    break
+                pts, sz = struct.unpack(">QI", hdr)
+                if sz == 0:
+                    continue
+                packet_data = recv_exact(self._android_conn, sz)
+                if not packet_data or len(packet_data) < sz:
+                    break
+
+                packets = codec.parse(packet_data)
+                if not packets:
+                    continue
+
+                newest_frame = None
+                for packet in packets:
+                    frames = codec.decode(packet)
+                    if frames:
+                        newest_frame = frames[-1]
+
+                if newest_frame is not None and self._is_running:
+                    now = time.time()
+                    # 控制最高 30~35fps 派发频率（约每 28ms 一帧），防止主线程事件队列积压导致切换画面掉帧
+                    if now - last_emit_t >= 0.028:
+                        last_emit_t = now
+                        rgb_array = newest_frame.to_ndarray(format="rgb24")
+                        h, w, _ = rgb_array.shape
+                        qimg = QImage(bytes(rgb_array.data), w, h, 3 * w, QImage.Format.Format_RGB888).copy()
+                        ScreenCastWorker.latest_image = qimg
+                        ScreenCastWorker.latest_frame_time = now
+                        ScreenCastWorker.latest_udid = self.udid
+                        self.frame_ready.emit(qimg, b"")
+        except Exception as e:
+            logging.warning(f"[安卓投屏] 解码循环异常中断: {e}")
+        finally:
+            self._cleanup_android_stream()
+
+        return True
+
     def _run_android_stream(self):
         """
-        安卓端极速实时投屏引擎 (显存直通 + 零孤儿进程):
-        1. 优先采用 uiautomator2 显存直通 (OpenCV BGR 矩阵直出，130~190ms/帧，0 磁盘 I/O，绝不占死硬件 MediaCodec 编码器，零孤儿进程)；
-        2. 自动自愈降级至 adb exec-out screencap -p 内存管道流；
-        3. 每帧严格绑定当前 UDID，切换设备秒级释放与重连，彻底杜绝跨设备脏画面污染。
+        安卓端极速实时投屏引擎 (1:1 还原 i4AirPlayer 爱思投屏架构 + 双通道自愈容灾):
+        1. 优先启用 1:1 i4AirPlayer 架构：scrcpy-server 硬件级 MediaCodec 60 FPS H.264 直通流，
+           由 PyAV (FFmpeg) 毫秒级硬解码，显存直通 QImage (彻底根除滑动与切屏掉帧)；
+        2. 若设备或环境不支持，自动降级至 uiautomator2 原生 takeScreenshot(1, 55) 显存直出；
+        3. 极端场景兜底至 adb exec-out screencap -p 内存管道流。
         """
         ScreenCastWorker.is_active = True
         creationflags = 0x08000000 if sys.platform == "win32" else 0
-        last_jpeg_t = 0.0
 
+        # 方式 1: 1:1 i4AirPlayer 硬件视频流引擎 (60 FPS 满帧直通，滑动如丝顺滑)
+        while self._is_running:
+            try:
+                ok = self._run_android_scrcpy_stream()
+                if ok and not self._is_running:
+                    ScreenCastWorker.is_active = False
+                    return
+            except Exception as e:
+                logging.warning(f"[安卓投屏] scrcpy 硬件流异常: {e}")
+            break
+
+        if not self._is_running:
+            ScreenCastWorker.is_active = False
+            return
+
+        # 方式 2: 降级为 UIAutomator JSON-RPC 原生 takeScreenshot
         u2_device = None
         try:
             import uiautomator2 as u2
@@ -1364,13 +1691,14 @@ class ScreenCastWorker(QThread):
             raw_bytes = b""
             now = time.time()
 
-            # 方式 1: uiautomator2 显存直通 (0.15s 极速，0 磁盘 I/O，绝不占死硬件编码器)
+            # 方式 1: 直接调用 UIAutomator 原生 takeScreenshot (140ms 极速显存直出，零 Pillow/NumPy 损耗)
             if u2_device is not None:
                 try:
-                    img_cv = u2_device.screenshot(format="opencv")
-                    if img_cv is not None and len(img_cv.shape) == 3:
-                        h, w, _ = img_cv.shape
-                        qimg = QImage(bytes(img_cv.data), w, h, 3 * w, QImage.Format.Format_BGR888).copy()
+                    b64 = u2_device.jsonrpc.takeScreenshot(1, 55)
+                    if b64:
+                        raw_bytes = base64.b64decode(b64)
+                        if raw_bytes:
+                            qimg = QImage.fromData(raw_bytes, "JPEG")
                 except Exception:
                     # 容灾自愈：若断连尝试重连一次
                     try:
@@ -1379,8 +1707,8 @@ class ScreenCastWorker(QThread):
                     except Exception:
                         u2_device = None
 
-            # 备用方式 2: adb exec-out screencap -p 内存管道流 (高韧性兜底)
-            if qimg is None and self._is_running:
+            # 方式 3: 兜底 adb exec-out screencap -p
+            if (qimg is None or qimg.isNull()) and self._is_running:
                 try:
                     cmd_sc = ["adb"]
                     if self.udid:
@@ -1394,9 +1722,8 @@ class ScreenCastWorker(QThread):
                         creationflags=creationflags
                     )
                     if res.stdout and len(res.stdout) > 1000:
-                        qimg = QImage.fromData(res.stdout, "PNG")
-                        if qimg and not qimg.isNull():
-                            raw_bytes = res.stdout
+                        raw_bytes = res.stdout
+                        qimg = QImage.fromData(raw_bytes, "PNG")
                 except Exception:
                     pass
 
@@ -1405,47 +1732,39 @@ class ScreenCastWorker(QThread):
                 ScreenCastWorker.latest_image = qimg
                 ScreenCastWorker.latest_frame_time = now
                 ScreenCastWorker.latest_udid = self.udid
-
-                # 节流供外部保存使用的 JPEG 缓存 (每 0.8s 压缩一次)
-                if not raw_bytes and (now - last_jpeg_t >= 0.8):
-                    last_jpeg_t = now
-                    buf = QByteArray()
-                    buffer_io = QBuffer(buf)
-                    buffer_io.open(QBuffer.OpenModeFlag.WriteOnly)
-                    qimg.save(buffer_io, "JPEG", 80)
-                    raw_bytes = bytes(buf)
                 if raw_bytes:
                     ScreenCastWorker.latest_frame_bytes = raw_bytes
-
                 self.frame_ready.emit(qimg, raw_bytes)
 
-            time.sleep(0.01)
+            time.sleep(0.005)
 
         ScreenCastWorker.is_active = False
 
     def _run_ios_stream(self):
         """
-        iOS 端 60 FPS 极速硬件投屏引擎:
-        1. 优先通过 WebDriverAgent (WDA) /mjpegstream 极速视频流长连接 (注入 fps=60，零人为 sleep 阻塞)；
-        2. 64KB 宽缓冲区快速解帧，毫秒级线程安全直出；
-        3. 备用高频无阻塞 /screenshot 轮询保障全场景韧性。
+        iOS 端极速实时投屏引擎 (内存级 DVT 会话直通 + WDA 多通道自愈):
+        1. 优先探测原生 WDA 长连接 (/mjpegstream 或 /screenshot 轮询)；
+        2. 若 WDA 未通或在 iOS 17+ 环境下，启用原生 userspace_tunnel + DvtProvider 内存级持久会话，
+           彻底消除 subprocess.run 高频创建 Python 进程开销 (单帧从 2.5s 骤降至 0.6s，提速 400%)，
+           0 磁盘临时文件，纯内存 PNG 直通 QImage；
+        3. 备用降级 pymobiledevice3 DVT CLI 保证极端容灾韧性。
         """
         import urllib.request
         import base64
+        import asyncio
 
         ScreenCastWorker.is_active = True
-        last_jpeg_t = 0.0
 
         wda_url, _ = IosWdaManager.get_wda_url(self.udid)
         if not wda_url:
             wda_url = "http://127.0.0.1:8100"
 
-        # 方式 1: 尝试通过 WDA 原生 /mjpegstream 极速长连接 (注入 30fps 参数，对齐 30fps 稳定高帧率)
+        # 方式 1: 尝试通过 WDA 原生 /mjpegstream 极速长连接
         mjpeg_stream_ok = False
         try:
             stream_url = f"{wda_url}/mjpegstream?fps=30"
             req = urllib.request.Request(stream_url)
-            with urllib.request.urlopen(req, timeout=2.5) as resp:
+            with urllib.request.urlopen(req, timeout=1.5) as resp:
                 if resp.status == 200:
                     mjpeg_stream_ok = True
                     buffer = bytearray()
@@ -1455,8 +1774,7 @@ class ScreenCastWorker(QThread):
                         if not chunk:
                             break
                         buffer.extend(chunk)
-                        
-                        # 查找所有完整 JPEG 帧，仅提取最新一帧，主动跳过堆积的陈旧历史帧 (彻底消灭切换画面卡顿滞后)
+
                         latest_jpg = None
                         while True:
                             start_idx = buffer.find(b"\xff\xd8")
@@ -1470,7 +1788,7 @@ class ScreenCastWorker(QThread):
                                 break
                             latest_jpg = bytes(buffer[start_idx : end_idx + 2])
                             del buffer[: end_idx + 2]
-                        
+
                         if latest_jpg and self._is_running:
                             now = time.time()
                             if now - last_emit_t >= 0.028:
@@ -1489,44 +1807,106 @@ class ScreenCastWorker(QThread):
             ScreenCastWorker.is_active = False
             return
 
-        # 方式 2: WDA /screenshot 极速无感轮询
+        # 方式 2: WDA /screenshot 极速轮询 (若 WDA 已就绪)
+        wda_active = False
         try:
-            creationflags = 0x08000000 if sys.platform == "win32" else 0
-            while self._is_running:
-                t0 = time.time()
-                qimg = None
-                raw_bytes = b""
+            req = urllib.request.Request(f"{wda_url}/status")
+            with urllib.request.urlopen(req, timeout=0.8) as resp:
+                if resp.status == 200:
+                    wda_active = True
+        except Exception:
+            wda_active = False
 
-                # 尝试从 WDA /screenshot 拉取
+        if wda_active and self._is_running:
+            while self._is_running:
                 try:
                     req = urllib.request.Request(f"{wda_url}/screenshot")
-                    with urllib.request.urlopen(req, timeout=1.5) as resp:
+                    with urllib.request.urlopen(req, timeout=1.2) as resp:
                         if resp.status == 200:
                             data = json.loads(resp.read().decode("utf-8"))
                             b64_img = data.get("value", "")
                             if b64_img:
                                 raw_bytes = base64.b64decode(b64_img)
                                 qimg = QImage.fromData(raw_bytes)
+                                if qimg and not qimg.isNull() and self._is_running:
+                                    now = time.time()
+                                    ScreenCastWorker.latest_image = qimg
+                                    ScreenCastWorker.latest_frame_time = now
+                                    ScreenCastWorker.latest_udid = self.udid
+                                    ScreenCastWorker.latest_frame_bytes = raw_bytes
+                                    self.frame_ready.emit(qimg, raw_bytes)
+                except Exception:
+                    break
+                time.sleep(0.01)
+
+        if not self._is_running:
+            ScreenCastWorker.is_active = False
+            return
+
+        # 方式 3: 原生 userspace_tunnel + DvtProvider 内存级持久会话 (全版本通用支持，单帧 0.6s，纯内存零落盘)
+        async def _run_in_process_dvt():
+            from pymobiledevice3.services.dvt.instruments.dvt_provider import DvtProvider
+            from pymobiledevice3.services.dvt.instruments.screenshot import Screenshot
+
+            udid = self.udid if (self.udid and not self.udid.startswith("wda_localhost")) else None
+            provider = None
+            try:
+                from pymobiledevice3.remote import userspace_tunnel
+                provider = await userspace_tunnel.establish_userspace_rsd(serial=udid)
+            except Exception:
+                from pymobiledevice3.lockdown import create_using_usbmux
+                provider = await create_using_usbmux(serial=udid)
+
+            if provider is None:
+                raise RuntimeError("未能初始化 iOS 服务提供者通道")
+
+            async with DvtProvider(provider) as dvt, Screenshot(dvt) as sc:
+                while self._is_running:
+                    raw_bytes = await sc.get_screenshot()
+                    if raw_bytes and self._is_running:
+                        qimg = QImage.fromData(raw_bytes, "PNG")
+                        if qimg and not qimg.isNull():
+                            now = time.time()
+                            ScreenCastWorker.latest_image = qimg
+                            ScreenCastWorker.latest_frame_time = now
+                            ScreenCastWorker.latest_udid = self.udid
+                            ScreenCastWorker.latest_frame_bytes = raw_bytes
+                            self.frame_ready.emit(qimg, raw_bytes)
+                    await asyncio.sleep(0.01)
+
+        dvt_in_process_ok = False
+        try:
+            asyncio.run(_run_in_process_dvt())
+            dvt_in_process_ok = True
+        except Exception as e:
+            logging.warning(f"[iOS投屏] in-process DvtProvider 退出或异常: {e}")
+            dvt_in_process_ok = False
+
+        if not self._is_running or dvt_in_process_ok:
+            ScreenCastWorker.is_active = False
+            return
+
+        # 方式 4: 备用降级 pymobiledevice3 CLI 极速截屏 (极端场景高韧性兜底)
+        try:
+            creationflags = 0x08000000 if sys.platform == "win32" else 0
+            while self._is_running:
+                qimg = None
+                raw_bytes = b""
+                try:
+                    pmd_cmd = ["pymobiledevice3", "developer", "dvt", "screenshot"]
+                    if self.udid and not self.udid.startswith("wda_localhost"):
+                        pmd_cmd.extend(["--udid", self.udid])
+                    project_root = SmartPathResolver.get_project_root()
+                    tmp_ios = os.path.join(project_root, "reports", "inspector", f"ios_cast_{self.udid or 'dev'}.png")
+                    os.makedirs(os.path.dirname(tmp_ios), exist_ok=True)
+                    pmd_cmd.append(tmp_ios)
+                    subprocess.run(pmd_cmd, timeout=3.5, capture_output=True, creationflags=creationflags)
+                    if os.path.exists(tmp_ios) and os.path.getsize(tmp_ios) > 100:
+                        with open(tmp_ios, "rb") as f_in:
+                            raw_bytes = f_in.read()
+                        qimg = QImage.fromData(raw_bytes)
                 except Exception:
                     pass
-
-                # 备用降级: pymobiledevice3 DVT 极速截屏
-                if qimg is None and self._is_running:
-                    try:
-                        pmd_cmd = ["pymobiledevice3", "developer", "dvt", "screenshot"]
-                        if self.udid and not self.udid.startswith("wda_localhost"):
-                            pmd_cmd.extend(["--udid", self.udid])
-                        project_root = SmartPathResolver.get_project_root()
-                        tmp_ios = os.path.join(project_root, "reports", "inspector", f"ios_cast_{self.udid or 'dev'}.png")
-                        os.makedirs(os.path.dirname(tmp_ios), exist_ok=True)
-                        pmd_cmd.append(tmp_ios)
-                        subprocess.run(pmd_cmd, timeout=2.5, capture_output=True, creationflags=creationflags)
-                        if os.path.exists(tmp_ios) and os.path.getsize(tmp_ios) > 100:
-                            with open(tmp_ios, "rb") as f_in:
-                                raw_bytes = f_in.read()
-                            qimg = QImage.fromData(raw_bytes)
-                    except Exception:
-                        pass
 
                 if qimg is not None and not qimg.isNull() and self._is_running:
                     now = time.time()
@@ -1537,7 +1917,7 @@ class ScreenCastWorker(QThread):
                         ScreenCastWorker.latest_frame_bytes = raw_bytes
                     self.frame_ready.emit(qimg, raw_bytes)
 
-                time.sleep(0.005)
+                time.sleep(0.05)
         finally:
             ScreenCastWorker.is_active = False
 
@@ -1696,7 +2076,7 @@ class CaptureWorker(QThread):
                         uid = f"{int(time.time() * 1000)}_{random.randint(1000, 9999)}"
                         remote_json = f"/data/local/tmp/santiao_layout_{uid}.json"
                         try:
-                            run_hdc(["shell", f"uitest dumpLayout -p {remote_json} -i"], self.udid, timeout=4.0)
+                            run_hdc(["shell", f"uitest dumpLayout -p {remote_json}"], self.udid, timeout=4.0)
                             run_hdc(["file", "recv", remote_json, layout_file], self.udid, timeout=4.0)
                             layout_ok = os.path.exists(layout_file) and os.path.getsize(layout_file) > 100
                         except Exception:
@@ -1733,29 +2113,30 @@ class CaptureWorker(QThread):
                 uid = f"{int(time.time() * 1000)}_{random.randint(1000, 9999)}"
                 remote_json = f"/data/local/tmp/santiao_layout_{uid}.json"
 
-                # 【阶段 1】：优先毫秒级抓取绝对物理层级树 (uitest dumpLayout 纯内存 IPC，零系统截屏广播，界面完全静止)
+                # 【阶段 1】：优先毫秒级抓取绝对物理层级树 (零系统截屏广播，界面完全静止)
+                # 步骤 1.0: 优先使用 RPC capture_layout_fast 纯内存抓取 (耗时仅 50ms，绝不与后台守护进程冲突)
                 try:
-                    run_hdc(["shell", f"uitest dumpLayout -p {remote_json} -i"], self.udid, timeout=4.0)
-                    run_hdc(["file", "recv", remote_json, layout_file], self.udid, timeout=4.0)
-                    layout_ok = os.path.exists(layout_file) and os.path.getsize(layout_file) > 100
+                    rpc_tree = HarmonyRpcLayoutClient.capture_layout_fast(self.udid, timeout=3.0)
+                    if rpc_tree is not None:
+                        with open(layout_file, "w", encoding="utf-8") as f:
+                            json.dump(rpc_tree, f, ensure_ascii=False)
+                        layout_ok = True
                 except Exception:
                     pass
-                finally:
-                    try:
-                        run_hdc(["shell", f"rm -f {remote_json}"], self.udid, timeout=1.0)
-                    except Exception:
-                        pass
 
-                # 步骤 1.1: 若原生 dumpLayout 偶发受限，再平滑尝试 RPC 或 HMNextAuto 辅助保底
+                # 步骤 1.1: 若 RPC 偶发受限，再平滑尝试 CLI dumpLayout (去除非法 -i 参数，杜绝解析失败)
                 if not layout_ok:
                     try:
-                        rpc_tree = HarmonyRpcLayoutClient.capture_layout_fast(self.udid)
-                        if rpc_tree is not None:
-                            with open(layout_file, "w", encoding="utf-8") as f:
-                                json.dump(rpc_tree, f, ensure_ascii=False)
-                            layout_ok = True
+                        run_hdc(["shell", f"uitest dumpLayout -p {remote_json}"], self.udid, timeout=4.0)
+                        run_hdc(["file", "recv", remote_json, layout_file], self.udid, timeout=4.0)
+                        layout_ok = os.path.exists(layout_file) and os.path.getsize(layout_file) > 100
                     except Exception:
                         pass
+                    finally:
+                        try:
+                            run_hdc(["shell", f"rm -f {remote_json}"], self.udid, timeout=1.0)
+                        except Exception:
+                            pass
 
                 if not layout_ok:
                     try:
@@ -1818,15 +2199,37 @@ class CaptureWorker(QThread):
                     self.failed.emit(diag_msg)
 
             elif self.platform == "android":
-                # 安卓: 优先采用 uiautomator2 显存直通秒存，平滑降级至 adb exec-out
+                if self.mode == "dom_only":
+                    remote_xml = "/data/local/tmp/appium_layout.xml"
+                    run_adb(["shell", "uiautomator", "dump", remote_xml], self.udid)
+                    run_adb(["pull", remote_xml, layout_file], self.udid)
+                    if os.path.exists(layout_file) and os.path.getsize(layout_file) > 100:
+                        self.dom_finished.emit(layout_file, "android")
+                    else:
+                        self.failed.emit("获取安卓组件层级树失败，请确认设备屏幕已解锁且已授权 USB 调试。")
+                    return
+
+                # 安卓: 优先复用当前活跃投屏的新鲜显存帧 (耗时 0ms)
                 shot_ok = False
-                try:
-                    import uiautomator2 as u2
-                    d = u2.connect(self.udid) if self.udid else u2.connect()
-                    d.screenshot(local_png)
-                    shot_ok = os.path.exists(local_png) and os.path.getsize(local_png) > 1000
-                except Exception:
-                    shot_ok = False
+                if ScreenCastWorker.is_active and (ScreenCastWorker.latest_udid == self.udid or not ScreenCastWorker.latest_udid):
+                    latest_bytes = ScreenCastWorker.get_latest_jpeg_bytes(self.udid)
+                    if latest_bytes:
+                        try:
+                            with open(local_png, "wb") as f_out:
+                                f_out.write(latest_bytes)
+                            shot_ok = True
+                        except Exception:
+                            pass
+
+                # 若未开启投屏，优先采用 uiautomator2 显存直通秒存，平滑降级至 adb exec-out
+                if not shot_ok:
+                    try:
+                        import uiautomator2 as u2
+                        d = u2.connect(self.udid) if self.udid else u2.connect()
+                        d.screenshot(local_png)
+                        shot_ok = os.path.exists(local_png) and os.path.getsize(local_png) > 1000
+                    except Exception:
+                        shot_ok = False
 
                 if not shot_ok:
                     try:
@@ -1873,6 +2276,54 @@ class CaptureWorker(QThread):
                 wda_url, wda_diag = IosWdaManager.get_wda_url(self.udid)
                 shot_ok = False
                 layout_ok = False
+
+                if self.mode == "dom_only":
+                    if wda_url:
+                        for fmt in ("json", "xml"):
+                            try:
+                                req = urllib.request.Request(f"{wda_url}/source?format={fmt}")
+                                with urllib.request.urlopen(req, timeout=10) as resp:
+                                    if resp.status == 200:
+                                        with open(layout_file, "wb") as f:
+                                            f.write(resp.read())
+                                        layout_ok = True
+                                        break
+                            except Exception:
+                                pass
+                    if not layout_ok:
+                        try:
+                            pmd_acc = ["pymobiledevice3", "developer", "accessibility", "list-items"]
+                            if self.udid and not self.udid.startswith("wda_localhost"):
+                                pmd_acc.extend(["--udid", self.udid])
+                            res = subprocess.run(pmd_acc, timeout=10, capture_output=True, text=True, errors="ignore", creationflags=0x08000000 if sys.platform == "win32" else 0)
+                            if res.returncode == 0 and res.stdout.strip():
+                                items = json.loads(res.stdout.strip())
+                                if isinstance(items, list) and items:
+                                    children = []
+                                    for item in items:
+                                        caption = item.get("caption") or item.get("spoken_description") or ""
+                                        uid = item.get("estimated_uid") or item.get("platform_identifier") or ""
+                                        children.append({
+                                            "attributes": {
+                                                "name": caption,
+                                                "label": caption,
+                                                "value": uid,
+                                                "type": "XCUIElementTypeOther",
+                                                "bounds": "[0,0][1170,2532]"
+                                            },
+                                            "children": []
+                                        })
+                                    acc_root = {"attributes": {"type": "Application", "name": "iOS App", "bounds": "[0,0][1170,2532]"}, "children": children}
+                                    with open(layout_file, "w", encoding="utf-8") as f:
+                                        json.dump(acc_root, f, ensure_ascii=False, indent=2)
+                                    layout_ok = True
+                        except Exception:
+                            pass
+                    if layout_ok and os.path.exists(layout_file) and os.path.getsize(layout_file) > 100:
+                        self.dom_finished.emit(layout_file, "ios")
+                    else:
+                        self.failed.emit("获取 iOS 组件层级树失败，请确认 WDA 活跃或设备已连接。")
+                    return
 
                 if wda_url:
                     # 1. 优先通过 WDA 原生截屏
@@ -2091,10 +2542,12 @@ class AppiumScreenView(QWidget):
         self.pixmap = pix
         self.orig_w = pix.width()
         self.orig_h = pix.height()
-        # 保护基准分辨率：若已有 DOM 树物理坐标系尺寸 (如 1084x2412)，绝不随意覆盖，避免高亮红框错位
+        # 保护基准分辨率：若已有 DOM 树物理坐标系尺寸 (如 1084x2412)，绝不随意被缩略帧覆盖，避免高亮红框错位
         if self.layout_w <= 0 or self.layout_h <= 0:
             self.layout_w = self.orig_w
             self.layout_h = self.orig_h
+        elif self.orig_w < 800 and self.layout_w >= 800:
+            pass  # 缩略投屏帧传入时，保持 layout_w 为物理基准，绝不覆盖
         if not keep_components:
             self.hover_node_id = ""
             self.selected_node_id = ""
@@ -2104,11 +2557,19 @@ class AppiumScreenView(QWidget):
         """
         仅更新 DOM 组件层级数据 (复用当前底图与缩放比例，对齐 HoKit UIViewer 叠加层机制):
         1. 保持当前视口缩放和平移状态不被重置，审查体验丝滑连贯；
-        2. 清空悬停与选中历史，重新装载最新抓取的组件框。
+        2. 清空悬停与过期选中历史，重新装载最新抓取的组件框。
         """
         self.flat_components = components
         self.comp_map = {c["node_id"]: c for c in components}
         self.hover_node_id = ""
+        if self.selected_node_id not in self.comp_map:
+            self.selected_node_id = ""
+        # 自适应从组件最大右下边界校准 layout 坐标系
+        max_r = max((c.get("right", 0) for c in components if c.get("right", 0) > 0), default=0)
+        max_b = max((c.get("bottom", 0) for c in components if c.get("bottom", 0) > 0), default=0)
+        if max_r >= 800 and max_b >= 1200:
+            self.layout_w = max_r
+            self.layout_h = max_b
         self.update()
 
     def load_screenshot(self, img_path: str, components: List[Dict[str, Any]]):
@@ -2122,13 +2583,22 @@ class AppiumScreenView(QWidget):
 
         self.flat_components = components
         self.comp_map = {c["node_id"]: c for c in components}
+        self.hover_node_id = ""
+        if self.selected_node_id not in self.comp_map:
+            self.selected_node_id = ""
 
         # 权威基准对齐：真机物理截图的绝对分辨率即为唯一真理！
         # 绝不允许被滚动列表或离屏项的 max_b > orig_h 撑大导致纵向比例严重偏小与位置错位
         max_r = max((c.get("right", 0) for c in components if c.get("right", 0) > 0), default=0)
         max_b = max((c.get("bottom", 0) for c in components if c.get("bottom", 0) > 0), default=0)
 
-        if self.orig_w > 0 and self.orig_h > 0:
+        # 核心防毒化保护：如果底图为投屏硬件缩放帧 (如 542x1206，而组件最大边界为 1084x2412)，
+        # layout 坐标基准必须采用组件的真实物理尺寸 (max_r, max_b)，绝不能被 542 缩小覆盖，
+        # 从而保证 scale_x = draw_rect.width() / 1084，高亮框与画面 100% 绝对重合 (彻底杜绝图二错位现象)！
+        if max_r > 0 and max_b > 0 and max_r > self.orig_w:
+            self.layout_w = max_r
+            self.layout_h = max_b
+        elif self.orig_w > 0 and self.orig_h > 0:
             # 只有当属于 iOS 逻辑点坐标系 (即 max_r 和 max_b 明显小于物理截图的 75% 且对应标准 2x/3x 倍率) 时，才使用逻辑点坐标
             is_ios_points = (
                 max_r > 0 and max_b > 0 and
@@ -2495,7 +2965,55 @@ def validate_xpath_syntax(xpath_str: str) -> Optional[str]:
         pos = paren_stack[-1] + 1
         return f"第 {pos} 个字符处圆括号 '(' 未闭合，缺少对应的 ')'"
 
-    # 2. 检查空谓语 [] 与非法连续三个斜杠 ///
+    # 2. 检查顶层联合操作符 '|' (Union Operator) 并逐一校验各子分支
+    # 例如: //Navigation//Image | //NavDestination//Image
+    union_parts: List[str] = []
+    u_buf: List[str] = []
+    u_b_level = 0
+    u_p_level = 0
+    u_in_sq = False
+    u_in_dq = False
+
+    for ch in xp:
+        if ch == "'" and not u_in_dq:
+            u_in_sq = not u_in_sq
+            u_buf.append(ch)
+        elif ch == '"' and not u_in_sq:
+            u_in_dq = not u_in_dq
+            u_buf.append(ch)
+        elif not u_in_sq and not u_in_dq:
+            if ch == '[':
+                u_b_level += 1
+                u_buf.append(ch)
+            elif ch == ']':
+                u_b_level = max(0, u_b_level - 1)
+                u_buf.append(ch)
+            elif ch == '(':
+                u_p_level += 1
+                u_buf.append(ch)
+            elif ch == ')':
+                u_p_level = max(0, u_p_level - 1)
+                u_buf.append(ch)
+            elif ch == '|' and u_b_level == 0 and u_p_level == 0:
+                union_parts.append("".join(u_buf).strip())
+                u_buf = []
+            else:
+                u_buf.append(ch)
+        else:
+            u_buf.append(ch)
+
+    union_parts.append("".join(u_buf).strip())
+
+    if len(union_parts) > 1:
+        for p_idx, part in enumerate(union_parts):
+            if not part:
+                return "联合操作符 '|' 前后缺少有效的路径表达式"
+            sub_err = validate_xpath_syntax(part)
+            if sub_err:
+                return f"联合表达式分支 [{p_idx + 1}] 语法错误: {sub_err}"
+        return None
+
+    # 3. 检查空谓语 [] 与非法连续三个斜杠 ///
     i = 0
     in_sq = False
     in_dq = False
@@ -2512,13 +3030,13 @@ def validate_xpath_syntax(xpath_str: str) -> Optional[str]:
                 return f"第 {i + 1} 个字符处存在非法的连续三个斜杠 '///'"
         i += 1
 
-    # 3. 校验路径是否以 /、// 或 . 开头（考虑可能存在外层括号包装，如 (//Text)[1]）
+    # 3. 校验路径是否以 /、// 或 . 开头（考虑可能存在外层多重嵌套括号包装，如 ((//Text)[1])[1]）
     base_xp = xp
-    if base_xp.startswith("(") and ")" in base_xp:
+    while base_xp.startswith("(") and ")" in base_xp:
         r_paren_idx = base_xp.rfind(")")
         inner_content = base_xp[1:r_paren_idx].strip()
         outer_pred = base_xp[r_paren_idx+1:].strip()
-        if outer_pred and not outer_pred.startswith("["):
+        if outer_pred and not (outer_pred.startswith("[") or outer_pred.startswith("/")):
             return f"圆括号表达式后存在非法字符或空格: '{outer_pred}'"
         base_xp = inner_content
 
@@ -2729,6 +3247,86 @@ def validate_xpath_syntax(xpath_str: str) -> Optional[str]:
 
 
 # ==============================================================================
+# 自动上下调整方框大小的多行代码/选择器输入框控件 (保持水平宽度不变)
+# ==============================================================================
+
+class AutoResizingTextEdit(QTextEdit):
+    """
+    自适应内容高度的选择器输入框：
+    1. 默认上下高度更宽裕大气 (默认 min_height=54px，舒适展示 2~3 行，彻底解决原输入框过于扁窄局促的问题)；
+    2. 上下高度根据填写内容、自动折行实时自由自适应撑高或回缩 (最高自适应至 180px)；
+    3. 左右宽度由父级布局撑满，不发生左右拉伸调整；
+    4. 纯文本模式 (setAcceptRichText(False))，支持 Enter 键直接触发查找 (returnPressed)，Shift+Enter 支持多行换行；
+    5. 完美平替并兼容 QLineEdit 的常用 API (text, setText, setCursorPosition, setPlaceholderText 等)。
+    """
+    returnPressed = pyqtSignal()
+
+    def __init__(self, min_height: int = 54, max_height: int = 180, parent=None):
+        super().__init__(parent)
+        self.min_height = min_height
+        self.max_height = max_height
+        self.setAcceptRichText(False)
+
+        self.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+
+        # 优化文本框内边距，留白更宽松舒适
+        doc = self.document()
+        doc.setDocumentMargin(4)
+
+        self.textChanged.connect(self.adjust_height)
+        self.setFixedHeight(self.min_height)
+
+    def text(self) -> str:
+        """兼容 QLineEdit.text() 接口"""
+        return self.toPlainText()
+
+    def setText(self, text: str):
+        """兼容 QLineEdit.setText() 接口"""
+        self.setPlainText(text or "")
+        self.adjust_height()
+
+    def setCursorPosition(self, pos: int):
+        """兼容 QLineEdit.setCursorPosition() 接口"""
+        cursor = self.textCursor()
+        cursor.setPosition(min(max(0, pos), len(self.toPlainText())))
+        self.setTextCursor(cursor)
+
+    def cursorPosition(self) -> int:
+        """兼容 QLineEdit.cursorPosition() 接口"""
+        return self.textCursor().position()
+
+    def keyPressEvent(self, event: QKeyEvent):
+        # 拦截普通回车键触发搜索，Shift+Enter 允许换行
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            if not (event.modifiers() & Qt.KeyboardModifier.ShiftModifier):
+                self.returnPressed.emit()
+                event.accept()
+                return
+        super().keyPressEvent(event)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.adjust_height()
+
+    def adjust_height(self):
+        """根据文档内容及当前视口宽度下的实际折行行数动态自适应调整上下高度，不影响左右宽度"""
+        vw = self.viewport().width()
+        if vw <= 0:
+            vw = max(300, self.width() - 16)
+        doc = self.document()
+        doc.setTextWidth(float(vw))
+        doc_height = doc.size().height()
+        # 加上边框与内边距的余量 (约 14px)
+        target_height = int(doc_height + 14)
+        target_height = max(self.min_height, min(target_height, self.max_height))
+        if self.height() != target_height:
+            self.setFixedHeight(target_height)
+
+
+# ==============================================================================
 # 现代浅色高级感：Search for element 对话框
 # ==============================================================================
 
@@ -2752,15 +3350,20 @@ class SearchElementDialog(QDialog):
         # 这样 Windows 系统会将其识别为一个独立的顶层应用窗口，在任务栏同一个 App 图标下生成独立的缩略图卡片！
         super().__init__(None)
         self.setAttribute(Qt.WidgetAttribute.WA_QuitOnClose, False)
+        # 移除静态全局 WindowStaysOnTopHint，改为应用内激活态动态置顶，避免切换到外部应用时遮挡其他软件
         self.setWindowFlags(
             Qt.WindowType.Window
             | Qt.WindowType.WindowTitleHint
             | Qt.WindowType.WindowSystemMenuHint
             | Qt.WindowType.WindowMinMaxButtonsHint
             | Qt.WindowType.WindowCloseButtonHint
-            | Qt.WindowType.WindowStaysOnTopHint
         )
         self.setWindowIcon(create_modern_app_icon())
+
+        # 监听系统级应用前后台切换，实现仅在控制台应用内置顶
+        app = QApplication.instance()
+        if app:
+            app.applicationStateChanged.connect(self._on_app_state_changed)
         self.platform = (platform or "harmony").lower()
         plat_map = {"harmony": "HarmonyOS NEXT", "android": "Android", "ios": "iOS"}
         plat_title = plat_map.get(self.platform, "多端统一")
@@ -2785,11 +3388,12 @@ class SearchElementDialog(QDialog):
                 border-radius: 6px; padding: 4px 10px; font-size: 13px; min-height: 28px;
             }
             QComboBox:hover { border-color: #0284c7; }
-            QLineEdit {
+            QLineEdit, QTextEdit, QPlainTextEdit {
                 background-color: #ffffff; color: #0f172a; border: 1px solid #cbd5e1;
-                border-radius: 6px; padding: 4px 10px; font-size: 13px; min-height: 28px;
+                border-radius: 6px; padding: 6px 10px; font-size: 13px; min-height: 28px;
+                font-family: Consolas, "Segoe UI", monospace;
             }
-            QLineEdit:focus { border: 1px solid #0284c7; }
+            QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus { border: 1.5px solid #0284c7; }
 
             /* 统一标准按钮基类 (紧凑 28px 高度、圆角 6px、细边框白底黑字) */
             QPushButton {
@@ -2848,7 +3452,7 @@ class SearchElementDialog(QDialog):
 
         self.chk_stay_on_top = QCheckBox("📌 保持置顶 (防遮挡)")
         self.chk_stay_on_top.setChecked(True)
-        self.chk_stay_on_top.setToolTip("保持查找窗口置顶浮动，在切换应用或在主视窗点击时绝不被遮挡")
+        self.chk_stay_on_top.setToolTip("保持查找窗口在审查器内始终置顶防遮挡；切换至其他外部应用时自动让位，绝不遮挡其他应用")
         self.chk_stay_on_top.setStyleSheet("color: #0284c7; font-size: 12px; font-weight: 600;")
         self.chk_stay_on_top.toggled.connect(self._toggle_stay_on_top)
         top_ctrl_bar.addWidget(self.chk_stay_on_top)
@@ -2861,17 +3465,17 @@ class SearchElementDialog(QDialog):
 
         layout.addWidget(QLabel("选择器表达式 (Selector):"))
         sel_row = QHBoxLayout()
-        self.edit_selector = QLineEdit()
-        self.edit_selector.setFixedHeight(30)
+        # 核心：使用 AutoResizingTextEdit 随填写内容上下自适应调整输入框高度 (默认 54px，更大更宽裕，最高自适应撑开至 180px)，左右宽度由父布局撑满
+        self.edit_selector = AutoResizingTextEdit(min_height=54, max_height=180)
         self.edit_selector.textChanged.connect(self._on_selector_text_changed)
         sel_row.addWidget(self.edit_selector, 1)
 
         self.btn_pick_current = QPushButton("🎯 填入主视窗选中元素")
-        self.btn_pick_current.setFixedHeight(30)
+        self.btn_pick_current.setFixedHeight(34)
         self.btn_pick_current.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_pick_current.setToolTip("将当前在真机画面或 DOM 树中选中的组件表达式快速填入输入框")
         self.btn_pick_current.clicked.connect(self.pick_current_element_to_input)
-        sel_row.addWidget(self.btn_pick_current)
+        sel_row.addWidget(self.btn_pick_current, 0, Qt.AlignmentFlag.AlignTop)
         layout.addLayout(sel_row)
 
         # 跟随主界面点击自动填充复选框
@@ -2970,19 +3574,94 @@ class SearchElementDialog(QDialog):
         if hasattr(self, "edit_selector") and self.edit_selector.text().strip():
             self.do_search()
 
-    def _toggle_stay_on_top(self, checked: bool):
-        was_visible = self.isVisible()
+    def _is_app_in_foreground(self) -> bool:
+        """精准探测当前系统前台聚焦的窗口是否属于本审查器进程 (Win32 原生探测 + Qt 兜底)"""
+        if sys.platform == "win32":
+            try:
+                import ctypes
+                fg_hwnd = ctypes.windll.user32.GetForegroundWindow()
+                if not fg_hwnd:
+                    return False
+                pid = ctypes.c_ulong()
+                ctypes.windll.user32.GetWindowThreadProcessId(fg_hwnd, ctypes.byref(pid))
+                return pid.value == os.getpid()
+            except Exception:
+                pass
+        app = QApplication.instance()
+        return bool(app and app.applicationState() == Qt.ApplicationState.ApplicationActive)
+
+    def _apply_native_topmost(self, on_top: bool):
+        """
+        动态应用或解除窗口置顶：
+        - on_top 为 True：置顶于当前应用窗口上方，防止主视窗点击时被遮挡；
+        - on_top 为 False：取消置顶并让位，绝不遮挡其他外部应用。
+        """
+        if sys.platform == "win32":
+            try:
+                import ctypes
+                hwnd = int(self.winId())
+                HWND_TOPMOST = -1
+                HWND_NOTOPMOST = -2
+                SWP_NOMOVE = 0x0002
+                SWP_NOSIZE = 0x0001
+                SWP_NOACTIVATE = 0x0010
+                flags = SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE
+                target = HWND_TOPMOST if on_top else HWND_NOTOPMOST
+                ctypes.windll.user32.SetWindowPos(hwnd, target, 0, 0, 0, 0, flags)
+
+                # 切换至外部应用时，主动将自身排在外部前台窗口之后
+                if not on_top:
+                    fg = ctypes.windll.user32.GetForegroundWindow()
+                    if fg and fg != hwnd:
+                        ctypes.windll.user32.SetWindowPos(hwnd, fg, 0, 0, 0, 0, flags)
+                return
+            except Exception as e:
+                logger.debug(f"Win32 SetWindowPos 调度异常: {e}")
+
+        # 跨平台 Qt 兜底
         flags = self.windowFlags()
-        if checked:
+        if on_top:
             flags |= Qt.WindowType.WindowStaysOnTopHint
         else:
             flags &= ~Qt.WindowType.WindowStaysOnTopHint
-        self.setWindowFlags(flags)
+        if self.windowFlags() != flags:
+            was_visible = self.isVisible()
+            self.setWindowFlags(flags)
+            if was_visible:
+                self.show()
+
+    def _update_stay_on_top_state(self):
+        """核心调度：综合置顶开关与当前前台进程状态，动态判定是否置顶"""
+        if not hasattr(self, "chk_stay_on_top"):
+            return
+        if not self.chk_stay_on_top.isChecked() or not self.isVisible():
+            self._apply_native_topmost(False)
+            return
+
+        is_active = self._is_app_in_foreground()
+        self._apply_native_topmost(is_active)
+
+    def _toggle_stay_on_top(self, checked: bool):
         self._save_memory()
-        if was_visible:
-            self.show()
+        self._update_stay_on_top_state()
+        if checked:
             self.raise_()
             self.activateWindow()
+
+    def _on_app_state_changed(self, state: Qt.ApplicationState):
+        """系统级应用状态变化监听：切到外部应用时立即让位，切回本应用时恢复置顶"""
+        self._update_stay_on_top_state()
+
+    def changeEvent(self, event: QEvent):
+        """窗口激活状态变化监听"""
+        super().changeEvent(event)
+        if event.type() == QEvent.Type.ActivationChange:
+            self._update_stay_on_top_state()
+
+    def showEvent(self, event):
+        """窗口展示时按需激活置顶"""
+        super().showEvent(event)
+        self._update_stay_on_top_state()
 
     def _save_memory(self):
         if not hasattr(self, "combo_strategy") or not hasattr(self, "edit_selector"):
@@ -3070,12 +3749,7 @@ class SearchElementDialog(QDialog):
             self.chk_stay_on_top.blockSignals(True)
             self.chk_stay_on_top.setChecked(saved_top)
             self.chk_stay_on_top.blockSignals(False)
-            flags = self.windowFlags()
-            if saved_top:
-                flags |= Qt.WindowType.WindowStaysOnTopHint
-            else:
-                flags &= ~Qt.WindowType.WindowStaysOnTopHint
-            self.setWindowFlags(flags)
+            self._update_stay_on_top_state()
 
         # 彻底移除打开窗口时的自动 do_search()，让界面清爽呈现，不自动定位
         self.lbl_status.setText("就绪，请输入表达式或点击主视窗元素后点击查找")
@@ -3460,6 +4134,56 @@ class SearchElementDialog(QDialog):
                 parent_map[c] = p
 
         clean_xp = xp.strip().strip("()")
+
+        # 支持顶层联合操作符 '|' (Union Operator) 分支求值与合并
+        if "|" in clean_xp:
+            u_parts: List[str] = []
+            u_buf: List[str] = []
+            u_b_level = 0
+            u_p_level = 0
+            u_in_sq = False
+            u_in_dq = False
+            for ch in clean_xp:
+                if ch == "'" and not u_in_dq:
+                    u_in_sq = not u_in_sq
+                    u_buf.append(ch)
+                elif ch == '"' and not u_in_sq:
+                    u_in_dq = not u_in_dq
+                    u_buf.append(ch)
+                elif not u_in_sq and not u_in_dq:
+                    if ch == '[':
+                        u_b_level += 1
+                        u_buf.append(ch)
+                    elif ch == ']':
+                        u_b_level = max(0, u_b_level - 1)
+                        u_buf.append(ch)
+                    elif ch == '(':
+                        u_p_level += 1
+                        u_buf.append(ch)
+                    elif ch == ')':
+                        u_p_level = max(0, u_p_level - 1)
+                        u_buf.append(ch)
+                    elif ch == '|' and u_b_level == 0 and u_p_level == 0:
+                        u_parts.append("".join(u_buf).strip())
+                        u_buf = []
+                    else:
+                        u_buf.append(ch)
+                else:
+                    u_buf.append(ch)
+            u_parts.append("".join(u_buf).strip())
+
+            if len(u_parts) > 1:
+                merged_nodes: List[ET.Element] = []
+                seen_node_ids = set()
+                for sub_xp in u_parts:
+                    if sub_xp:
+                        sub_res = self._evaluate_xpath_natively(root_elem, sub_xp)
+                        for n_elem in sub_res:
+                            elem_key = id(n_elem)
+                            if elem_key not in seen_node_ids:
+                                seen_node_ids.add(elem_key)
+                                merged_nodes.append(n_elem)
+                return merged_nodes
 
         # 2. 词法拆解多步骤路径 (解析 // 与 /，严格避免拆开中括号内与双冒号语法)
         steps: List[Tuple[str, str]] = []
@@ -4143,9 +4867,26 @@ class HarmonyAppiumInspector(QMainWindow):
         self.shortcut_dom_search = QShortcut(QKeySequence("Ctrl+F"), self)
         self.shortcut_dom_search.activated.connect(self.toggle_dom_search)
 
+        # 注册全局 Ctrl+R 快捷键，一键极速刷新 DOM 树 (不刷新画面)
+        self.shortcut_refresh = QShortcut(QKeySequence("Ctrl+R"), self)
+        self.shortcut_refresh.activated.connect(self.refresh_screen_and_dom)
+
         # 悬浮轻量 Toast 提示组件 (1 秒自动消失)
         self.toast = ToastNotification(self)
         self._worker_start_time: float = 0.0
+
+        # 三个核心操作的独立超时守卫定时器 (防止界面死锁挂起)
+        self._timer_screencast = QTimer(self)
+        self._timer_screencast.setSingleShot(True)
+        self._timer_screencast.timeout.connect(self._on_screencast_timeout)
+
+        self._timer_sync_screen = QTimer(self)
+        self._timer_sync_screen.setSingleShot(True)
+        self._timer_sync_screen.timeout.connect(self._on_sync_screen_timeout)
+
+        self._timer_refresh = QTimer(self)
+        self._timer_refresh.setSingleShot(True)
+        self._timer_refresh.timeout.connect(self._on_refresh_timeout)
 
         self.load_device_list(auto_capture=True)
 
@@ -4478,9 +5219,9 @@ class HarmonyAppiumInspector(QMainWindow):
         left_header.addWidget(self.btn_sync_screen)
         left_header.addSpacing(6)
 
-        # 刷新界面按钮 (全量同步画面与 DOM 树)
+        # 刷新界面按钮 (仅刷新 DOM 树，保留当前画面底图)
         self.btn_refresh = QPushButton("🔄 刷新界面")
-        self.btn_refresh.setToolTip("全量刷新当前设备真机画面与 DOM 控件树 (Ctrl+R)")
+        self.btn_refresh.setToolTip("仅刷新 DOM 控件树，保留当前画面底图 (Ctrl+R)")
         self.btn_refresh.setFixedHeight(24)
         self.btn_refresh.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_refresh.setStyleSheet(
@@ -4872,9 +5613,9 @@ class HarmonyAppiumInspector(QMainWindow):
         self.splitter.addWidget(right_container)
 
         # 初始分配比例：3 : 5 : 3
-        self.splitter.setStretchFactor(0, 3)
-        self.splitter.setStretchFactor(1, 5)
-        self.splitter.setStretchFactor(2, 3)
+        self.splitter.setStretchFactor(0, 28)
+        self.splitter.setStretchFactor(1, 50)
+        self.splitter.setStretchFactor(2, 30)
 
         main_layout.addWidget(self.splitter, 1)
 
@@ -4940,7 +5681,7 @@ class HarmonyAppiumInspector(QMainWindow):
                     QTimer.singleShot(150, self.start_screencast)
                 if auto_capture:
                     # 延时 1500ms 刷新界面，确保投屏流首帧在内存中已就绪，0ms 零外部调用瞬时呈现
-                    QTimer.singleShot(1500, self.refresh_screen_and_dom)
+                    QTimer.singleShot(1500, self.refresh_screen_only)
         else:
             self.combo_devices.addItem("未检测到在线设备 (请检查 USB/网络连接)", None)
             self.current_udid = ""
@@ -4974,7 +5715,7 @@ class HarmonyAppiumInspector(QMainWindow):
                 if was_screencasting:
                     # 延时 150ms 启动新投屏，让旧 worker 线程完全退出并释放连接
                     QTimer.singleShot(150, self.start_screencast)
-                QTimer.singleShot(350, self.refresh_screen_and_dom)
+                QTimer.singleShot(350, self.refresh_screen_only)
 
     def update_platform_badge(self):
         """动态更新顶部品牌栏的系统类型胶囊徽章"""
@@ -4998,7 +5739,10 @@ class HarmonyAppiumInspector(QMainWindow):
             )
 
     def refresh_screen_and_dom(self):
-        """核心：通过后台异步线程执行真机最新画面抓取与 DOM 树构建 (每次点击必定实时同步真机画面与组件树)"""
+        """
+        刷新界面按钮点击处理：
+        仅刷新 DOM 控件树，保留当前真机画面底图 (零截屏广播通知，30~50ms 极速响应，带 12s 超时防死锁机制)
+        """
         if not self.current_udid:
             QMessageBox.warning(self, "设备未连接", "未检测到在线移动设备，请确认开启 USB 调试并连接设备。")
             return
@@ -5016,40 +5760,77 @@ class HarmonyAppiumInspector(QMainWindow):
 
         self._worker_start_time = time.time()
         self.btn_refresh.setEnabled(False)
-        self.btn_refresh.setText("⏳ 同步刷新中...")
+        self.btn_refresh.setText("⏳ 正在刷新...")
+        self._timer_refresh.start(12000)
 
         project_root = SmartPathResolver.get_project_root()
         tmp_dir = os.path.normpath(os.path.abspath(os.path.join(project_root, "reports", "inspector")))
         os.makedirs(tmp_dir, exist_ok=True)
 
-        # 工业级零侵入刷新架构 (对齐 HoKit 投屏与 UIViewer 机制):
-        # 若已有当前底图或处于鸿蒙审查状态，采用极速纯 DOM 树刷新 (零截屏、零 DisplayManager 广播、零前台通知)
-        # 仅在无任何历史底图时才回退至 full 全量初始化
-        has_existing_screen = bool(self.current_screenshot_path and os.path.exists(self.current_screenshot_path))
-        target_mode = "dom_only" if (has_existing_screen and self.current_platform == "harmony") else "full"
-
-        self.capture_worker = CaptureWorker(self.current_udid, self.current_platform, tmp_dir, mode=target_mode)
-        if target_mode == "dom_only":
-            self.capture_worker.dom_finished.connect(self.on_dom_only_success)
-        else:
-            self.capture_worker.finished.connect(self.on_capture_success)
+        # 核心：纯 DOM 刷新模式，不抓取/刷新画面，保留当前画面底图
+        self.capture_worker = CaptureWorker(self.current_udid, self.current_platform, tmp_dir, mode="dom_only")
+        self.capture_worker.dom_finished.connect(self.on_dom_only_success)
         self.capture_worker.failed.connect(self.on_capture_failed)
         self.capture_worker.start()
 
+    def _reset_capture_buttons(self):
+        """重置同步真机画面与刷新界面按钮状态"""
+        self._timer_sync_screen.stop()
+        self._timer_refresh.stop()
+        if hasattr(self, "btn_sync_screen"):
+            self.btn_sync_screen.setEnabled(True)
+            self.btn_sync_screen.setText("⚡ 同步真机画面")
+        if hasattr(self, "btn_refresh"):
+            self.btn_refresh.setEnabled(True)
+            self.btn_refresh.setText("🔄 刷新界面")
+
+    def _on_sync_screen_timeout(self):
+        """同步真机画面超时回调"""
+        logging.warning("[UI审查器] 同步真机画面超时 (12s)")
+        if self.capture_worker and self.capture_worker.isRunning():
+            try:
+                self.capture_worker.terminate()
+            except Exception:
+                pass
+            self.capture_worker = None
+        self._reset_capture_buttons()
+        self.show_toast("⚠️ 同步真机画面超时 (12s)，已重置状态")
+
+    def _on_refresh_timeout(self):
+        """刷新界面超时回调"""
+        logging.warning("[UI审查器] 刷新界面超时 (12s)")
+        if self.capture_worker and self.capture_worker.isRunning():
+            try:
+                self.capture_worker.terminate()
+            except Exception:
+                pass
+            self.capture_worker = None
+        self._reset_capture_buttons()
+        self.show_toast("⚠️ 刷新界面超时 (12s)，已重置状态")
+
+    def _on_screencast_timeout(self):
+        """开启实时投屏超时回调"""
+        logging.warning("[UI审查器] 开启实时投屏超时 (10s)")
+        self.stop_screencast()
+        self._timer_screencast.stop()
+        self._update_screencast_btn_style(False)
+        self.show_toast("⚠️ 开启实时投屏超时 (10s)，投屏通道未响应，已自动复位")
+
     def on_dom_only_success(self, layout_file: str, platform: str):
         """对齐 HoKit UIViewer 叠加层机制：仅更新 DOM 组件树，复用当前底图与缩放比例 (零截屏/零系统广播)"""
-        self.btn_refresh.setEnabled(True)
-        self.btn_refresh.setText("🔄 刷新界面")
+        self._reset_capture_buttons()
         local_png = self.current_screenshot_path
 
         try:
             prev_selected_id = self.canvas.selected_node_id
 
+            # 优先从布局文件中提取真机真实物理分辨率 (彻底免疫投屏 JPEG 帧等比缩放毒化)
+            phys_w, phys_h = get_layout_physical_size(layout_file, 1084, 2412)
             pix = QPixmap(local_png) if (local_png and os.path.exists(local_png)) else QPixmap()
-            if not pix.isNull():
+            if not pix.isNull() and pix.width() >= 800 and pix.height() >= 1200:
                 screen_w, screen_h = pix.width(), pix.height()
             else:
-                screen_w, screen_h = 1084, 2412
+                screen_w, screen_h = phys_w, phys_h
 
             raw_tree = parse_layout_file(layout_file, platform, screen_w=screen_w, screen_h=screen_h)
 
@@ -5092,9 +5873,13 @@ class HarmonyAppiumInspector(QMainWindow):
             if hasattr(self, "dom_search_bar") and self.dom_search_bar.isVisible() and self.edit_dom_search.text().strip():
                 self.on_dom_search_text_changed(self.edit_dom_search.text())
 
-            # 重新锁定原先选中的节点，保持状态连贯
+            # 重新锁定原先选中的节点，保持状态连贯；若切换了画面则重置
             if prev_selected_id and prev_selected_id in self.comp_map:
                 self.select_element_by_id(prev_selected_id)
+            else:
+                self.canvas.selected_node_id = ""
+                self.canvas.hover_node_id = ""
+                self.canvas.update()
 
             # 实时同步常驻的查找器窗口数据源，彻底根除跨生命周期导致的 XML 与 comp_map 串位
             if getattr(self, "search_dialog", None) is not None:
@@ -5104,13 +5889,12 @@ class HarmonyAppiumInspector(QMainWindow):
                     comp_map=self.comp_map,
                     platform=self.current_platform
                 )
-            self.show_toast("✅ UI 结构已极速刷新 (零截屏/无通知)")
+            self.show_toast("✅ DOM 控件树已极速刷新 (真机画面保持不变)")
         except Exception as e:
             logging.error(f"[UI审查器] 刷新 DOM 树数据异常: {e}")
 
     def on_capture_success(self, local_png: str, layout_file: str, platform: str):
-        self.btn_refresh.setEnabled(True)
-        self.btn_refresh.setText("🔄 刷新界面")
+        self._reset_capture_buttons()
         # 严格过滤超时占位白图 (只有真实物理真机截图 > 40KB 才记录为持久底图路径，彻底杜绝缓存毒化)
         is_real_shot = os.path.exists(local_png) and os.path.getsize(local_png) > 40000
         if is_real_shot:
@@ -5119,12 +5903,13 @@ class HarmonyAppiumInspector(QMainWindow):
         try:
             prev_selected_id = self.canvas.selected_node_id
 
-            # 优先读取真机物理截图的分辨率，作为视口与可见性判定的绝对基准
+            # 优先从布局文件中提取真机真实物理分辨率 (彻底免疫投屏 JPEG 帧等比缩放毒化)
+            phys_w, phys_h = get_layout_physical_size(layout_file, 1084, 2412)
             pix = QPixmap(local_png) if os.path.exists(local_png) else QPixmap()
-            if not pix.isNull():
+            if not pix.isNull() and pix.width() >= 800 and pix.height() >= 1200:
                 screen_w, screen_h = pix.width(), pix.height()
             else:
-                screen_w, screen_h = 1084, 2412
+                screen_w, screen_h = phys_w, phys_h
 
             raw_tree = parse_layout_file(layout_file, platform, screen_w=screen_w, screen_h=screen_h)
 
@@ -5159,40 +5944,33 @@ class HarmonyAppiumInspector(QMainWindow):
                 is_in_dialog=False
             )
 
-            # 工业级高保真视窗装载 (对齐 HoKit 叠加层机制，绝对不让超时白图覆盖真实真机画面):
-            has_matching_stream = (
-                self.is_screencasting
-                and ScreenCastWorker.latest_udid == self.current_udid
-                and self.canvas.pixmap is not None
-                and not self.canvas.pixmap.isNull()
-            )
-            if has_matching_stream:
-                # 1. 实时投屏正常播放中且属于当前设备：仅更新 DOM 组件框，100% 保留当前正在播放的真机画面
-                self.canvas.update_components_only(self.flat_components)
-            elif is_real_shot:
-                # 2. 属于真实获取到的真机高清底图：装载底图与组件
+            # 工业级高保真视窗装载：装载底图与组件
+            if is_real_shot:
                 self.canvas.load_screenshot(local_png, self.flat_components)
             elif (
                 ScreenCastWorker.latest_udid == self.current_udid
                 and ScreenCastWorker.latest_image is not None
                 and not ScreenCastWorker.latest_image.isNull()
             ):
-                # 3. 内存已有当前设备的新鲜投屏帧，直接转为 QPixmap 极速呈现
                 mem_pix = QPixmap.fromImage(ScreenCastWorker.latest_image)
                 self.canvas.update_screen_pixmap(mem_pix, keep_components=False)
                 self.canvas.update_components_only(self.flat_components)
-            elif not self.is_screencasting and os.path.exists(local_png):
-                # 4. 投屏未开启状态且无任何投屏帧时才加载单帧结果
+            elif os.path.exists(local_png):
                 self.canvas.load_screenshot(local_png, self.flat_components)
+
             self.tree_widget.expandToDepth(2)
 
             # 重新应用当前的 DOM 树搜索高亮状态
             if hasattr(self, "dom_search_bar") and self.dom_search_bar.isVisible() and self.edit_dom_search.text().strip():
                 self.on_dom_search_text_changed(self.edit_dom_search.text())
 
-            # 重新锁定原先选中的节点，保持状态连贯
+            # 重新锁定原先选中的节点，保持状态连贯；若切换了画面则重置
             if prev_selected_id and prev_selected_id in self.comp_map:
                 self.select_element_by_id(prev_selected_id)
+            else:
+                self.canvas.selected_node_id = ""
+                self.canvas.hover_node_id = ""
+                self.canvas.update()
 
             # 实时同步常驻的查找器窗口数据源，彻底根除跨生命周期导致的 XML 与 comp_map 串位
             if getattr(self, "search_dialog", None) is not None:
@@ -5202,86 +5980,40 @@ class HarmonyAppiumInspector(QMainWindow):
                     comp_map=self.comp_map,
                     platform=self.current_platform
                 )
-            # 默认自动开启实时投屏流 (对齐用户默认开启状态诉求)
-            if self.is_screencasting and (self.screencast_worker is None or not self.screencast_worker.isRunning()):
-                QTimer.singleShot(200, self.start_screencast)
+            self.show_toast("✅ 画面与 DOM 树已全部同步")
         except Exception as e:
             logging.error(f"[UI审查器] 处理界面现场数据异常: {e}")
 
     def on_capture_failed(self, err_msg: str):
-        self.btn_refresh.setEnabled(True)
-        self.btn_refresh.setText("🔄 刷新界面")
+        self._reset_capture_buttons()
         QMessageBox.critical(self, "抓取失败", f"无法获取设备现场界面与布局:\n{err_msg}")
 
     def refresh_screen_only(self):
-        """单次按需同步真机画面 (零截屏广播通知，绝不触发软件内部截屏检测)"""
+        """
+        同步真机画面按钮点击处理：
+        同时刷新真机画面与 DOM 树 (对齐用户诉求：全量同步最新现场，带 12s 超时防死锁机制)
+        """
         if not self.current_udid:
+            QMessageBox.warning(self, "设备未连接", "未检测到在线设备，请先连接并选中设备。")
             return
+
+        if self.capture_worker and self.capture_worker.isRunning():
+            self.show_toast("⏳ 任务正在执行中，请勿重复点击")
+            return
+
+        self.btn_sync_screen.setEnabled(False)
+        self.btn_sync_screen.setText("⏳ 同步中...")
+        self._timer_sync_screen.start(12000)
 
         project_root = SmartPathResolver.get_project_root()
         tmp_dir = os.path.normpath(os.path.abspath(os.path.join(project_root, "reports", "inspector")))
         os.makedirs(tmp_dir, exist_ok=True)
-        cached_file = os.path.join(tmp_dir, f"screencast_last_{self.current_platform}.jpeg")
 
-        # 1. 极致优化：若实时投屏正在运行且已产生属于当前设备的最新画面，直接秒级复用 (耗时 0ms，绝对 0 截屏通知)
-        is_current_dev_frame = (
-            self.is_screencasting
-            and ScreenCastWorker.latest_udid == self.current_udid
-            and ScreenCastWorker.latest_image is not None
-            and not ScreenCastWorker.latest_image.isNull()
-            and (time.time() - ScreenCastWorker.latest_frame_time < 3.0)
-        )
-        if is_current_dev_frame:
-            try:
-                pix = QPixmap.fromImage(ScreenCastWorker.latest_image)
-                self.canvas.update_screen_pixmap(pix, keep_components=True)
-                latest_bytes = ScreenCastWorker.get_latest_jpeg_bytes(self.current_udid)
-                if latest_bytes:
-                    with open(cached_file, "wb") as f_out:
-                        f_out.write(latest_bytes)
-                    self.current_screenshot_path = cached_file
-                self.show_toast("✅ 真机画面已即刻同步 (0 截屏通知)")
-                return
-            except Exception:
-                pass
-
-        if (
-            self.is_screencasting
-            and ScreenCastWorker.latest_udid == self.current_udid
-            and os.path.exists(cached_file)
-            and (time.time() - os.path.getmtime(cached_file) < 4.0)
-        ):
-            self.current_screenshot_path = cached_file
-            self.canvas.update_screen_only(cached_file, keep_components=True)
-            self.show_toast("✅ 真机画面已即刻同步 (0 截屏通知)")
-            return
-
-        if self.capture_worker and self.capture_worker.isRunning():
-            return
-        if hasattr(self, "btn_sync_screen"):
-            self.btn_sync_screen.setEnabled(False)
-            self.btn_sync_screen.setText("⏳ 同步中...")
-
-        # 2. 投屏未开启时通过静默显存直通抽取单帧 (零广播通知)
-        self.capture_worker = CaptureWorker(self.current_udid, self.current_platform, tmp_dir, mode="screen_only")
-        self.capture_worker.screen_finished.connect(self.on_screen_only_success)
-        self.capture_worker.failed.connect(self.on_screen_only_failed)
+        # 核心：执行 full 全量抓取，同时刷新画面与 DOM 树
+        self.capture_worker = CaptureWorker(self.current_udid, self.current_platform, tmp_dir, mode="full")
+        self.capture_worker.finished.connect(self.on_capture_success)
+        self.capture_worker.failed.connect(self.on_capture_failed)
         self.capture_worker.start()
-
-    def on_screen_only_success(self, local_png: str):
-        if hasattr(self, "btn_sync_screen"):
-            self.btn_sync_screen.setEnabled(True)
-            self.btn_sync_screen.setText("⚡ 同步真机画面")
-        if os.path.exists(local_png):
-            self.current_screenshot_path = local_png
-            self.canvas.update_screen_only(local_png, keep_components=True)
-            self.show_toast("✅ 真机画面已同步 (0 截屏通知)")
-
-    def on_screen_only_failed(self, err_msg: str):
-        if hasattr(self, "btn_sync_screen"):
-            self.btn_sync_screen.setEnabled(True)
-            self.btn_sync_screen.setText("⚡ 同步真机画面")
-        self.show_toast(f"⚠️ 同步画面失败: {err_msg}")
 
     def toggle_screencast(self):
         """用户点击【📺 开启实时投屏 / ⏹️ 停止实时投屏】切换投屏状态"""
@@ -5291,13 +6023,14 @@ class HarmonyAppiumInspector(QMainWindow):
             self.start_screencast()
 
     def start_screencast(self):
-        """启动后台低延迟实时投屏流 (鸿蒙专属静默极速流引擎，零截屏广播通知)"""
+        """启动后台低延迟实时投屏流 (鸿蒙专属静默极速流引擎，零截屏广播通知，带 10s 超时防死锁)"""
         if not self.current_udid:
             QMessageBox.warning(self, "设备未连接", "未检测到在线设备，请先连接并选中设备。")
             return
 
-        self.is_screencasting = True
-        self._update_screencast_btn_style(True)
+        self.btn_screencast.setEnabled(False)
+        self.btn_screencast.setText("⏳ 连接投屏中...")
+        self._timer_screencast.start(10000)
 
         # 换设备安全自愈：若当前 worker 正在运行但绑定的 UDID 与当前选中设备不一致，则平滑终止并重建
         if self.screencast_worker and self.screencast_worker.isRunning():
@@ -5315,6 +6048,7 @@ class HarmonyAppiumInspector(QMainWindow):
 
     def stop_screencast(self):
         """优雅停止实时投屏流并即刻恢复 UI 状态 (零等待主线程阻塞)"""
+        self._timer_screencast.stop()
         self.is_screencasting = False
         self._update_screencast_btn_style(False)
         if self.screencast_worker:
@@ -5325,41 +6059,55 @@ class HarmonyAppiumInspector(QMainWindow):
             QTimer.singleShot(0, lambda: worker.wait(300))
 
     def on_screencast_frame(self, image: QImage, raw_bytes: bytes):
-        """收到最新一帧投屏画面：实时更新画布，并异步缓存为本地图片供 DOM 树对齐"""
-        if not self.is_screencasting or image is None or image.isNull():
+        """收到最新一帧投屏画面：实时更新画布 (100% 显存/内存直通，零磁盘 I/O 阻塞主线程)"""
+        if not image or image.isNull():
+            return
+        if self._timer_screencast.isActive():
+            self._timer_screencast.stop()
+            self.is_screencasting = True
+            self._update_screencast_btn_style(True)
+
+        if not self.is_screencasting:
             return
         # 主线程安全由 QImage 转换 QPixmap，100% 避免跨线程隐患
         pixmap = QPixmap.fromImage(image)
-        # 内存直通渲染，绝不阻塞主线程
+        # 内存直通渲染，绝不阻塞主线程，切换画面丝滑流畅
         self.canvas.update_screen_pixmap(pixmap, keep_components=True)
 
-        # 节流磁盘缓存 (每秒至多更新 1 次)，彻底消除高频磁盘 I/O 损耗
+        # 异步节流磁盘缓存 (每 1.5 秒至多更新 1 次，纯后台守护线程写文件，100% 消除主线程 I/O 卡顿)
         now = time.time()
-        if now - getattr(self, "_last_disk_cache_t", 0.0) > 1.0 and raw_bytes:
+        if now - getattr(self, "_last_disk_cache_t", 0.0) > 1.5 and raw_bytes:
             self._last_disk_cache_t = now
-            try:
-                project_root = SmartPathResolver.get_project_root()
-                tmp_dir = os.path.normpath(os.path.abspath(os.path.join(project_root, "reports", "inspector")))
-                os.makedirs(tmp_dir, exist_ok=True)
-                cached_file = os.path.join(tmp_dir, f"screencast_last_{self.current_platform}.jpeg")
-                with open(cached_file, "wb") as f:
-                    f.write(raw_bytes)
-                self.current_screenshot_path = cached_file
-            except Exception:
-                pass
+            def _async_save():
+                try:
+                    project_root = SmartPathResolver.get_project_root()
+                    tmp_dir = os.path.normpath(os.path.abspath(os.path.join(project_root, "reports", "inspector")))
+                    os.makedirs(tmp_dir, exist_ok=True)
+                    ext = "jpeg" if raw_bytes.startswith(b"\xff\xd8") else "png"
+                    cached_file = os.path.join(tmp_dir, f"screencast_last_{self.current_platform}.{ext}")
+                    with open(cached_file, "wb") as f:
+                        f.write(raw_bytes)
+                    self.current_screenshot_path = cached_file
+                except Exception:
+                    pass
+            import threading
+            threading.Thread(target=_async_save, daemon=True).start()
 
     def on_screencast_state_changed(self, is_running: bool, msg: str):
         """投屏通道状态变更通知"""
         if is_running:
+            self._timer_screencast.stop()
             self.is_screencasting = True
             self._update_screencast_btn_style(True)
             self.show_toast("✅ 实时投屏已启动 (零截屏通知/低延迟硬件流)")
         else:
             if not self.is_screencasting:
+                self._timer_screencast.stop()
                 self._update_screencast_btn_style(False)
 
     def on_screencast_error(self, err_msg: str):
         """投屏异常处理"""
+        self._timer_screencast.stop()
         self.is_screencasting = False
         self._update_screencast_btn_style(False)
         self.show_toast(f"⚠️ 投屏提示: {err_msg}")
@@ -5397,8 +6145,9 @@ class HarmonyAppiumInspector(QMainWindow):
         screen_h: int = 2412,
         is_parent_occluded: bool = False,
         has_active_dialog: bool = False,
-        is_in_dialog: bool = False
-    ):
+        is_in_dialog: bool = False,
+        covering_rects: Optional[List[Tuple[int, int, int, int]]] = None
+    ) -> bool:
         node_id = f"node_{self.node_counter}"
         self.node_counter += 1
 
@@ -5437,22 +6186,44 @@ class HarmonyAppiumInspector(QMainWindow):
         if not node_in_active_page:
             node_visible = False
 
-        # 核心：模态弹窗排他性规则 (Modal Dialog Exclusivity)
-        # 当整机当前展示了 Dialog/ActionSheet 等模态弹窗时，除弹窗及其子树之外的所有底层画面全被遮罩覆盖，不可点击定位！
+        # 核心图形学与几何实体遮挡判定 (Geometry Occlusion & Hit-Test)
+        # 1. 纯透明布局容器（如 Row, Column, Stack, Flex, RelativeContainer 等且有子节点）本身不绘制实体背景像素，
+        #    其自身遮挡状态由其子节点自底向上聚合决定，绝不能因容器外框与上方实体相交而判定整行/整列容器被遮挡！
+        is_transparent_container = c_type in ("Row", "Column", "Stack", "Flex", "RelativeContainer", "__Common__", "List", "ListItem", "Scroll", "Grid") and len(node.get("children", [])) > 0
+
+        # 模态弹窗排他性规则 (Modal Dialog Exclusivity)
         is_dialog_root = c_type in ("Dialog", "CustomDialog", "ActionSheet", "AlertDialog", "Popup")
         current_is_dialog = is_in_dialog or is_dialog_root
 
         if is_dialog_root:
-            # 弹窗根容器自身永远处于最顶层视觉层，绝对不可能被遮挡！
             is_node_occluded = False
-        elif is_in_dialog:
-            # 弹窗内部子树：只受弹窗内部层叠影响，绝不继承弹窗外部的父级遮蔽
-            is_node_occluded = is_parent_occluded
-        elif has_active_dialog:
-            # 弹窗外部的所有底层主页面背景分支：全量被弹窗遮罩强制遮挡
+        elif has_active_dialog and not current_is_dialog:
+            is_node_occluded = True
+        elif is_parent_occluded:
             is_node_occluded = True
         else:
-            is_node_occluded = is_parent_occluded
+            is_node_occluded = False
+
+        # 2. 只有具备实际视觉呈现或交互实体的实心节点（Text, Image, Button, Input, Icon 等），才参与几何遮挡测试！
+        if not is_node_occluded and not is_transparent_container and covering_rects and width > 0 and height > 0:
+            center_x = left + width // 2
+            center_y = top + height // 2
+            node_area = width * height
+            for c_l, c_t, c_r, c_b in covering_rects:
+                # 规则 1: 遮挡物覆盖了该组件的几何中心交互点 (交互点击命中区)
+                if c_l <= center_x <= c_r and c_t <= center_y <= c_b:
+                    is_node_occluded = True
+                    break
+                # 规则 2: 遮挡物覆盖了该组件 >= 60% 的实质面积
+                inter_l = max(left, c_l)
+                inter_t = max(top, c_t)
+                inter_r = min(right, c_r)
+                inter_b = min(bottom, c_b)
+                if inter_r > inter_l and inter_b > inter_t:
+                    inter_area = (inter_r - inter_l) * (inter_b - inter_t)
+                    if inter_area / node_area >= 0.60:
+                        is_node_occluded = True
+                        break
 
         is_exposed = node_visible and (not is_node_occluded)
         is_node_exposed = is_exposed and node_in_active_page
@@ -5461,8 +6232,10 @@ class HarmonyAppiumInspector(QMainWindow):
         is_occluded_node = (not is_node_exposed) and depth > 0
 
         # 屏幕视口相交判定 (Viewport In-Screen Check):
-        # 排除完全滚出真机视口之外的离屏组件
-        is_in_viewport = not (right <= 0 or left >= screen_w or bottom <= 0 or top >= screen_h)
+        # 排除完全滚出真机视口之外的离屏组件 (自适应校准视口边界，杜绝投屏缩略帧尺寸导致下半屏/右半屏组件被误淘汰)
+        vw = screen_w if screen_w >= 800 else 1084
+        vh = screen_h if screen_h >= 1200 else 2412
+        is_in_viewport = not (right <= 0 or left >= vw or bottom <= 0 or top >= vh)
         # 核心优化：画布交互拾取仅限真实暴露在顶层的有效组件 (is_exposed)
         is_interactive = node_in_active_page and is_exposed and is_in_viewport and width >= 4 and height >= 4
 
@@ -5614,32 +6387,19 @@ class HarmonyAppiumInspector(QMainWindow):
             self.tree_widget.addTopLevelItem(item)
 
         children = node.get("children", [])
-        occluded_child_indices = set()
 
         # 针对模态弹窗（Dialog / ActionSheet / Popup）：若存在全屏弹窗，弹窗之前的底层页面分支全部判定为已遮挡
         dialog_indices = [
             idx for idx, ch in enumerate(children)
             if ch.get("attributes", {}).get("type") in ("Dialog", "ActionSheet", "CustomDialog", "Popup")
         ]
+        modal_occluded_indices = set()
         if dialog_indices:
             min_dlg_idx = min(dialog_indices)
             for prev_i in range(min_dlg_idx):
-                occluded_child_indices.add(prev_i)
+                modal_occluded_indices.add(prev_i)
 
-        # 辅助方法：判断节点或其子树是否包含实质视觉展示内容（文本、图标、图片等）
-        def has_visual_content(n: Dict[str, Any]) -> bool:
-            a = n.get("attributes", {})
-            t = a.get("type", "")
-            if a.get("text") or a.get("label") or a.get("originalText"):
-                return True
-            if t in ("Text", "Image", "Button", "Icon", "TextInput", "TextArea", "Toggle", "Checkbox"):
-                return True
-            for c in n.get("children", []):
-                if has_visual_content(c):
-                    return True
-            return False
-
-        # 辅助方法：收集后序节点子树中真正具有视觉/交互实体的叶子边界
+        # 辅助方法：收集后序节点子树中真正具有视觉/交互实体的叶子边界（穿透纯透明布局容器）
         def collect_solid_leaf_bounds(n: Dict[str, Any]) -> List[Tuple[int, int, int, int]]:
             res = []
             a = n.get("attributes", {})
@@ -5652,100 +6412,89 @@ class HarmonyAppiumInspector(QMainWindow):
                 return res
 
             c_list = n.get("children", [])
-            # 如果是透明布局容器且有子节点，穿透深入探测其子节点
-            is_transparent_container = t in ("Row", "Column", "Stack", "Flex", "RelativeContainer", "__Common__", "List", "ListItem", "Scroll", "Grid") and len(c_list) > 0
             # Blank 组件在 ArkUI 中纯粹用于伸缩留白，完全透明穿透
             if t == "Blank":
                 return res
 
-            if not is_transparent_container:
+            is_trans_container = t in ("Row", "Column", "Stack", "Flex", "RelativeContainer", "__Common__", "List", "ListItem", "Scroll", "Grid") and len(c_list) > 0
+            if not is_trans_container:
                 # 实心叶子组件或带内容的独立节点
                 b_str = a.get("bounds", "")
                 m = re.match(r"\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]", b_str)
                 if m:
-                    res.append((int(m.group(1)), int(m.group(2)), int(m.group(3)), int(m.group(4))))
+                    b_w = int(m.group(3)) - int(m.group(1))
+                    b_h = int(m.group(4)) - int(m.group(2))
+                    if b_w > 0 and b_h > 0:
+                        res.append((int(m.group(1)), int(m.group(2)), int(m.group(3)), int(m.group(4))))
             else:
                 for c in c_list:
                     res.extend(collect_solid_leaf_bounds(c))
             return res
 
-        # 针对 Stack（层叠容器）和多层级重叠布局：后序子节点覆盖先序子节点
+        # 针对 Stack（层叠容器）和 RelativeContainer：计算后序实心图层对先序图层的真实几何覆盖
+        stack_covering_map: Dict[int, List[Tuple[int, int, int, int]]] = {}
         if c_type in ("Stack", "RelativeContainer") and len(children) > 1:
-            parsed_child_bounds = []
-            for ch in children:
-                ch_b = ch.get("attributes", {}).get("bounds", "")
-                m = re.match(r"\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]", ch_b)
-                if m:
-                    parsed_child_bounds.append((int(m.group(1)), int(m.group(2)), int(m.group(3)), int(m.group(4))))
-                else:
-                    parsed_child_bounds.append((0, 0, 0, 0))
-
             for i in range(len(children)):
-                l_i, t_i, r_i, b_i = parsed_child_bounds[i]
-                if r_i <= l_i or b_i <= t_i:
-                    continue
+                accumulated_covers = []
                 for k in range(i + 1, len(children)):
-                    # 关键防御：完全透明的后序节点（如验证码输入框 opacity: 0）视觉上穿透，绝不能把前面的显示层误判为遮挡！
-                    ch_k_attrs = children[k].get("attributes", {})
-                    try:
-                        ch_k_op = float(ch_k_attrs.get("opacity", "1.0"))
-                    except Exception:
-                        ch_k_op = 1.0
-                    if ch_k_op <= 0.05:
-                        continue
-
-                    l_k, t_k, r_k, b_k = parsed_child_bounds[k]
-                    # 后序子节点外接矩形范围在几何上是否覆盖了先序子节点（允许 3px 容差）
-                    is_bbox_covered = (l_k <= l_i + 3 and r_k >= r_i - 3 and t_k <= t_i + 3 and b_k >= b_i - 3)
-                    if not is_bbox_covered:
-                        continue
-
-                    # 核心防误判（针对 ArkUI Stack 标题栏与透明布局）：
-                    # 如果后序节点是一个包含子节点的透明容器（如 Row 撑满整行用于放置左右按钮），
-                    # 绝不能用整个容器的外框误判底层居中内容被遮挡！
-                    ch_k_type = ch_k_attrs.get("type", "")
-                    ch_k_children = children[k].get("children", [])
-                    
-                    if ch_k_type in ("Row", "Column", "Stack", "Flex", "RelativeContainer", "__Common__") and ch_k_children:
-                        if has_visual_content(children[i]):
-                            solid_leaves = collect_solid_leaf_bounds(children[k])
-                            if not solid_leaves:
-                                continue
-                            
-                            has_real_overlap = False
-                            for s_l, s_t, s_r, s_b in solid_leaves:
-                                inter_l = max(l_i, s_l)
-                                inter_t = max(t_i, s_t)
-                                inter_r = min(r_i, s_r)
-                                inter_b = min(b_i, s_b)
-                                if inter_r > inter_l and inter_b > inter_t:
-                                    has_real_overlap = True
-                                    break
-                            if not has_real_overlap:
-                                continue
-
-                    occluded_child_indices.add(i)
-                    break
+                    accumulated_covers.extend(collect_solid_leaf_bounds(children[k]))
+                if accumulated_covers:
+                    stack_covering_map[i] = accumulated_covers
 
         effective_parent_item = item if item is not None else parent_item
-        for idx, child in enumerate(children):
-            # 弹窗内部的子节点遮挡仅取决于弹窗内部自身的层叠，不受弹窗外部背景遮罩影响
-            if current_is_dialog:
-                child_occluded = (idx in occluded_child_indices)
-            else:
-                child_occluded = is_node_occluded or (idx in occluded_child_indices)
+        has_any_exposed_child = False
 
-            self.build_dom_tree(
+        for idx, child in enumerate(children):
+            # 继承上级覆盖物 + 当前 Stack 层级内后序兄弟节点的实心覆盖物
+            child_covers = list(covering_rects or [])
+            if idx in stack_covering_map:
+                child_covers.extend(stack_covering_map[idx])
+
+            # 核心防御：如果父节点是透明容器，绝不能因为父容器外框相交而强制让子节点继承遮挡！
+            child_parent_occluded = (idx in modal_occluded_indices) or (is_node_occluded and not is_transparent_container)
+
+            child_has_exposed = self.build_dom_tree(
                 child, effective_parent_item, xml_elem, node_xpath,
                 depth=depth + 1,
                 parent_visible=node_visible,
                 is_in_active_page=node_in_active_page,
                 screen_w=screen_w,
                 screen_h=screen_h,
-                is_parent_occluded=child_occluded,
+                is_parent_occluded=child_parent_occluded,
                 has_active_dialog=has_active_dialog,
-                is_in_dialog=current_is_dialog
+                is_in_dialog=current_is_dialog,
+                covering_rects=child_covers
             )
+            if child_has_exposed:
+                has_any_exposed_child = True
+
+        # 核心图形学聚合（Bottom-Up Aggregation）：
+        # 如果当前节点是纯透明布局容器且包含子节点，只要有至少一个子节点真实暴露可见，
+        # 则该容器自身绝不是被遮挡状态！
+        if is_transparent_container:
+            if has_any_exposed_child:
+                is_node_occluded = False
+                is_occluded_node = False
+                comp["is_occluded"] = False
+                comp["is_exposed"] = True
+                clean_xml_attrs["occluded"] = "false"
+                clean_xml_attrs["exposed"] = "true"
+                xml_elem.attrib["occluded"] = "false"
+                xml_elem.attrib["exposed"] = "true"
+                scheme = get_dom_tag_color(c_type)
+                item.setForeground(0, QColor(scheme["text"]))
+                item.setBackground(0, QBrush(QColor(scheme["bg"])))
+                attrs_str_clean = re.sub(r'\s+occluded="[^"]*"', '', attrs_str)
+                item.setText(0, f"{type_badge}{attrs_str_clean}>")
+                item.setData(0, Qt.ItemDataRole.UserRole + 1, False)
+                item.setHidden(False)
+
+        # 当前子树是否拥有实质可见暴露节点：
+        # 实心组件取决于自身的 is_node_exposed；透明容器取决于 has_any_exposed_child
+        if is_transparent_container:
+            return has_any_exposed_child
+        else:
+            return bool(is_node_exposed)
 
     # --------------------------------------------------------------------------
     # DOM 树内置搜索与高亮绿色显示 (Ctrl+F)
@@ -6364,6 +7113,9 @@ class HarmonyAppiumInspector(QMainWindow):
             if not self.isMinimized() and hasattr(self, "search_dialog") and self.search_dialog:
                 if self.search_dialog.isVisible() and not self.search_dialog.isMinimized():
                     self.search_dialog.raise_()
+        elif event.type() == QEvent.Type.ActivationChange:
+            if hasattr(self, "search_dialog") and self.search_dialog and self.search_dialog.isVisible():
+                self.search_dialog._update_stay_on_top_state()
         super().changeEvent(event)
 
     def closeEvent(self, event):

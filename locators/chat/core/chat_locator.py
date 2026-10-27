@@ -158,7 +158,7 @@ class _ChatLocatorAndroid:
     DESIGN_BOTTOM_SHEET = (AppiumBy.ID, f'{PACKAGE_ID}/design_bottom_sheet')            # 转发弹窗
     TV_FORWARD_ONE_BY_ONE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_forward_one_by_one')        # 逐条转发
     TV_FORWARD_COMBINE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_forward_combine')              # 合并转发
-    TV_CONFIRM = CommonLocator.TV_CONFIRM_BTN                                          # 确定按钮
+    TV_CONFIRM = CommonLocator.TV_CONFIRM_BTN                                           # 确定按钮
     TV_CANCEL = CommonLocator.TV_CANCEL_BTN                                             # 取消按钮
 
     # ==================================================================================================================
