@@ -515,11 +515,13 @@ class MainWindow(QMainWindow):
 
         root_layout.addWidget(self.stacked_widget, stretch=1)
 
-        # 3. 注册全局热键：F5 (全量热同步与刷新) / Ctrl+R (0.3秒极速热重启应用)
+        # 3. 注册全局热键：F5 (全量热同步与刷新) / Ctrl+R (0.3秒极速热重启应用，全局唯一接管不与子页面冲突)
         self._shortcut_f5 = QShortcut(QKeySequence("F5"), self)
+        self._shortcut_f5.setContext(Qt.ShortcutContext.ApplicationShortcut)
         self._shortcut_f5.activated.connect(self._on_hotkey_f5)
 
         self._shortcut_ctrl_r = QShortcut(QKeySequence("Ctrl+R"), self)
+        self._shortcut_ctrl_r.setContext(Qt.ShortcutContext.ApplicationShortcut)
         self._shortcut_ctrl_r.activated.connect(self._on_hotkey_restart)
 
     def _on_hotkey_f5(self):
@@ -536,6 +538,11 @@ class MainWindow(QMainWindow):
             from PyQt6.QtWidgets import QApplication
             if hasattr(self, "page_mobile") and hasattr(self.page_mobile, "save_layout_state"):
                 self.page_mobile.save_layout_state()
+            if hasattr(self, "page_inspector") and getattr(self.page_inspector, "inspector", None) is not None:
+                try:
+                    self.page_inspector.inspector.stop_screencast()
+                except Exception:
+                    pass
             desktop_config.save()
 
             # 以相同命令参数在外部独立拉起新进程，随后退出当前进程

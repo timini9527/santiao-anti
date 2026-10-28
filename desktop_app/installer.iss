@@ -57,6 +57,9 @@ Source: "D:\data\Python313\*"; DestDir: "{app}\python_runtime"; Flags: ignorever
 ; 4. 内置 Allure CLI 命令行工具 (开箱即用支持生成全维度可视化测试报告)
 Source: "d:\projects\santiao-anti\allure-cli\*"; DestDir: "{app}\allure-cli"; Flags: ignoreversion recursesubdirs createallsubdirs
 
+; 5. 内置真机端推流与驱动扩展资产 (scrcpy-server / harmony so)
+Source: "d:\projects\santiao-anti\desktop_app\assets\*"; DestDir: "{app}\desktop_app\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
+
 
 [Icons]
 Name: "{autoprograms}\三条IM自动化测试控制台"; Filename: "{app}\三条IM自动化测试控制台.exe"
@@ -72,6 +75,8 @@ Type: filesandordirs; Name: "{app}\logs"
 Type: filesandordirs; Name: "{app}\_internal"
 Type: filesandordirs; Name: "{app}\python_runtime"
 Type: filesandordirs; Name: "{app}\allure-cli"
+Type: filesandordirs; Name: "{app}\bin"
+Type: filesandordirs; Name: "{app}\desktop_app"
 Type: filesandordirs; Name: "{app}"
 
 [Code]

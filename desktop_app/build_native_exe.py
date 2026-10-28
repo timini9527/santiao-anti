@@ -286,13 +286,14 @@ def check_and_kill_running_instance():
         # 2. 检查并终止将 dist 目录作为当前工作目录(CWD)挂起的后台进程 (如被拉起的 adb.exe / hdc.exe)
         try:
             import psutil
-            dist_marker = "三条IM自动化测试控制台".lower()
+            dist_marker = os.path.normpath(os.path.join(PROJECT_ROOT, "dist")).lower()
             current_pid = os.getpid()
-            for p in psutil.process_iter(['pid', 'name', 'cwd']):
+            for p in psutil.process_iter(['pid', 'name', 'exe', 'cwd']):
                 try:
                     if p.info['pid'] != current_pid:
-                        cwd = p.info.get('cwd') or ""
-                        if dist_marker in cwd.lower():
+                        p_exe = os.path.normpath(p.info.get('exe') or "").lower()
+                        p_cwd = os.path.normpath(p.info.get('cwd') or "").lower()
+                        if dist_marker in p_exe or dist_marker in p_cwd or "三条im" in p_exe or "三条im" in p_cwd:
                             p.kill()
                 except Exception:
                     pass
@@ -375,6 +376,15 @@ def build(build_installer: bool = BUILD_INSTALLER):
             except Exception:
                 time.sleep(0.8)
 
+    if os.path.exists(build_dir):
+        try:
+            shutil.rmtree(build_dir, ignore_errors=True)
+            time.sleep(0.3)
+        except Exception:
+            pass
+    target_work_sub = os.path.join(build_dir, "三条IM自动化测试控制台")
+    os.makedirs(target_work_sub, exist_ok=True)
+
     # 1. 净化环境变量，杜绝不兼容动态链接库被打包
     build_env = sanitize_build_environment()
 
@@ -425,17 +435,42 @@ def build(build_installer: bool = BUILD_INSTALLER):
         "--hidden-import=av",
         "--hidden-import=pymobiledevice3",
         "--hidden-import=pymobiledevice3.remote.userspace_tunnel",
+        "--hidden-import=pymobiledevice3.remote.core_device.display_service",
+        "--hidden-import=pymobiledevice3.remote.core_device.screen_stream",
+        "--hidden-import=pymobiledevice3.services.power_assertion",
+        "--hidden-import=pymobiledevice3.tunneld.api",
         "--hidden-import=pymobiledevice3.services.dvt.instruments.dvt_provider",
         "--hidden-import=pymobiledevice3.services.dvt.instruments.screenshot",
+        "--hidden-import=pmd_pytcp",
+        "--hidden-import=pmd_net_addr",
         "--hidden-import=uiautomator2",
         "--hidden-import=grpc",
         "--collect-all=av",
         "--collect-all=pymobiledevice3",
+        "--collect-all=pmd_pytcp",
+        "--collect-all=pmd_net_addr",
         "--collect-all=uiautomator2",
         "--copy-metadata=av",
         "--copy-metadata=pymobiledevice3",
         "--collect-data=setuptools",
         "--copy-metadata=setuptools",
+        # 排除与桌面UI控制台无关的巨型第三方计算/AI库，打包耗时由 4 分钟极速缩减至 15 秒
+        "--exclude-module=torch",
+        "--exclude-module=torchvision",
+        "--exclude-module=torchaudio",
+        "--exclude-module=tensorflow",
+        "--exclude-module=tensorboard",
+        "--exclude-module=onnxruntime",
+        "--exclude-module=scipy",
+        "--exclude-module=sympy",
+        "--exclude-module=matplotlib",
+        "--exclude-module=skimage",
+        "--exclude-module=pandas",
+        "--exclude-module=IPython",
+        "--exclude-module=jupyter",
+        "--exclude-module=notebook",
+        "--exclude-module=pywt",
+        "--exclude-module=paddle",
         main_entry
     ]
 

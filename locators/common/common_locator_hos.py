@@ -51,7 +51,7 @@ class CommonLocatorHos:
     # 子页面/通用页面顶部标题 (如 "聊天信息"、"联系人详情"、"设置中心")
     TOP_TV_TITLE = (
         AppiumBy.XPATH,
-        "(//NavDestination//Row[1]//Text)[1] | (//Navigation//Row[1]//Text)[1] | //*[@id='tv_title' or @id='title_tv']",
+        "(//NavDestination//Swiper//RelativeContainer/Text)[1] | //*[@id='title']",
     )
     TOP_BAR_TITLE_TV = TOP_TV_TITLE
 

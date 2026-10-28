@@ -1219,6 +1219,12 @@ if __name__ == "__main__":
         SessionTarget(name="测试133", chat_type=ChatType.SINGLE, to_cust_id="1500692628398575616", chat_id="0", is_top=True),
         SessionTarget(name="测试134", chat_type=ChatType.SINGLE, to_cust_id="1500692628729925632", chat_id="0", is_top=True),
         SessionTarget(name="测试135", chat_type=ChatType.SINGLE, to_cust_id="1500692629031915520", chat_id="0", is_top=True),
+        SessionTarget(name="测试136", chat_type=ChatType.SINGLE, to_cust_id="1500692629333905408", chat_id="0", is_top=True),
+        SessionTarget(name="测试137", chat_type=ChatType.SINGLE, to_cust_id="1500692629816250368", chat_id="0", is_top=True),
+        SessionTarget(name="测试138", chat_type=ChatType.SINGLE, to_cust_id="1500692630298595328", chat_id="0", is_top=True),
+        SessionTarget(name="测试139", chat_type=ChatType.SINGLE, to_cust_id="1500692630617362432", chat_id="0", is_top=True),
+        SessionTarget(name="测试140", chat_type=ChatType.SINGLE, to_cust_id="1500692630927740928", chat_id="0", is_top=True),
+        
         
         # 2. 普通单聊项
         # SessionTarget(name="A0110", chat_type=ChatType.SINGLE, to_cust_id="1500692620387454976", chat_id="0", is_top=False),
@@ -1238,7 +1244,7 @@ if __name__ == "__main__":
         USE_CLUSTER = True
 
         # 每台设备对各自会话（专属群聊+公共单聊）发送的消息数量（如设为 20 条）
-        COUNT_PER_TARGET = 500
+        COUNT_PER_TARGET = 100
         # COUNT_PER_TARGET = 28572
 
         if USE_CLUSTER:
