@@ -107,7 +107,7 @@ def load_csv_data(file_name):
             data = []
             for row in reader:
                 data.append(row)
-            logger.info(f"{LogIcon.FIND} 已读取文件 {data}")
+            # logger.info(f"{LogIcon.FIND} 已读取文件 {data}")
             return data
     except csv.Error as e:
         logger.error(f"{LogIcon.FAIL} CSV 文件解析错误: {e}")

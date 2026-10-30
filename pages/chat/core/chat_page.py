@@ -441,27 +441,20 @@ class ChatPage(BasePage):
     # 消息发送-批量极速发送文本消息集合（元素句柄复用 + 平滑恒速流控）
     def send_messages_batch(self, message_list: list[str], interval: float = 0.65) -> None:
         """
-        消息发送-批量极速发送文本消息集合（平滑恒速流控：单条间隔 ~0.65s，自然满足 100条/分钟 限制）
+        消息发送-批量平滑发送文本消息集合（多端兼容 + 自然限流）
         :param message_list: 待发送文本列表
-        :param interval: 单条发送间隔（秒），默认 0.65s（约 92 条/分钟，均匀顺畅且绝不超限）
+        :param interval: 单条发送间隔（秒），默认 0.65s（自然满足 100条/分钟 限流）
         """
-        logger.info(f"{LogIcon.ACTION} [Batch Send] 准备平滑批量消息发送，共 {len(message_list)} 条消息")
-        input_elem = self.find_element(ChatLocator.TEXT_INPUT)
-        if not input_elem:
-            raise NoSuchElementException("未找到聊天输入框")
-
-        send_btn = None
         total = len(message_list)
-        logger.info(f"{LogIcon.ACTION} [Batch Send] 启动平滑批量消息发送通道，共 {total} 条消息，每条间隔 {interval}s...")
+        logger.info(f"{LogIcon.ACTION} [Batch Send] 启动批量消息发送通道，共 {total} 条消息，单条间隔 {interval}s...")
 
         for idx, msg in enumerate(message_list):
-            self.driver.execute_script("mobile: replaceElementValue", {"elementId": input_elem.id, "text": msg})
-            if not send_btn:
-                send_btn = self.find_element(ChatLocator.SEND_BUTTON, timeout=2)
-            if send_btn:
-                send_btn.click()
-            else:
-                self.click(ChatLocator.SEND_BUTTON, force_wait=True)
+            # 1. 采用标准输入通道，确保 100% 触发 Android/HarmonyOS 的 TextWatcher 文本改变事件
+            #    使输入框右侧的【+号更多】按钮准确切换为可点击的【发送按钮】
+            self.input_text(msg, fast=False)
+
+            # 2. 点击发送按钮（内部支持跨端定位器透明路由与智能重试）
+            self.click_send_button()
 
             if interval > 0:
                 time.sleep(interval)

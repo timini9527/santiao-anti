@@ -258,19 +258,7 @@
       "tests/mine": "passed"
     },
     "expanded_targets": [
-      "tests/chat",
-      "tests/chat/long_press/test_chat_long_press.py",
-      "tests/chat/long_press/test_chat_long_press.py::TestChatLongPress",
-      "tests/chat/search/test_chat_search.py",
-      "tests/chat/search/test_chat_search.py::TestChatSearch",
-      "tests/chat/search/test_chat_search.py::TestChatSearch::test_search_by_date_calendar",
-      "tests/chat/setting/test_chat_setting.py",
-      "tests/chat/setting/test_chat_setting.py::TestChatSetting",
-      "tests/chat/setting/test_chat_setting.py::TestChatSetting::test_get_chat_nickname",
-      "tests/chat/setting/test_chat_setting.py::TestChatSetting::test_chat_password_switch",
-      "tests/chat/setting/test_chat_setting.py::TestChatSetting::test_screenshot_notification_switch",
-      "tests/chat/setting/test_chat_setting.py::TestChatSetting::test_recall_notification_switch",
-      "tests/chat/setting/test_chat_setting.py::TestChatSetting::test_clear_chat_records"
+      "tests/chat"
     ],
     "web_receipt_fields": [
       {
@@ -299,7 +287,7 @@
   },
   "window": {
     "x": 260,
-    "y": 800,
+    "y": 346,
     "width": 1406,
     "height": 864,
     "maximized": true

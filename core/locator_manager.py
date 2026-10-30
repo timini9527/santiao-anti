@@ -15,39 +15,40 @@ _thread_local = threading.local()
 
 class LocatorPlatformManager:
     """
-    工业级设备平台状态感知中枢：
-    支持调用栈上下文感知、线程级环境隔离、系统环境变量、devices.yaml 配置文件多重感知。
-    完美支持单设备与多设备（跨端混合交互/并发）场景。
+    工业级设备平台状态感知中枢 (Driver-Bound 实例级线程隔离架构)：
+    核心设计准则：
+    1. 彻底废除进程级全局单例状态，严禁跨设备、跨线程污染；
+    2. 优先感知当前线程绑定的独立平台 (Thread-Local)，支持多端异构并发；
+    3. 调用栈上下文安全嗅探：精确探测正在调用的 Page 实例或 Driver 属性；
+    4. 严格安全的基线回退机制：在脱离任何 Driver 或上下文的裸调用场景下，
+       默认安全回退到基线平台 'android'，坚决杜绝全局环境变量配置对纯安卓设备的隐式串扰。
     """
-    _current_platform: Optional[str] = None
     _config_platform_cache: Optional[str] = None
 
     @classmethod
     def get_thread_platform(cls) -> Optional[str]:
-        """获取当前线程绑定的平台"""
+        """获取当前线程绑定的独立平台"""
         return getattr(_thread_local, "platform", None)
 
     @classmethod
     def set_thread_platform(cls, platform: Optional[str]) -> None:
-        """为当前线程独立绑定平台（适用于多线程并发场景）"""
+        """为当前线程独立绑定平台（严格线程隔离，互不干扰）"""
         _thread_local.platform = platform.strip().lower() if platform else None
 
     @classmethod
     def detect_caller_platform(cls) -> Optional[str]:
         """
         调用栈上下文主动嗅探：
-        向上遍历调用帧，探测调用方 Page 实例绑定的 self.driver 平台。
-        加入防重入锁与 __dict__ 安全检测，严禁触发 __getattr__ 导致无限递归死循环。
+        向上遍历调用帧，探测调用方 Page 实例绑定的 self._platform_name 或 self.driver。
+        加入防重入保护，严禁触发 __getattr__ 导致死循环。
         """
-        # 1. 防重入保护：若已在嗅探中，直接退出，彻底斩断无限递归
         if getattr(_thread_local, "_detecting_active", False):
             return None
 
         _thread_local._detecting_active = True
         try:
             frame = inspect.currentframe()
-            # 向上检查调用链（最多探测 5 层栈帧）
-            for _ in range(5):
+            for _ in range(6):
                 if frame is None:
                     break
                 frame = frame.f_back
@@ -66,20 +67,25 @@ class LocatorPlatformManager:
                 if not isinstance(caller_dict, dict):
                     continue
 
+                # 1. 优先直接获取 BasePage 绑定的平台标识
+                p_page = caller_dict.get("_platform_name")
+                if p_page:
+                    return str(p_page).strip().lower()
+
                 driver = caller_dict.get("driver")
                 if driver is None:
                     continue
 
-                # 显式平台标记判断
+                # 2. 显式平台标记判断
                 p_attr = getattr(driver, "_platform_name", None)
                 if p_attr:
                     return str(p_attr).strip().lower()
 
-                # 鸿蒙原生驱动判断
+                # 3. 鸿蒙原生驱动判断
                 if hasattr(driver, "is_healthy") or "harmony" in type(driver).__name__.lower():
                     return "harmonyos"
 
-                # Appium Capabilities 判断
+                # 4. Appium Capabilities 判断
                 caps = getattr(driver, "capabilities", None) or getattr(driver, "caps", None)
                 if isinstance(caps, dict):
                     p_cap = caps.get("platformName")
@@ -102,63 +108,29 @@ class LocatorPlatformManager:
         """
         获取当前执行的被测平台标识 (小写：'android' / 'harmonyos' / 'ios')
         优先级：
-          1. 调用栈 Page 上下文 Driver 探测 (多设备交替调用最高优先级)
-          2. 当前线程绑定的独立平台 (多设备并发隔离)
-          3. 运行时全局已激活的平台状态
-          4. 系统环境变量 PLATFORM
-          5. devices.yaml 中配置的 current_platform / platformName (内存单次缓存)
-          6. 默认回退 'android'
+          1. 当前线程绑定的独立平台 (多设备并发隔离，最高优先级)
+          2. 调用栈 Page 上下文 Driver 探测 (多设备单线程交替调用)
+          3. 默认安全基线回退 'android' (彻底斩断全局环境变量串扰)
         """
-        # 1. 优先从调用栈当前操作的 Page.driver 探测
-        caller_plat = cls.detect_caller_platform()
-        if caller_plat:
-            return caller_plat
-
-        # 2. 读取当前线程独立绑定的平台
+        # 1. 优先读取当前线程独立绑定的平台 (Thread-Local 隔离)
         thread_plat = cls.get_thread_platform()
         if thread_plat:
             return thread_plat
 
-        # 3. 运行时全局激活状态
-        if cls._current_platform:
-            return cls._current_platform
+        # 2. 调用栈当前操作的 Page 实例探测
+        caller_plat = cls.detect_caller_platform()
+        if caller_plat:
+            return caller_plat
 
-        # 4. 读取系统环境变量
-        env_plat = os.environ.get("PLATFORM")
-        if env_plat:
-            return env_plat.strip().lower()
-
-        # 5. 读取 devices.yaml 配置（优先读取内存缓存，避免在用例收集阶段反复高频读盘与 YAML 解析）
-        if cls._config_platform_cache:
-            return cls._config_platform_cache
-
-        try:
-            data = load_yaml_data("devices.yaml")
-            top_plat = data.get("current_platform")
-            if top_plat:
-                cls._config_platform_cache = str(top_plat).strip().lower()
-                return cls._config_platform_cache
-            env_key = data.get("current_env", "dev")
-            device_cfg = data.get("devices", {}).get(env_key, {}).get("sender", {})
-            platform = str(device_cfg.get("platformName", "Android")).strip().lower()
-            cls._config_platform_cache = platform
-            return cls._config_platform_cache
-        except Exception as e:
-            logger.debug(f"{LogIcon.WARN} [LocatorManager] 读取 devices.yaml 平台配置异常: {e}")
-
-        # 6. 兜底默认平台
+        # 3. 严格安全的基线回退：坚决杜绝全局环境变量 PLATFORM 对无上下文调用的隐式串扰
         return "android"
 
     @classmethod
     def set_current_platform(cls, platform: str) -> None:
-        """在 Driver 实例化或多设备环境切换时动态注入当前设备平台"""
+        """兼容保留接口：仅更新当前线程的绑定，禁止修改全局进程状态"""
         if platform:
             clean_plat = platform.strip().lower()
             cls.set_thread_platform(clean_plat)
-            cls._config_platform_cache = clean_plat
-            if cls._current_platform != clean_plat:
-                cls._current_platform = clean_plat
-                logger.info(f"{LogIcon.SETUP} [LocatorManager] 当前元素定位平台已动态切换为: {clean_plat}")
 
     @classmethod
     @contextmanager
@@ -173,9 +145,7 @@ class LocatorPlatformManager:
 
     @classmethod
     def reset(cls) -> None:
-        """重置平台缓存状态"""
-        cls._current_platform = None
-        cls._config_platform_cache = None
+        """重置当前线程平台缓存状态"""
         cls.set_thread_platform(None)
 
 

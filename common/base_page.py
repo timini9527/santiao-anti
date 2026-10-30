@@ -28,6 +28,33 @@ class BasePage:
 
     def __init__(self, driver):
         self.driver = driver
+        self._platform_name = self._resolve_driver_platform(driver)
+
+    @staticmethod
+    def _resolve_driver_platform(driver) -> str:
+        """解析底层驱动真实所属平台 (android / harmonyos / ios)，固化在 Page 实例中"""
+        if driver is None:
+            return "android"
+        plat = getattr(driver, "_platform_name", None)
+        if plat:
+            return str(plat).strip().lower()
+        if hasattr(driver, "is_healthy") or "harmony" in type(driver).__name__.lower():
+            return "harmonyos"
+        caps = getattr(driver, "capabilities", None) or getattr(driver, "caps", None)
+        if isinstance(caps, dict):
+            p = caps.get("platformName")
+            if p:
+                p_str = str(p).strip().lower()
+                if p_str in ("harmonyos", "openharmony", "hos"):
+                    return "harmonyos"
+                elif p_str in ("ios", "apple"):
+                    return "ios"
+        return "android"
+
+    @property
+    def platform(self) -> str:
+        """获取当前页面绑定的设备平台"""
+        return self._platform_name
 
     # 使用装饰器包裹，自动处理异常和日志
     @catch_exception
@@ -43,6 +70,8 @@ class BasePage:
         :param expect_missing: 预期元素不存在 (用于断言元素不应出现的场景)
         :return:
         """
+        from core.locator_manager import LocatorPlatformManager
+        LocatorPlatformManager.set_thread_platform(self._platform_name)
         logger.info(f"{LogIcon.FIND} 正在查找元素: {locator} (模式: {condition})")
         wait = WebDriverWait(self.driver, timeout, poll_frequency=0.2)
         # 如果这里超时报错， @catch_exception 会自动捕获、截图、写 error 日志

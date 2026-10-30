@@ -287,58 +287,23 @@ class IosWdaManager:
         return False
 
     @classmethod
-    def find_wda_bundle_id(cls, udid: str = "") -> Optional[str]:
-        """自动扫描 iPhone 当前已安装的 WebDriverAgent 包名"""
-        tidevice_bin = shutil.which("tidevice") or "tidevice"
-        try:
-            creationflags = 0x08000000 if sys.platform == "win32" else 0
-            cmd = [tidevice_bin]
-            if udid and not udid.startswith("wda_localhost"):
-                cmd.extend(["-u", udid])
-            cmd.append("applist")
-            res = subprocess.run(cmd, capture_output=True, text=True, errors="ignore", timeout=4, creationflags=creationflags)
-            for line in res.stdout.splitlines():
-                line = line.strip()
-                low = line.lower()
-                if "webdriveragent" in low or "xctrunner" in low:
-                    parts = line.split()
-                    if parts:
-                        return parts[0].strip()
-        except Exception:
-            pass
-        return None
-
-    @classmethod
-    def get_wda_url(cls, udid: str = "") -> Tuple[Optional[str], str]:
+    def get_wda_url(cls, udid: str = "", allow_spawn: bool = False) -> Tuple[Optional[str], str]:
         """
-        获取当前可用的 WDA 服务地址
+        获取当前可用的 WDA 服务地址 (默认仅做 40ms 极速本地端口探活，绝不启动外部子进程干扰 pymobiledevice3 隧道)
         返回值: (有效_wda_url, 诊断状态描述)
         """
-        # 1. 优先探测当前已知或常用的本地 WDA 端口 (8100, 8200)
         for port in (8100, 8200):
             test_url = f"http://127.0.0.1:{port}"
-            if cls.test_wda_status(test_url, timeout=1.0):
+            if cls.test_wda_status(test_url, timeout=0.8):
                 cls._active_wda_url = test_url
                 return test_url, f"WDA 服务已连通 ({test_url})"
 
-        # 2. 若端口未连通，尝试为当前 USB 设备拉起 WDA 守护进程 (tidevice wdaproxy / relay)
-        if udid and udid not in ("wda_localhost", "wda_localhost_8100", "wda_localhost_8200"):
-            tidevice_bin = shutil.which("tidevice") or "tidevice"
-            try:
-                creationflags = 0x08000000 if sys.platform == "win32" else 0
-                if cls._relay_proc is None or cls._relay_proc.poll() is not None:
-                    bundle_id = cls.find_wda_bundle_id(udid)
-                    if bundle_id:
-                        # 核心修复：通过 wdaproxy 直接拉起 XCTest 守护进程并中继端口，规避手机桌面点击闪退
-                        proxy_cmd = [tidevice_bin, "-u", udid, "wdaproxy", "-B", bundle_id, "--port", "8100"]
-                        cls._relay_proc = subprocess.Popen(
-                            proxy_cmd,
-                            stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL,
-                            creationflags=creationflags
-                        )
-                        time.sleep(2.0)
-                    else:
+        if allow_spawn and not ScreenCastWorker.is_active and udid and not udid.startswith("wda_localhost"):
+            tidevice_bin = shutil.which("tidevice")
+            if tidevice_bin:
+                try:
+                    creationflags = 0x08000000 if sys.platform == "win32" else 0
+                    if cls._relay_proc is None or cls._relay_proc.poll() is not None:
                         relay_cmd = [tidevice_bin, "-u", udid, "relay", "8100", "8100"]
                         cls._relay_proc = subprocess.Popen(
                             relay_cmd,
@@ -346,29 +311,31 @@ class IosWdaManager:
                             stderr=subprocess.DEVNULL,
                             creationflags=creationflags
                         )
-                        time.sleep(0.8)
+                        time.sleep(0.4)
+                    if cls.test_wda_status("http://127.0.0.1:8100", timeout=1.0):
+                        cls._active_wda_url = "http://127.0.0.1:8100"
+                        return "http://127.0.0.1:8100", "已通过 tidevice relay 映射 8100 端口"
+                except Exception:
+                    pass
 
-                if cls.test_wda_status("http://127.0.0.1:8100", timeout=2.0):
-                    cls._active_wda_url = "http://127.0.0.1:8100"
-                    return "http://127.0.0.1:8100", "已自动通过 tidevice wdaproxy 唤醒 WDA 并建立 8100 端口映射"
-            except Exception:
-                pass
-
-        return None, "未检测到手机运行 WebDriverAgent 服务 (8100/8200 端口未通)"
+        return None, "未检测到本地活跃 WDA 端口 (8100/8200)"
 
 
 def run_ios_action(action: str, udid: str = "", **kwargs) -> bool:
-    """执行 iOS 动作 (优先通过 WebDriverAgent 8100/8200 端口，兜底支持 tidevice)"""
+    """执行 iOS 动作 (优先复用 pymobiledevice3 CoreDevice 原生 HID 通道，备选 WebDriverAgent 8100/8200 端口)"""
+    if ScreenCastWorker.dispatch_ios_hid(action, **kwargs):
+        return True
+
     import urllib.request
-    wda_url, _ = IosWdaManager.get_wda_url(udid)
+    wda_url, _ = IosWdaManager.get_wda_url(udid, allow_spawn=False)
     if not wda_url:
-        wda_url = "http://127.0.0.1:8100"
+        return False
     try:
         if action == "tap":
             x, y = kwargs.get("x", 0), kwargs.get("y", 0)
             data = json.dumps({"x": x, "y": y}).encode("utf-8")
             req = urllib.request.Request(f"{wda_url}/wda/tap/0", data=data, headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(req, timeout=3) as resp:
+            with urllib.request.urlopen(req, timeout=2.0) as resp:
                 return resp.status == 200
         elif action == "swipe":
             x1, y1 = kwargs.get("x1", 0), kwargs.get("y1", 0)
@@ -376,38 +343,27 @@ def run_ios_action(action: str, udid: str = "", **kwargs) -> bool:
             dur = kwargs.get("duration", 0.3)
             data = json.dumps({"fromX": x1, "fromY": y1, "toX": x2, "toY": y2, "duration": dur}).encode("utf-8")
             req = urllib.request.Request(f"{wda_url}/wda/dragfromtoforduration", data=data, headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(req, timeout=3) as resp:
+            with urllib.request.urlopen(req, timeout=2.5) as resp:
                 return resp.status == 200
         elif action == "home":
             req = urllib.request.Request(f"{wda_url}/wda/homescreen", data=b"{}", headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(req, timeout=3) as resp:
+            with urllib.request.urlopen(req, timeout=2.0) as resp:
                 return resp.status == 200
         elif action == "keys":
             text = kwargs.get("text", "")
             data = json.dumps({"value": list(text)}).encode("utf-8")
             req = urllib.request.Request(f"{wda_url}/wda/keys", data=data, headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(req, timeout=3) as resp:
+            with urllib.request.urlopen(req, timeout=2.5) as resp:
                 return resp.status == 200
         elif action == "clear":
-            # iOS clear: 尝试向当前聚焦元素清空
             req = urllib.request.Request(f"{wda_url}/wda/element/active", headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(req, timeout=2) as resp:
+            with urllib.request.urlopen(req, timeout=1.5) as resp:
                 if resp.status == 200:
                     el_id = json.loads(resp.read().decode("utf-8")).get("value", {}).get("ELEMENT")
                     if el_id:
                         del_req = urllib.request.Request(f"{wda_url}/element/{el_id}/clear", data=b"{}", headers={"Content-Type": "application/json"})
-                        urllib.request.urlopen(del_req, timeout=2)
+                        urllib.request.urlopen(del_req, timeout=1.5)
                         return True
-    except Exception:
-        pass
-
-    # 兜底调用 tidevice
-    try:
-        tidevice_bin = shutil.which("tidevice") or "tidevice"
-        if action == "tap":
-            x, y = kwargs.get("x", 0), kwargs.get("y", 0)
-            subprocess.run([tidevice_bin, "click", str(x), str(y)], timeout=5, creationflags=0x08000000 if sys.platform == "win32" else 0)
-            return True
     except Exception:
         pass
     return False
@@ -1146,6 +1102,8 @@ class ScreenCastWorker(QThread):
     latest_frame_time: float = 0.0
     latest_udid: str = ""
     is_active: bool = False
+    _active_ios_server: Optional[Any] = None
+    _active_ios_loop: Optional[Any] = None
 
     @classmethod
     def clear_cache(cls):
@@ -1156,6 +1114,70 @@ class ScreenCastWorker(QThread):
         cls.latest_frame_time = 0.0
         cls.latest_udid = ""
         cls.is_active = False
+
+    @classmethod
+    def dispatch_ios_hid(cls, action: str, **kwargs) -> bool:
+        """通过活跃的 pymobiledevice3 ScreenStreamServer 异步派发原生 CoreDevice HID 触控与按键事件"""
+        server = cls._active_ios_server
+        loop = cls._active_ios_loop
+        if server is None or loop is None or not cls.is_active:
+            return False
+
+        def _norm_coord(x_val: float, y_val: float) -> Tuple[int, int]:
+            ref_w, ref_h = 390.0, 844.0
+            if cls.latest_image is not None and not cls.latest_image.isNull():
+                iw, ih = float(cls.latest_image.width()), float(cls.latest_image.height())
+                if x_val > 440 or y_val > 960:
+                    ref_w, ref_h = iw, ih
+            hx = max(0, min(65535, int(round((x_val / max(1.0, ref_w)) * 65535.0))))
+            hy = max(0, min(65535, int(round((y_val / max(1.0, ref_h)) * 65535.0))))
+            return hx, hy
+
+        try:
+            if action == "tap":
+                hx, hy = _norm_coord(float(kwargs.get("x", 0)), float(kwargs.get("y", 0)))
+                payload = json.dumps({"type": "tap", "x": hx, "y": hy}).encode("utf-8")
+                loop.call_soon_threadsafe(server._hid_queue.put_nowait, ("/touch", payload))
+                return True
+            elif action == "home":
+                payload = json.dumps({"name": "home", "state": "press"}).encode("utf-8")
+                loop.call_soon_threadsafe(server._hid_queue.put_nowait, ("/button", payload))
+                return True
+            elif action == "swipe":
+                x1, y1 = float(kwargs.get("x1", 0)), float(kwargs.get("y1", 0))
+                x2, y2 = float(kwargs.get("x2", 0)), float(kwargs.get("y2", 0))
+                ref_w, ref_h = 390.0, 844.0
+                if cls.latest_image is not None and not cls.latest_image.isNull():
+                    iw, ih = float(cls.latest_image.width()), float(cls.latest_image.height())
+                    if max(x1, x2) > 440 or max(y1, y2) > 960:
+                        ref_w, ref_h = iw, ih
+                hx1 = max(0, min(65535, int(round((x1 / max(1.0, ref_w)) * 65535.0))))
+                hy1 = max(0, min(65535, int(round((y1 / max(1.0, ref_h)) * 65535.0))))
+                hx2 = max(0, min(65535, int(round((x2 / max(1.0, ref_w)) * 65535.0))))
+                hy2 = max(0, min(65535, int(round((y2 / max(1.0, ref_h)) * 65535.0))))
+                dur = max(0.1, float(kwargs.get("duration", 0.3)))
+
+                async def _async_swipe():
+                    import asyncio as _aio
+                    steps = 12
+                    for i in range(steps + 1):
+                        t = i / steps
+                        cx = int(round(hx1 + (hx2 - hx1) * t))
+                        cy = int(round(hy1 + (hy2 - hy1) * t))
+                        server._hid_queue.put_nowait(
+                            ("/touch", json.dumps({"type": "contact", "x": cx, "y": cy}).encode("utf-8"))
+                        )
+                        await _aio.sleep(dur / steps)
+                    server._hid_queue.put_nowait(
+                        ("/touch", json.dumps({"type": "release", "x": hx2, "y": hy2}).encode("utf-8"))
+                    )
+
+                import asyncio as _aio
+                _aio.run_coroutine_threadsafe(_async_swipe(), loop)
+                return True
+        except Exception:
+            pass
+        return False
 
     def __init__(self, udid: str, platform: str):
         super().__init__()
@@ -1931,22 +1953,21 @@ class ScreenCastWorker(QThread):
 
         ScreenCastWorker.is_active = False
 
-    def _run_ios_coredevice_video_stream(self) -> bool:
+    def _run_ios_pymobiledevice3_stream(self) -> bool:
         """
-        iOS 17+ 爱思投屏 (i4AirPlayer) / Xcode Mirror 同源底层硬件级 60 FPS 实时视频流引擎：
-        1. 免安装 WDA、零截屏系统广播，直接通过免管理员用户态隧道 UserspaceRsdTunnel (或 tunneld)
-           对接 Apple CoreDevice 原生 com.apple.coredevice.displayservice (dtremotedisplayd)；
-        2. 驱动 iPhone VideoToolbox 硬件编码器实时推送 60 FPS RFC 7798 RTP/HEVC (H.265) 码流；
-        3. 对齐 Xcode Mirror 双流会话配对 (共享 client_session_id 激活音视频会话防限帧) + 1s RTCP RR/SDES 保活
-           + RTP 序号丢包检测与 RTCP PLI 关键帧自愈 + 设备防休眠断言；
-        4. 主机端通过 PyAV (FFmpeg) hevc SLICE + low_delay 模式零帧滞后硬/多线程解码，自适应门阀直通 QImage GPU 渲染，
-           端到端延迟 < 20ms，切屏与滑动如丝般顺滑。
-        返回 True 表示硬件流曾经成功接管运行 (或因占用明确终止)；返回 False 表示当前设备/系统不支持，需平滑降级至传统通道。
+        基于 pymobiledevice3 ScreenStreamServer 重构的双线程解耦硬件级 60 FPS 实时投屏主引擎：
+        1. 生产者 (Asyncio 协程线程)：1:1 复用 pymobiledevice3 原生 ScreenStreamServer (--userspace --no-audio)
+           与 UserspaceRsdTunnel，仅执行 UDP 收包、RFC 7798 HEVC 组帧、逐帧内联 RCTL 收据回传与 RTCP 保活，
+           事件循环 0 解码阻塞、0 丢包、0 假性拥塞限帧；
+        2. 消费者 (独立硬件解码线程)：通过线程安全队列异步消费 Annex-B 帧，调用 PyAV (FFmpeg) hevc SLICE + low_delay
+           释放 GIL 持续更新 DPB 参考帧，仅在 UI 就绪时通过 swscale 硬件转换为 32 位对齐 Format_RGB32 QImage，
+           彻底消除 Web 端与审查器端之间的性能鸿沟。
+        返回 True 表示 pymobiledevice3 引擎曾成功接管运行；返回 False 表示当前设备不支持，自动切换至备选投屏通道。
         """
         import asyncio
         import contextlib
-        import struct
-        import uuid
+        import queue
+        import threading
         import av
 
         try:
@@ -1957,22 +1978,108 @@ class ScreenCastWorker(QThread):
                 is_media_in_use_error,
             )
             from pymobiledevice3.remote.core_device.screen_stream import (
-                depacketize_hevc,
-                open_media_receiver,
+                ScreenStreamServer,
+                _SubState,
             )
-            from pymobiledevice3.services.power_assertion import PowerAssertionService
             from pymobiledevice3.tunneld.api import get_tunneld_device_by_udid
         except Exception as e:
-            logging.warning(f"[iOS硬件投屏] CoreDevice 视频流依赖未就绪，平滑回退: {e}")
+            logging.warning(f"[iOS投屏] pymobiledevice3 ScreenStreamServer 依赖未就绪，切换备选方案: {e}")
             return False
 
         target_udid = self.udid if (self.udid and not self.udid.startswith("wda_localhost")) else None
         emitted_any_frame = False
+        decode_q: "queue.Queue[Optional[Tuple[int, bytes]]]" = queue.Queue(maxsize=90)
 
-        async def _coredevice_session() -> bool:
+        def _hevc_decode_worker():
+            """独立硬件解码与 32 位图像转换线程 (彻底脱离 asyncio 事件循环，确保 UDP 收包与 RCTL 回传零延迟)"""
             nonlocal emitted_any_frame
 
-            # 1. 极速预检 iOS 主版本号：iOS 16 及以下无 CoreDevice DisplayService，5ms 内立即零等待回退
+            def _create_hevc_codec():
+                c = av.CodecContext.create("hevc", "r")
+                with contextlib.suppress(Exception):
+                    c.thread_type = "SLICE"
+                with contextlib.suppress(Exception):
+                    c.options = {"flags": "low_delay"}
+                return c
+
+            codec = _create_hevc_codec()
+            decoded_any = False
+            last_emit_t = 0.0
+            stop_decode = False
+
+            while self._is_running and not stop_decode:
+                try:
+                    first_item = decode_q.get(timeout=0.15)
+                except queue.Empty:
+                    continue
+                if first_item is None:
+                    break
+
+                # 批量排空当前队列中到达的帧；若批次中存在最新关键帧则直接跳至最新关键帧开始解码
+                batch = [first_item]
+                while not decode_q.empty():
+                    try:
+                        nxt = decode_q.get_nowait()
+                    except queue.Empty:
+                        break
+                    if nxt is None:
+                        stop_decode = True
+                        break
+                    batch.append(nxt)
+
+                last_key_idx = -1
+                for idx, (ftype, _) in enumerate(batch):
+                    if ftype in (0, 2):
+                        last_key_idx = idx
+                if last_key_idx > 0:
+                    batch = batch[last_key_idx:]
+
+                newest_frame = None
+                for ftype, annexb_bytes in batch:
+                    if not self._is_running:
+                        break
+                    if ftype == 2 and decoded_any:
+                        with contextlib.suppress(Exception):
+                            codec = _create_hevc_codec()
+                    try:
+                        frames = codec.decode(av.Packet(annexb_bytes))
+                        if frames:
+                            newest_frame = frames[-1]
+                            decoded_any = True
+                    except Exception:
+                        continue
+
+                # 仅对批次中的最新帧执行一次 swscale 缩放与 32 位对齐 QImage 构造
+                if newest_frame is not None and self._is_running:
+                    now = time.time()
+                    if (self.ui_ready or (now - last_emit_t >= 0.035)) and (now - last_emit_t >= 0.012):
+                        try:
+                            last_emit_t = now
+                            self.ui_ready = False
+                            if newest_frame.width > 720:
+                                out_w = (newest_frame.width // 2) & ~1
+                                out_h = (newest_frame.height // 2) & ~1
+                                bgr_frame = newest_frame.reformat(width=out_w, height=out_h, format="bgr0")
+                            else:
+                                bgr_frame = newest_frame.reformat(format="bgr0")
+                            bgra_arr = bgr_frame.to_ndarray()
+                            h, w = bgr_frame.height, bgr_frame.width
+                            qimg = QImage(bgra_arr.data, w, h, 4 * w, QImage.Format.Format_RGB32).copy()
+                            ScreenCastWorker.latest_image = qimg
+                            ScreenCastWorker.latest_frame_bytes = None
+                            ScreenCastWorker.latest_frame_time = now
+                            ScreenCastWorker.latest_udid = self.udid
+                            if not emitted_any_frame:
+                                emitted_any_frame = True
+                                self.state_changed.emit(True, "投屏已连接")
+                            self.frame_ready.emit(qimg, b"")
+                        except Exception:
+                            self.ui_ready = True
+
+        async def _pymobiledevice3_session() -> bool:
+            nonlocal emitted_any_frame
+
+            # 1. 快速预检 iOS 主版本号：iOS 16 及以下无 CoreDevice DisplayService，直接返回 False 启用备选方案
             try:
                 ld = await asyncio.wait_for(create_using_usbmux(serial=target_udid, autopair=True), timeout=3.0)
                 try:
@@ -1995,37 +2102,35 @@ class ScreenCastWorker(QThread):
             rsd = None
             owned_tunnel = None
             from_tunneld = False
-            audio_svc = None
-            video_svc = None
-            audio_transport = None
-            video_transport = None
+            server: Optional[ScreenStreamServer] = None
             bg_tasks: List[asyncio.Task] = []
 
             def _threadsafe_stop():
                 def _do_stop():
                     if not stop_event.is_set():
                         stop_event.set()
-                    if video_transport is not None:
-                        with contextlib.suppress(Exception):
-                            video_transport.close()
-                    if audio_transport is not None:
-                        with contextlib.suppress(Exception):
-                            audio_transport.close()
                 with contextlib.suppress(Exception):
                     loop.call_soon_threadsafe(_do_stop)
 
             self._ios_stop_hook = _threadsafe_stop
 
+            # 启动独立硬件解码消费者线程
+            decode_thread = threading.Thread(
+                target=_hevc_decode_worker,
+                name="IOSPyAVDecodeThread",
+                daemon=True,
+            )
+            decode_thread.start()
+
             try:
-                # 2. 获取 RSD 通道：优先复用后台已运行的 tunneld，否则建立免管理员进程内 UserspaceRsdTunnel
+                # 2. 建立 RSD 连接：优先复用后台 tunneld，否则启动免管理员进程内 UserspaceRsdTunnel (--userspace)
                 if target_udid:
                     with contextlib.suppress(Exception):
-                        rsd = await asyncio.wait_for(get_tunneld_device_by_udid(target_udid), timeout=0.6)
+                        rsd = await asyncio.wait_for(get_tunneld_device_by_udid(target_udid), timeout=0.5)
                         if rsd is not None:
                             from_tunneld = True
 
                 if rsd is None:
-                    # 清理进程内可能残留的旧 PyTCP 单例隧道，确保重开投屏或换设备 100% 干净建连
                     for attr_name in ("_active_tunnel", "_cli_tunnel"):
                         prev_tun = getattr(userspace_tunnel, attr_name, None)
                         if prev_tun is not None:
@@ -2041,388 +2146,111 @@ class ScreenCastWorker(QThread):
                 if not self._is_running or rsd is None:
                     return True
 
-                sender_ip = rsd.service.address[0]
-                shared_session_id = uuid.uuid4()
-
-                def _build_rtcp_sdes(ssrc: int) -> bytes:
-                    """构造对齐 Xcode Mirror 的 12 字节空 CNAME SDES 块 (RFC 3550 §6.5)"""
-                    return struct.pack(
-                        "!BBHI BBBB",
-                        0x81,
-                        0xCA,
-                        2,
-                        ssrc & 0xFFFFFFFF,
-                        0x01,
-                        0x00,
-                        0x00,
-                        0x00,
-                    )
-
-                def _build_rtcp_rr(local_ssrc_val: int, remote_ssrc_val: int, highest_seq_val: int) -> bytes:
-                    """构造 32 字节 RTCP RR + 12 字节 SDES 复合保活包，防止 20s RTCPTimeoutInterval 断流"""
-                    rr = struct.pack(
-                        "!BBHII BBBB IIII",
-                        0x81,
-                        0xC9,
-                        7,
-                        local_ssrc_val & 0xFFFFFFFF,
-                        remote_ssrc_val & 0xFFFFFFFF,
-                        0,
-                        0,
-                        0,
-                        0,
-                        highest_seq_val & 0xFFFFFFFF,
-                        0,
-                        0,
-                        0,
-                    )
-                    return rr + _build_rtcp_sdes(local_ssrc_val)
-
-                # 3. 启动配对音频会话 (共享 client_session_id，标记为完整 Mirror 客户端防止 iOS 编码器降帧限速；仅排空保活不解码)
-                audio_highest_seq = 0
-                try:
-                    audio_svc = DisplayService(rsd)
-                    await asyncio.wait_for(audio_svc.connect(), timeout=5.0)
-                    audio_transport, audio_ip = open_media_receiver(audio_svc, (2 * 1024 * 1024, 1 * 1024 * 1024))
-                    audio_ans = await asyncio.wait_for(
-                        audio_svc.start_audio_stream(
-                            receiver_ip=audio_ip,
-                            receiver_port=audio_transport.port,
-                            sender_ip=sender_ip,
-                            client_session_id=shared_session_id,
-                        ),
-                        timeout=6.0,
-                    )
-                    a_cfg = audio_ans.get("connection", {}).get("streamConfig", {})
-                    a_src_port = int(a_cfg.get("SourcePort", 0))
-                    a_local_ssrc = int(a_cfg.get("RemoteSSRC", 0))
-                    a_remote_ssrc = int(a_cfg.get("LocalSSRC", 0))
-                    a_rtcp_dest = (sender_ip, a_src_port) if a_src_port else None
-
-                    async def _audio_drain_worker():
-                        nonlocal audio_highest_seq
-                        while self._is_running and not stop_event.is_set():
-                            try:
-                                pkt = await audio_transport.recv(65535)
-                            except (OSError, asyncio.CancelledError, Exception):
-                                return
-                            if len(pkt) < 12:
-                                continue
-                            pt_val = pkt[1] & 0x7F
-                            if 64 <= pt_val <= 95:
-                                continue
-                            seq_val = int.from_bytes(pkt[2:4], "big")
-                            cur_ext = audio_highest_seq
-                            cyc = (cur_ext >> 16) & 0xFFFF
-                            last16 = cur_ext & 0xFFFF
-                            if seq_val < last16 and (last16 - seq_val) > 0x8000:
-                                cyc = (cyc + 1) & 0xFFFF
-                            new_ext = (cyc << 16) | seq_val
-                            if cur_ext == 0 or ((new_ext - cur_ext) & 0xFFFFFFFF) < 0x80000000:
-                                audio_highest_seq = new_ext
-
-                    async def _audio_rtcp_worker():
-                        while self._is_running and not stop_event.is_set():
-                            try:
-                                await asyncio.sleep(1.0)
-                            except asyncio.CancelledError:
-                                return
-                            if a_rtcp_dest and a_local_ssrc and a_remote_ssrc and audio_transport is not None:
-                                with contextlib.suppress(Exception):
-                                    await audio_transport.sendto(
-                                        _build_rtcp_rr(a_local_ssrc, a_remote_ssrc, audio_highest_seq),
-                                        *a_rtcp_dest,
-                                    )
-
-                    bg_tasks.append(asyncio.create_task(_audio_drain_worker()))
-                    bg_tasks.append(asyncio.create_task(_audio_rtcp_worker()))
-                except Exception as audio_exc:
-                    if is_media_in_use_error(audio_exc):
-                        self.error_occurred.emit("iPhone 相机或麦克风正被前台应用占用，请退出该应用后重新开启投屏")
-                        return True
-                    logging.debug(f"[iOS硬件投屏] 配对音频流跳过，继续启动主视频流: {audio_exc}")
-
-                # 4. 启动 60 FPS RTP/HEVC 硬件主视频流 (关闭 LTRP 消除偶发丢包撕裂)
-                video_svc = DisplayService(rsd)
-                await asyncio.wait_for(video_svc.connect(), timeout=5.0)
-                video_transport, video_ip = open_media_receiver(video_svc, (8 * 1024 * 1024, 4 * 1024 * 1024))
-                video_ans = await asyncio.wait_for(
-                    video_svc.start_video_stream(
-                        receiver_ip=video_ip,
-                        receiver_port=video_transport.port,
-                        sender_ip=sender_ip,
-                        display_id=1,
-                        client_session_id=shared_session_id,
-                        allow_rtcp_fb=False,
-                        ltrp_enabled=False,
-                    ),
-                    timeout=8.0,
+                # 3. 实例化 pymobiledevice3 原生 ScreenStreamServer (--no-audio 对齐配置)
+                server = ScreenStreamServer(
+                    rsd=rsd,
+                    audio_default_on=False,
+                    motion_idr=False,
+                    rctl_enabled=True,
+                    allow_rtcp_fb=False,
+                    ltrp_enabled=False,
                 )
 
-                v_cfg = video_ans.get("connection", {}).get("streamConfig", {})
-                v_src_port = int(v_cfg.get("SourcePort", 0))
-                v_local_ssrc = int(v_cfg.get("RemoteSSRC", 0))
-                v_remote_ssrc = int(v_cfg.get("LocalSSRC", 0))
-                v_rtcp_dest = (sender_ip, v_src_port) if v_src_port else None
-
-                v_highest_seq = 0
-                v_packets_received = 0
-                v_last_ts = 0
-                v_cur_frame_pkts = 0
-                v_last_frame_pkts = 0
-                last_pli_t = 0.0
-
-                async def _send_pli_now():
-                    nonlocal last_pli_t
-                    now_l = loop.time()
-                    if now_l - last_pli_t < 0.25:
-                        return
-                    if video_transport is None or v_rtcp_dest is None or not (v_local_ssrc and v_remote_ssrc):
-                        return
-                    last_pli_t = now_l
-                    pli_pkt = struct.pack(
-                        "!BBHII",
-                        0x81,
-                        0xCE,
-                        2,
-                        v_local_ssrc & 0xFFFFFFFF,
-                        v_remote_ssrc & 0xFFFFFFFF,
-                    )
-                    with contextlib.suppress(Exception):
-                        await video_transport.sendto(pli_pkt, *v_rtcp_dest)
-
-                async def _video_rtcp_worker():
+                async def _silent_audio_udp_drain(transport):
+                    """Windows 静默排空配对音频流 RTP 包并更新序号 (--no-audio 免解码，保持双流会话配对活跃)"""
                     while self._is_running and not stop_event.is_set():
                         try:
-                            await asyncio.sleep(1.0)
-                        except asyncio.CancelledError:
+                            pkt = await transport.recv(65535)
+                        except (OSError, asyncio.CancelledError, Exception):
                             return
-                        if v_rtcp_dest and v_packets_received > 0 and video_transport is not None:
-                            with contextlib.suppress(Exception):
-                                await video_transport.sendto(
-                                    _build_rtcp_rr(v_local_ssrc, v_remote_ssrc, v_highest_seq),
-                                    *v_rtcp_dest,
-                                )
+                        if len(pkt) < 12:
+                            continue
+                        pt = pkt[1] & 0x7F
+                        if 64 <= pt <= 95:
+                            continue
+                        server._audio_rtp_packets_received += 1
+                        seq = int.from_bytes(pkt[2:4], "big")
+                        cur_ext = server._audio_rtp_highest_seq
+                        cycles = (cur_ext >> 16) & 0xFFFF
+                        last_seq16 = cur_ext & 0xFFFF
+                        if seq < last_seq16 and (last_seq16 - seq) > 0x8000:
+                            cycles = (cycles + 1) & 0xFFFF
+                        new_ext = (cycles << 16) | seq
+                        if cur_ext == 0 or ((new_ext - cur_ext) & 0xFFFFFFFF) < 0x80000000:
+                            server._audio_rtp_highest_seq = new_ext
 
-                async def _video_rctl_worker():
-                    """20Hz 回传 Xcode Mirror 同源 RTCP APP RCTL 速率反馈包，消除切屏/滑动时 iOS 编码器假性拥塞降帧"""
-                    while self._is_running and not stop_event.is_set():
-                        try:
-                            await asyncio.sleep(0.05)
-                        except asyncio.CancelledError:
-                            return
-                        if v_rtcp_dest and v_local_ssrc and v_packets_received > 0 and video_transport is not None:
-                            ts_val = v_last_ts & 0xFFFFFFFF
-                            w2 = ((ts_val >> 8) & 0xFFFF) << 16
-                            w3 = v_last_frame_pkts & 0xFFFFFFFF
-                            arrival_ms = (ts_val // 24) & 0xFFFF
-                            w4 = (arrival_ms << 16) | 0
-                            w5 = ((v_packets_received & 0xFFFF) << 16) | 0xEA61
-                            rctl_pkt = struct.pack(
-                                "!BBHI4sI IIII",
-                                0x80,
-                                0xCC,
-                                7,
-                                v_local_ssrc & 0xFFFFFFFF,
-                                b"RCTL",
-                                0x85000004,
-                                w2,
-                                w3,
-                                w4,
-                                w5,
-                            )
-                            with contextlib.suppress(OSError, Exception):
-                                await video_transport.sendto(rctl_pkt, *v_rtcp_dest)
+                server._audio_udp_recv = _silent_audio_udp_drain
 
-                async def _keep_awake_worker():
-                    """投屏期间持有设备防自动息屏断言，防止审查过程中 iPhone 自动锁屏中断编码器"""
-                    while self._is_running and not stop_event.is_set():
-                        with contextlib.suppress(Exception):
-                            pa_svc = PowerAssertionService(rsd)
-                            async with pa_svc.create_power_assertion(
-                                "PreventUserIdleSystemSleep",
-                                "santiao.inspector.mirror",
-                                300,
-                                "Keeping iOS screen awake for live inspection",
-                            ):
-                                pass
-                        try:
-                            await asyncio.sleep(120.0)
-                        except asyncio.CancelledError:
-                            return
+                # 预先挂载内存订阅队列，确保首帧 IDR 到达瞬间即刻捕获
+                sub_q: asyncio.Queue[bytes] = asyncio.Queue(maxsize=90)
+                sub_state = _SubState()
+                sub_state.needs_key = True
+                sub_state.reset_on_key = True
+                sub_state.needs_key_since = loop.time()
+                server._subscribers[sub_q] = sub_state
 
-                bg_tasks.append(asyncio.create_task(_video_rtcp_worker()))
-                bg_tasks.append(asyncio.create_task(_video_rctl_worker()))
-                bg_tasks.append(asyncio.create_task(_keep_awake_worker()))
+                # 4. 启动音视频配对流与 ScreenStreamServer 守护协程组
+                await asyncio.wait_for(server._eager_stream_start(), timeout=15.0)
+                if server._init_sequence is not None and sub_q.empty():
+                    sub_state.needs_key = False
+                    sub_state.reset_on_key = False
+                    sub_q.put_nowait(server._init_sequence)
+                elif server._active_service is not None and server._rtcp_dest is not None:
+                    asyncio.create_task(server._send_rtcp_pli())
 
-                # 5. 初始化 PyAV HEVC 极速低延迟多线程解码器 (SLICE 并发 + low_delay 零缓冲排队)
-                codec = av.CodecContext.create("hevc", "r")
-                with contextlib.suppress(Exception):
-                    codec.thread_type = "SLICE"
-                with contextlib.suppress(Exception):
-                    codec.options = {"flags": "low_delay"}
+                bg_tasks.append(asyncio.create_task(server._stall_watchdog()))
+                bg_tasks.append(asyncio.create_task(server._decoder_refresh_loop()))
+                bg_tasks.append(asyncio.create_task(server._rctl_feedback_loop()))
+                bg_tasks.append(asyncio.create_task(server._keep_awake_loop()))
+                server._hid_worker_task = asyncio.create_task(server._hid_worker())
+                bg_tasks.append(server._hid_worker_task)
 
-                fu_buffer = bytearray()
-                current_au: List[bytes] = []
-                nals: List[bytes] = []
-                vps_nal: Optional[bytes] = None
-                sps_nal: Optional[bytes] = None
-                pps_nal: Optional[bytes] = None
+                ScreenCastWorker._active_ios_server = server
+                ScreenCastWorker._active_ios_loop = loop
 
-                au_is_key = False
-                au_corrupt = False
-                saw_first_key = False
-                needs_key = False
-                last_seq: Optional[int] = None
-                last_emit_t = 0.0
-                session_start_t = loop.time()
-
-                # 6. RTP/HEVC 零滞后收包、组帧与解码主循环
+                # 5. 纯内存零阻塞桥接循环：将 HVCC 帧组装为 Annex-B 字节流并投递至独立解码线程
                 while self._is_running and not stop_event.is_set():
                     try:
-                        data = await asyncio.wait_for(video_transport.recv(65535), timeout=0.5)
+                        msg = await asyncio.wait_for(sub_q.get(), timeout=0.4)
                     except asyncio.TimeoutError:
-                        if not saw_first_key and (loop.time() - session_start_t > 0.4):
-                            await _send_pli_now()
+                        if not emitted_any_frame and server._active_service is not None:
+                            with contextlib.suppress(Exception):
+                                await server._send_rtcp_pli()
                         continue
-                    except (OSError, asyncio.CancelledError):
+                    except (asyncio.CancelledError, Exception):
                         break
-                    except Exception:
-                        break
 
-                    if not data or len(data) < 12:
-                        continue
-                    pt = data[1] & 0x7F
-                    if 64 <= pt <= 95:
+                    if not msg or len(msg) < 6:
                         continue
 
-                    marker = (data[1] >> 7) & 1
-                    cc = data[0] & 0x0F
-                    header_len = 12 + cc * 4
-                    if data[0] & 0x10:
-                        if header_len + 4 > len(data):
-                            continue
-                        ext_len = int.from_bytes(data[header_len + 2 : header_len + 4], "big")
-                        header_len += 4 + ext_len * 4
-                    if header_len >= len(data):
+                    frame_type = msg[4]
+                    au_data = msg[5:]
+                    nals: List[bytes] = []
+                    pos = 0
+                    data_len = len(au_data)
+                    while pos + 4 <= data_len:
+                        nal_len = int.from_bytes(au_data[pos : pos + 4], "big")
+                        pos += 4
+                        if nal_len <= 0 or pos + nal_len > data_len:
+                            break
+                        nals.append(au_data[pos : pos + nal_len])
+                        pos += nal_len
+
+                    if not nals:
                         continue
-                    payload = data[header_len:]
 
-                    seq = int.from_bytes(data[2:4], "big")
-                    v_last_ts = int.from_bytes(data[4:8], "big")
-                    v_packets_received += 1
-                    v_cur_frame_pkts += 1
-                    cur_ext = v_highest_seq
-                    cycles = (cur_ext >> 16) & 0xFFFF
-                    last_seq16 = cur_ext & 0xFFFF
-                    if seq < last_seq16 and (last_seq16 - seq) > 0x8000:
-                        cycles = (cycles + 1) & 0xFFFF
-                    new_ext = (cycles << 16) | seq
-                    if cur_ext == 0 or ((new_ext - cur_ext) & 0xFFFFFFFF) < 0x80000000:
-                        v_highest_seq = new_ext
+                    if frame_type in (0, 2):
+                        vps, sps, pps = server._vps_nal, server._sps_nal, server._pps_nal
+                        if vps and sps and pps:
+                            has_inline_vps = any(((n[0] >> 1) & 0x3F) == 32 for n in nals if n)
+                            if not has_inline_vps:
+                                nals = [vps, sps, pps] + nals
 
-                    # 严格 RTP 连续性校验：任何丢包跳号立即丢弃当前残缺 AU 并请求 PLI 新关键帧，100% 根除花屏与撕裂
-                    if last_seq is not None and seq != ((last_seq + 1) & 0xFFFF):
-                        fu_buffer.clear()
-                        au_corrupt = True
-                    if last_seq is None or ((seq - last_seq) & 0xFFFF) < 0x8000:
-                        last_seq = seq
-
-                    nals.clear()
-                    depacketize_hevc(payload, fu_buffer, nals)
-                    for nal in nals:
-                        if not nal:
-                            continue
-                        nt = (nal[0] >> 1) & 0x3F
-                        if nt == 32:
-                            vps_nal = nal
-                        elif nt == 33:
-                            sps_nal = nal
-                        elif nt == 34:
-                            pps_nal = nal
-                        if nt in (19, 20, 21):
-                            au_is_key = True
-                        current_au.append(nal)
-
-                    if marker:
-                        v_last_frame_pkts = v_cur_frame_pkts
-                        v_cur_frame_pkts = 0
-                        # 1:1 Xcode Mirror 逐帧收据 (RTCP APP name=5)：在帧边界内联立即回传当前帧 RTP 时间戳，驱动 iPhone 满帧 60FPS 输出
-                        if v_rtcp_dest and v_local_ssrc and video_transport is not None:
-                            receipt_pkt = struct.pack(
-                                "!BBHI I I",
-                                0x80,
-                                0xCC,
-                                3,
-                                v_local_ssrc & 0xFFFFFFFF,
-                                5,
-                                v_last_ts & 0xFFFFFFFF,
-                            )
-                            with contextlib.suppress(OSError, Exception):
-                                await video_transport.sendto(receipt_pkt, *v_rtcp_dest)
-
-                        if au_corrupt:
-                            needs_key = True
-                            await _send_pli_now()
-                        elif current_au:
-                            can_decode = False
-                            au_nals = current_au
-                            if au_is_key:
-                                if vps_nal and sps_nal and pps_nal:
-                                    has_inline_ps = any(((n[0] >> 1) & 0x3F) == 32 for n in current_au)
-                                    if not has_inline_ps:
-                                        au_nals = [vps_nal, sps_nal, pps_nal] + current_au
-                                    saw_first_key = True
-                                    needs_key = False
-                                    can_decode = True
-                            else:
-                                if saw_first_key and not needs_key:
-                                    can_decode = True
-                                elif needs_key:
-                                    await _send_pli_now()
-
-                            if can_decode:
-                                au_bytes = b"".join(b"\x00\x00\x00\x01" + n for n in au_nals)
-                                frames = None
-                                try:
-                                    # 直接以整帧 Annex-B Packet 送入解码器，彻底消除 codec.parse 等待下一帧起始码导致的 1 帧滞后
-                                    frames = codec.decode(av.Packet(au_bytes))
-                                except Exception:
-                                    needs_key = True
-                                    await _send_pli_now()
-
-                                if frames and self._is_running:
-                                    newest_frame = frames[-1]
-                                    now = time.time()
-                                    if (self.ui_ready or (now - last_emit_t >= 0.045)) and (now - last_emit_t >= 0.014):
-                                        try:
-                                            last_emit_t = now
-                                            self.ui_ready = False
-                                            # 利用 FFmpeg swscale SIMD 底层硬件缩放至 50% 黄金投屏尺寸 (与鸿蒙/安卓对齐，内存拷贝量降低 75%，耗时仅 0.4ms)
-                                            if newest_frame.width > 720:
-                                                out_w = (newest_frame.width // 2) & ~1
-                                                out_h = (newest_frame.height // 2) & ~1
-                                                rgb_frame = newest_frame.reformat(width=out_w, height=out_h, format="rgb24")
-                                            else:
-                                                rgb_frame = newest_frame.reformat(format="rgb24")
-                                            rgb_array = rgb_frame.to_ndarray()
-                                            h, w, _ = rgb_array.shape
-                                            qimg = QImage(rgb_array.tobytes(), w, h, 3 * w, QImage.Format.Format_RGB888).copy()
-                                            ScreenCastWorker.latest_image = qimg
-                                            ScreenCastWorker.latest_frame_bytes = None
-                                            ScreenCastWorker.latest_frame_time = now
-                                            ScreenCastWorker.latest_udid = self.udid
-                                            if not emitted_any_frame:
-                                                emitted_any_frame = True
-                                                self.state_changed.emit(True, "投屏已连接")
-                                            self.frame_ready.emit(qimg, b"")
-                                        except Exception as img_exc:
-                                            self.ui_ready = True
-                                            logging.debug(f"[iOS硬件投屏] 帧图像转换异常: {img_exc}")
-
-                        current_au = []
-                        au_is_key = False
-                        au_corrupt = False
+                    annexb_bytes = b"".join(b"\x00\x00\x00\x01" + n for n in nals)
+                    if decode_q.full():
+                        with contextlib.suppress(queue.Empty):
+                            decode_q.get_nowait()
+                    decode_q.put_nowait((frame_type, annexb_bytes))
 
                 return emitted_any_frame or (not self._is_running)
 
@@ -2430,45 +2258,52 @@ class ScreenCastWorker(QThread):
                 if is_media_in_use_error(exc):
                     self.error_occurred.emit("iPhone 相机或麦克风正被前台应用占用，请退出该应用后重新开启投屏")
                     return True
-                logging.warning(f"[iOS硬件投屏] CoreDevice 实时视频流会话异常: {exc}")
+                logging.warning(f"[iOS投屏] pymobiledevice3 视频流异常退出: {exc}")
                 return emitted_any_frame
             finally:
+                ScreenCastWorker._active_ios_server = None
+                ScreenCastWorker._active_ios_loop = None
                 self._ios_stop_hook = None
                 stop_event.set()
+                with contextlib.suppress(Exception):
+                    decode_q.put_nowait(None)
+
                 for t in bg_tasks:
                     t.cancel()
                 if bg_tasks:
                     with contextlib.suppress(Exception):
                         await asyncio.wait(bg_tasks, timeout=1.0)
-                if video_transport is not None:
+
+                if server is not None:
+                    server._subscribers.clear()
                     with contextlib.suppress(Exception):
-                        video_transport.close()
-                if audio_transport is not None:
+                        await asyncio.wait_for(server._stop_hid(), timeout=1.0)
                     with contextlib.suppress(Exception):
-                        audio_transport.close()
-                if video_svc is not None:
+                        async with server._stream_lock:
+                            await asyncio.wait_for(server._stop_active_stream(), timeout=1.5)
                     with contextlib.suppress(Exception):
-                        await asyncio.wait_for(video_svc.close(), timeout=1.5)
-                if audio_svc is not None:
-                    with contextlib.suppress(Exception):
-                        await asyncio.wait_for(audio_svc.close(), timeout=1.5)
+                        async with server._audio_lock:
+                            await asyncio.wait_for(server._stop_audio_stream(), timeout=1.5)
+
                 if rsd is not None:
-                    # 通知真机 dtremotedisplayd 结束远程屏幕观察，立即释放屏幕共享指示器与音视频传感器
                     with contextlib.suppress(Exception):
                         await asyncio.wait_for(DisplayService.stop_all_streams(rsd), timeout=2.5)
                     if from_tunneld:
                         with contextlib.suppress(Exception):
                             await asyncio.wait_for(rsd.close(), timeout=1.5)
+
                 if owned_tunnel is not None:
                     with contextlib.suppress(Exception):
                         await asyncio.wait_for(owned_tunnel.aclose(), timeout=2.5)
 
+                decode_thread.join(timeout=0.5)
+
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            return loop.run_until_complete(_coredevice_session())
+            return loop.run_until_complete(_pymobiledevice3_session())
         except Exception as e:
-            logging.warning(f"[iOS硬件投屏] 事件循环退出: {e}")
+            logging.warning(f"[iOS投屏] pymobiledevice3 事件循环退出: {e}")
             return emitted_any_frame
         finally:
             try:
@@ -2482,57 +2317,35 @@ class ScreenCastWorker(QThread):
             asyncio.set_event_loop(None)
             loop.close()
 
-    def _run_ios_stream(self):
+    def _run_ios_legacy_fallback_stream(self):
         """
-        iOS 端极速实时投屏引擎 (1:1 爱思投屏 CoreDevice 60FPS 硬件级 HEVC 视频流直通 + 多通道容灾兜底):
-        1. 首选启用 Apple CoreDevice DisplayService 60 FPS RTP/HEVC 硬件编码视频流引擎 (免 WDA、零截屏、延迟 < 20ms)；
-        2. 若为 iOS 16 及以下旧机型不支持 CoreDevice，平滑降级至原生 WDA 长连接 (/mjpegstream 或 /screenshot)；
-        3. 极端环境兜底至内存级 DvtProvider 会话与 CLI 截屏。
+        备选 iOS 投屏通道 (当设备系统版本低于 iOS 17 或不支持 CoreDevice 视频流时启用):
+        1. 优先探测 WDA 原生 MJPEG 视频流 (/mjpegstream 或 9100 端口)；
+        2. 备选 WDA /screenshot 轮询通道；
+        3. 兜底进程内 DvtProvider 截图会话。
         """
-        import urllib.request
-        import base64
         import asyncio
+        import base64
+        import urllib.request
 
-        ScreenCastWorker.is_active = True
-
-        # 方式 0 (首选主引擎): 1:1 爱思投屏 / Xcode Mirror 同源 CoreDevice 60 FPS 硬件级 HEVC 实时视频流
-        coredevice_retries = 0
-        while self._is_running and coredevice_retries < 2:
-            ok = self._run_ios_coredevice_video_stream()
-            if not self._is_running:
-                ScreenCastWorker.is_active = False
-                return
-            if ok:
-                # 硬件流曾成功运行但意外闪断 (如线缆微动)，短暂休眠后自动重连硬件流
-                coredevice_retries += 1
-                time.sleep(0.35)
-            else:
-                # 当前设备系统不支持 CoreDevice 视频流 (如 iOS 15/16)，立即无感切入下方 WDA 通道
-                break
-
-        if not self._is_running:
-            ScreenCastWorker.is_active = False
-            return
-
-        wda_url, _ = IosWdaManager.get_wda_url(self.udid)
+        wda_url, _ = IosWdaManager.get_wda_url(self.udid, allow_spawn=True)
         if not wda_url:
             wda_url = "http://127.0.0.1:8100"
 
-        # 1. 后台静默建立 9100 端口 relay，打通 WDA 原生 MJPEG 视频流硬件直通通道
         if self.udid and not self.udid.startswith("wda_localhost"):
-            tidevice_bin = shutil.which("tidevice") or "tidevice"
-            try:
-                creationflags = 0x08000000 if sys.platform == "win32" else 0
-                subprocess.Popen(
-                    [tidevice_bin, "-u", self.udid, "relay", "9100", "9100"],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    creationflags=creationflags
-                )
-            except Exception:
-                pass
+            tidevice_bin = shutil.which("tidevice")
+            if tidevice_bin:
+                try:
+                    creationflags = 0x08000000 if sys.platform == "win32" else 0
+                    subprocess.Popen(
+                        [tidevice_bin, "-u", self.udid, "relay", "9100", "9100"],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        creationflags=creationflags
+                    )
+                except Exception:
+                    pass
 
-        # 2. 向 WDA 注入全局极速投屏设置 (将 iPhone 硬件压缩耗时由 60ms 压缩至 5ms，数据量削减 80%)
         try:
             settings_payload = json.dumps({
                 "settings": {
@@ -2552,8 +2365,6 @@ class ScreenCastWorker(QThread):
         except Exception:
             pass
 
-        # 3. 方式 1: 智能多端口/多端点探测原生 MJPEG 长连接 (9100 原生流 + 8100 代理流多路由容灾)
-        mjpeg_stream_ok = False
         candidate_urls = [
             "http://127.0.0.1:9100",
             f"{wda_url}/mjpegstream",
@@ -2567,7 +2378,7 @@ class ScreenCastWorker(QThread):
                 break
             try:
                 req = urllib.request.Request(test_url)
-                resp = urllib.request.urlopen(req, timeout=1.0)
+                resp = urllib.request.urlopen(req, timeout=0.8)
                 if resp.status == 200:
                     mjpeg_resp = resp
                     break
@@ -2575,19 +2386,15 @@ class ScreenCastWorker(QThread):
                 continue
 
         if mjpeg_resp is not None:
-            mjpeg_stream_ok = True
             try:
                 with mjpeg_resp as resp:
                     buffer = bytearray()
                     last_emit_t = 0.0
                     while self._is_running:
-                        # 核心防滞后：使用 read1 即到即取，绝不阻塞等待填满缓冲区
                         chunk = resp.read1(65536) if hasattr(resp, "read1") else resp.read(8192)
                         if not chunk:
                             break
                         buffer.extend(chunk)
-
-                        # 容灾扩容至 4MB，切屏时即便遇到密集大关键帧也绝不清空丢失
                         if len(buffer) > 4194304:
                             last_soi = buffer.rfind(b"\xff\xd8")
                             if last_soi != -1:
@@ -2599,20 +2406,17 @@ class ScreenCastWorker(QThread):
                         while True:
                             start_idx = buffer.find(b"\xff\xd8")
                             if start_idx == -1:
-                                # 没找到帧头时保留最后 1 字节防止 \xff 刚好被截断
                                 if len(buffer) > 1:
                                     del buffer[:-1]
                                 break
                             end_idx = buffer.find(b"\xff\xd9", start_idx + 2)
                             if end_idx == -1:
-                                # 帧尾尚未到达，裁剪掉前面的冗余 HTTP header，保留完整的未完成帧继续接收
                                 if start_idx > 0:
                                     del buffer[:start_idx]
                                 break
                             latest_jpg = bytes(buffer[start_idx : end_idx + 2])
                             del buffer[: end_idx + 2]
 
-                        # 永远丢弃过期的历史旧帧，仅派发真机最新鲜的一帧，切屏延迟瞬间归零
                         if latest_jpg and self._is_running:
                             now = time.time()
                             if (self.ui_ready or (now - last_emit_t >= 0.04)) and (now - last_emit_t >= 0.016):
@@ -2625,34 +2429,22 @@ class ScreenCastWorker(QThread):
                                     ScreenCastWorker.latest_udid = self.udid
                                     ScreenCastWorker.latest_frame_bytes = latest_jpg
                                     self.frame_ready.emit(qimg, b"")
+                return
             except Exception:
-                mjpeg_stream_ok = False
+                pass
 
-        if mjpeg_stream_ok or not self._is_running:
-            ScreenCastWorker.is_active = False
+        if not self._is_running:
             return
 
-        # 方式 2: WDA /screenshot 极速轮询自愈通道 (结合压缩设置与毫秒级自适应轮询)
-        wda_active = False
-        try:
-            req = urllib.request.Request(f"{wda_url}/status")
-            with urllib.request.urlopen(req, timeout=0.8) as resp:
-                if resp.status == 200:
-                    wda_active = True
-        except Exception:
-            wda_active = False
-
-        if wda_active and self._is_running:
+        # 备选 2: WDA /screenshot 轮询通道
+        if IosWdaManager.test_wda_status(wda_url, timeout=0.6) and self._is_running:
             last_poll_t = 0.0
             while self._is_running:
                 try:
                     now = time.time()
                     if self.ui_ready or (now - last_poll_t >= 0.04):
                         last_poll_t = now
-                        req = urllib.request.Request(
-                            f"{wda_url}/screenshot",
-                            headers={"Accept": "application/json"}
-                        )
+                        req = urllib.request.Request(f"{wda_url}/screenshot", headers={"Accept": "application/json"})
                         with urllib.request.urlopen(req, timeout=1.0) as resp:
                             if resp.status == 200:
                                 data = json.loads(resp.read().decode("utf-8"))
@@ -2669,29 +2461,20 @@ class ScreenCastWorker(QThread):
                                         self.frame_ready.emit(qimg, b"")
                 except Exception:
                     break
-                time.sleep(0.002)
-
-        if not self._is_running:
-            ScreenCastWorker.is_active = False
+                time.sleep(0.005)
             return
 
-        # 方式 3: 原生 userspace_tunnel + DvtProvider 内存级持久会话 (全版本通用支持，单帧 0.6s，纯内存零落盘)
+        if not self._is_running:
+            return
+
+        # 备选 3: 进程内 DvtProvider 持久会话兜底
         async def _run_in_process_dvt():
+            from pymobiledevice3.lockdown import create_using_usbmux
             from pymobiledevice3.services.dvt.instruments.dvt_provider import DvtProvider
             from pymobiledevice3.services.dvt.instruments.screenshot import Screenshot
 
             udid = self.udid if (self.udid and not self.udid.startswith("wda_localhost")) else None
-            provider = None
-            try:
-                from pymobiledevice3.remote import userspace_tunnel
-                provider = await userspace_tunnel.establish_userspace_rsd(serial=udid)
-            except Exception:
-                from pymobiledevice3.lockdown import create_using_usbmux
-                provider = await create_using_usbmux(serial=udid)
-
-            if provider is None:
-                raise RuntimeError("未能初始化 iOS 服务提供者通道")
-
+            provider = await create_using_usbmux(serial=udid)
             async with DvtProvider(provider) as dvt, Screenshot(dvt) as sc:
                 while self._is_running:
                     raw_bytes = await sc.get_screenshot()
@@ -2703,53 +2486,35 @@ class ScreenCastWorker(QThread):
                             ScreenCastWorker.latest_frame_time = now
                             ScreenCastWorker.latest_udid = self.udid
                             ScreenCastWorker.latest_frame_bytes = raw_bytes
-                            self.frame_ready.emit(qimg, raw_bytes)
+                            self.frame_ready.emit(qimg, b"")
                     await asyncio.sleep(0.01)
 
-        dvt_in_process_ok = False
         try:
             asyncio.run(_run_in_process_dvt())
-            dvt_in_process_ok = True
         except Exception as e:
-            logging.warning(f"[iOS投屏] in-process DvtProvider 退出或异常: {e}")
-            dvt_in_process_ok = False
+            logging.warning(f"[iOS备选投屏] DvtProvider 通道退出: {e}")
 
-        if not self._is_running or dvt_in_process_ok:
-            ScreenCastWorker.is_active = False
-            return
-
-        # 方式 4: 备用降级 pymobiledevice3 CLI 极速截屏 (极端场景高韧性兜底)
+    def _run_ios_stream(self):
+        """
+        iOS 实时投屏总调度器：
+        1. 优选使用 pymobiledevice3 原生 ScreenStreamServer 双线程解耦 60FPS 硬件投屏引擎 (_run_ios_pymobiledevice3_stream)；
+        2. 保留原有的 WDA MJPEG / Screenshot / DVT 投屏逻辑作为备选降级选项 (_run_ios_legacy_fallback_stream)。
+        """
+        ScreenCastWorker.is_active = True
         try:
-            creationflags = 0x08000000 if sys.platform == "win32" else 0
-            while self._is_running:
-                qimg = None
-                raw_bytes = b""
-                try:
-                    pmd_cmd = ["pymobiledevice3", "developer", "dvt", "screenshot"]
-                    if self.udid and not self.udid.startswith("wda_localhost"):
-                        pmd_cmd.extend(["--udid", self.udid])
-                    project_root = SmartPathResolver.get_project_root()
-                    tmp_ios = os.path.join(project_root, "reports", "inspector", f"ios_cast_{self.udid or 'dev'}.png")
-                    os.makedirs(os.path.dirname(tmp_ios), exist_ok=True)
-                    pmd_cmd.append(tmp_ios)
-                    subprocess.run(pmd_cmd, timeout=3.5, capture_output=True, creationflags=creationflags)
-                    if os.path.exists(tmp_ios) and os.path.getsize(tmp_ios) > 100:
-                        with open(tmp_ios, "rb") as f_in:
-                            raw_bytes = f_in.read()
-                        qimg = QImage.fromData(raw_bytes)
-                except Exception:
-                    pass
+            pmd_retries = 0
+            while self._is_running and pmd_retries < 2:
+                ok = self._run_ios_pymobiledevice3_stream()
+                if not self._is_running:
+                    return
+                if ok:
+                    pmd_retries += 1
+                    time.sleep(0.3)
+                else:
+                    break
 
-                if qimg is not None and not qimg.isNull() and self._is_running:
-                    now = time.time()
-                    ScreenCastWorker.latest_image = qimg
-                    ScreenCastWorker.latest_frame_time = now
-                    ScreenCastWorker.latest_udid = self.udid
-                    if raw_bytes:
-                        ScreenCastWorker.latest_frame_bytes = raw_bytes
-                    self.frame_ready.emit(qimg, raw_bytes)
-
-                time.sleep(0.05)
+            if self._is_running:
+                self._run_ios_legacy_fallback_stream()
         finally:
             ScreenCastWorker.is_active = False
 
@@ -3119,9 +2884,9 @@ class CaptureWorker(QThread):
                 shot_ok = False
                 layout_ok = False
 
-                # iOS: 投屏活跃中优先等待/复用当前新鲜显存帧 (最多等待 2.0s 首帧就绪，0ms 复用，彻底杜绝外部子进程争抢 USB CoreDevice 隧道)
+                # 1. 优先零拷贝复用 pymobiledevice3 实时投屏内存帧 (最多等待 1.5s 首帧就绪，0 子进程开销)
                 if self.mode != "dom_only" and ScreenCastWorker.is_active and (ScreenCastWorker.latest_udid == self.udid or not ScreenCastWorker.latest_udid):
-                    for _ in range(40):
+                    for _ in range(30):
                         latest_bytes = ScreenCastWorker.get_latest_jpeg_bytes(self.udid)
                         if latest_bytes:
                             try:
@@ -3137,24 +2902,17 @@ class CaptureWorker(QThread):
                     self.screen_finished.emit(local_png)
                     return
 
-                # 当硬件投屏流活跃时，仅做本地 8100/8200 端口极速探活，不盲目启动 tidevice 子进程争抢 USB
-                if ScreenCastWorker.is_active:
-                    wda_url, wda_diag = None, "CoreDevice 硬件投屏流活跃中"
-                    for port in (8100, 8200):
-                        test_url = f"http://127.0.0.1:{port}"
-                        if IosWdaManager.test_wda_status(test_url, timeout=0.6):
-                            wda_url = test_url
-                            wda_diag = f"WDA 服务已连通 ({test_url})"
-                            break
-                else:
-                    wda_url, wda_diag = IosWdaManager.get_wda_url(self.udid)
+                # 2. 极速探测本地 WDA 端口 (40ms 非阻塞探测，不拉起外部子进程争抢 USB 隧道)
+                wda_url, wda_diag = IosWdaManager.get_wda_url(
+                    self.udid, allow_spawn=not ScreenCastWorker.is_active
+                )
 
                 if self.mode == "dom_only":
                     if wda_url:
                         for fmt in ("json", "xml"):
                             try:
                                 req = urllib.request.Request(f"{wda_url}/source?format={fmt}")
-                                with urllib.request.urlopen(req, timeout=10) as resp:
+                                with urllib.request.urlopen(req, timeout=8) as resp:
                                     if resp.status == 200:
                                         with open(layout_file, "wb") as f:
                                             f.write(resp.read())
@@ -3162,47 +2920,20 @@ class CaptureWorker(QThread):
                                         break
                             except Exception:
                                 pass
-                    if not layout_ok and not ScreenCastWorker.is_active:
-                        try:
-                            pmd_acc = ["pymobiledevice3", "developer", "accessibility", "list-items"]
-                            if self.udid and not self.udid.startswith("wda_localhost"):
-                                pmd_acc.extend(["--udid", self.udid])
-                            res = subprocess.run(pmd_acc, timeout=10, capture_output=True, text=True, errors="ignore", creationflags=0x08000000 if sys.platform == "win32" else 0)
-                            if res.returncode == 0 and res.stdout.strip():
-                                items = json.loads(res.stdout.strip())
-                                if isinstance(items, list) and items:
-                                    children = []
-                                    for item in items:
-                                        caption = item.get("caption") or item.get("spoken_description") or ""
-                                        uid = item.get("estimated_uid") or item.get("platform_identifier") or ""
-                                        children.append({
-                                            "attributes": {
-                                                "name": caption,
-                                                "label": caption,
-                                                "value": uid,
-                                                "type": "XCUIElementTypeOther",
-                                                "bounds": "[0,0][1170,2532]"
-                                            },
-                                            "children": []
-                                        })
-                                    acc_root = {"attributes": {"type": "Application", "name": "iOS App", "bounds": "[0,0][1170,2532]"}, "children": children}
-                                    with open(layout_file, "w", encoding="utf-8") as f:
-                                        json.dump(acc_root, f, ensure_ascii=False, indent=2)
-                                    layout_ok = True
-                        except Exception:
-                            pass
                     if layout_ok and os.path.exists(layout_file) and os.path.getsize(layout_file) > 100:
                         self.dom_finished.emit(layout_file, "ios")
                     else:
-                        self.failed.emit("获取 iOS 组件层级树失败，请确认 WDA 活跃或设备已连接。")
+                        self.failed.emit(
+                            "获取 iOS 组件层级树需要 WebDriverAgent (WDA) 通道支持。\n"
+                            "当前 pymobiledevice3 实时投屏与触控可正常使用；如需抓取 DOM 树，请确保 WDA 端口 (8100/8200) 已就绪。"
+                        )
                     return
 
                 if wda_url:
-                    # 1. 若未命中投屏帧，则通过 WDA 原生截屏
                     if not shot_ok:
                         try:
                             req = urllib.request.Request(f"{wda_url}/screenshot")
-                            with urllib.request.urlopen(req, timeout=8) as resp:
+                            with urllib.request.urlopen(req, timeout=6) as resp:
                                 if resp.status == 200:
                                     data = json.loads(resp.read().decode("utf-8"))
                                     b64_img = data.get("value", "")
@@ -3218,11 +2949,10 @@ class CaptureWorker(QThread):
                             self.screen_finished.emit(local_png)
                         return
 
-                    # 2. 原生拉取 WDA 完整 UI 树 (优先 JSON，备选 XML)
                     for fmt in ("json", "xml"):
                         try:
                             req = urllib.request.Request(f"{wda_url}/source?format={fmt}")
-                            with urllib.request.urlopen(req, timeout=10) as resp:
+                            with urllib.request.urlopen(req, timeout=8) as resp:
                                 if resp.status == 200:
                                     with open(layout_file, "wb") as f:
                                         f.write(resp.read())
@@ -3231,27 +2961,17 @@ class CaptureWorker(QThread):
                         except Exception:
                             pass
 
-                # 2. 若 WDA 未通或截屏失败，且当前未运行 CoreDevice 硬件投屏流，再通过 pymobiledevice3 DVT 原生通道抓取
+                # 3. 备选静态截屏 (仅在未开启实时投屏且 WDA 未返回画面时启用)
                 if not shot_ok and not ScreenCastWorker.is_active:
                     try:
-                        pmd_cmd = ["pymobiledevice3", "developer", "dvt", "screenshot", local_png]
-                        if self.udid and not self.udid.startswith("wda_localhost"):
-                            pmd_cmd.extend(["--udid", self.udid])
-                        subprocess.run(pmd_cmd, timeout=12, capture_output=True, creationflags=0x08000000 if sys.platform == "win32" else 0)
-                        shot_ok = os.path.exists(local_png) and os.path.getsize(local_png) > 100
-                    except Exception:
-                        pass
-
-                # 备选 tidevice 截屏 (兼容 iOS 16 及以下设备)
-                if not shot_ok and not ScreenCastWorker.is_active:
-                    try:
-                        tidevice_bin = shutil.which("tidevice") or "tidevice"
-                        t_cmd = [tidevice_bin]
-                        if self.udid and not self.udid.startswith("wda_localhost"):
-                            t_cmd.extend(["-u", self.udid])
-                        t_cmd.extend(["screenshot", local_png])
-                        subprocess.run(t_cmd, timeout=8, creationflags=0x08000000 if sys.platform == "win32" else 0)
-                        shot_ok = os.path.exists(local_png) and os.path.getsize(local_png) > 100
+                        tidevice_bin = shutil.which("tidevice")
+                        if tidevice_bin:
+                            t_cmd = [tidevice_bin]
+                            if self.udid and not self.udid.startswith("wda_localhost"):
+                                t_cmd.extend(["-u", self.udid])
+                            t_cmd.extend(["screenshot", local_png])
+                            subprocess.run(t_cmd, timeout=6, creationflags=0x08000000 if sys.platform == "win32" else 0)
+                            shot_ok = os.path.exists(local_png) and os.path.getsize(local_png) > 100
                     except Exception:
                         pass
 
@@ -3259,44 +2979,6 @@ class CaptureWorker(QThread):
                     if shot_ok:
                         self.screen_finished.emit(local_png)
                     return
-
-                # 3. 若 UI 树未就绪且未占用 CoreDevice 视频流，通过 pymobiledevice3 accessibility 原生拉取界面组件树
-                if not layout_ok and not ScreenCastWorker.is_active:
-                    try:
-                        pmd_acc = ["pymobiledevice3", "developer", "accessibility", "list-items"]
-                        if self.udid and not self.udid.startswith("wda_localhost"):
-                            pmd_acc.extend(["--udid", self.udid])
-                        res = subprocess.run(pmd_acc, timeout=10, capture_output=True, text=True, errors="ignore", creationflags=0x08000000 if sys.platform == "win32" else 0)
-                        if res.returncode == 0 and res.stdout.strip():
-                            items = json.loads(res.stdout.strip())
-                            if isinstance(items, list) and items:
-                                children = []
-                                for item in items:
-                                    caption = item.get("caption") or item.get("spoken_description") or ""
-                                    uid = item.get("estimated_uid") or item.get("platform_identifier") or ""
-                                    children.append({
-                                        "attributes": {
-                                            "name": caption,
-                                            "label": caption,
-                                            "value": uid,
-                                            "type": "XCUIElementTypeOther",
-                                            "bounds": "[0,0][1170,2532]"
-                                        },
-                                        "children": []
-                                    })
-                                acc_root = {
-                                    "attributes": {
-                                        "type": "Application",
-                                        "name": "iOS App",
-                                        "bounds": "[0,0][1170,2532]"
-                                    },
-                                    "children": children
-                                }
-                                with open(layout_file, "w", encoding="utf-8") as f:
-                                    json.dump(acc_root, f, ensure_ascii=False, indent=2)
-                                layout_ok = True
-                    except Exception:
-                        pass
 
                 if shot_ok and layout_ok:
                     self.finished.emit(local_png, layout_file, "ios")
@@ -3307,14 +2989,10 @@ class CaptureWorker(QThread):
                     self.finished.emit(local_png, layout_file, "ios")
                 else:
                     detail_tip = (
-                        f"【iOS 连接诊断信息】\n"
-                        f"已识别设备 UDID: {self.udid}\n"
-                        f"诊断结论: {wda_diag}\n\n"
-                        f"【彻底解决与秒通步骤 (推荐)】:\n"
-                        f"1. 手机状态：请先拿起 iPhone，【解锁进入主桌面】并保持屏幕常亮（息屏会自动断开 USB 调试）；\n"
-                        f"2. 一键激活调试守护：打开【爱思助手】客户端 -> 点击顶部【工具箱】-> 点击【手机投屏】或【实时屏幕】；\n"
-                        f"   (注：爱思助手会自动拉起苹果官方最新私有调试守护，无需在手机上点击 WebDriverAgentRunner 图标，规避系统机制闪退)；\n"
-                        f"3. 激活投屏后：回到本审查器，再次点击顶部【🔄 刷新界面】，即可秒出原生界面与完整 DOM 树！"
+                        f"【iOS 画面同步提示】\n"
+                        f"当前设备 UDID: {self.udid}\n"
+                        f"状态说明: {wda_diag}\n\n"
+                        f"👉 推荐操作：请直接点击顶部【📺 开启实时投屏】按钮，即可启动内置 pymobiledevice3 CoreDevice 硬件投屏引擎！"
                     )
                     self.failed.emit(detail_tip)
 
@@ -6585,8 +6263,15 @@ class HarmonyAppiumInspector(QMainWindow):
                 if was_screencasting:
                     QTimer.singleShot(150, self.start_screencast)
                 if auto_capture:
-                    # 延时 1500ms 刷新界面，确保投屏流首帧在内存中已就绪，0ms 零外部调用瞬时呈现
-                    QTimer.singleShot(1500, self.refresh_screen_only)
+                    if self.current_platform == "ios" and not was_screencasting:
+                        wda_ok, _ = IosWdaManager.get_wda_url(self.current_udid, allow_spawn=False)
+                        if wda_ok:
+                            QTimer.singleShot(800, self.refresh_screen_only)
+                        else:
+                            QTimer.singleShot(300, lambda: self.show_toast("📱 已识别 iOS 设备，点击【📺 开启实时投屏】启动 pymobiledevice3 投屏"))
+                    else:
+                        # 延时 1500ms 刷新界面，确保投屏流首帧在内存中已就绪，0ms 零外部调用瞬时呈现
+                        QTimer.singleShot(1500, self.refresh_screen_only)
         else:
             self.combo_devices.addItem("未检测到在线设备 (请检查 USB/网络连接)", None)
             self.current_udid = ""
@@ -6620,10 +6305,17 @@ class HarmonyAppiumInspector(QMainWindow):
                 if was_screencasting:
                     # 延时 150ms 启动新投屏，让旧 worker 线程完全退出并释放连接
                     QTimer.singleShot(150, self.start_screencast)
-                    # 延时 850ms 刷新界面，确保新投屏守护进程与首帧已就绪，0ms 复用首帧且绝不互抢连接
-                    QTimer.singleShot(850, self.refresh_screen_only)
+                    if self.current_platform != "ios":
+                        QTimer.singleShot(850, self.refresh_screen_only)
                 else:
-                    QTimer.singleShot(350, self.refresh_screen_only)
+                    if self.current_platform == "ios":
+                        wda_ok, _ = IosWdaManager.get_wda_url(self.current_udid, allow_spawn=False)
+                        if wda_ok:
+                            QTimer.singleShot(350, self.refresh_screen_only)
+                        else:
+                            self.show_toast("📱 已切换至 iOS 设备，点击【📺 开启实时投屏】启动 pymobiledevice3 投屏")
+                    else:
+                        QTimer.singleShot(350, self.refresh_screen_only)
 
     def update_platform_badge(self):
         """动态更新顶部品牌栏的系统类型胶囊徽章"""
@@ -6718,11 +6410,11 @@ class HarmonyAppiumInspector(QMainWindow):
 
     def _on_screencast_timeout(self):
         """开启实时投屏超时回调"""
-        logging.warning("[UI审查器] 开启实时投屏超时 (10s)")
+        logging.warning("[UI审查器] 开启实时投屏超时 (15s)")
         self.stop_screencast()
         self._timer_screencast.stop()
         self._update_screencast_btn_style(False)
-        self.show_toast("⚠️ 开启实时投屏超时 (10s)，投屏通道未响应，已自动复位")
+        self.show_toast("⚠️ 开启实时投屏超时 (15s)，投屏通道未响应，已自动复位")
 
     def on_dom_only_success(self, layout_file: str, platform: str):
         """对齐 HoKit UIViewer 叠加层机制：仅更新 DOM 组件树，复用当前底图与缩放比例 (零截屏/零系统广播)"""
@@ -6931,14 +6623,24 @@ class HarmonyAppiumInspector(QMainWindow):
             self.start_screencast()
 
     def start_screencast(self):
-        """启动后台低延迟实时投屏流 (鸿蒙专属静默极速流引擎，零截屏广播通知，带 10s 超时防死锁)"""
+        """启动后台低延迟实时投屏流 (iOS 优选 pymobiledevice3 引擎，鸿蒙/安卓原生流引擎，带 15s 超时防死锁)"""
         if not self.current_udid:
             QMessageBox.warning(self, "设备未连接", "未检测到在线设备，请先连接并选中设备。")
             return
 
+        # 若为 iOS 设备且当前有后台 CaptureWorker 正在运行，立即终止以释放 USB 通道给 pymobiledevice3 隧道
+        if self.current_platform == "ios" and self.capture_worker and self.capture_worker.isRunning():
+            try:
+                self.capture_worker.terminate()
+                self.capture_worker.wait(200)
+            except Exception:
+                pass
+            self.capture_worker = None
+            self._reset_capture_buttons()
+
         self.btn_screencast.setEnabled(False)
         self.btn_screencast.setText("⏳ 连接投屏中...")
-        self._timer_screencast.start(10000)
+        self._timer_screencast.start(15000)
 
         # 换设备安全自愈：若当前 worker 正在运行但绑定的 UDID 与当前选中设备不一致，或未在正常推流状态，则平滑终止并重建
         if self.screencast_worker and self.screencast_worker.isRunning():

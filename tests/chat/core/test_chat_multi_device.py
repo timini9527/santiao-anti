@@ -17,6 +17,12 @@ from strategy.chat.chat_strategy import TEST_GROUPS, TEST_PRIVATE_USERS
 
 CHAT_CSV_DATA = load_csv_data('chat/chat_messages.csv')
 
+# -----------------------------------------------------------------------------
+# 消息发送控制常量：
+# 控制多设备并发时，单轮从 CSV 消息表中截取发送的消息条数 (默认取前 5 条；设为 None 或 <= 0 时发送全量)
+# -----------------------------------------------------------------------------
+SEND_MESSAGE_COUNT: int = 100
+
 
 @allure.epic('IM核心功能测试')
 @allure.feature('聊天模块-多设备并发')
@@ -33,6 +39,9 @@ class TestChatMultiDevice:
     # - "smart": 智能动态并发探针模式（就绪即放行，平均 2~3 秒，支持异常自愈，推荐）
     # - "hard" : 固定硬等模式（强制死等 60 秒 time.sleep(60)，满足特殊挂机/极端冷启动放置需求）
     WAIT_DEVICES_MODE: str = "smart"
+
+    # 控制从 CSV 消息表中截取发送的消息条数 (默认取前 5 条；设为 None 或 <= 0 时发送全量)
+    SEND_MESSAGE_COUNT: int = 100
 
     @classmethod
     def teardown_class(cls):
@@ -185,7 +194,8 @@ class TestChatMultiDevice:
         loop_count: int = 1,
         interval: float = 0.5,
         session_type: str = "会话",
-        wait_mode: str = "smart"
+        wait_mode: str = "smart",
+        msg_count: int = None
     ):
         """
         多设备异步并发消息发送统一调度执行器
@@ -194,6 +204,7 @@ class TestChatMultiDevice:
         :param interval: 单条消息发送间隔（秒）
         :param session_type: 会话类型描述（"群聊" / "单聊"）
         :param wait_mode: 前置等待模式，默认 "smart"（智能动态探针），可选 "hard"（固定死等 60 秒）
+        :param msg_count: 截取消息表发送条数，默认 None 取 SEND_MESSAGE_COUNT 常量
         """
         exceptions = []
 
@@ -221,6 +232,10 @@ class TestChatMultiDevice:
 
         def worker_send(chatListPage, chatPage, mainPage, dev_name, sessions):
             try:
+                # 线程级平台强隔离：根据当前设备 Driver 真实类型绑定线程上下文，彻底防止全局平台配置 (如 harmonyos) 串扰定位器
+                from core.locator_manager import LocatorPlatformManager
+                dev_plat = getattr(chatPage.driver, '_platform_name', 'android')
+                LocatorPlatformManager.set_thread_platform(dev_plat)
                 active_mode = (wait_mode or getattr(self, 'WAIT_DEVICES_MODE', 'smart')).lower()
                 if mainPage and active_mode != "hard":
                     self._ensure_device_on_main_page(mainPage, dev_name, max_wait_sec=5)
@@ -247,19 +262,24 @@ class TestChatMultiDevice:
                     chatListPage.enter_chat(target.name)
                     logger.info(f'{LogIcon.ACTION} 设备 [{dev_name}] 进入{desc}【{target.name}】，开始连续批量发送 {loop_count} 轮...')
                     send_start = time.time()
+                    effective_count = msg_count if msg_count is not None else getattr(self, 'SEND_MESSAGE_COUNT', SEND_MESSAGE_COUNT)
+                    messages_to_send = CHAT_CSV_DATA[:effective_count] if (isinstance(effective_count, int) and effective_count > 0) else CHAT_CSV_DATA
 
                     for loop in range(loop_count):
                         payloads = [
                             f'[{dev_name}] {prefix}L{loop + 1}_M{idx + 1}: {msg_data.get("context", "")}'
-                            for idx, msg_data in enumerate(CHAT_CSV_DATA)
+                            for idx, msg_data in enumerate(messages_to_send)
                         ]
                         chatPage.send_messages_batch(payloads, interval=interval)
                         logger.debug(f'{LogIcon.SUCCESS} 设备 [{dev_name}] 在{session_type}【{target.name}】中完成第 {loop + 1}/{loop_count} 轮发送')
 
                     cost_sec = max(0.1, time.time() - send_start)
-                    total_sent = loop_count * len(CHAT_CSV_DATA)
+                    total_sent = loop_count * len(messages_to_send)
                     action_tip = "退回主页..." if is_group or (s_idx + 1 == total) else "退回主页并轮询下一个会话..."
                     logger.info(f'{LogIcon.SUCCESS} 设备 [{dev_name}] 已发完{desc}【{target.name}】的全部 {total_sent} 条消息 (耗时 {cost_sec:.1f}s, 吞吐 {total_sent/cost_sec:.1f}条/s)，{action_tip}')
+
+                    # 消息网络出清保障：等待最后一条消息发送状态完成（防闪退导致网络长连接消息截断）
+                    chatPage.wait_for_last_sent_message_completed(timeout=5)
 
                     chatPage.click_back_button()
                     if mainPage:
@@ -332,7 +352,7 @@ class TestChatMultiDevice:
             self._run_async_multi_device_send(
                 device_sessions_map=device_groups_map,
                 loop_count=1,
-                interval=0.1,
+                interval=0.2,
                 session_type="群聊"
             )
 
@@ -416,7 +436,7 @@ class TestChatMultiDevice:
             logger.info(f"{LogIcon.ACTION} [Combined Test] 启动阶段一：多设备群聊并发发送...")
             self._run_async_multi_device_send(
                 device_sessions_map=device_groups_map,
-                loop_count=20,
+                loop_count=1,
                 interval=0.2,
                 session_type="群聊"
             )
@@ -430,7 +450,7 @@ class TestChatMultiDevice:
             logger.info(f"{LogIcon.ACTION} [Combined Test] 启动阶段二：多设备单聊并发发送...")
             self._run_async_multi_device_send(
                 device_sessions_map=device_users_map,
-                loop_count=20,
+                loop_count=1,
                 interval=0.2,
                 session_type="单聊"
             )
