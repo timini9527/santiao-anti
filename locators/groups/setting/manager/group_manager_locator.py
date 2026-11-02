@@ -8,11 +8,9 @@ class GroupManagerLocator(CommonLocator):
     PACKAGE_ID = CommonLocator.PACKAGE_ID
 
     # 顶部导航
-    IV_BACK = CommonLocator.TOP_IV_BACK_BTN                                             # 返回按钮
-    TV_TITLE = CommonLocator.TOP_TV_TITLE                                               # 顶部标题
-    TITLE_TV = CommonLocator.TOP_BAR_TITLE_TV                                           # 标题
-    FB_BTN = CommonLocator.TOP_FB_ACTION_BTN                                            # 完成/确定
-    EDIT_TO_BTN = CommonLocator.TOP_BAR_EDIT_TO_BTN                                     # 编辑完成按钮
+    TOP_IV_BACK_BTN = CommonLocator.TOP_IV_BACK_BTN                                             # 返回按钮
+    TOP_TV_TITLE = CommonLocator.TOP_TV_TITLE                                               # 顶部标题
+    TOP_IV_ACTION_BTN = CommonLocator.TOP_IV_ACTION_BTN                                            # 完成/确定
 
 
     # 列表项

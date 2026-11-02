@@ -42,7 +42,7 @@ class ContactDetailPage(CommonPage):
     def click_iv_back(self) -> None:
         """ 资料页 - 点击返回按钮 """
         logger.info(f"{LogIcon.SETUP} 资料详情页 - 点击返回按钮")
-        self.click(ContactDetailLocator.IV_BACK)
+        self.click(ContactDetailLocator.TOP_IV_BACK_BTN)
 
     # 资料页 - 获取资料页原始昵称
     def get_raw_nickname(self) -> str:

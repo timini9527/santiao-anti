@@ -51,12 +51,12 @@ class ContactSelectPage(CommonPage):
     def click_fb_action(self) -> None:
         """ 点击确定按钮 """
         logger.info(f"{LogIcon.SUCCESS} 好友选择页 - 点击确认")
-        self.click(ContactSelectLocator.FB_ACTION)
+        self.click(ContactSelectLocator.TOP_IV_ACTION_BTN)
 
     # 好友选择页 - 获取页面标题
     def get_page_title(self) -> str:
         """ 获取页面标题 """
-        title = self.get_attribute(ContactSelectLocator.TITLE_TEXT, "text")
+        title = self.get_attribute(ContactSelectLocator.TOP_TV_TITLE, "text")
         logger.info(f"{LogIcon.ACTION} 🏷️ [Action - ContactSelect] 好友选择页 - 当前标题: {title}")
         return title
 
@@ -64,7 +64,7 @@ class ContactSelectPage(CommonPage):
     def click_back(self) -> None:
         """ 点击返回按钮 """
         logger.info(f"{LogIcon.ACTION} 好友选择页 - 点击返回")
-        self.click(ContactSelectLocator.BACK_BUTTON)
+        self.click(ContactSelectLocator.TOP_IV_BACK_BTN)
     
     # 好友选择页 - 等待好友选择页面加载
     def wait_for_contact_select_page_load(self, timeout: int = 10) -> bool:

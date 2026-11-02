@@ -24,19 +24,19 @@ class GroupAvatarPage(GroupSettingPage):
     def click_back_to_group_setting(self) -> None:
         """   群头像-点击左上角返回键   """
         logger.info(f"{LogIcon.ACTION} 返回到群设置页面")
-        self.click(GroupAvatarLocator.IV_BACK)
+        self.click(GroupAvatarLocator.TOP_IV_BACK_BTN)
 
     # 群头像-点击相册内部左上角返回按钮
     def click_back_to_group_avatar_page(self) -> None:
         """   群头像-点击相册内部左上角返回按钮   """
         logger.info(f"{LogIcon.ACTION} 返回到群头像页面")
-        self.click(GroupAvatarLocator.PS_IV_LEFT_BACK)
+        self.click(GroupAvatarLocator.TOP_IV_BACK_BTN)
 
     # 群头像-点击右上角“完成”按钮（确认）
     def click_confirm_change_group_avatar(self) -> None:
         """   群头像-点击右上角“完成”按钮，确认修改群头像   """
         logger.info(f"{LogIcon.SUCCESS} 点击右上角【完成】确认群头像修改")
-        self.click(GroupAvatarLocator.FB_ACTION, timeout=2)
+        self.click(GroupAvatarLocator.TOP_IV_ACTION_BTN, timeout=2)
 
     # 群头像-获取当前群头像的图片哈希值
     def get_group_avatar_hash(self) -> str:

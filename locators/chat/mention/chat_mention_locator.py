@@ -17,9 +17,9 @@ class ChatMentionLocator(CommonLocator):
     # =========================================================================
     # 1. 顶部导航栏与通用控制
     # =========================================================================
-    BACK_BTN = CommonLocator.TOP_BAR_BACK_BTN                                            # 顶部返回/取消按钮
-    TV_TITLE = CommonLocator.TOP_TV_TITLE                                                # 顶部标题 (如 "选择提醒的人")
-    CONFIRM_BTN = CommonLocator.TOP_BAR_EDIT_TO_BTN                                      # 右上角确认/完成按钮 (若有多选)
+    TOP_IV_BACK_BTN = CommonLocator.TOP_IV_BACK_BTN                                            # 顶部返回/取消按钮
+    TOP_TV_TITLE = CommonLocator.TOP_TV_TITLE                                                # 顶部标题 (如 "选择提醒的人")
+    TOP_IV_ACTION_BTN = CommonLocator.TOP_IV_ACTION_BTN                                      # 右上角确认/完成按钮 (若有多选)
 
     # 搜索框
     SEARCH_EDIT_ID = f"{PACKAGE_ID}/search_edit_text"

@@ -15,7 +15,7 @@ class ChatEmojiManagePage(ChatEmojiPanelBase):
     def click_back_btn(self) -> None:
         """ 点击返回按钮 """
         logger.info(f"{LogIcon.ACTION} 【Action】manage - 准备点击返回按钮...")
-        self.click(ChatEmojiLocator.COLLECT_BACK_BTN)
+        self.click(ChatEmojiLocator.TOP_IV_BACK_BTN)
         logger.info(f"{LogIcon.SUCCESS} 【Action】manage - 点击返回按钮完成")
     
     # 点击右上角 整理/取消 按钮

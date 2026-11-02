@@ -38,13 +38,13 @@ class ChatMentionPage(BasePage):
     def click_back_button(self) -> None:
         """ 点击顶部返回按钮取消@选人 """
         logger.info(f"{LogIcon.ACTION} 点击顶部返回按钮")
-        self.click(ChatMentionLocator.BACK_BTN)
+        self.click(ChatMentionLocator.TOP_IV_BACK_BTN)
 
     # 顶部导航栏 - 获取页面标题文本
     def get_title_text(self, timeout: int = 2) -> str:
         """ 获取选人页面顶部标题文本 """
         logger.info(f"{LogIcon.FIND} 📖 [Action-Mention] 获取选人页面顶部标题文本")
-        title = self.get_attribute(ChatMentionLocator.TV_TITLE, "text", timeout=timeout, raise_exception=False)
+        title = self.get_attribute(ChatMentionLocator.TOP_TV_TITLE, "text", timeout=timeout, raise_exception=False)
         logger.info(f"{LogIcon.SUCCESS} 获取页面标题: '{title}'")
         return title or ""
 
@@ -52,7 +52,7 @@ class ChatMentionPage(BasePage):
     def click_confirm_btn(self) -> None:
         """ 点击右上角确认/完成按钮 """
         logger.info(f"{LogIcon.SETUP} 点击右上角确认/完成按钮")
-        self.click(ChatMentionLocator.CONFIRM_BTN)
+        self.click(ChatMentionLocator.TOP_IV_ACTION_BTN)
 
     # 检查【@所有人】选项是否可见
     def is_at_all_displayed(self, timeout: int = 2) -> bool:

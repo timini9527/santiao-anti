@@ -6,9 +6,9 @@ class ContactTagGroupLocator:
     PACKAGE_ID = CommonLocator.PACKAGE_ID
 
     # 1. 顶部导航栏
-    IV_BACK = CommonLocator.TOP_IV_BACK_BTN                                 # 返回按钮
-    TV_TITLE = CommonLocator.TOP_TV_TITLE                                   # 页面标题 ("标签" / "通讯录分组")
-    TV_ACTION_SAVE = CommonLocator.TOP_BAR_EDIT_TO_BTN                      # 右上角保存/完成按钮
+    TOP_IV_BACK_BTN = CommonLocator.TOP_IV_BACK_BTN                                 # 返回按钮
+    TOP_TV_TITLE = CommonLocator.TOP_TV_TITLE                                   # 页面标题 ("标签" / "通讯录分组")
+    TOP_IV_ACTION_BTN = CommonLocator.TOP_IV_ACTION_BTN                      # 右上角保存/完成按钮
 
     # 首页
     ADD_SUBGROUP = (AppiumBy.ID, f"{PACKAGE_ID}/add_subGroup")              # 添加分组

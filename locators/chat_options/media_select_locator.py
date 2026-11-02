@@ -12,8 +12,8 @@ class MediaSelectLocator:
     # ==================================================================================================================
     # 顶部导航栏
     # ==================================================================================================================
-    TOP_BACK_BUTTON         = (AppiumBy.ID, f'{PACKAGE_ID}/ps_iv_left_back')    # 返回按钮
-    TOP_TITLE_TEXT          = (AppiumBy.ID, f'{PACKAGE_ID}/ps_tv_title')        # 标题文本（点击可切换文件夹）
+    TOP_IV_BACK_BTN         = CommonLocator.TOP_IV_BACK_BTN                     # 返回按钮
+    TOP_TV_TITLE            = CommonLocator.TOP_TV_TITLE                        # 标题文本（点击可切换文件夹）
     TOP_CATEGORY_FIRST_IMAGE = (AppiumBy.ID, f'{PACKAGE_ID}/first_image')       # 分类列表：第一张预览缩略图
     TOP_CATEGORY_TEXT       = (AppiumBy.ID, f'{PACKAGE_ID}/tv_folder_name')     # 分类列表：目录名称
 

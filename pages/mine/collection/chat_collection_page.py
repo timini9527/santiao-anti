@@ -243,7 +243,7 @@ class ChatCollectionPage(ChatPage):
     # 聊天收藏-获取面板标题
     def get_send_collection_panel_title(self) -> str:
         """ 聊天收藏-获取面板标题 """
-        title = self.get_attribute(CollectionLocator.TV_TITLE, 'text')
+        title = self.get_attribute(CollectionLocator.TOP_TV_TITLE, 'text')
         logger.info(f"{LogIcon.FIND} 获取发送收藏面板标题: {title}")
         return title
 

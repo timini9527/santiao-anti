@@ -13,7 +13,7 @@ class AddFriendPage(BasePage):
     # 添加朋友 - 等待添加朋友页面出现
     def wait_for_add_friend_page(self, timeout: int = 10, raise_exception: bool = False) -> bool:
         """ 添加朋友 - 等待添加朋友页面出现 """
-        isExit = self.wait_for_element_text(AddFriendLocator.TV_TITLE, expected_text="添加朋友", timeout=timeout, raise_exception=raise_exception)
+        isExit = self.wait_for_element_text(AddFriendLocator.TOP_TV_TITLE, expected_text="添加朋友", timeout=timeout, raise_exception=raise_exception)
         if isExit:
             logger.info(f"{LogIcon.WAIT} 等待添加朋友页面")
         else:
@@ -24,13 +24,13 @@ class AddFriendPage(BasePage):
     def click_back(self) -> None:
         """ 添加朋友 - 点击返回 """
         logger.info(f"{LogIcon.ACTION} 添加朋友页 - 点击返回")
-        self.click(AddFriendLocator.IV_BACK)
+        self.click(AddFriendLocator.TOP_IV_BACK_BTN)
     
     # 添加朋友 - 点击完成按钮
     def click_finish(self) -> None:
         """ 添加朋友 - 点击完成按钮 """
         logger.info(f"{LogIcon.ACTION} 添加朋友页 - 点击完成按钮")
-        self.click(AddFriendLocator.FB_ACTION)
+        self.click(AddFriendLocator.TOP_IV_ACTION_BTN)
 
 
     # =================================================================================
@@ -167,7 +167,7 @@ class AddFriendPage(BasePage):
     def wait_for_send_friend_verify_page(self, timeout: int = 10) -> bool:
         """ 添加朋友 - 等待发送朋友验证页面出现 """
         logger.info(f"{LogIcon.WAIT} 等待发送朋友验证页面出现 (超时: {timeout}s)")
-        isExit = self.get_attribute(AddFriendLocator.TV_TITLE, "text", timeout=timeout) == "朋友验证"
+        isExit = self.get_attribute(AddFriendLocator.TOP_TV_TITLE, "text", timeout=timeout) == "朋友验证"
         if isExit:
             logger.info(f"{LogIcon.WAIT} 等待发送朋友验证页面成功")
         else:

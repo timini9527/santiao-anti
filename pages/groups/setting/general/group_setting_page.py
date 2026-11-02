@@ -27,13 +27,13 @@ class GroupSettingPage(BasePage):
     def click_iv_back_button(self) -> None:
         """通用点击返回按钮"""
         logger.info(f"{LogIcon.ACTION} 通用 Common 点击返回按钮")
-        self.click(GroupSettingLocator.IV_BACK_BUTTON)
+        self.click(GroupSettingLocator.TOP_IV_BACK_BTN)
 
     # 顶部栏 - 点击顶部返回按钮
     def click_back_button(self) -> None:
         """点击顶部返回按钮"""
         logger.info(f"{LogIcon.ACTION} 点击顶部返回按钮")
-        self.click(GroupSettingLocator.BACK)
+        self.click(GroupSettingLocator.TOP_IV_BACK_BTN)
 
     # 顶部栏 - 点击顶部群二维码
     def click_group_qr_code(self) -> None:
@@ -495,7 +495,7 @@ class GroupSettingPage(BasePage):
     def wait_for_notice_dialog_load(self, timeout: int = 5) -> bool:
         """等待群公告编辑页加载完成"""
         logger.info(f"{LogIcon.WAIT} 等待群公告编辑页加载 (超时: {timeout}s)")
-        res = self.get_attribute(GroupSettingLocator.TV_TITLE, 'text') == '群公告'
+        res = self.get_attribute(GroupSettingLocator.TOP_TV_TITLE, 'text') == '群公告'
         logger.info(f"{LogIcon.SUCCESS} 群公告页面加载状态: {res}")
         return res
 

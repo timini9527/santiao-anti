@@ -16,17 +16,17 @@ class AvatarLocator:
     # 每一张图片元素
     IMAGE_ID = (AppiumBy.ID, f'{PACKAGE_ID}/ivPicture')
     # 左上角返回
-    PS_LEFT_BACK_ID = (AppiumBy.ID, f'{PACKAGE_ID}/ps_iv_left_back')
+    PS_LEFT_BACK_ID = CommonLocator.TOP_IV_BACK_BTN
     # 右上角取消
     PS_RIGHT_CANCEL_ID = (AppiumBy.ID, f'{PACKAGE_ID}/ps_tv_cancel')
     # 中间标题 可以切换相册
-    PS_MIDDLE_TITLE_ID = (AppiumBy.ID, f'{PACKAGE_ID}/ps_tv_title')
+    PS_MIDDLE_TITLE_ID = CommonLocator.TOP_TV_TITLE
     # 左上角 转到上一层级
-    LEFT_BACK_LEVEL = (AppiumBy.ACCESSIBILITY_ID, '转到上一层级')
+    LEFT_BACK_LEVEL = CommonLocator.TOP_IV_BACK_BTN
     # 右上角 剪裁
     RIGHT_CROP = (AppiumBy.ID, f'{PACKAGE_ID}/menu_crop')
     # 中间标题 移动和缩放
-    MIDDLE_TITLE = (AppiumBy.ID, f'{PACKAGE_ID}/toolbar_title')
+    MIDDLE_TITLE = CommonLocator.TOP_TV_TITLE
 
 
     # 保存图片

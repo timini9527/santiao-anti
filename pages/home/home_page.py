@@ -648,7 +648,7 @@ class HomePage(BasePage):
     def is_on_friend_page(self, timeout: int = 1, quiet: bool = True, raise_exception: bool = True) -> bool:
         """ 判断当前是否已处于好友/通讯录页面（quiet=True 时静默判断不打印 Log） """
         try:
-            is_exist = self.get_attribute(HomeLocator.TV_TITLE, 'text', timeout=timeout, raise_exception=raise_exception) == '好友'
+            is_exist = self.get_attribute(HomeLocator.MIDDLE_TITLE, 'text', timeout=timeout, raise_exception=raise_exception) == '好友'
         except Exception:
             is_exist = False
 

@@ -96,7 +96,7 @@ class AvatarPage(PersonalPage, CommonPage):
     def click_back_album(self) -> None:
         """ 头像 - 点击从相册返回 """
         logger.info(f"{LogIcon.SETUP} 点击从相册返回")
-        self.click(AvatarLocator.PS_LEFT_BACK_ID)
+        self.click(AvatarLocator.TOP_IV_BACK_BTN)
 
     # 头像 - 点击从相册取消
     def click_cancel_album(self) -> None:
@@ -107,7 +107,7 @@ class AvatarPage(PersonalPage, CommonPage):
     # 头像 - 获取相册标题判断是否显示
     def get_album_title(self) -> bool:
         """ 头像 - 获取相册标题判断是否显示 """
-        title = self.get_attribute(AvatarLocator.PS_MIDDLE_TITLE_ID, 'text')
+        title = self.get_attribute(AvatarLocator.TOP_TV_TITLE, 'text')
         if title:
             logger.info(f"{LogIcon.CAMERA} 获取相册标题: {title}")
             return True
@@ -117,7 +117,7 @@ class AvatarPage(PersonalPage, CommonPage):
     def click_selected_album_back(self) -> None:
         """ 头像 - 选中照片后点击返回上一级 """
         logger.info(f"{LogIcon.SETUP} 选中照片后点击返回上一级")
-        self.click(AvatarLocator.LEFT_BACK_LEVEL)
+        self.click(AvatarLocator.TOP_IV_BACK_BTN)
 
     # 头像 - 选中照片后点击剪裁
     def click_selected_crop(self) -> None:

@@ -93,13 +93,13 @@ class GroupBotPage(BasePage):
     def click_back(self) -> None:
         """点击左上角返回图标"""
         logger.info(f"{LogIcon.SETUP} 点击【返回】")
-        self.click(GroupBotLocator.IV_BACK)
+        self.click(GroupBotLocator.TOP_IV_BACK_BTN)
 
     # 点击右上角保存
     def click_save(self) -> None:
         """点击右上角保存"""
         logger.info(f"{LogIcon.SETUP} 点击【保存】")
-        self.click(GroupBotLocator.SAVE_BTN)
+        self.click(GroupBotLocator.TOP_IV_ACTION_BTN)
 
     # 点击弹窗确认按钮
     def click_confirm(self) -> None:

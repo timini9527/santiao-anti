@@ -17,9 +17,9 @@ class ChatEmojiLocator(ChatLocator):
     # 表情包商店 0 - new UiSelector().resourceId("com.santiaotalk.im:id/emoji_tab_image").instance(0)
     # =======================================================
     EMOJI_STORE = (AppiumBy.ANDROID_UIAUTOMATOR, f'new UiSelector().resourceId("{EMOJI_TOP_MENU_ITEM_ID}").instance(0)')
-    EMOJI_BACK = CommonLocator.TOP_IV_BACK_BTN           # 左上角返回按钮
-    EMOJI_SETTING = CommonLocator.TOP_FB_ACTION_BTN      # 右上角设置
-    EMOJI_STORE_NAME = CommonLocator.TOP_TV_TITLE        # 表情包商店名称
+    TOP_IV_BACK_BTN = CommonLocator.TOP_IV_BACK_BTN           # 左上角返回按钮
+    TOP_IV_ACTION_BTN = CommonLocator.TOP_IV_ACTION_BTN       # 右上角设置
+    TOP_TV_TITLE = CommonLocator.TOP_TV_TITLE                 # 表情包商店名称
     # 热门排行
     RANK_HOT = (AppiumBy.ID, f'{PACKAGE_ID}/rank_hot')
     EMOJI_PACKAGE_ID = f'{PACKAGE_ID}/emoji_img'         # 表情包图片
@@ -54,7 +54,6 @@ class ChatEmojiLocator(ChatLocator):
     COLLECT_RECYCLER = (AppiumBy.ID, f'{PACKAGE_ID}/collect_recycler')                  # 收藏表情包列表框
     # 管理表情包内部
     COLLECT_LIST_CONTAINER = (AppiumBy.ID, f'{PACKAGE_ID}/collect_list')                # 收藏表情包列表容器
-    COLLECT_BACK_BTN = CommonLocator.TOP_BACK_BTN                                       # 左上角返回按钮
     COLLECT_RIGHT_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/right_text')                       # 右上角整理和取消
     COLLECT_MOVE_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/tv_move')                           # 移动按钮
     COLLECT_DEL_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/tv_delete')                          # 删除按钮

@@ -289,16 +289,16 @@ class IosWdaManager:
     @classmethod
     def get_wda_url(cls, udid: str = "", allow_spawn: bool = False) -> Tuple[Optional[str], str]:
         """
-        获取当前可用的 WDA 服务地址 (默认仅做 40ms 极速本地端口探活，绝不启动外部子进程干扰 pymobiledevice3 隧道)
+        获取当前可用的 WDA 服务地址 (优先 40ms 极速本地端口探活；按需后台建立 usbmux 8100 端口映射)
         返回值: (有效_wda_url, 诊断状态描述)
         """
         for port in (8100, 8200):
             test_url = f"http://127.0.0.1:{port}"
-            if cls.test_wda_status(test_url, timeout=0.8):
+            if cls.test_wda_status(test_url, timeout=0.6):
                 cls._active_wda_url = test_url
                 return test_url, f"WDA 服务已连通 ({test_url})"
 
-        if allow_spawn and not ScreenCastWorker.is_active and udid and not udid.startswith("wda_localhost"):
+        if allow_spawn and udid and not udid.startswith("wda_localhost"):
             tidevice_bin = shutil.which("tidevice")
             if tidevice_bin:
                 try:
@@ -311,8 +311,8 @@ class IosWdaManager:
                             stderr=subprocess.DEVNULL,
                             creationflags=creationflags
                         )
-                        time.sleep(0.4)
-                    if cls.test_wda_status("http://127.0.0.1:8100", timeout=1.0):
+                        time.sleep(0.35)
+                    if cls.test_wda_status("http://127.0.0.1:8100", timeout=0.8):
                         cls._active_wda_url = "http://127.0.0.1:8100"
                         return "http://127.0.0.1:8100", "已通过 tidevice relay 映射 8100 端口"
                 except Exception:
@@ -1237,9 +1237,10 @@ class ScreenCastWorker(QThread):
         # 严格校验：若指定目标 UDID 且与缓存不符，坚决返回 None 杜绝脏画面
         if target_udid and cls.latest_udid and cls.latest_udid != target_udid:
             return None
-        if cls.latest_frame_bytes and (time.time() - cls.latest_frame_time < 3.0):
+        max_age = 60.0 if cls.is_active else 3.0
+        if cls.latest_frame_bytes and (time.time() - cls.latest_frame_time < max_age):
             return cls.latest_frame_bytes
-        if cls.latest_image and not cls.latest_image.isNull() and (time.time() - cls.latest_frame_time < 3.0):
+        if cls.latest_image and not cls.latest_image.isNull() and (cls.is_active or (time.time() - cls.latest_frame_time < max_age)):
             try:
                 buf = QByteArray()
                 buffer_io = QBuffer(buf)
@@ -1551,6 +1552,116 @@ class ScreenCastWorker(QThread):
                     pass
 
         return None
+
+    @classmethod
+    def capture_single_ios_frame(cls, udid: str = "", timeout: float = 4.5) -> Optional[bytes]:
+        """
+        iOS 真机单帧静默截屏能力 (iOS 17+ CoreDevice 原生 DisplayService):
+        1. 优先复用当前活跃实时投屏流中的内存新鲜帧 (耗时 0ms，零外部调用)；
+        2. 若未开启投屏，基于 UserspaceRsdTunnel + ScreenStreamServer 单次极速握手抓取首帧 (耗时仅 ~0.5s)，
+           抓取完毕立即释放会话与隧道，杜绝占用 USB 通道。
+        """
+        import asyncio
+        import contextlib
+        import time
+
+        # 1. 优先复用内存最新新鲜帧 (耗时 0ms)
+        if cls.latest_image is not None and not cls.latest_image.isNull():
+            if not udid or not cls.latest_udid or cls.latest_udid == udid:
+                now = time.time()
+                if cls.is_active or (now - cls.latest_frame_time < 5.0):
+                    return cls.get_latest_jpeg_bytes(udid)
+
+        target_udid = udid if (udid and not udid.startswith("wda_localhost")) else None
+
+        # 2. 进程内极速单帧握手
+        async def _capture_one_frame_async() -> Optional[bytes]:
+            from pymobiledevice3.remote.userspace_tunnel import UserspaceRsdTunnel
+            from pymobiledevice3.remote.core_device.screen_stream import ScreenStreamServer, _SubState
+            from pymobiledevice3.remote.core_device.display_service import DisplayService
+            import av
+
+            owned_tunnel = UserspaceRsdTunnel(serial=target_udid, autopair=True)
+            rsd = None
+            server = None
+            try:
+                rsd = await asyncio.wait_for(owned_tunnel.aopen(), timeout=timeout)
+                server = ScreenStreamServer(rsd=rsd, audio_default_on=False, motion_idr=False, rctl_enabled=True)
+                sub_q: asyncio.Queue[bytes] = asyncio.Queue(maxsize=10)
+                sub_state = _SubState()
+                sub_state.needs_key = True
+                server._subscribers[sub_q] = sub_state
+
+                async def _silent_audio(transport):
+                    while True:
+                        try:
+                            pkt = await transport.recv(65535)
+                            if not pkt:
+                                break
+                        except Exception:
+                            break
+                server._audio_udp_recv = _silent_audio
+
+                await asyncio.wait_for(server._eager_stream_start(), timeout=timeout)
+                msg = await asyncio.wait_for(sub_q.get(), timeout=timeout)
+                if not msg or len(msg) < 6:
+                    return None
+
+                au_data = msg[5:]
+                nals = []
+                pos = 0
+                data_len = len(au_data)
+                while pos + 4 <= data_len:
+                    nal_len = int.from_bytes(au_data[pos : pos + 4], "big")
+                    pos += 4
+                    if nal_len <= 0 or pos + nal_len > data_len:
+                        break
+                    nals.append(au_data[pos : pos + nal_len])
+                    pos += nal_len
+
+                vps, sps, pps = server._vps_nal, server._sps_nal, server._pps_nal
+                if vps and sps and pps:
+                    nals = [vps, sps, pps] + nals
+
+                annexb_bytes = b"".join(b"\x00\x00\x00\x01" + n for n in nals)
+                codec = av.CodecContext.create("hevc", "r")
+                with contextlib.suppress(Exception):
+                    codec.options = {"flags": "low_delay"}
+                frames = codec.decode(av.Packet(annexb_bytes))
+                if frames:
+                    f = frames[-1]
+                    bgr = f.reformat(format="bgra")
+                    plane = bgr.planes[0]
+                    qimg = QImage(bytes(plane), bgr.width, bgr.height, plane.line_size, QImage.Format.Format_RGB32).copy()
+                    buf = QByteArray()
+                    buffer_io = QBuffer(buf)
+                    buffer_io.open(QBuffer.OpenModeFlag.WriteOnly)
+                    qimg.save(buffer_io, "PNG")
+                    cls.latest_image = qimg
+                    cls.latest_frame_bytes = bytes(buf)
+                    cls.latest_frame_time = time.time()
+                    cls.latest_udid = udid
+                    return bytes(buf)
+                return None
+            except Exception as e:
+                logging.debug(f"[iOS单帧截屏] 异常: {e}")
+                return None
+            finally:
+                if server is not None:
+                    with contextlib.suppress(Exception):
+                        async with server._stream_lock:
+                            await asyncio.wait_for(server._stop_active_stream(), timeout=1.0)
+                if rsd is not None:
+                    with contextlib.suppress(Exception):
+                        await asyncio.wait_for(DisplayService.stop_all_streams(rsd), timeout=1.5)
+                if owned_tunnel is not None:
+                    with contextlib.suppress(Exception):
+                        await asyncio.wait_for(owned_tunnel.aclose(), timeout=1.5)
+
+        try:
+            return asyncio.run(_capture_one_frame_async())
+        except Exception:
+            return None
 
     def _run_harmony_scrcpy_stream(self) -> bool:
         """
@@ -2059,12 +2170,12 @@ class ScreenCastWorker(QThread):
                             if newest_frame.width > 720:
                                 out_w = (newest_frame.width // 2) & ~1
                                 out_h = (newest_frame.height // 2) & ~1
-                                bgr_frame = newest_frame.reformat(width=out_w, height=out_h, format="bgr0")
+                                bgr_frame = newest_frame.reformat(width=out_w, height=out_h, format="bgra")
                             else:
-                                bgr_frame = newest_frame.reformat(format="bgr0")
-                            bgra_arr = bgr_frame.to_ndarray()
-                            h, w = bgr_frame.height, bgr_frame.width
-                            qimg = QImage(bgra_arr.data, w, h, 4 * w, QImage.Format.Format_RGB32).copy()
+                                bgr_frame = newest_frame.reformat(format="bgra")
+                            plane = bgr_frame.planes[0]
+                            w, h = bgr_frame.width, bgr_frame.height
+                            qimg = QImage(bytes(plane), w, h, plane.line_size, QImage.Format.Format_RGB32).copy()
                             ScreenCastWorker.latest_image = qimg
                             ScreenCastWorker.latest_frame_bytes = None
                             ScreenCastWorker.latest_frame_time = now
@@ -2073,7 +2184,8 @@ class ScreenCastWorker(QThread):
                                 emitted_any_frame = True
                                 self.state_changed.emit(True, "投屏已连接")
                             self.frame_ready.emit(qimg, b"")
-                        except Exception:
+                        except Exception as dec_err:
+                            logging.debug(f"[iOS投屏] 帧转换异常: {dec_err}")
                             self.ui_ready = True
 
         async def _pymobiledevice3_session() -> bool:
@@ -2502,16 +2614,19 @@ class ScreenCastWorker(QThread):
         """
         ScreenCastWorker.is_active = True
         try:
-            pmd_retries = 0
-            while self._is_running and pmd_retries < 2:
-                ok = self._run_ios_pymobiledevice3_stream()
-                if not self._is_running:
-                    return
-                if ok:
-                    pmd_retries += 1
+            while self._is_running:
+                try:
+                    ok = self._run_ios_pymobiledevice3_stream()
+                    if not self._is_running:
+                        return
+                    if not ok:
+                        # 当前设备不支持 CoreDevice 硬件视频流 (例如 iOS 16 及以下固件)，进入备选通道
+                        break
+                except Exception as e:
+                    logging.warning(f"[iOS投屏] pymobiledevice3 投屏通道异常重试: {e}")
+
+                if self._is_running:
                     time.sleep(0.3)
-                else:
-                    break
 
             if self._is_running:
                 self._run_ios_legacy_fallback_stream()
@@ -2884,9 +2999,12 @@ class CaptureWorker(QThread):
                 shot_ok = False
                 layout_ok = False
 
-                # 1. 优先零拷贝复用 pymobiledevice3 实时投屏内存帧 (最多等待 1.5s 首帧就绪，0 子进程开销)
-                if self.mode != "dom_only" and ScreenCastWorker.is_active and (ScreenCastWorker.latest_udid == self.udid or not ScreenCastWorker.latest_udid):
-                    for _ in range(30):
+                # 1. 优先零拷贝复用 pymobiledevice3 实时投屏内存帧 (兼容隧道首次握手，最多等待 8.0s 首帧就绪，就绪后 0ms 瞬时返回)
+                if self.mode != "dom_only" and (
+                    ScreenCastWorker.is_active
+                    or (ScreenCastWorker.latest_image is not None and ScreenCastWorker.latest_udid == self.udid)
+                ):
+                    for _ in range(160):
                         latest_bytes = ScreenCastWorker.get_latest_jpeg_bytes(self.udid)
                         if latest_bytes:
                             try:
@@ -2896,16 +3014,43 @@ class CaptureWorker(QThread):
                                 break
                             except Exception:
                                 pass
+                        if not ScreenCastWorker.is_active:
+                            break
                         time.sleep(0.05)
 
                 if self.mode == "screen_only" and shot_ok:
                     self.screen_finished.emit(local_png)
                     return
 
-                # 2. 极速探测本地 WDA 端口 (40ms 非阻塞探测，不拉起外部子进程争抢 USB 隧道)
-                wda_url, wda_diag = IosWdaManager.get_wda_url(
-                    self.udid, allow_spawn=not ScreenCastWorker.is_active
-                )
+                # 2. 若尚未获取画面（未开实时投屏或投屏尚未出帧），优先使用 CoreDevice 硬件级单帧截屏能力极速获取现场画面
+                if not shot_ok and self.mode != "dom_only":
+                    single_bytes = ScreenCastWorker.capture_single_ios_frame(self.udid, timeout=4.0)
+                    if single_bytes:
+                        try:
+                            with open(local_png, "wb") as f_out:
+                                f_out.write(single_bytes)
+                            shot_ok = True
+                        except Exception:
+                            pass
+
+                # 2.1 工业级坚固兜底：若硬件流因端口冲突或瞬时超时未返回，立即启用 Apple DVT 原生开发者通道截屏
+                if not shot_ok and self.mode != "dom_only":
+                    try:
+                        creationflags = 0x08000000 if sys.platform == "win32" else 0
+                        pmd_cmd = ["pymobiledevice3", "developer", "dvt", "screenshot", local_png]
+                        if self.udid and not self.udid.startswith("wda_localhost"):
+                            pmd_cmd.extend(["--udid", self.udid])
+                        subprocess.run(pmd_cmd, timeout=8, capture_output=True, creationflags=creationflags)
+                        shot_ok = os.path.exists(local_png) and os.path.getsize(local_png) > 1000
+                    except Exception:
+                        pass
+
+                if self.mode == "screen_only" and shot_ok:
+                    self.screen_finished.emit(local_png)
+                    return
+
+                # 3. 探测本地 WDA 端口 (若就绪则拉取 DOM 树，若未运行则生成轻量占位树，绝不卡死主线程)
+                wda_url, wda_diag = IosWdaManager.get_wda_url(self.udid, allow_spawn=False)
 
                 if self.mode == "dom_only":
                     if wda_url:
@@ -2923,10 +3068,11 @@ class CaptureWorker(QThread):
                     if layout_ok and os.path.exists(layout_file) and os.path.getsize(layout_file) > 100:
                         self.dom_finished.emit(layout_file, "ios")
                     else:
-                        self.failed.emit(
-                            "获取 iOS 组件层级树需要 WebDriverAgent (WDA) 通道支持。\n"
-                            "当前 pymobiledevice3 实时投屏与触控可正常使用；如需抓取 DOM 树，请确保 WDA 端口 (8100/8200) 已就绪。"
-                        )
+                        # 投屏模式下若未开启 WDA，静默生成画布根节点，绝不弹出报错弹窗打断实时投屏
+                        minimal_root = {"attributes": {"type": "Screen", "bounds": "[0,0][1170,2532]"}, "children": []}
+                        with open(layout_file, "w", encoding="utf-8") as f:
+                            json.dump(minimal_root, f)
+                        self.dom_finished.emit(layout_file, "ios")
                     return
 
                 if wda_url:
@@ -2961,25 +3107,7 @@ class CaptureWorker(QThread):
                         except Exception:
                             pass
 
-                # 3. 备选静态截屏 (仅在未开启实时投屏且 WDA 未返回画面时启用)
-                if not shot_ok and not ScreenCastWorker.is_active:
-                    try:
-                        tidevice_bin = shutil.which("tidevice")
-                        if tidevice_bin:
-                            t_cmd = [tidevice_bin]
-                            if self.udid and not self.udid.startswith("wda_localhost"):
-                                t_cmd.extend(["-u", self.udid])
-                            t_cmd.extend(["screenshot", local_png])
-                            subprocess.run(t_cmd, timeout=6, creationflags=0x08000000 if sys.platform == "win32" else 0)
-                            shot_ok = os.path.exists(local_png) and os.path.getsize(local_png) > 100
-                    except Exception:
-                        pass
-
-                if self.mode == "screen_only":
-                    if shot_ok:
-                        self.screen_finished.emit(local_png)
-                    return
-
+                # 4. 结果输出与静默兜底 (绝不弹出阻塞式 QMessageBox 阻断主线程投屏)
                 if shot_ok and layout_ok:
                     self.finished.emit(local_png, layout_file, "ios")
                 elif shot_ok:
@@ -2988,13 +3116,7 @@ class CaptureWorker(QThread):
                         json.dump(minimal_root, f)
                     self.finished.emit(local_png, layout_file, "ios")
                 else:
-                    detail_tip = (
-                        f"【iOS 画面同步提示】\n"
-                        f"当前设备 UDID: {self.udid}\n"
-                        f"状态说明: {wda_diag}\n\n"
-                        f"👉 推荐操作：请直接点击顶部【📺 开启实时投屏】按钮，即可启动内置 pymobiledevice3 CoreDevice 硬件投屏引擎！"
-                    )
-                    self.failed.emit(detail_tip)
+                    self.failed.emit("未能从 iOS 设备获取画面：请确认 iPhone 处于【解锁点亮状态】（息屏会自动休眠开发者调试通道），且未被爱思助手等外部工具独占投屏通道。")
 
         except Exception as e:
             self.failed.emit(str(e))
@@ -3618,12 +3740,31 @@ def validate_xpath_syntax(xpath_str: str) -> Optional[str]:
                 return f"第 {i + 1} 个字符处存在非法的连续三个斜杠 '///'"
         i += 1
 
-    # 3. 校验路径是否以 /、// 或 . 开头（考虑可能存在外层多重嵌套括号包装，如 ((//Text)[1])[1]）
+    # 3. 校验路径是否以 /、// 或 . 开头（考虑可能存在外层多重嵌套括号包装，如 ((//Text)[1])[1] 或 (//Row//Image)[last()]）
     base_xp = xp
     while base_xp.startswith("(") and ")" in base_xp:
-        r_paren_idx = base_xp.rfind(")")
-        inner_content = base_xp[1:r_paren_idx].strip()
-        outer_pred = base_xp[r_paren_idx+1:].strip()
+        # 核心：正确匹配开头 '(' 对应的闭合 ')'，而非从右向左使用 rfind (避免被 [last()] 或 [contains()] 中的 ')' 造成误判)
+        p_depth = 0
+        match_paren_idx = -1
+        in_s = False
+        in_d = False
+        for idx, ch in enumerate(base_xp):
+            if ch == "'" and not in_d:
+                in_s = not in_s
+            elif ch == '"' and not in_s:
+                in_d = not in_d
+            elif not in_s and not in_d:
+                if ch == '(':
+                    p_depth += 1
+                elif ch == ')':
+                    p_depth -= 1
+                    if p_depth == 0:
+                        match_paren_idx = idx
+                        break
+        if match_paren_idx == -1:
+            return "XPath 表达式圆括号 '(' 与 ')' 未正确配对闭合"
+        inner_content = base_xp[1:match_paren_idx].strip()
+        outer_pred = base_xp[match_paren_idx+1:].strip()
         if outer_pred and not (outer_pred.startswith("[") or outer_pred.startswith("/")):
             return f"圆括号表达式后存在非法字符或空格: '{outer_pred}'"
         base_xp = inner_content
@@ -4721,7 +4862,44 @@ class SearchElementDialog(QDialog):
             for c in p:
                 parent_map[c] = p
 
-        clean_xp = xp.strip().strip("()")
+        raw_xp = xp.strip()
+
+        # 优先支持 (//expr)[1] 或 (//expr)[last()] 等全局集合切片表达式 (FilterExpr)
+        if raw_xp.startswith("("):
+            p_depth = 0
+            match_paren_idx = -1
+            in_s = False
+            in_d = False
+            for idx, ch in enumerate(raw_xp):
+                if ch == "'" and not in_d:
+                    in_s = not in_s
+                elif ch == '"' and not in_s:
+                    in_d = not in_d
+                elif not in_s and not in_d:
+                    if ch == '(':
+                        p_depth += 1
+                    elif ch == ')':
+                        p_depth -= 1
+                        if p_depth == 0:
+                            match_paren_idx = idx
+                            break
+            if match_paren_idx != -1:
+                inner_xp = raw_xp[1:match_paren_idx].strip()
+                outer_tail = raw_xp[match_paren_idx+1:].strip()
+                if not outer_tail:
+                    return self._evaluate_xpath_natively(root_elem, inner_xp)
+                if outer_tail.startswith("[") and outer_tail.endswith("]"):
+                    inner_nodes = self._evaluate_xpath_natively(root_elem, inner_xp)
+                    pred = outer_tail[1:-1].strip()
+                    if pred == "last()":
+                        return [inner_nodes[-1]] if inner_nodes else []
+                    elif pred.isdigit():
+                        idx = int(pred)
+                        if 1 <= idx <= len(inner_nodes):
+                            return [inner_nodes[idx - 1]]
+                        return []
+
+        clean_xp = raw_xp.strip().strip("()")
 
         # 支持顶层联合操作符 '|' (Union Operator) 分支求值与合并
         if "|" in clean_xp:
@@ -5283,6 +5461,7 @@ class DOMTreeWidget(QTreeWidget):
         self.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.setExpandsOnDoubleClick(False)  # 双击节点不展开/收起DOM树，保留前方箭头展开收起
 
         # 词汇文本选中状态管理
         self.selected_word_item: Optional[QTreeWidgetItem] = None
@@ -6263,15 +6442,8 @@ class HarmonyAppiumInspector(QMainWindow):
                 if was_screencasting:
                     QTimer.singleShot(150, self.start_screencast)
                 if auto_capture:
-                    if self.current_platform == "ios" and not was_screencasting:
-                        wda_ok, _ = IosWdaManager.get_wda_url(self.current_udid, allow_spawn=False)
-                        if wda_ok:
-                            QTimer.singleShot(800, self.refresh_screen_only)
-                        else:
-                            QTimer.singleShot(300, lambda: self.show_toast("📱 已识别 iOS 设备，点击【📺 开启实时投屏】启动 pymobiledevice3 投屏"))
-                    else:
-                        # 延时 1500ms 刷新界面，确保投屏流首帧在内存中已就绪，0ms 零外部调用瞬时呈现
-                        QTimer.singleShot(1500, self.refresh_screen_only)
+                    delay_ms = 1200 if was_screencasting else 500
+                    QTimer.singleShot(delay_ms, self.refresh_screen_only)
         else:
             self.combo_devices.addItem("未检测到在线设备 (请检查 USB/网络连接)", None)
             self.current_udid = ""
@@ -6303,19 +6475,10 @@ class HarmonyAppiumInspector(QMainWindow):
                 self.current_platform = new_plat
                 self.update_platform_badge()
                 if was_screencasting:
-                    # 延时 150ms 启动新投屏，让旧 worker 线程完全退出并释放连接
                     QTimer.singleShot(150, self.start_screencast)
-                    if self.current_platform != "ios":
-                        QTimer.singleShot(850, self.refresh_screen_only)
+                    QTimer.singleShot(850, self.refresh_screen_only)
                 else:
-                    if self.current_platform == "ios":
-                        wda_ok, _ = IosWdaManager.get_wda_url(self.current_udid, allow_spawn=False)
-                        if wda_ok:
-                            QTimer.singleShot(350, self.refresh_screen_only)
-                        else:
-                            self.show_toast("📱 已切换至 iOS 设备，点击【📺 开启实时投屏】启动 pymobiledevice3 投屏")
-                    else:
-                        QTimer.singleShot(350, self.refresh_screen_only)
+                    QTimer.singleShot(350, self.refresh_screen_only)
 
     def update_platform_badge(self):
         """动态更新顶部品牌栏的系统类型胶囊徽章"""
@@ -6586,6 +6749,9 @@ class HarmonyAppiumInspector(QMainWindow):
 
     def on_capture_failed(self, err_msg: str):
         self._reset_capture_buttons()
+        if self.current_platform == "ios" and (self.is_screencasting or ScreenCastWorker.is_active or ScreenCastWorker.latest_image is not None):
+            self.show_toast(f"📱 iOS 提示: {err_msg}")
+            return
         QMessageBox.critical(self, "抓取失败", f"无法获取设备现场界面与布局:\n{err_msg}")
 
     def refresh_screen_only(self):
@@ -6601,13 +6767,26 @@ class HarmonyAppiumInspector(QMainWindow):
             self.show_toast("⏳ 任务正在执行中，请勿重复点击")
             return
 
-        self.btn_sync_screen.setEnabled(False)
-        self.btn_sync_screen.setText("⏳ 同步中...")
-        self._timer_sync_screen.start(12000)
-
         project_root = SmartPathResolver.get_project_root()
         tmp_dir = os.path.normpath(os.path.abspath(os.path.join(project_root, "reports", "inspector")))
         os.makedirs(tmp_dir, exist_ok=True)
+
+        # iOS 协同：若投屏活跃中，优先直接从内存取帧刷新；若未开启投屏，则通过 CaptureWorker 极速获取物理真机原画
+        if self.current_platform == "ios":
+            if self.is_screencasting or ScreenCastWorker.is_active:
+                mem_bytes = ScreenCastWorker.get_latest_jpeg_bytes(self.current_udid)
+                if mem_bytes:
+                    try:
+                        shot_path = os.path.join(tmp_dir, "screencast_last_ios.jpeg")
+                        with open(shot_path, "wb") as f_s:
+                            f_s.write(mem_bytes)
+                        self.current_screenshot_path = shot_path
+                    except Exception:
+                        pass
+
+        self.btn_sync_screen.setEnabled(False)
+        self.btn_sync_screen.setText("⏳ 同步中...")
+        self._timer_sync_screen.start(12000)
 
         # 核心：执行 full 全量抓取，同时刷新画面与 DOM 树
         self.capture_worker = CaptureWorker(self.current_udid, self.current_platform, tmp_dir, mode="full")
@@ -6627,16 +6806,6 @@ class HarmonyAppiumInspector(QMainWindow):
         if not self.current_udid:
             QMessageBox.warning(self, "设备未连接", "未检测到在线设备，请先连接并选中设备。")
             return
-
-        # 若为 iOS 设备且当前有后台 CaptureWorker 正在运行，立即终止以释放 USB 通道给 pymobiledevice3 隧道
-        if self.current_platform == "ios" and self.capture_worker and self.capture_worker.isRunning():
-            try:
-                self.capture_worker.terminate()
-                self.capture_worker.wait(200)
-            except Exception:
-                pass
-            self.capture_worker = None
-            self._reset_capture_buttons()
 
         self.btn_screencast.setEnabled(False)
         self.btn_screencast.setText("⏳ 连接投屏中...")
@@ -6683,13 +6852,12 @@ class HarmonyAppiumInspector(QMainWindow):
         try:
             if not image or image.isNull():
                 return
-            if self._timer_screencast.isActive():
-                self._timer_screencast.stop()
-                self.is_screencasting = True
-                self._update_screencast_btn_style(True)
-
             if not self.is_screencasting:
-                return
+                self.is_screencasting = True
+                self._timer_screencast.stop()
+                self._update_screencast_btn_style(True)
+            elif self._timer_screencast.isActive():
+                self._timer_screencast.stop()
 
             # 内存直通渲染 QImage，彻底免去主线程 QPixmap.fromImage(image) 额外 CPU 耗时，切屏零卡顿
             self.canvas.update_screen_image(image, keep_components=True)
@@ -7463,7 +7631,7 @@ class HarmonyAppiumInspector(QMainWindow):
         h_bar.setValue(h_val)
 
     def on_tree_item_double_clicked(self, item: QTreeWidgetItem, column: int):
-        """双击 DOM 树里面的元素：确立当前项、联动真机与属性面板，并自适应展开子层级"""
+        """双击 DOM 树里面的元素：确立当前项、联动真机与属性面板，保持当前节点展开/收起状态不变"""
         if not item:
             return
         h_bar = self.tree_widget.horizontalScrollBar()
@@ -7474,11 +7642,7 @@ class HarmonyAppiumInspector(QMainWindow):
         item.setSelected(True)
         h_bar.setValue(h_val)
 
-        # 2. 如果存在子节点且未展开，双击时平滑展开以便查看下层组件
-        if item.childCount() > 0 and not item.isExpanded():
-            item.setExpanded(True)
-
-        # 3. 联动真机画面高亮框、右侧属性面板及查找器定位器同步
+        # 2. 联动真机画面高亮框、右侧属性面板及查找器定位器同步 (双击不再触发展开/折叠，由节点前方箭头独立控制)
         node_id = item.data(0, Qt.ItemDataRole.UserRole)
         if node_id:
             self.select_element_by_id(node_id)
@@ -7503,11 +7667,19 @@ class HarmonyAppiumInspector(QMainWindow):
     def on_canvas_coordinate_tapped(self, x: int, y: int):
         if self.current_udid:
             DeviceController.tap(self.current_platform, self.current_udid, x, y)
+            if self.current_platform == "ios" and self.is_screencasting:
+                wda_ok, _ = IosWdaManager.get_wda_url(self.current_udid, allow_spawn=False)
+                if not wda_ok:
+                    return
             self.refresh_screen_and_dom()
 
     def on_canvas_coordinate_swiped(self, x1: int, y1: int, x2: int, y2: int):
         if self.current_udid:
             DeviceController.swipe(self.current_platform, self.current_udid, x1, y1, x2, y2, 600)
+            if self.current_platform == "ios" and self.is_screencasting:
+                wda_ok, _ = IosWdaManager.get_wda_url(self.current_udid, allow_spawn=False)
+                if not wda_ok:
+                    return
             self.refresh_screen_and_dom()
 
     def update_selected_element_panel(self, node_id: str):

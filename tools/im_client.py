@@ -1244,7 +1244,7 @@ if __name__ == "__main__":
         USE_CLUSTER = True
 
         # 每台设备对各自会话（专属群聊+公共单聊）发送的消息数量（如设为 20 条）
-        COUNT_PER_TARGET = 1000
+        COUNT_PER_TARGET = 1500
         # COUNT_PER_TARGET = 28572
 
         if USE_CLUSTER:

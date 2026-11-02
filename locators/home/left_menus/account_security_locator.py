@@ -13,9 +13,9 @@ class AccountSecurityLocator:
     # 顶部导航栏 (view_title / top_bar)
     # ==========================================
     # 左上角返回按钮
-    BACK_BTN = CommonLocator.TOP_IV_BACK_BTN  # iv_back
+    TOP_IV_BACK_BTN = CommonLocator.TOP_IV_BACK_BTN  # iv_back
     # 右上角操作按钮（当前无具体功能）
-    ACTION_BTN = CommonLocator.TOP_FB_ACTION_BTN  # fb_action
+    TOP_IV_ACTION_BTN = CommonLocator.TOP_IV_ACTION_BTN  # fb_action
 
     # ==========================================
     # 上部区域 (top) — 实名认证 & 解除账号限制

@@ -30,7 +30,7 @@ class MomentsPage(BasePage):
     def click_iv_back(self) -> None:
         """ 动态 - 点击返回按钮 """
         logger.info(f"{LogIcon.ACTION} 点击返回按钮")
-        self.click(MomentsLocator.IV_BACK)
+        self.click(MomentsLocator.TOP_IV_BACK_BTN)
 
     # 动态 - 点击发布朋友圈按钮
     def click_post_moments(self) -> None:
@@ -79,7 +79,7 @@ class MomentsPage(BasePage):
     def click_publish(self) -> None:
         """ 动态 - 点击发表按钮 """
         logger.info(f"{LogIcon.ACTION} 点击发表按钮")
-        self.click(MomentsLocator.FB_ACTION)
+        self.click(MomentsLocator.TOP_IV_ACTION_BTN)
 
     # ============================================================================
     # 朋友圈 - 朋友圈列表

@@ -11,7 +11,7 @@ class GroupNoticePage(GroupSettingPage):
     def wait_for_notice_page_load(self, timeout: int = 10) -> bool:
         """群公告 - 等待群公告页面加载"""
         logger.info(f"{LogIcon.WAIT} GroupNoticePage - 等待群公告页面加载")
-        res = self.wait_for_element_text(GroupNoticeLocator.TITLE, expected_text="群公告", timeout=timeout)
+        res = self.wait_for_element_text(GroupNoticeLocator.TOP_TV_TITLE, expected_text="群公告", timeout=timeout)
         logger.info(f"{LogIcon.SUCCESS} GroupNoticePage - 页面加载{'成功' if res else '超时'}")
         return res
 
@@ -25,7 +25,7 @@ class GroupNoticePage(GroupSettingPage):
     def click_publish_btn(self) -> None:
         """群公告 - 点击发布按钮"""
         logger.info(f"{LogIcon.SETUP} GroupNoticePage - 点击【发布/完成】")
-        self.click(GroupNoticeLocator.PUBLISH_BTN)
+        self.click(GroupNoticeLocator.TOP_IV_ACTION_BTN)
         time.sleep(0.5)
 
     # 获取当前展示的群公告内容
@@ -39,4 +39,4 @@ class GroupNoticePage(GroupSettingPage):
     def click_back_button(self) -> None:
         """群公告 - 点击返回"""
         logger.info(f"{LogIcon.ACTION} GroupNoticePage - 点击返回")
-        self.click(GroupNoticeLocator.BACK_BTN)
+        self.click(GroupNoticeLocator.TOP_IV_BACK_BTN)

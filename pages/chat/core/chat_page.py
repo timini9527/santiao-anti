@@ -89,13 +89,13 @@ class ChatPage(BasePage):
     def click_back_button(self) -> None:
         """页面导航-点击顶部返回按钮"""
         logger.info(f"{LogIcon.ACTION} 点击返回按钮")
-        self.click(ChatLocator.TOP_BACK_BUTTON)
+        self.click(ChatLocator.TOP_IV_BACK_BTN)
 
     # 页面导航-点击顶部返回按钮 (兼容别名)
     def click_top_back_bnt(self) -> None:
         """页面导航-点击顶部返回按钮"""
         logger.info(f"{LogIcon.ACTION} 点击返回按钮")
-        self.click(ChatLocator.TOP_BACK_BNT)
+        self.click(ChatLocator.TOP_IV_BACK_BTN)
 
     # 聊天信息-获取顶部聊天对象昵称
     def get_top_name(self) -> str:
@@ -1546,7 +1546,7 @@ class ChatPage(BasePage):
         # 动态计算安全可视区域，防止滑动时顶部复选框与导航栏“取消”按键重叠导致误触退出多选
         try:
             # 1. 动态获取顶部“取消”按钮 (TOP_BACK_BUTTON) 的下边缘作为安全顶线
-            top_back_elem = self.find_element(ChatLocator.TOP_BACK_BUTTON, timeout=1, expect_missing=True)
+            top_back_elem = self.find_element(ChatLocator.TOP_IV_BACK_BTN, timeout=1, expect_missing=True)
             if top_back_elem:
                 min_y = top_back_elem.rect['y'] + top_back_elem.rect['height']
             else:

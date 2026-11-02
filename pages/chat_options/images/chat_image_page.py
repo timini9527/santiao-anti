@@ -37,20 +37,20 @@ class ChatImagePage(ChatPage):
     def click_back_button(self) -> None:
         """点击返回按钮"""
         logger.info(f"{LogIcon.ACTION} 准备点击返回按钮...")
-        self.click(ChatImageLocator.TOP_BACK_BUTTON)
+        self.click(ChatImageLocator.TOP_IV_BACK_BTN)
         logger.info(f"{LogIcon.ACTION} 点击返回按钮已完成")
     
     # 标题文本
     def get_title_text(self) -> str:
         """获取标题文本"""
         logger.info(f"{LogIcon.FIND} 获取相册标题文本...")
-        return self.get_attribute(ChatImageLocator.TOP_TITLE_TEXT, 'text')
+        return self.get_attribute(ChatImageLocator.TOP_TV_TITLE, 'text')
     
     # 点击标题切换相册分类
     def click_title_to_switch_category(self) -> None:
         """点击标题切换相册分类"""
         logger.info(f"{LogIcon.ACTION} 准备点击标题切换相册分类...")
-        self.click(ChatImageLocator.TOP_TITLE_TEXT)
+        self.click(ChatImageLocator.TOP_TV_TITLE)
         logger.info(f"{LogIcon.ACTION} 点击标题切换相册分类已完成")
     
     # 展开后的相册分类展示

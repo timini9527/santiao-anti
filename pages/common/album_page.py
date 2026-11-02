@@ -166,9 +166,9 @@ class CommonAlbumPage(BasePage):
         logger.info(f"{LogIcon.ACTION} ✂️ [CommonAlbumPage] 确认图片裁剪或保存图片")
         
         # 1. 优先尝试点击右上角完成/操作按钮 (FB_ACTION)
-        if self.is_element_exist(CommonAlbumLocator.FB_ACTION, timeout=2):
+        if self.is_element_exist(CommonAlbumLocator.TOP_IV_ACTION_BTN, timeout=2):
             logger.info(f"{LogIcon.SUCCESS} [CommonAlbumPage] 点击右上角完成/操作按钮")
-            self.click(CommonAlbumLocator.FB_ACTION)
+            self.click(CommonAlbumLocator.TOP_IV_ACTION_BTN)
         else:
             # 2. 兜底尝试点击系统或第三方裁剪库的确认按钮
             system_crop = (AppiumBy.XPATH, "//*[@text='确定' or @text='完成' or @text='保存' or contains(@resource-id, 'ok') or contains(@resource-id, 'confirm') or contains(@resource-id, 'save')]")
@@ -199,9 +199,9 @@ class CommonAlbumPage(BasePage):
         if self.is_element_exist(CommonAlbumLocator.TOP_BACK_BUTTON, timeout=2):
             logger.info(f"{LogIcon.SUCCESS} [CommonAlbumPage] 点击左上角返回按钮")
             self.click(CommonAlbumLocator.TOP_BACK_BUTTON)
-        elif self.is_element_exist(CommonAlbumLocator.IV_BACK, timeout=2):
+        elif self.is_element_exist(CommonAlbumLocator.TOP_IV_BACK_BTN, timeout=2):
             logger.info(f"{LogIcon.SUCCESS} [CommonAlbumPage] 点击通用返回按钮")
-            self.click(CommonAlbumLocator.IV_BACK)
+            self.click(CommonAlbumLocator.TOP_IV_BACK_BTN)
         else:
             logger.info(f"{LogIcon.SUCCESS} [CommonAlbumPage] 执行物理 Back 返回")
             self.back()

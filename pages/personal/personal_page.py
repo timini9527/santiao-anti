@@ -16,13 +16,13 @@ class PersonalPage(BasePage):
     def click_done(self) -> None:
         """ 点击完成按钮 """
         logger.info(f"{LogIcon.SETUP} 点击完成按钮")
-        self.click(PersonalLocator.DONE, force_wait=True)
+        self.click(PersonalLocator.TOP_IV_ACTION_BTN, force_wait=True)
 
     # 个人信息 - 点击返回
     def click_back(self) -> None:
         """ 点击返回按钮 """
         logger.info(f"{LogIcon.SETUP} 点击返回按钮")
-        self.click(PersonalLocator.ACTION_DETAIL_BACK, force_wait=True)
+        self.click(PersonalLocator.TOP_IV_BACK_BTN, force_wait=True)
 
     # 个人信息 - 点击头像
     def click_avatar(self) -> None:

@@ -1,4 +1,3 @@
-
 from appium.webdriver.common.appiumby import AppiumBy
 from selenium.webdriver.common.by import By
 
@@ -13,26 +12,28 @@ class CommonLocator:
     PACKAGE_ID = 'com.santiaotalk.im:id'
 
     # --------------------------------------------------------------------------
-    # 1. 顶部全局导航栏与通用返回键 (4 合 1 联合自愈定位)
+    # 1. 顶部全局导航栏与通用返回键 (全量自愈定位)
     # --------------------------------------------------------------------------
-    # 顶部左上角全局返回按钮 (兼顾 ActionBar、iv_back、back、back_bnt 等多页面返回组件)
+    # 顶部左上角全局返回按钮 (兼顾 ActionBar、iv_back、back、back_bnt、ps_iv_left_back 等多页面返回组件)
     LEFT_TOP_BUTTON_ID = (
         AppiumBy.XPATH,
         (
             f"//*[@resource-id='{PACKAGE_ID}/action_back'"
             f" or @resource-id='{PACKAGE_ID}/iv_back'"
             f" or @resource-id='{PACKAGE_ID}/back'"
-            f" or @resource-id='{PACKAGE_ID}/back_bnt']"
+            f" or @resource-id='{PACKAGE_ID}/back_bnt'"
+            f" or @resource-id='{PACKAGE_ID}/action_detail_back'"
+            f" or @resource-id='{PACKAGE_ID}/ps_iv_left_back'"
+            f" or @resource-id='{PACKAGE_ID}/bt_back'"
+            f" or @content-desc='转到上一层级']"
         ),
     )
 
-    # 通用左上角返回按钮映射 (对齐鸿蒙端架构，保留历史调用点零改动兼容)
+    # 通用左上角返回按钮
     TOP_IV_BACK_BTN = LEFT_TOP_BUTTON_ID
-    TOP_BACK_BTN = LEFT_TOP_BUTTON_ID
-    TOP_BAR_BACK_BTN = LEFT_TOP_BUTTON_ID
 
     # --------------------------------------------------------------------------
-    # 2. 顶部标题体系 (Top Header Titles - 3 合 1 联合定位)
+    # 2. 顶部中间标题体系 (Top Header Titles - 全量自愈定位)
     # --------------------------------------------------------------------------
     TOP_TV_TITLE_ID = f'{PACKAGE_ID}/tv_title'
     TOP_TV_TITLE = (
@@ -40,30 +41,29 @@ class CommonLocator:
         (
             f"//*[@resource-id='{PACKAGE_ID}/tv_title'"
             f" or @resource-id='{PACKAGE_ID}/title_tv'"
-            f" or @resource-id='{PACKAGE_ID}/set_name']"
+            f" or @resource-id='{PACKAGE_ID}/title'"
+            f" or @resource-id='{PACKAGE_ID}/set_name'"
+            f" or @resource-id='{PACKAGE_ID}/toolbar_title'"
+            f" or @resource-id='{PACKAGE_ID}/ps_tv_title']"
         ),
     )
 
-    # 标题映射 (兼顾主页与各类二级页面 TopBar)
-    TOP_MIDDLE_TITLE_HOME = TOP_TV_TITLE
-    TOP_BAR_TITLE_TV = TOP_TV_TITLE
-
     # --------------------------------------------------------------------------
-    # 3. 顶部右上角功能/操作按钮 (Top Right Action Buttons - 3 合 1 联合定位)
+    # 3. 顶部右上角功能/操作按钮 (Top Right Action Buttons - 确定/完成/发送/保存通用定位)
     # --------------------------------------------------------------------------
-    # 顶部右上角通用操作按钮 (发送、完成、保存、编辑等)
+    # 顶部右上角通用操作按钮 (发送、完成、保存、确定等)
     RIGHT_TOP_BUTTON_ID = (
         AppiumBy.XPATH,
         (
             f"//*[@resource-id='{PACKAGE_ID}/action_send'"
             f" or @resource-id='{PACKAGE_ID}/fb_action'"
-            f" or @resource-id='{PACKAGE_ID}/edit_to']"
+            f" or @resource-id='{PACKAGE_ID}/edit_to'"
+            f" or @resource-id='{PACKAGE_ID}/tv_save_qrcode']"
         ),
     )
 
-    # 操作按钮映射
-    TOP_FB_ACTION_BTN = RIGHT_TOP_BUTTON_ID
-    TOP_BAR_EDIT_TO_BTN = RIGHT_TOP_BUTTON_ID
+    # 操作/确认按钮
+    TOP_IV_ACTION_BTN = RIGHT_TOP_BUTTON_ID
 
     # --------------------------------------------------------------------------
     # 4. 弹窗/对话框确认与取消按钮 (Dialogs Confirm / Cancel)
@@ -102,7 +102,3 @@ class CommonLocator:
         AppiumBy.XPATH,
         f"//*[@resource-id='{PACKAGE_ID}/toast_message' or @class='android.widget.Toast']",
     )
-
-
-
-

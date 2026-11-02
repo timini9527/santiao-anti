@@ -8,9 +8,9 @@ class SessionSelectLocator(CommonLocator):
     # 顶部导航栏
     # 导航条
     BAR_CONTAINER = (AppiumBy.ID, f"{PACKAGE_ID}/top_bar")                      # 导航条容器
-    BACK_BUTTON = (AppiumBy.ID, f"{PACKAGE_ID}/back")                           # 返回按钮
-    TITLE_TEXT = (AppiumBy.ID, f"{PACKAGE_ID}/title_tv")                        # 页面标题
-    FINISH_BUTTON = (AppiumBy.ID, f"{PACKAGE_ID}/edit_to")                      # 确定按钮
+    TOP_IV_BACK_BTN = CommonLocator.TOP_IV_BACK_BTN                             # 返回按钮
+    TOP_TV_TITLE = CommonLocator.TOP_TV_TITLE                                   # 页面标题
+    TOP_IV_ACTION_BTN = CommonLocator.TOP_IV_ACTION_BTN                         # 确定按钮
     
     # 列表容器
     SHARE_RV = (AppiumBy.ID, f"{PACKAGE_ID}/share_rv")                          # RecyclerView 列表 (通常复用主页 ID)

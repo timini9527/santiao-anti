@@ -110,15 +110,17 @@ class _ChatLocatorAndroid:
     # 聊天页面顶部元素定位
     # ==================================================================================================================
     TOP_BACK_UNREAD_BG = (AppiumBy.ID, f'{PACKAGE_ID}/back_unread_background')          # 返回未读背景
-    TOP_BACK_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/back')                               # 返回按钮
+    TOP_IV_BACK_BTN = CommonLocator.TOP_IV_BACK_BTN
+    TOP_BACK_BUTTON = CommonLocator.TOP_IV_BACK_BTN                                     # 返回按钮
     TOP_BACK_UNREAD_BADGE = (AppiumBy.ID, f'{PACKAGE_ID}/back_unread_badge')            # 返回按钮未读数角标
     TOP_USER_NAME_ID = f'{PACKAGE_ID}/title'
     TOP_USER_NAME = (AppiumBy.ID, TOP_USER_NAME_ID)                                     # 聊天对象昵称/群名称
     TOP_USER_NAME_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{TOP_USER_NAME_ID}"]')   # 聊天对象昵称 XPath
+    TOP_TV_TITLE = CommonLocator.TOP_TV_TITLE
     TOP_SHORT_NUMBER = (AppiumBy.ID, f'{PACKAGE_ID}/tv_short_no')                       # 群聊ID
     GROUP_NUMBER_COUNT = (AppiumBy.ID, f'{PACKAGE_ID}/tv_group_number_count')           # 群聊人数
-    TOP_MORE_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/more')                               # 更多按钮
-    TOP_BACK_BNT = (AppiumBy.ID, f'{PACKAGE_ID}/back_bnt')                              # 返回按钮
+    TOP_MORE_BUTTON = (AppiumBy.ID, f'{PACKAGE_ID}/more')                               # 更多按钮                               # 更多按钮
+    TOP_BACK_BNT = CommonLocator.TOP_IV_BACK_BTN                              # 返回按钮
 
     # ==================================================================================================================
     # 聊天页面底部元素定位

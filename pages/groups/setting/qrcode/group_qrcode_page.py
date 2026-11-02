@@ -9,7 +9,7 @@ class GroupQrCodePage(BasePage):
     def wait_for_qrcode_page_load(self, timeout: int = 10) -> bool:
         """等待群二维码页面加载"""
         logger.info(f"{LogIcon.WAIT} GroupQrCodePage - 等待群二维码页面加载 (超时: {timeout}s)")
-        res = self.wait_for_element_text(GroupQrCodeLocator.TITLE, expected_text="群二维码", timeout=timeout)
+        res = self.wait_for_element_text(GroupQrCodeLocator.TOP_TV_TITLE, expected_text="群二维码", timeout=timeout)
         logger.info(f"{LogIcon.WAIT} GroupQrCodePage - 页面加载{'成功' if res else '超时'}")
         return res
 
@@ -104,7 +104,7 @@ class GroupQrCodePage(BasePage):
     def click_back_button(self) -> None:
         """点击返回按钮"""
         logger.info(f"{LogIcon.ACTION} GroupQrCodePage - 点击返回")
-        self.click(GroupQrCodeLocator.BACK_BTN)
+        self.click(GroupQrCodeLocator.TOP_IV_BACK_BTN)
 
     # 获取图片中的数据
     def get_image_data(self) -> list[str]:

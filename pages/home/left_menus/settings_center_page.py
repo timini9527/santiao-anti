@@ -21,11 +21,11 @@ class SettingsCenterPage(BasePage):
     def click_back(self) -> None:
         """ 点击设置中心左上角返回按钮 """
         logger.info(f"{LogIcon.SETUP} 点击左上角返回按钮")
-        self.click(SettingsCenterLocator.BACK_BTN)
+        self.click(SettingsCenterLocator.TOP_IV_BACK_BTN)
 
     def get_page_title(self) -> str:
         """ 获取设置中心页面顶部标题文本 """
-        title = self.get_attribute(SettingsCenterLocator.TITLE, "text")
+        title = self.get_attribute(SettingsCenterLocator.TOP_TV_TITLE, "text")
         logger.info(f"{LogIcon.FIND} 🧐 [Action - SettingsCenter] 获取页面标题: {title}")
         return title
 

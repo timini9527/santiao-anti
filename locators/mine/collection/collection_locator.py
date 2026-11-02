@@ -56,7 +56,7 @@ class CollectionLocator(CommonLocator):
     EMPTY_LAYOUT_TEXT = (AppiumBy.XPATH, f'//*[@resource-id="{PACKAGE_ID}/layout_empty"]//android.widget.TextView')
 
     # 聊天页面收藏-弹层
-    TV_TITLE = CommonLocator.TOP_TV_TITLE                                           # 标题
+    TOP_TV_TITLE = CommonLocator.TOP_TV_TITLE                                           # 标题
     IV_CLOSE = (AppiumBy.ID, f'{PACKAGE_ID}/iv_close')                              # 关闭按钮
     TV_MSG_BUBBLE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_msg_bubble')                    # 选择的收藏内容
     TV_INPUT = (AppiumBy.ID, f'{PACKAGE_ID}/tv_input')                              # 留言输入框(带句话~)

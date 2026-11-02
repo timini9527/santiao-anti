@@ -63,10 +63,10 @@ class ContactDetailLocator:
 
     # 好友详情页顶部
     IV_RIGHT = (AppiumBy.ID, f"{PACKAGE_ID}/iv_right")                      # 右上角更多图标
-    IV_BACK = CommonLocator.TOP_IV_BACK_BTN                                 # 返回按钮
+    TOP_IV_BACK_BTN = CommonLocator.TOP_IV_BACK_BTN                                 # 返回按钮
     CONFIRM_TWO_BTN = CommonLocator.DIALOG_CONFIRM_BTN                      # 二次确认按钮
     CANCEL_TWO_BTN = CommonLocator.DIALOG_CANCEL_BTN                        # 二次取消按钮
-    TV_TITLE = CommonLocator.TOP_TV_TITLE                                   # 页面标题
+    TOP_TV_TITLE = CommonLocator.TOP_TV_TITLE                                   # 页面标题
 
 
 

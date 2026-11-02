@@ -15,6 +15,7 @@ class CommonLocatorHos:
     # --------------------------------------------------------------------------
 
     # 顶部左上角全局返回按钮 (兼顾 Navigation / NavDestination 容器与多级嵌套树)
+    # (//NavDestinationContent/Stack/Column/Row/Image)[1] | (//NavDestinationContent/Column/__Common__/Stack/Row/Column/Row/Stack/Image)[1] | (//NavDestinationContent/Stack/__Common__/Stack/Row/Column/Row/Stack/Image)[1] | (//NavDestinationContent/Stack/Column/Stack/Row/Column/Row/Stack/Image)[1] | (//NavDestinationContent/Stack/Row/Image)[1] | (//NavDestinationContent/Column/Stack/Row/Column/Row/Stack/Image)[1] | (//NavDestinationContent/Stack/Stack/__Common__/Stack/Row/Column/Row/Image)[1]
     LEFT_TOP_BUTTON_ID = (
         AppiumBy.XPATH,
         (
@@ -60,36 +61,44 @@ class CommonLocatorHos:
     # --------------------------------------------------------------------------
 
     # 顶部右上角通用功能按钮 (如发送、完成、保存、更多菜单等)
+    # (//NavDestination//Row[1]//Image)[last()] | (//Navigation//Row[1]//Image)[last()] | //NavDestinationContent//Stack/Row//Text[@text='确定']
     RIGHT_TOP_BUTTON_ID = (
         AppiumBy.XPATH,
-        "(//NavDestination//Row[1]//Image)[last()] | (//Navigation//Row[1]//Image)[last()] | //Button[@text='发送' or @text='完成' or @text='保存' or @text='确定'] | //*[@id='action_send' or @id='fb_action' or @id='edit_to']",
+        "(//NavDestination//Row[1]//Image)[last()] "
+        "| (//Navigation//Row[1]//Image)[last()] "
+        "| //NavDestinationContent//Stack/Row//Text[@text='确定']",
     )
+    TOP_IV_CONFIRM_BTN = RIGHT_TOP_BUTTON_ID
     TOP_FB_ACTION_BTN = RIGHT_TOP_BUTTON_ID
     TOP_BAR_EDIT_TO_BTN = RIGHT_TOP_BUTTON_ID
+
 
     # --------------------------------------------------------------------------
     # 4. 通用弹窗与对话框交互 (Dialogs & Confirm/Cancel Buttons)
     # --------------------------------------------------------------------------
+    # 二次弹窗
+    DIALOG_ID = "//Dialog/Column/Stack/Column"
+    DIALOG_CONTAINER = (AppiumBy.XPATH, f"//Dialog/Column/Stack/Column")
 
-    # 对话框根容器
-    DIALOG_CONTAINER = (AppiumBy.XPATH, "//Dialog | //*[@type='Dialog']")
-
-    # 弹窗确认/积极按钮 (如 "确定"、"确认"、"删除")
+    # 二次弹窗标题
+    DIALOG_CONFIRM_TITLE = (AppiumBy.XPATH, "//Dialog//Column/Text")
+    # 二次弹窗确认按钮 (如 "确定"、"确认"、"删除")
     DIALOG_CONFIRM_BTN = (
         AppiumBy.XPATH,
-        "//Dialog//Button[@text='确定' or @text='确认' or @text='删除'] | //Dialog//Text[@text='确定' or @text='确认' or @text='删除'] | //Button[@text='确定' or @text='确认']",
+        "//Dialog//Row/Text[@text='确定' or @text='确认' or @text='删除']",
     )
     BTN_CONFIRM = DIALOG_CONFIRM_BTN
     TV_CONFIRM_BTN = DIALOG_CONFIRM_BTN
 
-    # 弹窗取消/消极按钮 (如 "取消"、"关闭")
+    # 二次弹窗取消按钮 (如 "取消"、"关闭")
     DIALOG_CANCEL_BTN = (
         AppiumBy.XPATH,
-        "//Dialog//Button[@text='取消' or @text='关闭'] | //Dialog//Text[@text='取消' or @text='关闭'] | //Button[@text='取消'] | //Text[@text='取消']",
+        "//Dialog//Text[@text='取消' or @text='关闭']",
     )
     CANCEL_BUTTON_ID = DIALOG_CANCEL_BTN
     BTN_CANCEL = DIALOG_CANCEL_BTN
     TV_CANCEL_BTN = DIALOG_CANCEL_BTN
+
 
     # --------------------------------------------------------------------------
     # 5. 全局轻量浮层与 Toast 提示 (Toast & PromptAction)

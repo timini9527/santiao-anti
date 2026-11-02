@@ -240,19 +240,19 @@ class ChatLocatorHos:
 
     # 列表单行勾选圈选复选框
     BT_SLEECT_ID = "__MessageSelectionCheckbox__"
-    BT_SELECT = (AppiumBy.XPATH, "//ListItem//Checkbox | //ListItem//Image[contains(@id, 'select')]")
+    BT_SELECT = (AppiumBy.XPATH, "//ListItem/Column/Column/Row/Image")
     BT_SELECT_NOT_FAIL = BT_SELECT
 
     # 底部合并转发与删除按钮
-    IV_SHARE = (AppiumBy.XPATH, "//NavDestination//Stack/Column/Row/Image")
-    IV_DELETE = (AppiumBy.XPATH, "//NavDestination//Stack/Column/Row/Image[2]")
+    IV_SHARE = (AppiumBy.XPATH, "//NavDestinationContent/Stack/Column/Stack/Column/Row/Image")
+    IV_DELETE = (AppiumBy.XPATH, "//NavDestinationContent/Stack/Column/Stack/Column/Row/Image[2]")
 
     # 转发方式底部弹窗 (ActionSheet / Dialog)
     DESIGN_BOTTOM_SHEET = (AppiumBy.XPATH, "//Dialog")
     TV_FORWARD_ONE_BY_ONE = (AppiumBy.XPATH, "//Dialog//Column/Text[@text='逐条转发']")
     TV_FORWARD_COMBINE = (AppiumBy.XPATH, "//Dialog//Column/Text[@text='合并转发']")
     TV_CONFIRM = (AppiumBy.XPATH, "//Dialog//Column/Text[@text='确定']")
-    TV_CANCEL = (AppiumBy.XPATH, "//Dialog//Column/Text[@text='取消']")
+    TV_CANCEL = (AppiumBy.XPATH, "//Dialog/Column/Column/Text[@text='取消']")
 
     # ==================================================================================================================
     # 6. 聊天记录（合并转发）详情页内部结构 (Chat History Detail Page)

@@ -6,10 +6,10 @@ class MomentsLocator:
     PACKAGE_ID = CommonLocator.PACKAGE_ID
 
     # 顶部元素
-    IV_BACK = CommonLocator.TOP_IV_BACK_BTN                     # 返回图标
-    TV_MOMENTS = CommonLocator.TOP_TV_TITLE                     # 动态标题
+    TOP_IV_BACK_BTN = CommonLocator.TOP_IV_BACK_BTN                     # 返回图标
+    TOP_TV_TITLE = CommonLocator.TOP_TV_TITLE                     # 动态标题
     TV_MOMENTS_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{CommonLocator.TOP_TV_TITLE_ID}" and @text="朋友圈"]')
-    IV_CAMERA = (AppiumBy.ID, f'{PACKAGE_ID}/iv_camera')        # 发布朋友圈按钮 (相机图标)
+    IV_CAMERA = (AppiumBy.ID, f'{PACKAGE_ID}/iv_camera')        # 发布朋友圈按钮 (相机图标)        # 发布朋友圈按钮 (相机图标)
 
     IV_BG = (AppiumBy.ID, f'{PACKAGE_ID}/iv_bg')                # 背景图片
     TV_NOT_BG = (AppiumBy.ID, f'{PACKAGE_ID}/tv_not_bg')        # 轻触更换封面按钮
@@ -93,7 +93,7 @@ class MomentsLocator:
     CL_SHOOTING = (AppiumBy.ID, f'{PACKAGE_ID}/cl_shooting')            # 拍照选项
     TV_GALLERY = (AppiumBy.ID, f'{PACKAGE_ID}/tv_gallery')              # 从相册选择选项
     FB_CANCEL = (AppiumBy.ID, f'{PACKAGE_ID}/fb_cancel')                # 取消按钮
-    FB_ACTION = CommonLocator.TOP_FB_ACTION_BTN                         # 发布按钮
+    TOP_IV_ACTION_BTN = CommonLocator.TOP_IV_ACTION_BTN                         # 发布按钮
 
     # 朋友圈发布
     ET_TEXT = (AppiumBy.ID, f'{PACKAGE_ID}/et_text')                    # 文字输入框

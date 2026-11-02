@@ -29,12 +29,12 @@ class SessionSelectPage(CommonPage):
     def click_back_button(self) -> None:
         """ 点击返回按钮 """
         logger.info(f"{LogIcon.ACTION} 会话选择页 - 点击返回")
-        self.click(SessionSelectLocator.BACK_BUTTON, force_wait=True)
+        self.click(SessionSelectLocator.TOP_IV_BACK_BTN, force_wait=True)
 
     # 顶部 Bar 操作 - 获取标题
     def get_title(self) -> str:
         """ 获取标题 """
-        title = self.get_attribute(SessionSelectLocator.TITLE_TEXT, 'text')
+        title = self.get_attribute(SessionSelectLocator.TOP_TV_TITLE, 'text')
         logger.info(f"{LogIcon.FIND} 会话选择页 - 获取标题: {title}")
         return title
 
@@ -47,9 +47,9 @@ class SessionSelectPage(CommonPage):
         """
         logger.info(f"{LogIcon.ACTION} 会话选择页 - 点击确定 (类型: {msg_type})")
         if msg_type == 1:
-            self.click(SessionSelectLocator.TOP_FB_ACTION_BTN, timeout=timeout)
+            self.click(SessionSelectLocator.TOP_IV_ACTION_BTN, timeout=timeout)
         else:
-            self.click(SessionSelectLocator.FINISH_BUTTON, timeout=timeout)
+            self.click(SessionSelectLocator.TOP_IV_ACTION_BTN, timeout=timeout)
         time.sleep(1)
 
     # 会话选择页 - 点击勾选按钮(默认第一个)

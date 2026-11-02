@@ -8,16 +8,16 @@ class CommonAlbumLocator:
     PACKAGE_ID = CommonLocator.PACKAGE_ID
 
     # 顶部及弹窗通用
-    IV_BACK = CommonLocator.TOP_IV_BACK_BTN             # 左上角返回按钮
-    FB_ACTION = CommonLocator.TOP_FB_ACTION_BTN         # 右上角完成按钮
-    TITLE = CommonLocator.TOP_TV_TITLE                  # 中间标题
+    TOP_IV_BACK_BTN = CommonLocator.TOP_IV_BACK_BTN             # 左上角返回按钮
+    TOP_IV_ACTION_BTN = CommonLocator.TOP_IV_ACTION_BTN         # 右上角完成按钮
+    TOP_TV_TITLE = CommonLocator.TOP_TV_TITLE                  # 中间标题
 
 
     # ==================================================================================================================
     # 顶部导航栏
     # ==================================================================================================================
-    TOP_BACK_BUTTON         = (AppiumBy.ID, f'{PACKAGE_ID}/ps_iv_left_back')    # 返回按钮
-    TOP_TITLE_TEXT          = (AppiumBy.ID, f'{PACKAGE_ID}/ps_tv_title')        # 标题文本（点击可切换文件夹）
+    TOP_BACK_BUTTON         = CommonLocator.TOP_IV_BACK_BTN    # 返回按钮
+    TOP_TITLE_TEXT          = CommonLocator.TOP_TV_TITLE        # 标题文本（点击可切换文件夹）
     TOP_CATEGORY_FIRST_IMAGE = (AppiumBy.ID, f'{PACKAGE_ID}/first_image')       # 分类列表：第一张预览缩略图
     TOP_CATEGORY_TEXT       = (AppiumBy.ID, f'{PACKAGE_ID}/tv_folder_name')     # 分类列表：目录名称
 

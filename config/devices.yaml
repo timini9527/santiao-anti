@@ -1,8 +1,9 @@
 # --- 测试环境与三端平台配置 (支持 Android / HarmonyOS / iOS) ---
 current_env: "dev"              # 默认执行环境：dev 或 test
 # current_env: "test"
-current_platform: "android"   # 默认单端平台２android / harmonyos / ios (none)&local multi-device
-# current_platform: "harmonyos"
+
+# current_platform: "android"   # 默认单端平台２android / harmonyos / ios (none)&local multi-device
+current_platform: "harmonyos"
 # current_platform: "ios"
 
 server:

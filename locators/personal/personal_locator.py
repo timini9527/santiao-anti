@@ -10,7 +10,7 @@ class PersonalLocator:
     # 公用编辑框、清空和完成按钮
     # EDIT = (AppiumBy.ID, f'{PACKAGE_ID}/edit_email')   # 编辑
     CLEAR = (AppiumBy.ID, f'{PACKAGE_ID}/btn_clear')   # 清空
-    DONE = CommonLocator.TOP_FB_ACTION_BTN   # 完成按钮
+    TOP_IV_ACTION_BTN = CommonLocator.TOP_IV_ACTION_BTN   # 完成按钮
 
     # 个人详情页的列表容器
     RECYCLER_DETAIL_VIEW = (AppiumBy.ID, f'{PACKAGE_ID}/recycler_detail_view')
@@ -19,7 +19,7 @@ class PersonalLocator:
     
 
     # 返回按钮
-    BACK = CommonLocator.TOP_IV_BACK_BTN
+    TOP_IV_BACK_BTN = CommonLocator.TOP_IV_BACK_BTN
     ACTION_DETAIL_BACK = (AppiumBy.ID, f'{PACKAGE_ID}/action_detail_back')
 
     # 头像

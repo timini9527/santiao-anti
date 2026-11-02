@@ -12,7 +12,7 @@ class NewFriendPage(BasePage):
     def wait_for_new_friend_page_load(self, timeout: int = 10, raise_exception: bool = True) -> bool:
         """ 等待新的朋友页面加载完成 """
         logger.info(f"{LogIcon.WAIT} 等待新的朋友页面加载 (超时: {timeout}s)")
-        is_exit = self.wait_for_element_text(NewFriendLocator.TV_TITLE, expected_text="新的朋友", timeout=timeout, raise_exception=raise_exception)
+        is_exit = self.wait_for_element_text(NewFriendLocator.TOP_TV_TITLE, expected_text="新的朋友", timeout=timeout, raise_exception=raise_exception)
         if is_exit:
             logger.info(f"{LogIcon.WAIT} 新的朋友页面加载完成")
         else:
@@ -23,13 +23,13 @@ class NewFriendPage(BasePage):
     def click_iv_back(self) -> None:
         """ 新朋友申请列表 - 点击返回按钮 """
         logger.info(f"{LogIcon.ACTION} 新的朋友页 - 点击返回")
-        self.click(NewFriendLocator.IV_BACK)
+        self.click(NewFriendLocator.TOP_IV_BACK_BTN)
 
     # 新朋友申请列表 - 点击清空
     def click_fb_delete(self) -> None:
         """ 新朋友申请列表 - 点击右上角清空（垃圾桶）按钮 """
         logger.info(f"{LogIcon.SETUP} 新的朋友页 - 点击右上角清空")
-        self.click(NewFriendLocator.FB_DELETE)
+        self.click(NewFriendLocator.TOP_IV_ACTION_BTN)
         
     # 新朋友申请列表 - 点击确认
     def click_confirm_btn(self) -> None:

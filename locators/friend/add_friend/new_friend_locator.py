@@ -8,9 +8,9 @@ class NewFriendLocator(ContactDetailLocator):
     PACKAGE_ID = CommonLocator.PACKAGE_ID
 
     # 1. 顶部标题栏元素
-    IV_BACK = CommonLocator.TOP_IV_BACK_BTN                             # 返回按钮
-    TV_TITLE = CommonLocator.TOP_TV_TITLE                               # 页面标题 "新的朋友"
-    FB_DELETE = CommonLocator.TOP_FB_ACTION_BTN                         # 右上角清空（垃圾桶）按钮
+    TOP_IV_BACK_BTN = CommonLocator.TOP_IV_BACK_BTN                             # 返回按钮
+    TOP_TV_TITLE = CommonLocator.TOP_TV_TITLE                               # 页面标题 "新的朋友"
+    TOP_IV_ACTION_BTN = CommonLocator.TOP_IV_ACTION_BTN                         # 右上角清空（垃圾桶）按钮
 
     CONFIRM_BTN = CommonLocator.DIALOG_CONFIRM_BTN                      # 确认清空按钮
     CANCEL_BTN = CommonLocator.DIALOG_CANCEL_BTN                        # 取消清空按钮

@@ -9,10 +9,10 @@ class GroupAvatarLocator(GroupSettingLocator, CommonAlbumLocator):
     PACKAGE_ID = CommonLocator.PACKAGE_ID
     
     # 顶部及弹窗通用
-    IV_BACK = CommonLocator.TOP_IV_BACK_BTN                             # 左上角返回按钮
-    FB_ACTION = CommonLocator.TOP_FB_ACTION_BTN                         # 右上角完成按钮
-    TITLE = CommonLocator.TOP_TV_TITLE                                  # 中间标题
-    PS_IV_LEFT_BACK = (AppiumBy.ID, f"{PACKAGE_ID}/ps_iv_left_back")    # 相册内部左上角返回按钮
+    TOP_IV_BACK_BTN = CommonLocator.TOP_IV_BACK_BTN                             # 左上角返回按钮
+    TOP_IV_ACTION_BTN = CommonLocator.TOP_IV_ACTION_BTN                         # 右上角完成按钮
+    TOP_TV_TITLE = CommonLocator.TOP_TV_TITLE                                  # 中间标题
+    PS_IV_LEFT_BACK = CommonLocator.TOP_IV_BACK_BTN    # 相册内部左上角返回按钮
 
     # 群头像
     GROUP_HEADER = (AppiumBy.ID, f"{PACKAGE_ID}/group_header")  

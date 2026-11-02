@@ -12,7 +12,7 @@ class GroupManagerPage(BasePage):
     # 等待群管理页面加载
     def wait_for_group_manager_page_load(self, timeout: int = 10, raise_exception: bool = True) -> bool:
         """等待群管理页面加载完成"""
-        res = self.wait_for_element_text(GroupManagerLocator.TV_TITLE, expected_text="群管理", timeout=timeout, raise_exception=raise_exception)
+        res = self.wait_for_element_text(GroupManagerLocator.TOP_TV_TITLE, expected_text="群管理", timeout=timeout, raise_exception=raise_exception)
         if res:
             logger.info(f"{LogIcon.WAIT} 群管理页面 - 加载完成")
         else:
@@ -23,19 +23,19 @@ class GroupManagerPage(BasePage):
     def click_iv_back_button(self) -> None:
         """顶部-点击顶部返回按钮"""
         logger.info(f"{LogIcon.SETUP} 点击顶部【返回】按钮")
-        self.click(GroupManagerLocator.IV_BACK, force_wait=True)
+        self.click(GroupManagerLocator.TOP_IV_BACK_BTN, force_wait=True)
     
     # 顶部-点击确定按钮
     def click_confirm_button(self) -> None:
         """顶部-点击确定按钮"""
         logger.info(f"{LogIcon.SETUP} 点击顶部【确定】按钮")
-        self.click(GroupManagerLocator.FB_BTN, force_wait=True)
+        self.click(GroupManagerLocator.TOP_IV_ACTION_BTN, force_wait=True)
 
     # 顶部-点击编辑完成按钮
     def click_edit_finish_button(self) -> None:
         """顶部-点击编辑完成按钮"""
         logger.info(f"{LogIcon.SETUP} 点击编辑【完成】按钮")
-        self.click(GroupManagerLocator.EDIT_TO_BTN, force_wait=True)
+        self.click(GroupManagerLocator.TOP_IV_ACTION_BTN, force_wait=True)
 
     # =========================================================================
     # 智能滚动查找辅助方法 (Scroll Helpers)
@@ -578,7 +578,7 @@ class GroupManagerPage(BasePage):
     def wait_for_join_apply_page_load(self, timeout: int = 10) -> bool:
         """等待进群申请页面加载完成"""
         logger.info(f"{LogIcon.WAIT} 等待进群申请页面加载 (超时: {timeout}s)")
-        res = self.wait_for_element_text(GroupManagerLocator.TV_TITLE, expected_text="进群申请", timeout=timeout)
+        res = self.wait_for_element_text(GroupManagerLocator.TOP_TV_TITLE, expected_text="进群申请", timeout=timeout)
         if res:
             logger.info(f"{LogIcon.WAIT} 进群申请页面 - 加载完成")
         else:
@@ -589,7 +589,7 @@ class GroupManagerPage(BasePage):
     def get_join_apply_banner_text(self) -> str:
         """进群申请-进群申请横幅"""
         logger.info(f"{LogIcon.FIND} 获取进群申请横幅")
-        res = self.get_text(GroupManagerLocator.TV_TITLE)
+        res = self.get_text(GroupManagerLocator.TOP_TV_TITLE)
         logger.info(f"{LogIcon.SUCCESS} 获取进群申请横幅结果: {res}")
         return res or ""
 
@@ -650,7 +650,7 @@ class GroupManagerPage(BasePage):
     def wait_for_specify_mute_page_load(self, timeout: int = 10, raise_exception: bool = False) -> bool:
         """等待指定禁言页面加载完成"""
         logger.info(f"{LogIcon.WAIT} 等待指定禁言页面加载 (超时: {timeout}s)")
-        res = self.get_attribute(GroupManagerLocator.TV_TITLE, "text", timeout, raise_exception) == "指定成员禁言"
+        res = self.get_attribute(GroupManagerLocator.TOP_TV_TITLE, "text", timeout, raise_exception) == "指定成员禁言"
         logger.info(f"{LogIcon.WAIT} 指定禁言页面 - 加载{'成功' if res else '超时'}")
         time.sleep(0.5)
         return res
@@ -841,7 +841,7 @@ class GroupManagerPage(BasePage):
     def wait_for_group_blacklist_page_load(self, timeout: int = 10) -> bool:
         """群黑名单-等待群黑名单页面加载完成"""
         logger.info(f"{LogIcon.WAIT} 等待群黑名单页面加载 (超时: {timeout}s)")
-        res = self.get_attribute(GroupManagerLocator.TV_TITLE, "text") == "群黑名单"
+        res = self.get_attribute(GroupManagerLocator.TOP_TV_TITLE, "text") == "群黑名单"
         logger.info(f"{LogIcon.WAIT} 群黑名单页面 - 加载{'成功' if res else '超时'}")
         time.sleep(0.5)
         return res
@@ -903,7 +903,7 @@ class GroupManagerPage(BasePage):
     def wait_for_transfer_group_owner_page_load(self, timeout: int = 10) -> bool:
         """等待转让群主页面加载完成"""
         logger.info(f"{LogIcon.WAIT} 等待转让群主页面加载 (超时: {timeout}s)")
-        res = self.get_attribute(GroupManagerLocator.TV_TITLE, "text") == "转让群主"
+        res = self.get_attribute(GroupManagerLocator.TOP_TV_TITLE, "text") == "转让群主"
         logger.info(f"{LogIcon.WAIT} 转让群主页面 - 加载{'成功' if res else '超时'}")
         time.sleep(0.5)
         return res
@@ -912,7 +912,7 @@ class GroupManagerPage(BasePage):
     def get_has_permissions_names(self) -> list[str]:
         """群管理-获取已拥有的权限名称"""
         logger.info(f"{LogIcon.FIND} 获取已拥有的权限名称")
-        elements = self.find_elements(GroupManagerLocator.TITLE_TV)
+        elements = self.find_elements(GroupManagerLocator.TOP_TV_TITLE)
         if not elements:
             logger.warning(f"{LogIcon.WARN} 未找到已拥有的权限名称")
             return []

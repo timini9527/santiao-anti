@@ -6,9 +6,9 @@ class GroupNoticeLocator:
     PACKAGE_ID = CommonLocator.PACKAGE_ID
 
     # 顶部元素
-    TITLE = CommonLocator.TOP_BAR_TITLE_TV                                                # 页面标题
-    BACK_BTN = CommonLocator.TOP_BAR_BACK_BTN                                             # 返回按钮
-    PUBLISH_BTN = CommonLocator.TOP_BAR_EDIT_TO_BTN                                       # 发布/确定按钮
+    TOP_TV_TITLE = CommonLocator.TOP_TV_TITLE                                                # 页面标题
+    TOP_IV_BACK_BTN = CommonLocator.TOP_IV_BACK_BTN                                             # 返回按钮
+    TOP_IV_ACTION_BTN = CommonLocator.TOP_IV_ACTION_BTN                                       # 发布/确定按钮
 
     # 编辑区域与列表
     NOTICE_CONTENT_INPUT = (AppiumBy.ID, f"{PACKAGE_ID}/announcement_et")                 # 群公告编辑框

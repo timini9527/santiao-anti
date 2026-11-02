@@ -62,21 +62,21 @@ class ChatEmojiPanelBase(BasePage):
     def open_emoji_package_setting(self) -> None:
         """  打开管理表情包设置   """
         logger.info(f"{LogIcon.ACTION} emoji_panel 准备打开管理表情包设置...")
-        self.click(ChatEmojiLocator.EMOJI_SETTING)
+        self.click(ChatEmojiLocator.TOP_IV_ACTION_BTN)
         logger.info(f"{LogIcon.ACTION} emoji_panel 打开管理表情包设置完成")
 
     # 返回表情包商店
     def back_to_emoji_store(self) -> None:
         """  返回表情包商店   """
         logger.info(f"{LogIcon.ACTION} emoji_panel 准备返回表情包商店...")
-        self.click(ChatEmojiLocator.EMOJI_BACK, force_wait=True, timeout=2)
+        self.click(ChatEmojiLocator.TOP_IV_BACK_BTN, force_wait=True, timeout=2)
         logger.info(f"{LogIcon.ACTION} emoji_panel 返回表情包商店完成")
     
     # 返回到聊天页面
     def back_to_chat_page(self) -> None:
         """  返回到聊天页面   """
         logger.info(f"{LogIcon.ACTION} emoji_panel 准备返回到聊天页面...")
-        self.click(ChatEmojiLocator.EMOJI_BACK, force_wait=True, timeout=2)
+        self.click(ChatEmojiLocator.TOP_IV_BACK_BTN, force_wait=True, timeout=2)
         logger.info(f"{LogIcon.ACTION} emoji_panel 返回到聊天页面完成")
 
     # 表情面板-打开已添加表情包的管理列表

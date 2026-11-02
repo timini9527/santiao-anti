@@ -108,7 +108,7 @@ class OtherPage(PersonalPage, CommonPage):
     def click_save_qrcode(self) -> None:
         """点击保存二维码"""
         logger.info(f"{LogIcon.ACTION} 点击保存二维码")
-        self.click(OtherLocator.ME_QRCODE_SAVE)
+        self.click(OtherLocator.TOP_IV_ACTION_BTN)
 
     # 点击二维码页面左上角返回
     def click_qrcode_back(self) -> None:
@@ -134,7 +134,7 @@ class OtherPage(PersonalPage, CommonPage):
         if not title_elem:
             title_elem = self.find_element(OtherLocator.ME_QRCODE_TITLE, timeout=1, raise_exception=False)
 
-        save_elem = self.find_element(OtherLocator.ME_QRCODE_SAVE, timeout=2, raise_exception=False)
+        save_elem = self.find_element(OtherLocator.TOP_IV_ACTION_BTN, timeout=2, raise_exception=False)
         tip_elem = self.find_element(OtherLocator.ME_QRCODE_TIP, timeout=1, raise_exception=False)
         nickname_elem = self.find_element(OtherLocator.ME_QRCODE_NAME, timeout=1, raise_exception=False)
 

@@ -19,7 +19,7 @@ class RemarkSettingPage(BasePage):
         """ 好友详情页面 - 在一定时间内轮询获取标题，直到获取成功 """
         titles = [expected_title] if expected_title else ["好友资料"]
         logger.info(f"{LogIcon.WAIT} 🧐 [Action - ContactDetail] 等待好友详情页面加载 (预期标题: {titles}, 超时: {timeout}s)")
-        wait_finish = self.wait_for_element_text(ContactDetailLocator.TV_TITLE, expected_text=titles, timeout=timeout)
+        wait_finish = self.wait_for_element_text(ContactDetailLocator.TOP_TV_TITLE, expected_text=titles, timeout=timeout)
         if wait_finish:
             logger.info(f"{LogIcon.SUCCESS} 🧐 [Action - ContactDetail] 好友详情页面 - 加载完成")
         else:
@@ -498,7 +498,7 @@ class RemarkSettingPage(BasePage):
     def wait_for_common_groups_page_load(self, timeout: int = 10) -> bool:
         """ 共同群聊 - 等待共同群聊详情页加载完成 """
         logger.info(f"{LogIcon.WAIT} 等待共同群聊详情页加载 (超时: {timeout}s)")
-        res = self.wait_for_element_text(ContactDetailLocator.TV_TITLE, "我们的共同群聊", timeout=timeout)
+        res = self.wait_for_element_text(ContactDetailLocator.TOP_TV_TITLE, "我们的共同群聊", timeout=timeout)
         if res:
             logger.info(f"{LogIcon.SUCCESS} 共同群聊页加载完成")
         else:

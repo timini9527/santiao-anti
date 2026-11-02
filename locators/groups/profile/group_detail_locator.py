@@ -10,8 +10,8 @@ class GroupDetailLocator(CommonLocator):
     # =========================================================================
     # 1. 顶部导航栏
     # =========================================================================
-    IV_BACK = CommonLocator.TOP_IV_BACK_BTN                                     # 返回按钮
-    TV_TITLE = CommonLocator.TOP_TV_TITLE                                       # 页面标题 ("群资料")
+    TOP_IV_BACK_BTN = CommonLocator.TOP_IV_BACK_BTN                                     # 返回按钮
+    TOP_TV_TITLE = CommonLocator.TOP_TV_TITLE                                       # 页面标题 ("群资料")
 
     # =========================================================================
     # 2. 页面内容区域 (ScrollView)

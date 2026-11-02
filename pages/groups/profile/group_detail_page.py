@@ -18,7 +18,7 @@ class GroupDetailPage(BasePage):
         :return: 是否成功加载
         """
         logger.info(f"{LogIcon.WAIT} 等待群资料页加载 (超时: {timeout}s)")
-        res = self.is_element_exist(GroupDetailLocator.TV_TITLE, timeout=timeout)
+        res = self.is_element_exist(GroupDetailLocator.TOP_TV_TITLE, timeout=timeout)
         logger.info(f"{LogIcon.WAIT} 群资料页加载 {'成功' if res else '超时'} in {timeout}s")
         return res
 
@@ -65,7 +65,7 @@ class GroupDetailPage(BasePage):
     def click_back(self) -> None:
         """点击顶部返回按钮退出群资料页"""
         logger.info(f"{LogIcon.ACTION} 点击顶部返回按钮")
-        self.click(GroupDetailLocator.IV_BACK, force_wait=True)
+        self.click(GroupDetailLocator.TOP_IV_BACK_BTN, force_wait=True)
 
     # 综合校验当前是否位于群资料页
     def verify_is_on_group_detail_page(self, expected_group_name: Optional[str] = None) -> bool:

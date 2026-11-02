@@ -13,8 +13,8 @@ class PrivacyProtectionLocator(CommonLocator):
     # =========================================================================
     # 1. 顶部导航栏 (复用全局通用定位)
     # =========================================================================
-    IV_BACK_BTN = CommonLocator.TOP_IV_BACK_BTN                                  # 左上角返回按钮 (iv_back)
-    TV_TITLE = CommonLocator.TOP_TV_TITLE                                        # 页面顶部标题 ("隐私防护")
+    TOP_IV_BACK_BTN = CommonLocator.TOP_IV_BACK_BTN                                  # 左上角返回按钮 (iv_back)
+    TOP_TV_TITLE = CommonLocator.TOP_TV_TITLE                                        # 页面顶部标题 ("隐私防护")
 
     # =========================================================================
     # 2. 开关控件 (基于业务文本锚点严格定位紧邻的首个 Switch，规避同名 switchWidget 冲突)

@@ -24,7 +24,7 @@ class ContactTagGroupPage(BasePage):
             logger.error(f"{LogIcon.FAIL} 无效的页面标题参数: {page_title}")
             return False
         logger.info(f"{LogIcon.WAIT} 等待好友分组/标签列表页加载 (标题: '{title}', 超时: {timeout}s)")
-        is_loaded = self.wait_for_element_text(ContactTagGroupLocator.TV_TITLE, expected_text=title, timeout=timeout, raise_exception=raise_exception)
+        is_loaded = self.wait_for_element_text(ContactTagGroupLocator.TOP_TV_TITLE, expected_text=title, timeout=timeout, raise_exception=raise_exception)
         if is_loaded:
             logger.info(f"{LogIcon.WAIT} 好友分组/标签列表页加载完成 - 页面标题: '{title}'")
         else:
@@ -35,13 +35,13 @@ class ContactTagGroupPage(BasePage):
     def click_iv_back(self) -> None:
         """ 分组页面 - 点击顶部返回按钮 """
         logger.info(f"{LogIcon.ACTION} 点击顶部【返回】按钮")
-        self.click(ContactTagGroupLocator.IV_BACK)
+        self.click(ContactTagGroupLocator.TOP_IV_BACK_BTN)
 
     # 分组页面 - 点击右上角保存按钮
     def click_save_group(self) -> None:
         """ 分组页面 - 点击右上角保存/完成按钮 """
         logger.info(f"{LogIcon.SETUP} 点击右上角【保存/完成】按钮")
-        self.click(ContactTagGroupLocator.TV_ACTION_SAVE)
+        self.click(ContactTagGroupLocator.TOP_IV_ACTION_BTN)
 
     # =========================================================================
     # 2. 首页分组列表交互

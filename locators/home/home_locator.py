@@ -45,7 +45,7 @@ class _HomeLocatorAndroid:
     DYNAMIC_UNREAD_MSG = (AppiumBy.XPATH, f'//*[@content-desc="动态"]/following-sibling::android.view.View/android.widget.TextView')
 
 
-    TV_TITLE = CommonLocator.TOP_TV_TITLE
+    TOP_TV_TITLE = CommonLocator.TOP_TV_TITLE
 
 
     # 好友页面

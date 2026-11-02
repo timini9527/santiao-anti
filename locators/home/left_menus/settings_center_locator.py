@@ -17,8 +17,8 @@ class SettingsCenterLocator(CommonLocator):
     # =========================================================================
     # 1. 顶部导航栏 (Top Bar)
     # =========================================================================
-    BACK_BTN = (AppiumBy.ID, f'{PACKAGE_ID}/iv_back')                               # 左上角返回按钮
-    TITLE = (AppiumBy.ID, f'{PACKAGE_ID}/tv_title')                                 # 页面顶部标题 ("设置中心")
+    TOP_IV_BACK_BTN = CommonLocator.TOP_IV_BACK_BTN                                 # 左上角返回按钮
+    TOP_TV_TITLE = CommonLocator.TOP_TV_TITLE                                       # 页面顶部标题 ("设置中心")
 
     # =========================================================================
     # 2. 主内容滚动容器 (Main Scroll Content)

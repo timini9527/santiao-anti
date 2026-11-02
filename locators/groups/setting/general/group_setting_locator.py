@@ -11,9 +11,8 @@ class GroupSettingLocator(ChatSettingLocator):
     # =========================================================================
     # 1. 顶部导航栏
     # =========================================================================
-    TV_TITLE = CommonLocator.TOP_BAR_TITLE_TV                                                           # 标题 ("群详情")
-    BACK = CommonLocator.TOP_BAR_BACK_BTN                                                               # 返回按钮
-    IV_BACK_BUTTON = CommonLocator.TOP_IV_BACK_BTN                                                      # 返回按钮
+    TOP_TV_TITLE = CommonLocator.TOP_TV_TITLE                                                           # 标题 ("群详情")
+    TOP_IV_BACK_BTN = CommonLocator.TOP_IV_BACK_BTN                                                      # 返回按钮
     TOP_GROUP_CODE = (AppiumBy.ID, f"{PACKAGE_ID}/top_group_code")                                      # 顶部群二维码
     TOP_GROUP_SHARE = (AppiumBy.ID, f"{PACKAGE_ID}/top_group_share")                                    # 顶部群分享
 
