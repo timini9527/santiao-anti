@@ -13,6 +13,7 @@ from pages.chat.core.chat_page import ChatPage
 from pages.chat.setting.chat_setting_page import ChatSettingPage
 from pages.friend.profile.remark_setting_page import RemarkSettingPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER3
+from common.toast_enums import ToastMsg
 
 
 
@@ -125,7 +126,7 @@ class TestFriendRelationship:
         self.addFriendPageS.wait_for_send_friend_verify_page(timeout=5)
         self.addFriendPageS.input_remark(verify_message)
         self.addFriendPageS.click_finish()
-        toast = self.addFriendPageS.verify_toast_exist('发送成功')
+        toast = self.addFriendPageS.verify_toast_exist(ToastMsg.SEND_SUCCESS)
         check.is_true(toast, '❌ S端点击发送好友申请后，未弹出 [发送成功] Toast 提示')
 
     def _ensure_friendship_established(self, verify_message: str):

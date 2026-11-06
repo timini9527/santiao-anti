@@ -12,6 +12,7 @@ from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
 from pages.home.home_page import HomePage
 from pages.home.side_slip_page import SideSlipPage
 from pages.chat_options.images.chat_image_page import ChatImagePage
+from common.toast_enums import ToastMsg
 
 @allure.epic('IM核心功能测试')
 @allure.feature('我的收藏-聊天页面收藏')
@@ -54,7 +55,7 @@ class TestChatCollection:
         self.longPressPage.long_press_last_message()
         self.longPressPage.click_menu_item('收藏')
         toast = self.collectionPage.get_toast()
-        check.equal('收藏成功', toast, f'收藏失败，实际 Toast：{toast}')
+        check.equal(ToastMsg.COLLECT_SUCCESS, toast, f'收藏失败，实际 Toast：{toast}')
 
     def _build_text(self, prefix: str, strategy) -> str:
         """生成本次测试唯一文本，避免被历史收藏数据干扰"""

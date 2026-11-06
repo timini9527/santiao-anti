@@ -12,6 +12,7 @@ from pages.chat.core.chat_page import ChatPage
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.common.contact_select_page import ContactSelectPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, GROUP_STRATEGY
+from common.toast_enums import ToastMsg
 
 @allure.epic('IM核心功能测试')
 @allure.feature('群聊模块-群二维码')
@@ -174,14 +175,14 @@ class TestGroupQrCode:
         with allure.step('4. 测试保存群二维码到本地'):
             self.groupQrCodePage.click_save_qrcode()
             toast = self.groupQrCodePage.get_toast()
-            check.is_in('已保存到相册', toast, '❌ 保存二维码的提示信息有误')
+            check.is_in(ToastMsg.SAVED_TO_ALBUM, toast, '❌ 保存二维码的提示信息有误')
             group_name_after_share = self.groupQrCodePage.get_group_name()
             check.is_in(group_name, group_name_after_share, '❌ 分享群二维码后，群名称不一致')
         with allure.step('5. 测试分享群二维码功能'):
             self.groupQrCodePage.click_share_qrcode()
             self.contactSelectPage.click_contact_by_name(name=GROUP_STRATEGY.name, select_type='share')
             self.contactSelectPage.click_action_button()
-            toast = self.groupQrCodePage.get_toast(expected_toast='发送成功')
+            toast = self.groupQrCodePage.get_toast(expected_toast=ToastMsg.SEND_SUCCESS)
             check.is_true(toast, '❌ 分享二维码的提示信息有误')
         with allure.step('6. 回到消息列表进入群聊'):
             self.mainPage.go_to_main_page()

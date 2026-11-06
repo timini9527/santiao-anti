@@ -2,7 +2,7 @@ from appium.webdriver.common.appiumby import AppiumBy
 from selenium.webdriver.common.by import By
 
 
-class CommonLocator:
+class _CommonLoactroAndroid:
     """
     安卓 (Android) 平台通用公共元素定位器
     底层原生支持 Appium 自动化定位体系，兼顾沉浸式 TopBar、ActionBar 与通用子页面；
@@ -102,3 +102,24 @@ class CommonLocator:
         AppiumBy.XPATH,
         f"//*[@resource-id='{PACKAGE_ID}/toast_message' or @class='android.widget.Toast']",
     )
+
+
+from typing import TYPE_CHECKING
+from core.locator_manager import DynamicLocatorProxy
+from locators.common.common_locator_hos import CommonLocatorHos
+from locators.common.common_locator_ios import CommonLocatorIos
+
+if TYPE_CHECKING:
+    class _CommonLocatorType(_CommonLoactroAndroid, CommonLocatorHos, CommonLocatorIos):
+        pass
+    CommonLocator = _CommonLocatorType
+else:
+    CommonLocator = DynamicLocatorProxy(
+        android_cls=_CommonLoactroAndroid,
+        harmony_cls=CommonLocatorHos,
+        ios_cls=CommonLocatorIos,
+    )
+
+
+
+

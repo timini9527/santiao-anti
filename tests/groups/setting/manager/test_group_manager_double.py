@@ -17,6 +17,7 @@ from pages.common.session_select_page import SessionSelectPage
 from pages.friend.profile.contact_detail_page import ContactDetailPage
 from pages.friend.add_friend.add_friend_page import AddFriendPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, PRIVATE_USER3, GROUP_STRATEGY
+from common.toast_enums import ToastMsg
 
 @allure.epic('IM核心功能测试')
 @allure.feature('群聊模块-群管理双端验证')
@@ -200,7 +201,7 @@ class TestGroupManagerDouble:
             contactSelectS.click_contact_by_name(PRIVATE_USER2.name)
             contactSelectS.click_action_button()
             toast = self.chatS.get_toast(timeout=10)
-            check.is_in('创建成功', toast, '❌ 发送端未收到创建临时群聊的通知消息')
+            check.is_in(ToastMsg.GROUP_CREATE_SUCCESS, toast, '❌ 发送端未收到创建临时群聊的通知消息')
             self.chatS.wait_banner_message_disappear()
             self.chatS.wait_for_chat_page_load()
         with allure.step('-> [双端准备] 发送端(群主)修改群名称'):
@@ -471,7 +472,7 @@ class TestGroupManagerDouble:
             self.groupManagerS.click_dismiss_group()
         with allure.step('2. 发送端确认弹窗解散'):
             self.groupSettingS.click_tv_confirm_button()
-            toast = self.groupSettingS.verify_toast_exist('解散成功')
+            toast = self.groupSettingS.verify_toast_exist(ToastMsg.GROUP_DISMISS_SUCCESS)
             check.is_true(toast, '❌ 发送端解散群聊后未弹出提示')
         with allure.step('3. 发送端(群主)解散成功回到主页后，重新进入该群聊'):
             self.chatListS.enter_chat(temp_name)
@@ -481,13 +482,13 @@ class TestGroupManagerDouble:
         with allure.step('4. 发送端(群主)进入群设置，点击【删除并退出】彻底清理会话'):
             self.chatS.click_more_button()
             toast = self.groupSettingS.get_toast()
-            check.is_in('群不存在', toast, '❌ 接收端点击解散群聊后未弹出提示')
+            check.is_in(ToastMsg.GROUP_NOT_EXIST, toast, '❌ 接收端点击解散群聊后未弹出提示')
             self.groupSettingS.click_delete_and_out()
             self.groupSettingS.click_tv_confirm_button()
         with allure.step('5. 接收端(普通成员)点击更多进入群设置，点击【删除并退出】清理会话'):
             self.chatR.click_more_button()
             toast = self.groupSettingR.get_toast()
-            check.is_in('群不存在', toast, '❌ 接收端点击解散群聊后未弹出提示')
+            check.is_in(ToastMsg.GROUP_NOT_EXIST, toast, '❌ 接收端点击解散群聊后未弹出提示')
             self.groupSettingR.click_delete_and_out()
             self.groupSettingR.click_tv_confirm_button()
 
@@ -528,7 +529,7 @@ class TestGroupManagerDouble:
         with allure.step('1. 群主端开启【群ID搜索】开关'):
             is_toggled = self.groupManagerS.click_group_id_search_switch(checked_str='true')
             if is_toggled:
-                result = self.chatS.verify_toast_exist('保存成功')
+                result = self.chatS.verify_toast_exist(ToastMsg.SAVE_SUCCESS)
                 check.is_true(result, '❌ 群ID搜索开关开启后未显示预期提示')
 
         with allure.step(f'2. 接收端退出群聊进入添加朋友页面，搜索群ID [{target_group_id}]'):

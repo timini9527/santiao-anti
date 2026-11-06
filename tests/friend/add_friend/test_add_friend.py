@@ -9,6 +9,7 @@ from pages.friend.add_friend.add_friend_page import AddFriendPage
 from pages.friend.profile.contact_detail_page import ContactDetailPage
 from pages.common.contact_select_page import ContactSelectPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, PRIVATE_USER3, PRIVATE_USER4
+from common.toast_enums import ToastMsg
 
 @allure.epic('IM核心功能测试')
 @allure.feature('通讯录与好友管理')
@@ -179,7 +180,7 @@ class TestAddFriend:
             self.addFriendPage.click_finish()
 
         with allure.step('4. 校验是否成功发送申请'):
-            toast = self.addFriendPage.verify_toast_exist('发送成功')
+            toast = self.addFriendPage.verify_toast_exist(ToastMsg.SEND_SUCCESS)
             check.is_true(toast, '❌ 点击发送好友申请后，未弹出预期 Toast 提示')
 
 
@@ -207,5 +208,5 @@ class TestAddFriend:
                 self.addFriendPage.click_finish()
 
             with allure.step(f'2. 校验第{index}次好友申请发送结果'):
-                toast = self.addFriendPage.verify_toast_exist('发送成功')
+                toast = self.addFriendPage.verify_toast_exist(ToastMsg.SEND_SUCCESS)
                 check.is_true(toast, f'❌ 第{index}次好友申请未发送成功')

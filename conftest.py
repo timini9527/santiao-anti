@@ -312,11 +312,37 @@ def ensure_driver_session_health(request):
             health_check(timeout=2.0)
 
 
+def _is_login_module_request(request: pytest.FixtureRequest) -> bool:
+    """判断当前触发 Driver 初始化的用例是否属于 login 登录模块（登录模块无需执行 MainPage 首页判断与归位）"""
+    target_item = getattr(request, "_pyfuncitem", None)
+    if target_item is None:
+        session_items = getattr(getattr(request, "session", None), "items", None)
+        if session_items:
+            target_item = session_items[0]
+    if target_item is None:
+        target_item = getattr(request, "node", None)
+
+    nodeid = getattr(target_item, "nodeid", "").replace("\\", "/").lower()
+    file_part = nodeid.split("::")[0]
+    if "/login/" in f"/{file_part}" or "login" in os.path.basename(file_part):
+        return True
+
+    cls_obj = getattr(target_item, "cls", None)
+    if cls_obj and "login" in cls_obj.__name__.lower():
+        return True
+
+    return False
+
+
 # --- Driver Fixtures (支持 Android / HarmonyOS / iOS 三端独立或协同交互) ---
 @pytest.fixture(scope="session")
-def driver_harmony_sender():
+def driver_harmony_sender(request: pytest.FixtureRequest):
     """ 启动鸿蒙主测/发送方设备 (Session 级别，热启动模式下保持存活) """
     driver = DriverFactory.get_driver('harmony_sender')
+    if _is_login_module_request(request):
+        logger.info(f"{LogIcon.SETUP} 检测到 login 模块用例，跳过鸿蒙发送方 MainPage 首页检查")
+    else:
+        MainPage(driver).go_to_main_page(timeout=1.0, max_retries=3)
     try:
         yield driver
     finally:
@@ -328,9 +354,13 @@ def driver_harmony_sender():
 
 
 @pytest.fixture(scope="session")
-def driver_harmony_receiver():
+def driver_harmony_receiver(request: pytest.FixtureRequest):
     """ 启动鸿蒙接收方设备 (Session 级别，热启动模式下保持存活) """
     driver = DriverFactory.get_driver('harmony_receiver')
+    if _is_login_module_request(request):
+        logger.info(f"{LogIcon.SETUP} 检测到 login 模块用例，跳过鸿蒙接收方 MainPage 首页检查")
+    else:
+        MainPage(driver).go_to_main_page(timeout=1.0, max_retries=3)
     try:
         yield driver
     finally:
@@ -370,11 +400,14 @@ def driver_ios_receiver():
 
 
 @pytest.fixture(scope="session")
-def driver_sender():
+def driver_sender(request: pytest.FixtureRequest):
     """ 启动发送方设备 (Session 级别，热启动模式下保持存活) """
     driver = DriverFactory.get_driver('sender')
-    # 热启动自愈：确保初始状态处于主页面（若已在主页 0s 瞬时放行）
-    MainPage(driver).go_to_main_page(timeout=0.3, max_retries=3)
+    if _is_login_module_request(request):
+        logger.info(f"{LogIcon.SETUP} 检测到 login 模块用例，跳过发送方 MainPage 首页检查")
+    else:
+        # 热启动自愈：确保初始状态处于主页面（若已在主页 0s 瞬时放行）
+        MainPage(driver).go_to_main_page(timeout=0.3, max_retries=3)
     try:
         yield driver
     finally:
@@ -387,10 +420,13 @@ def driver_sender():
             driver.quit()
 
 @pytest.fixture(scope="session")
-def driver_receiver():
+def driver_receiver(request: pytest.FixtureRequest):
     """ 启动接收方设备 (Session 级别，热启动模式下保持存活) """
     driver = DriverFactory.get_driver('receiver')
-    MainPage(driver).go_to_main_page(timeout=0.3, max_retries=3)
+    if _is_login_module_request(request):
+        logger.info(f"{LogIcon.SETUP} 检测到 login 模块用例，跳过接收方 MainPage 首页检查")
+    else:
+        MainPage(driver).go_to_main_page(timeout=0.3, max_retries=3)
     try:
         yield driver
     finally:

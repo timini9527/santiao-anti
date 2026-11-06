@@ -3,6 +3,7 @@ from typing import List
 import time
 from core.logger_utils import logger, LogIcon
 from pages.chat.core.chat_page import ChatPage
+from common.toast_enums import ToastMsg
 
 
 
@@ -215,7 +216,7 @@ class ChatMessageBuilder(ChatPage):
 
         is_selected = session_select.select_session_by_name(target_name)
         if is_selected:
-            session_select.send_share_and_verify_toast('转发成功')
+            session_select.send_share_and_verify_toast(ToastMsg.FORWARD_SUCCESS)
             logger.info(f"{LogIcon.SUCCESS} 成功将群【{source_group}】名片分享至【{target_name}】并恢复至聊天界面")
         else:
             logger.warning(f"{LogIcon.WARN} [GroupCard] 会话选择页未找到目标会话: 【{target_name}】")
@@ -280,8 +281,8 @@ class MenuActionConfig:
     """定义长按菜单项的自动化执行与断言策略"""
     
     STRATEGIES = {
-        "复制": MenuActionStrategy("click_copy", "toast", "已复制到剪贴板"),
-        "收藏": MenuActionStrategy("click_favorite", "toast", "添加成功"),
+        "复制": MenuActionStrategy("click_copy", "toast", ToastMsg.COPIED_TO_CLIPBOARD),
+        "收藏": MenuActionStrategy("click_favorite", "toast", ToastMsg.ADD_SUCCESS),
         "转发": MenuActionStrategy("click_forward", "page_change", "选择"),
         "多选": MenuActionStrategy("click_multi_select", "ui_state", "multi_select_bar"),
         "回复": MenuActionStrategy("click_reply", "ui_state", "reply_layout"),
@@ -289,7 +290,7 @@ class MenuActionConfig:
         "删除": MenuActionStrategy("click_delete", "msg_disappear", "deleted"),
         "听筒": MenuActionStrategy("click_speaker", "toast", "听筒"),
         "扬声器": MenuActionStrategy("click_speaker", "toast", "扬声器"),
-        "添加表情": MenuActionStrategy("click_add_emoji", "toast", "添加成功"),
+        "添加表情": MenuActionStrategy("click_add_emoji", "toast", ToastMsg.ADD_SUCCESS),
     }
 
     @classmethod

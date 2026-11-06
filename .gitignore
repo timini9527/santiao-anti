@@ -50,6 +50,13 @@ pelican_bicycle.html
 build_desktop/
 build_native/
 scratch/
+bin_text.png
+border_mask.png
+box1.png
+box2.png
+card_crop.png
+edges.png
+*.tmp
 # desktop_app/logo_crop.png
 # desktop_app/sant_logo_raw.png
 # desktop_app/sant_logo_hd.png

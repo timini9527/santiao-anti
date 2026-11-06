@@ -7,6 +7,7 @@ from pages.chat.core.chat_page import ChatPage
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.groups.setting.general.group_avatar_page import GroupAvatarPage
 from strategy.chat.chat_strategy import GROUP_STRATEGY
+from common.toast_enums import ToastMsg
 from utils.cv_recognition.screenshot_utils import ImageComparator
 
 
@@ -77,7 +78,7 @@ class TestGroupAvatar:
         with allure.step('3. 从系统相册选择第一张照片并等待返回大图页'):
             self.groupAvatarPage.click_album_image_by_index(index=0)
             toast_text = self.groupAvatarPage.get_toast()
-            check.equal('头像更新成功', toast_text, f'❌ 未弹出【头像更新成功】提示, 实际:【{toast_text}】')
+            check.equal(ToastMsg.AVATAR_UPDATE_SUCCESS, toast_text, f'❌ 未弹出【{ToastMsg.AVATAR_UPDATE_SUCCESS}】提示, 实际:【{toast_text}】')
             self.groupAvatarPage.wait_group_avatar_page_load()
         with allure.step('4. 获取修改群头像之后的图像哈希值，校验头像已发生变更'):
             new_hash = self.groupAvatarPage.get_group_avatar_hash()
@@ -122,7 +123,7 @@ class TestGroupAvatar:
                 self.groupAvatarPage.click_camera_switch()
             self.groupAvatarPage.click_capture_photo()
             self.groupAvatarPage.click_confirm()
-            toast_state = self.groupAvatarPage.get_toast('头像更新成功', timeout=5)
+            toast_state = self.groupAvatarPage.get_toast(ToastMsg.AVATAR_UPDATE_SUCCESS, timeout=5)
             check.is_true(toast_state, f'❌ 未弹出【头像更新成功】提示')
             self.groupAvatarPage.wait_group_avatar_page_load()
         with allure.step('4. 获取修改后的图像哈希值，校验头像已成功发生物理变更'):
@@ -142,4 +143,4 @@ class TestGroupAvatar:
             self.groupAvatarPage.click_group_avatar_save_image()
         with allure.step('2. 获取保存成功后的 Toast 提示并做断言'):
             toast_text = self.groupAvatarPage.get_toast()
-            check.is_in('已保存到相册', toast_text, f'❌ 未能监听到【已保存到相册】提示, 实际 Toast 为: 【{toast_text}】')
+            check.is_in(ToastMsg.SAVED_TO_ALBUM, toast_text, f'❌ 未能监听到【{ToastMsg.SAVED_TO_ALBUM}】提示, 实际 Toast 为: 【{toast_text}】')

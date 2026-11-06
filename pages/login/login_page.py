@@ -3,6 +3,7 @@ from typing import Optional
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.common.exceptions import TimeoutException
 from common.base_page import BasePage
+from common.toast_enums import ToastMsg
 from locators.login.login_locator import LoginLocator
 from core.logger_utils import logger, LogIcon
 from business_helpers.verify_color import VerifyColor
@@ -17,6 +18,34 @@ class LoginPage(BasePage):
         super().__init__(driver)
         self.commonPage = CommonPage(driver)
         self.ocrUtils = OcrUtils(driver)
+
+    # ==========================
+    # 页面状态检测
+    # ==========================
+    # 登录页 - 检测当前是否处于登录主页面
+    def is_on_login_main_page(self, timeout: int = 2) -> bool:
+        """
+        检测当前是否处于登录主页面 (通过 APPLICATION_LOGO 进行核心检测与状态断言优化)
+        :param timeout: 显式等待超时时间 (默认 2s)
+        :return: True(当前处于登录主页面) / False(不在登录主页面)
+        """
+        logger.info(f"{LogIcon.FIND} 🧐 [Action - Login] 检测当前是否处于登录主页面 (Logo: APPLICATION_LOGO, 超时: {timeout}s)")
+        # 1. 核心特征判定：页面顶部标志性的应用主 Logo (支持 Android / HarmonyOS 跨端动态代理)
+        logo_elem = self.find_element(LoginLocator.APPLICATION_LOGO, timeout=timeout)
+        if logo_elem and logo_elem.is_displayed():
+            logger.info(f"{LogIcon.SUCCESS} [Action - Login] 成功识别到应用 Logo 元素，当前处于登录主页面")
+            return True
+
+        # 2. 状态兜底：若弱网或转场动画未完成，交叉验证登录主入口 (手机号登录/一键登录)
+        entrance = self.find_element(LoginLocator.LOGIN_ENTRANCE, timeout=1) or self.find_element(LoginLocator.ONE_KEY_LOGIN_ENTRANCE, timeout=1)
+        if entrance and entrance.is_displayed():
+            logger.info(f"{LogIcon.SUCCESS} [Action - Login] 辅助识别到登录主入口按钮，确认处于登录主页面")
+            return True
+
+        logger.warning(f"{LogIcon.FAIL} [Action - Login] 未能检测到应用 Logo 及登录主入口，当前不处于登录主页面")
+        return False
+    
+
 
     # ==========================
     # 顶部导航类操作
@@ -289,7 +318,7 @@ class LoginPage(BasePage):
             toast = self.find_element(LoginLocator.TOAST_MSG, timeout=0.2, condition="presence", expect_missing=True)
             if toast:
                 text = toast.get_attribute("text")
-                if text and text != '登录中...':
+                if text and text != ToastMsg.LOGGING_IN:
                     logger.info(f"{LogIcon.SUCCESS} 通过 ID 命中业务提示 Toast: {text}")
                     return text
             time.sleep(0.05)
@@ -308,16 +337,16 @@ class LoginPage(BasePage):
             logger.warning(f"{LogIcon.FAIL} 未能在规定时间内进入无卡登录首页")
             return False
 
-    # 登录页 - 显式等待验证是否处于登录页
+    # 登录页 - 显式等待验证是否处于登录主页面
     def wait_for_login_page(self, timeout: int = 10) -> bool:
-        """ 显式等待验证是否处于登录页 """
-        logger.info(f"{LogIcon.WAIT} 开始等待返回登录页面 (超时: {timeout}s)")
-        elem = self.find_element(LoginLocator.VERIFY_AND_LOGIN_BTN, timeout=timeout)
+        """ 显式等待验证是否处于登录主页面 (通过 APPLICATION_LOGO 进行检测优化) """
+        logger.info(f"{LogIcon.WAIT} 开始等待返回登录主页面 (超时: {timeout}s)")
+        elem = self.is_on_login_main_page(timeout=timeout)
         if elem:
-            logger.info(f"{LogIcon.SUCCESS} 成功回到登录页面")
+            logger.info(f"{LogIcon.SUCCESS} 成功回到登录主页面")
             return True
         else:
-            logger.warning(f"{LogIcon.FAIL} 未能在规定时间内返回登录页面")
+            logger.warning(f"{LogIcon.FAIL} 未能在规定时间内返回登录主页面")
             return False
     
     # ==========================

@@ -11,6 +11,7 @@ from pages.friend.profile.remark_setting_page import RemarkSettingPage
 from pages.chat.core.chat_page import ChatPage
 from pages.friend.tag_group.contact_tag_group_page import ContactTagGroupPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER3
+from common.toast_enums import ToastMsg
 
 
 
@@ -329,7 +330,7 @@ class TestContactDetailSingle:
             if tag_values:
                 self.remarkSettingPageS.clear_tag(list_tags=tag_values)
                 toast = self.remarkSettingPageS.get_toast()
-                check.equal('保存成功', toast, f'❌ 未收到保存成功的 Toast，实际: {toast}')
+                check.equal(ToastMsg.SAVE_SUCCESS, toast, f'❌ 未收到保存成功的 Toast，实际: {toast}')
         with allure.step('3. 获取当前标签名称并断言（若无可用标签则自动创建并取消默认勾选）'):
             tag_names = self.remarkSettingPageS.get_tag_names()
             if not tag_names:

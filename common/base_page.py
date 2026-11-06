@@ -4,7 +4,11 @@ import time
 import allure
 from typing import Union, List
 from contextlib import contextmanager
-from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from selenium.common.exceptions import (
+    NoSuchElementException,
+    StaleElementReferenceException,
+    TimeoutException,
+)
 from selenium.webdriver import ActionChains, Keys
 from selenium.webdriver.common.actions import interaction
 from selenium.webdriver.common.actions.pointer_input import PointerInput
@@ -12,6 +16,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.common.actions.action_builder import ActionBuilder
+from core.locator_manager import LocatorPlatformManager
 from core.logger_utils import logger, LogIcon
 from utils.except_utils import catch_exception, check_element_status, catch_elements_exception
 from appium.webdriver.common.appiumby import AppiumBy
@@ -59,73 +64,102 @@ class BasePage:
     # 使用装饰器包裹，自动处理异常和日志
     @catch_exception
     def find_element(self, locator: tuple, condition: str = "visibility",
-                     timeout: int = 10, raise_exception: bool = True,
+                     timeout: int | float = 10, raise_exception: bool = True,
                      expect_missing: bool = False) -> WebElement | None:
         """
-        查找并返回元素，用于后续点击或输入
-        :param timeout: 超时时间
-        :param locator: 元素定位
-        :param condition: 等待条件，默认等待可见('visibility')，可选存在('presence')
-        :param raise_exception: 用于异常中判断，避免异常就直接结束
-        :param expect_missing: 预期元素不存在 (用于断言元素不应出现的场景)
-        :return:
+        查找并返回单个目标元素，用于后续点击、输入或属性读取
+        :param locator: 元素定位 tuple 格式
+        :param condition: 等待条件，默认 'visibility' (可见)，可选 'clickable' (可见且可交互)、'presence' (存在于 DOM)
+        :param timeout: 超时时间（秒，支持浮点短超时）
+        :param raise_exception: 超时未找到时是否按错误级别记录日志（False 为静默探测模式；超时均由装饰器兜底返回 None）
+        :param expect_missing: 预期元素不存在（设为 True 时超时记录验证通过日志并返回 None）
+        :return: 命中的 WebElement 对象，未找到时返回 None
         """
-        from core.locator_manager import LocatorPlatformManager
+        if condition not in ("visibility", "clickable", "presence"):
+            raise ValueError(f"不支持的元素等待条件: {condition!r}，可选值为 'visibility' / 'clickable' / 'presence'")
+
         LocatorPlatformManager.set_thread_platform(self._platform_name)
         logger.info(f"{LogIcon.FIND} 正在查找元素: {locator} (模式: {condition})")
-        wait = WebDriverWait(self.driver, timeout, poll_frequency=0.2)
-        # 如果这里超时报错， @catch_exception 会自动捕获、截图、写 error 日志
-        if condition == "visibility":  # 等待可见
-            element = wait.until(
-                EC.visibility_of_element_located(locator)
-            )
-        elif condition == "clickable":  # 对于这种容易挂的按钮，增加一次性的抗震动处理
-            element = wait.until(
-                EC.element_to_be_clickable(locator)
-            )
-        else:  # 等待存在，但隐藏
-            element = wait.until(
-                EC.presence_of_element_located(locator)
-            )
-        return element
+
+        poll_interval = min(0.2, max(0.05, float(timeout))) if timeout and timeout > 0 else 0.05
+        wait = WebDriverWait(
+            self.driver,
+            timeout,
+            poll_frequency=poll_interval,
+            ignored_exceptions=(NoSuchElementException, StaleElementReferenceException),
+        )
+
+        if condition in ("visibility", "clickable"):
+            require_enabled = condition == "clickable"
+
+            def _first_usable_element(driver) -> WebElement | bool:
+                # 1. 优先走单元素短路查找，确保常规唯一定位场景零额外树扫描开销
+                first_el = driver.find_element(*locator)
+                if first_el.is_displayed() and (not require_enabled or first_el.is_enabled()):
+                    return first_el
+
+                # 2. 若首个匹配节点处于隐藏层（如后台 Fragment 同名节点），穿透检索后续可见同名节点
+                for candidate in driver.find_elements(*locator)[1:]:
+                    try:
+                        if candidate.is_displayed() and (not require_enabled or candidate.is_enabled()):
+                            return candidate
+                    except (StaleElementReferenceException, NoSuchElementException):
+                        continue
+                return False
+
+            return wait.until(_first_usable_element)
+
+        return wait.until(EC.presence_of_element_located(locator))
 
     @catch_elements_exception
     def find_elements(self, locator: tuple, condition: str = 'visibility', timeout: int | float = 10,
                       raise_exception: bool = True, expect_missing: bool = False) -> list[WebElement]:
         """
-        查找并返回元素，用于后续查询判断
-        :param timeout: 超时时间
+        查找并返回匹配的元素列表（保留长列表中当前屏幕可见的子集，避免因滚出屏幕元素导致整体失败）
         :param locator: 元素定位 tuple 格式
-        :param condition:   等待条件，默认等待可见('visibility')，可选存在('presence')
-        :param raise_exception: 如果没找到，是否抛出异常（设为 False 用于探测元素是否存在）
-        :param expect_missing: 预期元素不存在 (用于断言元素不应出现的场景) 
-        :return: 元素对象的列表。如果 raise_exception 为 False 且没找到，返回空列表 []
+        :param condition: 等待条件，默认 'visibility' (至少一个可见并返回全部可见项)，可选 'clickable' (可见且可交互)、'presence' (存在于 DOM)
+        :param timeout: 超时时间（秒，支持浮点短超时）
+        :param raise_exception: 超时未找到时是否按错误级别记录日志（False 为静默探测模式；超时均由装饰器兜底返回 []）
+        :param expect_missing: 预期元素不存在（设为 True 时超时记录验证通过日志并返回 []）
+        :return: 匹配的 WebElement 列表，未找到时返回 []
         """
+        if condition not in ("visibility", "clickable", "presence"):
+            raise ValueError(f"不支持的元素列表等待条件: {condition!r}，可选值为 'visibility' / 'clickable' / 'presence'")
+
+        LocatorPlatformManager.set_thread_platform(self._platform_name)
         logger.info(f"{LogIcon.FIND} 正在查找元素: {locator} (模式: {condition})")
-        wait = WebDriverWait(self.driver, timeout)
-        if condition == 'visibility':
-            # 注意：不使用 visibility_of_all_elements_located —— 它要求匹配到的【所有】元素都可见，
-            # 长列表中只要有一个元素滚出屏幕(不可见)就会判定不满足，一直等到超时返回空。
-            # 改为先用 presence 取到 DOM 中全部元素，再过滤出当前可见的，避免整体丢失。
-            all_elements = wait.until(
-                EC.presence_of_all_elements_located(locator)
-            )
-            elements = []
-            for el in all_elements:
-                try:
-                    if el.is_displayed():
-                        elements.append(el)
-                except Exception:
-                    # 元素在判断瞬间失效(stale)等情况，跳过即可
-                    continue
-        else:
-            elements = wait.until(
-                EC.presence_of_all_elements_located(locator)
-            )
-        return elements
+
+        poll_interval = min(0.2, max(0.05, float(timeout))) if timeout and timeout > 0 else 0.05
+        wait = WebDriverWait(
+            self.driver,
+            timeout,
+            poll_frequency=poll_interval,
+            ignored_exceptions=(NoSuchElementException, StaleElementReferenceException),
+        )
+
+        if condition in ("visibility", "clickable"):
+            require_enabled = condition == "clickable"
+
+            def _usable_elements(driver) -> list[WebElement] | bool:
+                found = driver.find_elements(*locator)
+                if not found:
+                    return False
+                matched = []
+                for el in found:
+                    try:
+                        if el.is_displayed() and (not require_enabled or el.is_enabled()):
+                            matched.append(el)
+                    except (StaleElementReferenceException, NoSuchElementException):
+                        # 仅容忍列表重绘导致的节点句柄失效，严禁吞掉 WebDriverException / HTTPError
+                        continue
+                return matched if matched else False
+
+            return wait.until(_usable_elements)
+
+        return wait.until(EC.presence_of_all_elements_located(locator))
 
     def is_element_exist(self, locator: tuple, timeout: int = 10, condition: str = "visibility",
-                         raise_exception: bool = True, expect_missing: bool = False) -> bool:
+                         raise_exception: bool = False, expect_missing: bool = True) -> bool:
         """
         判断元素是否存在/可见，直接返回布尔值，不中断代码流
         :param locator: 元素定位
@@ -232,15 +266,16 @@ class BasePage:
             raise NoSuchElementException(f"无法点击，元素未找到: {locator}")
 
     @allure.step("input -> 输入文本: {text}")
-    def send_keys(self, locator, text: str, clear: bool = True, append: bool = False) -> None:
+    def send_keys(self, locator: tuple, text: str, clear: bool = True, append: bool = False, timeout: int | float = 2) -> None:
         """
         向指定元素输入文本。
         :param locator: 元素定位器元组
         :param text: 输入文本内容
         :param clear: 是否在输入前清空已有内容（默认 True）
-        :param append: 是否在末尾以无损模式追加（默认 False，为 True 时采用系统剪贴板注入，杜绝 UiAutomator2 底层自动清空）
+        :param append: 是否在末尾以无损模式追加（默认 False；Android 采用系统剪贴板注入以规避 UiAutomator2 自动清空，HarmonyOS 直接跳过清空追加注入）
+        :param timeout: 元素查找超时时间（秒）
         """
-        if append:
+        if append and self._platform_name == "android" and hasattr(self.driver, "set_clipboard_text"):
             logger.info(f"{LogIcon.ACTION} 以无损追加模式输入文本: '{text}'")
             self.driver.set_clipboard_text(text)
             self.press_keycode(123)  # KEYCODE_MOVE_END (光标移到末尾)
@@ -249,11 +284,11 @@ class BasePage:
             logger.info(f"{LogIcon.SUCCESS} 追加输入文本成功: {text}")
             return
 
-        ele = self.find_element(locator)
+        ele = self.find_element(locator, timeout=timeout)
         if not ele:
             logger.warning(f"{LogIcon.WARN} 未找到元素: {locator}")
             raise NoSuchElementException(f"未找到元素: {locator}")
-        if clear:
+        if clear and not append:
             ele.clear()
         ele.send_keys(text)
         logger.info(f"{LogIcon.ACTION} 输入消息: {text}")
@@ -275,10 +310,7 @@ class BasePage:
             logger.error(f"{LogIcon.FAIL} 物理按键输入失败，未找到元素: {target}")
             raise NoSuchElementException(f"无法输入，元素未找到: {target}")
         if clear:
-            try:
-                ele.clear()
-            except Exception:
-                pass
+            ele.clear()
         ActionChains(self.driver).click(ele).send_keys(text).perform()
         logger.info(f"{LogIcon.ACTION} ActionChains 物理键盘按键输入成功: {text}")
         return True
@@ -286,14 +318,19 @@ class BasePage:
     @allure.step("input -> 极速内存注入文本: {text}")
     def fast_send_keys(self, locator, text):
         """
-        利用 Appium 底层 replaceElementValue 接口直接内存注入文本。
-        绕过输入法模拟按键，速度极快（瞬发），且 100% 避免高频输入下的输入法假死/崩溃。
+        利用驱动底层极速接口直接注入文本，绕过输入法逐字模拟按键：
+        - HarmonyOS: 走 HMNextAuto 原生 Socket 整串文本直发注入，极速且不锁输入法。
+        - Android: 走 UiAutomator2 底层 replaceElementValue 接口直接内存注入。
         """
         ele = self.find_element(locator)
         if not ele:
             logger.warning(f"{LogIcon.WARN} 未找到元素: {locator}")
             raise NoSuchElementException(f"未找到元素: {locator}")
-        self.driver.execute_script("mobile: replaceElementValue", {"elementId": ele.id, "text": text})
+        if self._platform_name == "harmonyos" or getattr(ele, "_is_harmony_element", False):
+            ele.send_keys(text)
+        else:
+            element_id = getattr(ele, "id", None) or getattr(ele, "_id", "")
+            self.driver.execute_script("mobile: replaceElementValue", {"elementId": element_id, "text": text})
         logger.info(f"{LogIcon.ACTION} 极速注入文本成功: {text}")
 
 

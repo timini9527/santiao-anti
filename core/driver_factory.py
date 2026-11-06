@@ -10,7 +10,9 @@ from typing import Any
 from urllib.parse import urlparse
 from appium import webdriver
 from appium.webdriver.client_config import AppiumClientConfig
+from appium.options.common.base import AppiumOptions
 from appium.options.android import UiAutomator2Options
+from appium.options.ios import XCUITestOptions
 from selenium.common.exceptions import WebDriverException
 from core.logger_utils import logger, LogIcon
 from utils.file_reader.data_loader import load_yaml_data
@@ -80,22 +82,107 @@ class DriverFactory:
         from core.locator_manager import LocatorPlatformManager
 
         # =========================================================================
-        # 🌐 平台一：鸿蒙原生环境 (HarmonyOS NEXT 6.0+)
+        # 🌐 平台一：鸿蒙原生环境 (基于标准 appium-harmonyos-driver)
         # =========================================================================
         if raw_platform in ('harmonyos', 'openharmony', 'hos'):
             LocatorPlatformManager.set_current_platform('harmonyos')
             harmony_common = data.get('harmony_app', {})
-            merged_caps = copy.deepcopy(harmony_common)
-            merged_caps.update(device_config)
+            desired_caps = copy.deepcopy(harmony_common)
+            desired_caps.update(device_config)
 
-            from core.harmony_driver import HarmonyDriver
-            logger.info(f"{LogIcon.SETUP} [DriverFactory] 识别到鸿蒙平台设备 ({actual_key})，构建 HarmonyDriver 实例")
-            h_driver = HarmonyDriver(merged_caps)
-            h_driver._factory_device_key = device_key
-            h_driver._factory_env = current_env
-            h_driver._factory_udid = merged_caps.get("udid")
-            h_driver._platform_name = "harmonyos"
-            return h_driver
+            # 标准化 Appium 2.x W3C 规范 Capabilities 映射
+            desired_caps['platformName'] = 'HarmonyOS'
+            desired_caps['appium:automationName'] = 'harmonyos'
+
+            # 双向兼容 bundleName / appPackage 与 abilityName / appActivity
+            pkg = desired_caps.get('appPackage') or desired_caps.get('bundleName')
+            act = desired_caps.get('appActivity') or desired_caps.get('abilityName')
+            if pkg:
+                desired_caps['appium:appPackage'] = pkg
+                desired_caps['appium:bundleName'] = pkg
+            if act:
+                desired_caps['appium:appActivity'] = act
+                desired_caps['appium:abilityName'] = act
+
+            if 'udid' in desired_caps and desired_caps['udid']:
+                desired_caps['appium:udid'] = desired_caps['udid']
+
+            desired_caps.setdefault('appium:newCommandTimeout', 120)
+            desired_caps.setdefault('appium:noReset', True)
+            desired_caps.setdefault('appium:skipHilogCapture', True)
+
+            # == 支持环境变量动态覆盖 (多设备并发支持) ==
+            env_udid = os.environ.get("REMOTE_UDID")
+            env_udid2 = os.environ.get("REMOTE_UDID2")
+            env_appium = os.environ.get("REMOTE_APPIUM_URL")
+            env_appium2 = os.environ.get("REMOTE_APPIUM_URL2")
+
+            if 'sender' in device_key.lower():
+                if env_udid and env_udid.strip():
+                    desired_caps['appium:udid'] = env_udid.strip()
+                    desired_caps['udid'] = env_udid.strip()
+            elif 'receiver' in device_key.lower():
+                if env_udid2 and env_udid2.strip():
+                    desired_caps['appium:udid'] = env_udid2.strip()
+                    desired_caps['udid'] = env_udid2.strip()
+
+            # 提取 Appium Server 物理连接地址
+            appium_url = device_config.get('appiumServerUrl', 'http://127.0.0.1:4723')
+            target_appium = None
+            if 'sender' in device_key.lower():
+                target_appium = env_appium
+            elif 'receiver' in device_key.lower():
+                target_appium = env_appium2
+
+            if target_appium and target_appium.strip():
+                if not target_appium.startswith("http"):
+                    target_appium = f"http://{target_appium}"
+                appium_url = target_appium
+                logger.info(f"{LogIcon.SETUP} [DriverFactory] 环境变量覆盖鸿蒙 {device_key} Appium 地址为: {appium_url}")
+
+            # 💡 快速网络探测（3秒超时），防止 Appium 服务未启动时挂起
+            try:
+                parsed_url = urlparse(appium_url)
+                probe_url = f"{parsed_url.scheme}://{parsed_url.netloc}/status"
+                if "/wd/hub" in parsed_url.path:
+                    probe_url = f"{parsed_url.scheme}://{parsed_url.netloc}/wd/hub/status"
+                logger.info(f"{LogIcon.SETUP} [DriverFactory] 正在对鸿蒙 Appium 进行连接探测: {probe_url}")
+                req = urllib.request.Request(probe_url)
+                with urllib.request.urlopen(req, timeout=3.0) as resp:
+                    pass
+            except Exception as e:
+                raise ConnectionError(
+                    f"\n🔴 [DriverFactory] 无法连接到鸿蒙指定的 Appium 服务器: {appium_url}\n"
+                    f"请检查:\n"
+                    f"1. 该 IP 和端口的 Appium 服务是否已启动？\n"
+                    f"2. 确认已安装并启用 harmonyos 驱动: `appium driver list`\n"
+                    f"3. 如果是多端并发，请确保不同设备监听在不同端口 (如 4723 / 4725)\n"
+                    f"探测失败原因: {e}\n"
+                )
+
+            options = AppiumOptions().load_capabilities(desired_caps)
+
+            logger.info(
+                f"{LogIcon.SETUP} [DriverFactory] 构建 appium-harmonyos-driver 驱动实例: {device_key} | "
+                f"UDID: {desired_caps.get('udid')} | Appium URL: {appium_url}"
+            )
+            appium_http_timeout = 95
+            client_config = AppiumClientConfig(
+                remote_server_addr=appium_url,
+                timeout=appium_http_timeout,
+            )
+            driver = webdriver.Remote(
+                command_executor=appium_url,
+                options=options,
+                client_config=client_config,
+            )
+            driver.implicitly_wait(0)
+            driver._factory_device_key = device_key
+            driver._factory_appium_url = appium_url
+            driver._factory_udid = desired_caps.get("udid")
+            driver._factory_env = current_env
+            driver._platform_name = "harmonyos"
+            return driver
 
         # =========================================================================
         # 🌐 平台二：iOS 环境 (XCUITest)
@@ -106,8 +193,45 @@ class DriverFactory:
             desired_caps = copy.deepcopy(ios_common)
             desired_caps.update(device_config)
 
-            from appium.options.ios import XCUITestOptions
-            options = XCUITestOptions().load_capabilities(desired_caps)
+            # 1. 端口与 WDA 地址自适应联动 (多机并发隔离核心：支持 ios_sender=8100, ios_receiver=8101)
+            wda_port = int(
+                desired_caps.get('wdaLocalPort')
+                or desired_caps.get('appium:wdaLocalPort')
+                or 8100
+            )
+            desired_caps['wdaLocalPort'] = wda_port
+            desired_caps['appium:wdaLocalPort'] = wda_port
+
+            # 若配置了 webDriverAgentUrl，自动保持与当前设备 wdaLocalPort 严格同源
+            wda_url_key = 'appium:webDriverAgentUrl' if 'appium:webDriverAgentUrl' in desired_caps else 'webDriverAgentUrl'
+            if wda_url_key in desired_caps:
+                desired_caps['appium:webDriverAgentUrl'] = f"http://127.0.0.1:{wda_port}"
+
+            # 2. W3C Appium 2.x 标准 Capability 前缀规范化
+            standard_w3c_keys = {'platformName', 'browserName', 'acceptInsecureCerts'}
+            normalized_caps: dict[str, Any] = {}
+            for k, v in desired_caps.items():
+                if k in standard_w3c_keys or k.startswith('appium:'):
+                    normalized_caps[k] = v
+                else:
+                    normalized_caps[f'appium:{k}'] = v
+            # 确保标准 platformName 为大写 iOS
+            normalized_caps['platformName'] = 'iOS'
+            normalized_caps['appium:automationName'] = 'XCUITest'
+
+            # 3. 本地 WDA 守护服务轻量前置探活 (Fail-Fast 友好自诊断)
+            try:
+                probe_req = urllib.request.Request(f"http://127.0.0.1:{wda_port}/status", method="GET")
+                with urllib.request.urlopen(probe_req, timeout=1.5) as probe_resp:
+                    if probe_resp.status == 200:
+                        logger.info(f"{LogIcon.SUCCESS} [DriverFactory] iOS WDA 服务在线探活成功 (端口: {wda_port})")
+            except Exception as probe_err:
+                logger.warning(
+                    f"{LogIcon.WARN} [DriverFactory] 检测到本地 iOS WDA 服务未在 127.0.0.1:{wda_port} 响应: {probe_err}。"
+                    f" 若启动失败，请检查是否已在宿主机运行 scripts/start_ios_wda.bat 开启 WDA 守护与端口转发。"
+                )
+
+            options = XCUITestOptions().load_capabilities(normalized_caps)
             appium_url = device_config.get('appiumServerUrl', 'http://127.0.0.1:4725')
 
             logger.info(f"{LogIcon.SETUP} [DriverFactory] 识别到 iOS 平台设备 ({actual_key})，构建 XCUITest 驱动实例")
@@ -286,7 +410,6 @@ class DriverFactory:
                 f"探测失败原因: {e}\n"
             )
 
-        # driver = webdriver.Remote(command_executor=appium_url, options=options)
         appium_http_timeout = 95
 
         client_config = AppiumClientConfig(
@@ -315,15 +438,12 @@ class DriverFactory:
         return driver
 
 
-
-
-
 class UiAutomator2RecoveryError(WebDriverException):
     """移动端驱动会话失效且已完成一次重建，当前用例应从 setup 重跑。"""
 
 
 class RecoverableDriver:
-    """保持同一 Driver 引用，并在 Android 或鸿蒙通信失效时原子替换底层会话。"""
+    """保持同一 Driver 引用，并在 Android、iOS 或鸿蒙通信失效时原子替换底层会话。"""
 
     # teardown 方法失败时不能触发重建，否则测试结束阶段可能反而创建一个新 Session。
     _NO_RECOVERY_METHODS = {"close", "quit", "stop_client"}
@@ -381,18 +501,17 @@ class RecoverableDriver:
         driver = object.__getattribute__(self, "_driver")
         plat = getattr(driver, "_platform_name", "")
 
-        # 1. 鸿蒙探活同时检查设备在线状态和 UiTest 界面树服务
-        if plat == "harmonyos" or hasattr(driver, "is_healthy"):
-            if not driver.is_healthy(timeout=timeout):
-                raise ConnectionError(f"鸿蒙设备 HDC 离线或服务异常 (设备: {getattr(driver, 'udid', '')})")
-            return
-
-        # 2. iOS 探活：轻量级窗口命令探测
-        if plat == "ios":
+        # 1. 鸿蒙与 iOS 探活：使用轻量级窗口命令探测 WebDriver Session 连通性
+        if plat in ("harmonyos", "ios"):
+            if hasattr(driver, "is_healthy"):
+                if not driver.is_healthy(timeout=timeout):
+                    plat_name = "鸿蒙" if plat == "harmonyos" else "iOS"
+                    raise ConnectionError(f"{plat_name}设备服务异常 (设备: {getattr(driver, 'udid', '')})")
+                return
             driver.get_window_size()
             return
 
-        # 3. Android UiAutomator2 探活：优先直连本地端口
+        # 2. Android UiAutomator2 探活：优先直连本地端口
         system_port = getattr(driver, "_factory_system_port", None)
         appium_url = getattr(driver, "_factory_appium_url", "")
         parsed_url = urlparse(appium_url)
@@ -443,24 +562,22 @@ class RecoverableDriver:
                 return
 
             old_driver = object.__getattribute__(self, "_driver")
-            is_harmony = getattr(old_driver, "_is_harmony_driver", False)
-            driver_type = "HarmonyOS" if is_harmony else "UiAutomator2"
+            plat = getattr(old_driver, "_platform_name", "")
+            driver_type = "HarmonyOS" if plat == "harmonyos" else ("iOS" if plat == "ios" else "UiAutomator2")
             logger.error(
                 f"{LogIcon.ACTION} [DriverRecovery] 检测到 {self._device_key} 的 "
                 f"{driver_type} 通信失效，{LogIcon.FAIL} 开始单次重建 Session | "
                 f"原因: {type(cause).__name__}: {cause}"
             )
 
-            if is_harmony:
-                # HMNextAuto 按设备缓存 Driver；先关闭旧实例才能真正建立新连接。
-                try:
-                    old_driver.quit()
-                except Exception as close_error:
-                    logger.warning(
-                        f"{LogIcon.WARN} [DriverRecovery] 关闭旧鸿蒙会话失败，"
-                        f"继续尝试重建: {type(close_error).__name__}: {close_error}"
-                    )
-            # Android 不主动 quit 冻结会话，工厂会清理 UiAutomator2 与端口残留。
+            # 安全尝试释放旧驱动资源
+            try:
+                old_driver.quit()
+            except Exception as close_error:
+                logger.warning(
+                    f"{LogIcon.WARN} [DriverRecovery] 关闭旧 {driver_type} 会话异常: {close_error}"
+                )
+
             try:
                 new_driver = DriverFactory._create_driver(self._device_key)
             except Exception as recovery_error:
@@ -480,7 +597,7 @@ class RecoverableDriver:
             )
 
     def _bind_recoverable_result(self, result: Any) -> Any:
-        """让鸿蒙元素后续动作继续经过当前 RecoverableDriver 代理。"""
+        """让元素后续动作继续经过当前 RecoverableDriver 代理。"""
         result_items = result if isinstance(result, (list, tuple)) else (result,)
         for item in result_items:
             bind_driver = getattr(item, "_bind_command_driver", None)
@@ -507,6 +624,7 @@ class RecoverableDriver:
         ) from error
 
     def __getattr__(self, name: str) -> Any:
+        """动态代理转发：将对 RecoverableDriver 的属性与方法调用透明转发给底层真实 Driver，并在通信异常时自动触发会话自愈重建。"""
         # Page Object 始终持有本代理；属性和命令在调用时再解析到当前底层 Driver。
         driver = object.__getattribute__(self, "_driver")
         generation = object.__getattribute__(self, "_generation")
@@ -518,6 +636,7 @@ class RecoverableDriver:
             return attribute
 
         def guarded_command(*args: Any, **kwargs: Any) -> Any:
+            """包装底层 Driver 方法：执行成功后更新心跳时间戳并绑定返回元素，通信异常时触发单次重建。"""
             current_driver = object.__getattribute__(self, "_driver")
             current_generation = object.__getattribute__(self, "_generation")
             try:

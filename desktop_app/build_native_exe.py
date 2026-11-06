@@ -37,8 +37,8 @@ PROJECT_ROOT = SmartPathResolver.get_project_root()
 # 控制是否编译生成 Inno Setup 单文件安装包 (SetupInstaller/Santiao_IM_Native_Setup_v0.9.9.exe)
 # - True  : 完整全量流水线 (PyInstaller 打包 -> 核心资产加密脱敏 -> Inno Setup 编译生成单文件安装包)
 # - False : 仅执行 PyInstaller 打包 (输出 dist/三条IM自动化测试控制台 绿色运行目录，跳过加密与安装包制作，极速秒级构建)
-BUILD_INSTALLER = False
-# BUILD_INSTALLER = True
+# BUILD_INSTALLER = False
+BUILD_INSTALLER = True
 
 
 def sanitize_build_environment() -> dict:
@@ -403,6 +403,7 @@ def build(build_installer: bool = BUILD_INSTALLER):
         f"--add-data={os.path.join(CURRENT_DIR, 'resources')};desktop_app/resources",
         f"--add-data={os.path.join(CURRENT_DIR, 'assets')};desktop_app/assets",
         f"--add-data={os.path.join(PROJECT_ROOT, 'bin')};bin",
+        f"--add-data={os.path.join(PROJECT_ROOT, 'scripts')};scripts",
         "--hidden-import=desktop_app",
         "--hidden-import=desktop_app.style",
         "--hidden-import=desktop_app.config",

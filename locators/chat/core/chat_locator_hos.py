@@ -187,7 +187,7 @@ class ChatLocatorHos:
     # 文本输入框 (TextInput / TextArea)
     CHAT_INPUT_CONTENT = (AppiumBy.XPATH, "")
     CHAT_INPUT_BOX = (AppiumBy.XPATH, "//TextInput | //TextArea")
-    TEXT_INPUT = (AppiumBy.XPATH, "//NavDestination//Stack/__Common__//Column/Stack/Column/Row//RichEditor")
+    TEXT_INPUT = (AppiumBy.XPATH, "//RichEditor[@id='inputText'] | //*[@id='inputText'] | //RichEditor")
 
     # 语音 / 键盘切换按钮
     VOICE_BUTTON = (

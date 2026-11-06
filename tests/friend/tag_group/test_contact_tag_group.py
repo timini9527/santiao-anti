@@ -8,6 +8,7 @@ from pages.friend.tag_group.contact_tag_group_page import ContactTagGroupPage
 from pages.common.contact_select_page import ContactSelectPage
 from pages.friend.profile.contact_detail_page import ContactDetailPage
 from core.logger_utils import logger, LogIcon
+from common.toast_enums import ToastMsg
 
 
 
@@ -61,7 +62,7 @@ class TestContactTagGroup:
         self.tagGroupPage.input_subgroup_name(name)
         self.tagGroupPage.click_save_group()
         if wait_toast:
-            return bool(self.tagGroupPage.get_toast('保存成功', timeout=2))
+            return bool(self.tagGroupPage.get_toast(ToastMsg.SAVE_SUCCESS, timeout=2))
         return True
 
     def _is_group_in_list(self, name: str) -> bool:

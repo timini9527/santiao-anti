@@ -854,6 +854,7 @@ class ChatPage(BasePage):
 
             for container in re_elems:
                 try:
+    
                     c_rect = container.rect
                     elem_y = c_rect['y']
                     elem_h = c_rect['height']
@@ -932,9 +933,11 @@ class ChatPage(BasePage):
             if found_count < expected_count:
                 logger.info(f"{LogIcon.ACTION} 当前找到 {found_count}/{expected_count}，执行精准下拉以加载更多历史消息...")
                 try:
+    
                     target_elem = None
                     if row_elems:
                         try:
+            
                             first_rect = row_elems[0].rect
                             first_y = first_rect['y']
                             first_bottom = first_y + first_rect['height']
@@ -1566,6 +1569,7 @@ class ChatPage(BasePage):
         safe_btns = []
         for btn in check_btns:
             try:
+
                 rect = btn.rect
                 btn_top = rect['y']
                 btn_bottom = rect['y'] + rect['height']
@@ -1905,6 +1909,7 @@ class ChatPage(BasePage):
             if ti > 0 and ti % 30 == 0:
                 logger.info(f"{LogIcon.WAIT} 剩余时间: {ti} 秒 (触发防息屏机制...)")
                 try:
+    
                     # 获取屏幕尺寸，并在屏幕中央滑动 1 像素，模拟触屏重置系统的息屏倒计时
                     size = self.driver.get_window_size()
                     center_x = int(size['width'] * 0.1)

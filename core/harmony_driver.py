@@ -136,6 +136,7 @@ class HarmonyDriver:
         self._command_lock = threading.RLock()  # 全局命令互斥锁，保证并发安全
         self._implicit_wait = 0.0
         self._closed = False
+        self._window_size_cache: Optional[Dict[str, int]] = None
         self.hm: Optional[Any] = None
         self.d: Optional[Any] = None
 
@@ -388,18 +389,33 @@ class HarmonyDriver:
                     )
             return self._dump_layout_via_hdc()
 
-    def _execute_side_effect(self, action_name: str, hm_action: Optional[Callable[[], Any]], hdc_shell_command: str, *, sensitive: bool = False) -> None:
+    def _execute_side_effect(
+        self,
+        action_name: str,
+        hm_action: Optional[Callable[[], Any]],
+        hdc_shell_command: str,
+        *,
+        sensitive: bool = False,
+    ) -> None:
         """
         执行有副作用的设备动作。
-
         HMNextAuto 响应异常或 HDC 通信中断时，设备端可能已经执行成功，
         因此不能自动切换通道或触发整条用例重放。
+        工业级防线：
+        1. 状态守卫：驱动已关闭时立即拒绝，防止在退出与清理阶段误报未决未知异常；
+        2. 异常隔离：确定性错误（参数错误、主动校验异常）直接抛出，仅通信断连/超时才转为未知结果；
+        3. 防重放保障：通信中断后严格禁止通道自动切换或二次重放，杜绝重复点击与脏消息。
         """
+        if self._closed:
+            raise HarmonyDriverError(f"鸿蒙驱动已关闭，无法执行设备动作: {action_name}")
+
         with self._command_lock:
             if self.hm and hm_action:
                 try:
                     hm_action()
                     return
+                except (HarmonyDriverError, ValueError, TypeError):
+                    raise
                 except Exception as error:
                     error_detail = (
                         "<敏感错误详情已隐藏>"
@@ -434,24 +450,41 @@ class HarmonyDriver:
 
     @staticmethod
     def _quote_hdc_text(text: str) -> str:
-        """转义 HDC shell 文本参数；禁止换行和空字符进入远端命令。"""
-        if any(character in text for character in ("\x00", "\r", "\n")):
-            raise ValueError("HDC 文本输入不支持空字符或换行")
+        """转义 HDC shell 文本参数；禁止空字符进入远端命令，换行符平滑清洗。"""
+        if "\x00" in text:
+            raise ValueError("HDC 文本输入不支持空字符 (Null byte)")
+        cleaned = text.replace("\r", "")
         escaped = (
-            text.replace("\\", "\\\\")
+            cleaned.replace("\\", "\\\\")
             .replace('"', '\\"')
             .replace("$", "\\$")
             .replace("`", "\\`")
+            .replace("\n", " ")  # 兜底命令行中换行转为空格，避免破坏远端 Shell 语法
         )
         return f'"{escaped}"'
 
     def _input_focused_text(self, text: str, x: int, y: int) -> None:
         """向已聚焦输入框写入文本，日志和异常均不输出明文内容（保障安全合规）。"""
+        target_x = int(x)
+        target_y = int(y)
+
+        # 1. 构建主通道闭包：通过 HMNextAuto 高速 Socket 通道原生传递富文本（完美支持多行/换行）
+        hm_action = None
+        if self.hm:
+            if hasattr(self.hm, "_invoke"):
+                hm_action = lambda: self.hm._invoke(
+                    "Driver.inputText",
+                    args=[{"x": target_x, "y": target_y}, text],
+                )
+            elif hasattr(self.hm, "input_text"):
+                hm_action = lambda: self.hm.input_text(text)
+
+        # 2. 构造 HDC 兜底命令
         quoted_text = self._quote_hdc_text(text)
         self._execute_side_effect(
             "输入文本",
-            (lambda: self.hm.input_text(text)) if self.hm else None,
-            f"uitest uiInput inputText {x} {y} {quoted_text}",
+            hm_action,
+            f"uitest uiInput inputText {target_x} {target_y} {quoted_text}",
             sensitive=True,
         )
 
@@ -616,6 +649,72 @@ class HarmonyDriver:
         )
         time.sleep(0.1)
 
+    def is_app_installed(self, bundle_id: Optional[str] = None) -> bool:
+        """检查目标鸿蒙应用是否已安装（优先读取 HMNextAuto，兜底走 bm dump）。"""
+        target_bundle = (bundle_id or self.bundle_name).strip()
+        if self.hm and hasattr(self.hm, "has_app"):
+            try:
+                return bool(self.hm.has_app(target_bundle))
+            except Exception as error:
+                logger.debug(f"{LogIcon.WARN} [HarmonyDriver] has_app 查询异常: {error}")
+        output = self.execute_hdc_shell(f"bm dump -n {target_bundle}")
+        return target_bundle in output and "error" not in output.lower()
+
+    def install_app(self, app_path: str) -> None:
+        """安装指定路径的鸿蒙应用包 (HAP)。"""
+        logger.info(f"{LogIcon.ACTION} [HarmonyDriver] 安装应用: {app_path}")
+        if self.hm and hasattr(self.hm, "install_app"):
+            try:
+                self.hm.install_app(app_path)
+                return
+            except Exception as error:
+                logger.debug(f"{LogIcon.WARN} [HarmonyDriver] HMNextAuto 安装失败，回退 HDC: {error}")
+        self.execute_hdc(("install", os.path.abspath(app_path)))
+
+    def remove_app(self, bundle_id: Optional[str] = None) -> None:
+        """卸载目标应用（兼容 Appium remove_app 接口）。"""
+        target_bundle = (bundle_id or self.bundle_name).strip()
+        logger.info(f"{LogIcon.ACTION} [HarmonyDriver] 卸载应用: {target_bundle}")
+        if self.hm and hasattr(self.hm, "uninstall_app"):
+            try:
+                self.hm.uninstall_app(target_bundle)
+                return
+            except Exception as error:
+                logger.debug(f"{LogIcon.WARN} [HarmonyDriver] HMNextAuto 卸载失败，回退 HDC: {error}")
+        self.execute_hdc(("uninstall", target_bundle))
+
+    def uninstall_app(self, bundle_id: Optional[str] = None) -> None:
+        """卸载目标应用（规范别名）。"""
+        self.remove_app(bundle_id)
+
+    def open_url(self, url: str) -> None:
+        """唤起指定 DeepLink 或标准 Web 链接。"""
+        logger.info(f"{LogIcon.ACTION} [HarmonyDriver] 打开链接: {url}")
+        if self.hm and hasattr(self.hm, "open_url"):
+            try:
+                self.hm.open_url(url)
+                return
+            except Exception as error:
+                logger.debug(f"{LogIcon.WARN} [HarmonyDriver] HMNextAuto open_url 失败，回退 HDC: {error}")
+        self.execute_hdc_shell(f"aa start -U {shlex.quote(url)}")
+
+    def get(self, url: str) -> None:
+        """Selenium/Appium 标准导航方法，打开指定链接。"""
+        self.open_url(url)
+
+    def get_toast(self, timeout: float = 3.0) -> Optional[str]:
+        """优先利用 HMNextAuto 原生 toast_watcher 监听并捕获系统 Toast 消息。"""
+        if self.hm and hasattr(self.hm, "toast_watcher"):
+            try:
+                self.hm.toast_watcher.start()
+                toast = self.hm.toast_watcher.get_toast(timeout=int(timeout))
+                if toast:
+                    logger.info(f"{LogIcon.SUCCESS} [HarmonyDriver] 原生 Toast 捕获成功: {toast}")
+                    return str(toast)
+            except Exception as error:
+                logger.debug(f"{LogIcon.WARN} [HarmonyDriver] toast_watcher 捕获异常: {error}")
+        return None
+
     @staticmethod
     def _find_layout_attribute(node: Dict[str, Any], attribute_name: str) -> Optional[str]:
         """递归读取界面树中首个非空属性值（深度优先遍历）。"""
@@ -650,6 +749,48 @@ class HarmonyDriver:
                 )
         layout_data = self._get_layout_data()
         return self._find_layout_attribute(layout_data, "bundleName") or ""
+
+    def query_app_state(self, bundle_id: Optional[str] = None) -> int:
+        """
+        查询目标应用运行状态（兼容 Appium 状态码约定：4=前台运行，1=后台或未前台运行）。
+        """
+        target_bundle = (bundle_id or self.bundle_name).strip()
+        try:
+            if self.current_package == target_bundle:
+                return 4
+        except Exception as error:
+            logger.debug(
+                f"{LogIcon.WARN} [HarmonyDriver] 查询应用状态异常: {type(error).__name__}: {error}"
+            )
+        return 1
+
+    def execute_script(self, script: str, *args: Any) -> Any:
+        """兼容 Appium 扩展脚本指令（如 mobile: startActivity、mobile: replaceElementValue、mobile: deepLink、mobile: shell）。"""
+        cmd = str(script or "").strip()
+        payload = args[0] if args and isinstance(args[0], dict) else {}
+        if cmd == "mobile: startActivity":
+            intent = str(payload.get("intent") or "")
+            pkg = intent.split("/")[0].strip() if "/" in intent else self.bundle_name
+            self.activate_app(pkg or self.bundle_name)
+            return True
+        if cmd == "mobile: replaceElementValue":
+            text = str(payload.get("text") or "")
+            self.input_text(text)
+            return True
+        if cmd == "mobile: deepLink":
+            url = str(payload.get("url") or "")
+            if url:
+                self.open_url(url)
+                return True
+        if cmd == "mobile: shell":
+            command = str(
+                payload.get("command")
+                or (args[0] if args and isinstance(args[0], str) else "")
+            )
+            if command:
+                return self.execute_hdc_shell(command)
+        logger.debug(f"{LogIcon.WARN} [HarmonyDriver] 忽略未适配的 execute_script 指令: {cmd}")
+        return None
 
     # --------------------------------------------------------------------------
     # 第二阶段：界面树解析与元素定位检索 (用例执行主通道)
@@ -757,17 +898,18 @@ class HarmonyDriver:
                 matched_nodes.append(node_map[int(node_index)])
         return matched_nodes
 
-    def find_elements(self, by: str, value: str) -> List["HarmonyWebElement"]:
-        """
-        步骤 5：根据定位策略查找当前屏幕内的所有匹配节点。
-        """
-        layout_root = self._get_layout_data()
-        if not layout_root:
+    def _search_nodes_by_strategy(
+        self,
+        root_node: Dict[str, Any],
+        by: str,
+        value: str,
+    ) -> List[Dict[str, Any]]:
+        """在指定节点子树中按定位策略检索匹配节点（纯内存检索，零额外 IPC 开销）。"""
+        if not root_node:
             return []
 
         if by == By.XPATH:
-            matched_nodes = self._find_by_xpath(layout_root, value)
-            return [HarmonyWebElement(self, node) for node in matched_nodes]
+            return self._find_by_xpath(root_node, value)
 
         supported_strategies = {
             By.ID,
@@ -827,8 +969,22 @@ class HarmonyDriver:
                 if isinstance(child, dict):
                     search_node(child)
 
-        search_node(layout_root)
-        return [HarmonyWebElement(self, node) for node in matched_nodes]
+        search_node(root_node)
+        return matched_nodes
+
+    def find_elements(self, by: str, value: str) -> List["HarmonyWebElement"]:
+        """
+        步骤 5：根据定位策略查找当前屏幕内的所有匹配节点。
+        """
+        layout_root = self._get_layout_data()
+        if not layout_root:
+            return []
+
+        matched_nodes = self._search_nodes_by_strategy(layout_root, by, value)
+        return [
+            HarmonyWebElement(self, node, layout_root=layout_root)
+            for node in matched_nodes
+        ]
 
     def find_element(self, by: str, value: str) -> "HarmonyWebElement":
         """
@@ -942,8 +1098,11 @@ class HarmonyDriver:
             self._press_key_event(2055)
 
     def get_window_size(self, windowHandle: str = "current") -> Dict[str, int]:
-        """获取物理屏幕尺寸；探测失败时不返回可能导致误触的虚假默认值。"""
+        """获取物理屏幕尺寸（带会话级缓存，避免高频滑动与定位时重复触发 IPC 查询）。"""
         _ = windowHandle
+        if self._window_size_cache is not None:
+            return dict(self._window_size_cache)
+
         if self.hm:
             try:
                 display_size = self.hm.display_size
@@ -951,7 +1110,8 @@ class HarmonyDriver:
                     width = int(display_size[0])
                     height = int(display_size[1])
                     if width > 0 and height > 0:
-                        return {"width": width, "height": height}
+                        self._window_size_cache = {"width": width, "height": height}
+                        return dict(self._window_size_cache)
             except Exception as error:
                 logger.debug(
                     f"{LogIcon.WARN} [HarmonyDriver] HMNextAuto 屏幕尺寸探测失败，"
@@ -964,10 +1124,11 @@ class HarmonyDriver:
             output,
         )
         if active_mode:
-            return {
+            self._window_size_cache = {
                 "width": int(active_mode.group(1)),
                 "height": int(active_mode.group(2)),
             }
+            return dict(self._window_size_cache)
 
         display_rect = re.search(
             r"displayRect:\s*\[(-?\d+),\s*(-?\d+),\s*(-?\d+),\s*(-?\d+)\]",
@@ -978,7 +1139,8 @@ class HarmonyDriver:
             width = right - left
             height = bottom - top
             if width > 0 and height > 0:
-                return {"width": width, "height": height}
+                self._window_size_cache = {"width": width, "height": height}
+                return dict(self._window_size_cache)
 
         configured_width = self.caps.get("screenWidth")
         configured_height = self.caps.get("screenHeight")
@@ -990,7 +1152,8 @@ class HarmonyDriver:
                     f"{LogIcon.WARN} [HarmonyDriver] 使用 capability 中配置的"
                     f"屏幕尺寸: {width}x{height}"
                 )
-                return {"width": width, "height": height}
+                self._window_size_cache = {"width": width, "height": height}
+                return dict(self._window_size_cache)
         raise HarmonyCommandError("无法获取有效的鸿蒙设备屏幕尺寸")
 
     # --------------------------------------------------------------------------
@@ -1099,23 +1262,24 @@ class HarmonyDriver:
                 )
 
     def get_screenshot_as_png(self) -> bytes:
-        """截取当前屏幕，并返回经过格式校验的 PNG 字节流。"""
+        """截取当前屏幕并返回 PNG 字节流（优先使用 HDC snapshot_display 静默截屏，避免触发 IM 截屏系统通知）。"""
         with tempfile.TemporaryDirectory(prefix="santiao_harmony_") as temp_dir:
             local_path = os.path.join(temp_dir, "screen.png")
-            if self.hm:
-                try:
-                    with self._command_lock:
-                        # screenCap 明确产出 PNG；默认截图方式可能返回 JPEG。
-                        self.hm.screenshot(local_path, method="screenCap")
+            try:
+                self._capture_screenshot_via_hdc(local_path)
+                if os.path.exists(local_path) and os.path.getsize(local_path) > 100:
                     return self._read_png_file(local_path)
-                except Exception as error:
-                    logger.debug(
-                        f"{LogIcon.WARN} [HarmonyDriver] HMNextAuto 截图失败，"
-                        f"改用 HDC: {type(error).__name__}: {error}"
-                    )
+            except Exception as hdc_error:
+                logger.debug(
+                    f"{LogIcon.WARN} [HarmonyDriver] HDC 静默截图失败，回退至 HMNextAuto: {hdc_error}"
+                )
 
-            self._capture_screenshot_via_hdc(local_path)
-            return self._read_png_file(local_path)
+            if self.hm:
+                with self._command_lock:
+                    self.hm.screenshot(local_path, method="screenCap")
+                return self._read_png_file(local_path)
+
+            raise HarmonyCommandError("无法完成鸿蒙屏幕截图")
 
     def get_screenshot_as_file(self, filename: str) -> bool:
         """截取当前屏幕并将有效 PNG 数据保存到指定本地路径。"""
@@ -1150,9 +1314,8 @@ class HarmonyDriver:
             if not self.udid and not target_list:
                 return False
 
-            layout_data = self._dump_layout_via_hdc(
-                timeout=self._remaining_timeout(deadline)
-            )
+            # 优先走高速内存界面树通道，不可用时平滑降级走 HDC 文件抓取
+            layout_data = self._get_layout_data()
             return bool(layout_data)
         except (HarmonyDriverError, TypeError, ValueError) as error:
             logger.debug(
@@ -1186,11 +1349,16 @@ class HarmonyDriver:
         return self
 
     def implicitly_wait(self, time_to_wait: float) -> None:
-        """保存兼容等待值；显式等待仍由 WebDriverWait 控制。"""
+        """保存兼容等待值，并同步下发至 HMNextAuto 客户端配置。"""
         wait_seconds = float(time_to_wait)
         if wait_seconds < 0 or not math.isfinite(wait_seconds):
             raise ValueError("隐式等待时间必须是非负有限数值")
         self._implicit_wait = wait_seconds
+        if self.hm and hasattr(self.hm, "implicitly_wait"):
+            try:
+                self.hm.implicitly_wait(wait_seconds)
+            except Exception as error:
+                logger.debug(f"{LogIcon.WARN} [HarmonyDriver] 同步 implicitly_wait 异常: {error}")
 
     def quit(self) -> None:
         """幂等关闭会话，并释放 HMNextAuto 按设备维护的单例实例。"""
@@ -1247,10 +1415,17 @@ class HarmonyWebElement:
     # 第一阶段：实例构造与矩形边界计算
     # --------------------------------------------------------------------------
 
-    def __init__(self, driver: Any, node_data: Dict[str, Any]):
-        """步骤 1：绑定 Driver，并保存当前界面树快照中的节点属性。"""
+    def __init__(
+        self,
+        driver: Any,
+        node_data: Dict[str, Any],
+        layout_root: Optional[Dict[str, Any]] = None,
+    ):
+        """步骤 1：绑定 Driver，并保存当前界面树快照中的节点属性与上下文根树。"""
+        self._raw_driver = driver
         self.driver = driver
         self.node_data = node_data
+        self._layout_root = layout_root
         self.attributes = HarmonyDriver._normalized_node_attributes(node_data)
         self._init_bounds()
 
@@ -1258,6 +1433,55 @@ class HarmonyWebElement:
         """将元素动作绑定到可恢复代理，而不是固定在旧的底层 Driver。"""
         self.driver = driver
         return self
+
+    def _collect_descendant_ids(self) -> set[int]:
+        """收集当前节点下的所有严格后代节点内存 ID，用于子元素检索过滤。"""
+        descendant_ids: set[int] = set()
+
+        def walk(node: Dict[str, Any]) -> None:
+            for child in node.get("children", []) or []:
+                if isinstance(child, dict):
+                    descendant_ids.add(id(child))
+                    walk(child)
+
+        walk(self.node_data)
+        return descendant_ids
+
+    def find_elements(self, by: str, value: str) -> List["HarmonyWebElement"]:
+        """
+        在当前元素子树内检索匹配的子元素（纯内存快照检索，支持相对路径与全路径 XPath 过滤）。
+        """
+        descendant_ids = self._collect_descendant_ids()
+        if not descendant_ids:
+            return []
+
+        raw_driver: HarmonyDriver = getattr(self, "_raw_driver", self.driver)
+        candidates = raw_driver._search_nodes_by_strategy(self.node_data, by, value)
+        matched = [node for node in candidates if id(node) in descendant_ids]
+
+        if not matched and by == By.XPATH and self._layout_root is not None:
+            full_candidates = raw_driver._search_nodes_by_strategy(
+                self._layout_root, by, value
+            )
+            matched = [node for node in full_candidates if id(node) in descendant_ids]
+
+        return [
+            HarmonyWebElement(
+                raw_driver,
+                node,
+                layout_root=self._layout_root,
+            )._bind_command_driver(self.driver)
+            for node in matched
+        ]
+
+    def find_element(self, by: str, value: str) -> "HarmonyWebElement":
+        """在当前元素子树内查找首个匹配子元素，未找到时抛出 NoSuchElementException。"""
+        elements = self.find_elements(by, value)
+        if not elements:
+            raise NoSuchElementException(
+                f"在当前鸿蒙父元素({self.tag_name})下无法通过 {by}='{value}' 定位到子元素"
+            )
+        return elements[0]
 
     def _init_bounds(self) -> None:
         """步骤 2：解析 `[left,top][right,bottom]` 矩形边界并计算几何中心点坐标。"""
@@ -1306,6 +1530,20 @@ class HarmonyWebElement:
     # --------------------------------------------------------------------------
     # 第二阶段：状态与属性读取 (用例断言通道)
     # --------------------------------------------------------------------------
+
+    @property
+    def id(self) -> str:
+        """返回组件唯一标识 ID（遵循 W3C WebDriver / Selenium / Appium WebElement.id 规范）。"""
+        return (
+            str(self.attributes.get("id") or "").strip()
+            or str(self.attributes.get("resource-id") or "").strip()
+            or f"harmony_elem_{hex(id(self))}"
+        )
+
+    @property
+    def _id(self) -> str:
+        """兼容老版本客户端与私有属性 _id 访问。"""
+        return self.id
 
     @property
     def text(self) -> str:
@@ -1369,6 +1607,26 @@ class HarmonyWebElement:
             return self.text
         return self.attributes.get(attribute_name)
 
+    @property
+    def screenshot_as_png(self) -> bytes:
+        """截取当前元素矩形区域的 PNG 字节流，兼容图像比对与头像哈希校验。"""
+        self._ensure_interactable()
+        full_png = self.driver.get_screenshot_as_png()
+        from PIL import Image
+        import io
+
+        with Image.open(io.BytesIO(full_png)) as img:
+            crop_box = (
+                max(0, self.left),
+                max(0, self.top),
+                min(img.width, self.right),
+                min(img.height, self.bottom),
+            )
+            cropped = img.crop(crop_box)
+            buf = io.BytesIO()
+            cropped.save(buf, format="PNG")
+            return buf.getvalue()
+
     # --------------------------------------------------------------------------
     # 第三阶段：交互动作执行 (事件注入)
     # --------------------------------------------------------------------------
@@ -1396,21 +1654,25 @@ class HarmonyWebElement:
         time.sleep(0.2)
 
     def send_keys(self, *values: Any) -> None:
-        """聚焦元素后输入文本，并转换常用 Selenium 特殊按键（如 Enter/Backspace）。"""
+        """向控件输入文本，并转换常用 Selenium 特殊按键（如 Enter/Backspace）。"""
         input_value = "".join(str(value) for value in values)
-        self.click()
-        time.sleep(0.05)
+        if not input_value:
+            return
 
+        # 1. 快速通道：普通文本直接整串注入，杜绝逐字符拆装循环
+        special_keys = (Keys.ENTER, Keys.RETURN, Keys.BACKSPACE)
+        if not any(key in input_value for key in special_keys):
+            self.driver.input_text(input_value, self.center_x, self.center_y)
+            time.sleep(0.1)
+            return
+
+        # 2. 包含特殊功能键时，按键与普通文本分段派发
         text_buffer: List[str] = []
 
         def flush_text_buffer() -> None:
             if not text_buffer:
                 return
             plain_text = "".join(text_buffer)
-            logger.info(
-                f"{LogIcon.ACTION} [HarmonyWebElement] 向控件输入文本 "
-                f"(长度: {len(plain_text)})"
-            )
             self.driver.input_text(
                 plain_text,
                 self.center_x,
@@ -1418,7 +1680,6 @@ class HarmonyWebElement:
             )
             text_buffer.clear()
 
-        # 分割普通文本与特殊控制键，避免控制字符被明文输入
         for character in input_value:
             if character in (Keys.ENTER, Keys.RETURN):
                 flush_text_buffer()
@@ -1432,6 +1693,8 @@ class HarmonyWebElement:
         time.sleep(0.1)
 
     def clear(self) -> None:
-        """聚焦元素后，按当前文本长度执行有上限的退格清理。"""
-        self.click()
-        self.driver.clear_text(max(30, len(self.text)))
+        """仅在有文本时按实际长度执行受限退格清理，避免空输入框连续误删，不触发点击弹出键盘。"""
+        current_len = len(self.text or "")
+        if current_len == 0:
+            return
+        self.driver.clear_text(min(current_len + 3, 50))

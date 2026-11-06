@@ -368,7 +368,7 @@ class SmartPathResolver:
         candidate_dirs = [
             "tests", "pages", "locators", "common", "core",
             "business_helpers", "config", "data", "utils", "apis",
-            "resources", "strategy", "performance", "IOS", "bin"
+            "resources", "strategy", "performance", "IOS", "bin", "scripts"
         ]
         business_dirs = [
             d for d in candidate_dirs

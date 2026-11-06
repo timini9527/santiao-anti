@@ -12,6 +12,7 @@ from pages.common.session_select_page import SessionSelectPage
 from pages.groups.setting.general.group_setting_page import GroupSettingPage
 from pages.groups.profile.group_detail_page import GroupDetailPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
+from common.toast_enums import ToastMsg
 
 @allure.epic('IM核心功能测试')
 @allure.feature('聊天面板-名片')
@@ -134,7 +135,7 @@ class TestContactCard:
             is_selected = self.sessionSelectPage.select_session_by_name(strategy.name)
             check.is_true(is_selected, f'❌ 选择目标会话失败: {strategy.name}')
         with allure.step(f'2. 确认发送并校验【转发成功】Toast 提示'):
-            is_toast = self.sessionSelectPage.send_share_and_verify_toast('转发成功')
+            is_toast = self.sessionSelectPage.send_share_and_verify_toast(ToastMsg.FORWARD_SUCCESS)
             check.is_true(is_toast, '❌ 转发群名片后未捕获到【转发成功】Toast 提示')
             self.mainPage.go_to_main_page()
         with allure.step(f'3. 进入聊天并验证群聊名片信息'):

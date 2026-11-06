@@ -2,6 +2,7 @@ import time
 from typing import Optional, List
 from appium.webdriver.common.appiumby import AppiumBy
 from pages.common.common_page import CommonPage
+from common.toast_enums import ToastMsg
 from locators.common.session_select_locator import SessionSelectLocator
 from core.logger_utils import logger, LogIcon
 
@@ -121,7 +122,7 @@ class SessionSelectPage(CommonPage):
         self.click(SessionSelectLocator.SEND_BUTTON, force_wait=force_wait)
 
     # 分享弹层 - 点击发送并验证 Toast 提示
-    def send_share_and_verify_toast(self, expected_toast: str = "转发成功", timeout: float = 3.0) -> bool:
+    def send_share_and_verify_toast(self, expected_toast: str = ToastMsg.FORWARD_SUCCESS, timeout: float = 3.0) -> bool:
         """ 点击分享确认弹层的发送按钮，并立即捕获校验 Toast 提示 """
         logger.info(f"{LogIcon.ACTION} 会话选择页 - 点击分享弹层发送并校验 Toast: {expected_toast}")
         self.click_share_dialog_send()

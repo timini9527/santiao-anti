@@ -15,14 +15,14 @@ class MainPage(BasePage):
         """检测当前是否正处于搜索覆盖层页面（基于右下角取消按钮精准探查，静默零异常）"""
         return bool(self.find_elements(HomeLocator.SEARCH_CANCEL, timeout=timeout, raise_exception=False, expect_missing=True))
 
-    def is_in_main_page(self, timeout: float = 0.8, raise_exception: bool = False) -> bool:
+    def is_in_main_page(self, timeout: float = 0.5, raise_exception: bool = False) -> bool:
         """
         判断当前是否已处于主页面：
         双特征精准识别（左上角抽屉按钮 或 底部主导航栏），确保 100% 不漏判、不误判。
         """
         if bool(self.find_elements(HomeLocator.LEFT_MENU, timeout=timeout, raise_exception=raise_exception, expect_missing=True)):
             return True
-        return bool(self.find_elements(HomeLocator.BOTTOM, timeout=0.1, raise_exception=False, expect_missing=True))
+        return bool(self.find_elements(HomeLocator.BOTTOM, timeout=timeout, raise_exception=False, expect_missing=True))
 
     def is_app_in_foreground(self) -> bool:
         """检查当前被测应用是否处于前台运行状态 (自适应 Android 与 HarmonyOS)"""
@@ -163,3 +163,47 @@ class MainPage(BasePage):
             raise RuntimeError("❌ [StateHealer] 经过终极自愈后仍未能恢复至主页面！")
         logger.error(f"{LogIcon.FAIL} [StateHealer] 经过终极自愈后仍未能恢复至主页面")
         return False
+
+    # =========================================================================
+    # 核心首页业务能力 (多端自适应 Android 与 HarmonyOS NEXT)
+    # =========================================================================
+    def click_conversation_by_name(self, name: str, timeout: float = 3.0) -> bool:
+        """
+        [主页核心业务] 按联系人或会话名称检索并点击进入会话 (自适应 Android 与 HarmonyOS)
+        :param name: 目标会话或联系人名称
+        :param timeout: 单次查找超时时间 (秒)
+        :return: 是否成功点击进入会话
+        """
+        logger.info(f"{LogIcon.ACTION} [MainPage] 准备点击进入会话: '{name}'")
+        if not self.is_in_main_page(timeout=0.5):
+            self.go_to_main_page(timeout=1.0)
+
+        loc = HomeLocator.get_conver_by_name(name)
+        elem = self.find_element(loc, timeout=timeout, raise_exception=False)
+        if elem:
+            elem.click()
+            logger.info(f"{LogIcon.SUCCESS} [MainPage] 成功点击进入会话: '{name}'")
+            return True
+
+        # 若首屏未找到，尝试短程轻微滑动一次再次查找
+        try:
+            self.swipe_page_quickly(slid_type='up', duration=200)
+            elem = self.find_element(loc, timeout=1.5, raise_exception=False)
+            if elem:
+                elem.click()
+                logger.info(f"{LogIcon.SUCCESS} [MainPage] 滑动后成功点击进入会话: '{name}'")
+                return True
+        except Exception:
+            pass
+
+        logger.warning(f"{LogIcon.WARN} [MainPage] 未能在会话列表中找到目标: '{name}'")
+        return False
+
+    def enter_chat(self, name: str, timeout: float = 3.0) -> bool:
+        """进入会话 (对齐 ChatListPage.enter_chat 与通用测试用例习惯)"""
+        return self.click_conversation_by_name(name=name, timeout=timeout)
+
+    def is_conversation_exist(self, name: str, timeout: float = 2.0) -> bool:
+        """检查指定名称的会话是否存在于当前首页会话列表"""
+        loc = HomeLocator.get_conver_by_name(name)
+        return self.is_element_exist(loc, timeout=timeout)

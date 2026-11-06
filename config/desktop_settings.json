@@ -13,8 +13,8 @@
     "selected_test_file": "",
     "auto_scroll_log": false,
     "splitter_h_sizes": [
-      471,
-      1349
+      464,
+      1356
     ],
     "splitter_v_sizes": [
       638,
@@ -258,7 +258,7 @@
       "tests/mine": "passed"
     },
     "expanded_targets": [
-      "tests/chat"
+      "tests"
     ],
     "web_receipt_fields": [
       {
@@ -287,7 +287,7 @@
   },
   "window": {
     "x": 504,
-    "y": 189,
+    "y": 1028,
     "width": 1406,
     "height": 864,
     "maximized": true

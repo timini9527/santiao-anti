@@ -55,7 +55,7 @@ class ChatListPage(ChatPage):
         logger.info(f"{LogIcon.FIND} 正在当前列表中检索会话元素: 【{target_name}】(模式: {match_type})...")
         end_time = time.time() + timeout
         while time.time() <= end_time:
-            session_elems = self.find_elements(HL.CONVERSATION_NAME, timeout=1, raise_exception=True)
+            session_elems = self.find_elements(HL.CONVERSATION_NAME, timeout=1, raise_exception=False)
             if session_elems:
                 for elem in session_elems:
                     try:
@@ -90,7 +90,7 @@ class ChatListPage(ChatPage):
         :param match_type: 匹配模式，"exact" (完全匹配) 或 "partial" (部分匹配/包含)
         """
         logger.info(f"{LogIcon.FIND} 正在获取会话整行容器元素: 【{target_name}】...")
-        chat_rows = self.find_elements(HL.CONVERSATION_ITEM, timeout=3)
+        chat_rows = self.find_elements(HL.CONVERSATION_ITEM, timeout=3, raise_exception=False)
         for row in chat_rows:
             try:
                 name_elem = row.find_element(*HL.CONVERSATION_NAME)
@@ -135,7 +135,14 @@ class ChatListPage(ChatPage):
             logger.info(f"{LogIcon.SUCCESS} 在首页列表中找到并成功进入: {chat_name}")
             return
 
-        logger.info(f"{LogIcon.FAIL} 列表未找到 {chat_name}，执行搜索...")
+        logger.info(f"{LogIcon.FAIL} 列表未找到 {chat_name}，检查并执行搜索...")
+        if not self.is_element_exist(HL.SEARCH_INPUT, timeout=1, expect_missing=True):
+            logger.info(f"{LogIcon.WARN} 当前未在搜索可用页面，尝试先归位回主页...")
+            from pages.main.main_page import MainPage
+            MainPage(self.driver).go_to_main_page(timeout=0.8, max_retries=2)
+            if self.enter_session(chat_name, match_type=match_type, timeout=timeout):
+                logger.info(f"{LogIcon.SUCCESS} 归位后在首页列表中找到并成功进入: {chat_name}")
+                return
         logger.info(f"{LogIcon.ACTION} 点击搜索框并输入关键词...")
         self.click(HL.SEARCH_INPUT)
         logger.info(f"{LogIcon.ACTION} 向搜索框输入会话名: 【{chat_name}】...")

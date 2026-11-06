@@ -3,6 +3,7 @@ import pytest
 import allure
 import pytest_check as check
 from pages.login.login_page import LoginPage
+from common.toast_enums import ToastMsg
 from core.logger_utils import logger, LogIcon
 from utils.file_reader.data_loader import load_yaml_data
 from dataclasses import dataclass
@@ -140,7 +141,7 @@ class TestVerificationLogin:
                     check.equal(toast_message, case.expected_send_toast, f"❌ 发送验证码状态提示不符: 预期'{case.expected_send_toast}', 实际'{toast_message}'")
                     
                     # ⚠️ 如果业务本身就因如‘手机号错误’等后端拦截了获取验证码动作，就不可能进入倒计时和输入验证码的格子了
-                    if case.expected_send_toast != "验证码已发送":
+                    if case.expected_send_toast != ToastMsg.VERIFY_CODE_SENT:
                         logger.info(f"{LogIcon.FAIL} 由于获取验证码阶段被业务规则拦截或失败 ('{case.expected_send_toast}')，安全跳出后续倒计时及填验证码流程。")
                         return
             
@@ -170,7 +171,7 @@ class TestVerificationLogin:
                 if self.loginPage.is_login_success():  
                     logger.info(f"{LogIcon.SETUP} 环境清理：检测到账号处于登录状态，执行强制登出和环境重置...")
                     msg = self.loginPage.logout_if_logged_in()
-                    check.equal(msg, '已退出登录', f"⚠️ 环境清理失败：退出登录动作未成功！")
+                    check.equal(msg, ToastMsg.LOGOUT_SUCCESS, f"⚠️ 环境清理失败：退出登录动作未成功！")
                     
                     # 为了下一条验证码用例回归正常态，需要再切一次验证码模式
                     self.loginPage.click_code_login_button() 

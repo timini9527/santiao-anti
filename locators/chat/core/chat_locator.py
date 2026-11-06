@@ -235,11 +235,18 @@ class _ChatLocatorAndroid:
 # =========================================================================
 # 跨端通用定位器透明代理 (自动识别 Android / HarmonyOS NEXT)
 # =========================================================================
+from typing import TYPE_CHECKING
 from core.locator_manager import DynamicLocatorProxy
 from locators.chat.core.chat_locator_hos import ChatLocatorHos
 
-ChatLocator = DynamicLocatorProxy(
-    android_cls=_ChatLocatorAndroid,
-    harmony_cls=ChatLocatorHos
-)
-
+if TYPE_CHECKING:
+    # 静态类型检查通道：赋能 IDE 悬浮文档、自动补全与 Ctrl + 鼠标左键跳转至定义行
+    class _ChatLocatorType(_ChatLocatorAndroid, ChatLocatorHos):
+        pass
+    ChatLocator = _ChatLocatorType
+else:
+    # 运行时动态路由通道：保持异构多端环境透明调度
+    ChatLocator = DynamicLocatorProxy(
+        android_cls=_ChatLocatorAndroid,
+        harmony_cls=ChatLocatorHos,
+    )

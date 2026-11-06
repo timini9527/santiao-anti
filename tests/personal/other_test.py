@@ -1,6 +1,7 @@
 import pytest
 import allure
 from pages.personal.other_page import OtherPage
+from common.toast_enums import ToastMsg
 from core.logger_utils import logger, LogIcon
 from utils.file_reader.data_loader import load_yaml_data, load_csv_data
 
@@ -132,7 +133,7 @@ class TestOther:
             with allure.step('步骤3：点击保存二维码并校验 Toast 提示'):
                 self.otherPage.click_save_qrcode()
                 toast_msg = self.otherPage.get_qrcode_toast()
-                assert '已保存到相册' in toast_msg, f"❌ 保存二维码失败，实际 Toast 提示: '{toast_msg}'"
+                assert ToastMsg.SAVED_TO_ALBUM in toast_msg, f"❌ 保存二维码失败，实际 Toast 提示: '{toast_msg}'"
         finally:
             with allure.step('步骤4：闭环返回个人资料主页面'):
                 self.otherPage.click_qrcode_back()

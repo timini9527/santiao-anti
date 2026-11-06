@@ -10,7 +10,9 @@ Santiao Mobile Inspector - 移动端全平台 UI 审查器 (HarmonyOS / Android 
 6. 像素级平滑横向滚动，彻底锁死切换节点时的视口跳动与位移。
 ================================================================================
 """
+import ast
 import base64
+import contextlib
 import json
 import os
 import random
@@ -18,11 +20,15 @@ import re
 import shutil
 import socket
 import logging
+import psutil
 import struct
 import subprocess
 import sys
 import tempfile
+import threading
 import time
+import urllib.parse
+import urllib.request
 import xml.etree.ElementTree as ET
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -44,61 +50,920 @@ from PyQt6.QtGui import (
     QBrush, QColor, QCursor, QFont, QIcon, QImage, QKeyEvent, QKeySequence, QLinearGradient,
     QPainter, QPainterPath, QPen, QPixmap, QShortcut, QTextLayout, QTextCharFormat
 )
+try:
+    from PyQt6.QtSvg import QSvgRenderer
+    _HAS_QTSVG = True
+except (ImportError, ModuleNotFoundError):
+    QSvgRenderer = None
+    _HAS_QTSVG = False
 from PyQt6.QtWidgets import (
-    QAbstractItemView, QApplication, QCheckBox, QComboBox, QDialog, QFileDialog, QFrame, QGridLayout,
+    QAbstractItemView, QApplication, QCheckBox, QComboBox, QDialog, QFileDialog, QFrame, QGraphicsDropShadowEffect, QGridLayout,
     QHBoxLayout, QHeaderView, QInputDialog, QLabel, QLineEdit, QListWidget, QListWidgetItem,
-    QMainWindow, QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QSplitter, QStyle,
+    QMainWindow, QMenu, QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QSplitter, QStyle,
     QStyledItemDelegate, QStyleOptionViewItem, QTableWidget, QTableWidgetItem, QTextEdit, QTreeWidget,
     QTreeWidgetItem, QVBoxLayout, QWidget
 )
 
 
 # ==============================================================================
-# 现代矢量级 Retina 应用图标生成器
+# 现代矢量级 Retina 应用图标生成器 (High-End Studio Inspector Icon)
 # ==============================================================================
 
 def create_modern_app_icon() -> QIcon:
-    """动态生成多分辨率矢量级 Retina 应用图标 (克莱因蓝-薄荷绿双色渐变 + 手机准星)"""
+    """
+    动态生成高定多分辨率矢量级 Retina 审查器专属图标：
+    1. 优先探测本地自定义图标 (desktop_app/assets/icons/app_logo.svg 或 .png)；
+    2. 采用 Apple/Linear 顶级工业设计规范：深邃曜石墨蓝渐变超椭圆底板 (Squircle)；
+    3. 带有 1px 细微光玻璃态内轮廓倒角，告别塑料感；
+    4. 核心图形为精密的四角光学雷达对焦卡尺 + 双层多维 UI 透视组件卡片 + 翡翠绿核心呼吸光点，
+       极富科技品质与空间透视感，与 SanT 品牌视觉完美契合。
+    """
+    # 优先检查本地是否配置了专属高清现成图标
+    local_custom_candidates = [
+        os.path.join(SmartPathResolver.get_project_root(), "desktop_app", "assets", "icons", "app_logo.svg"),
+        os.path.join(SmartPathResolver.get_project_root(), "desktop_app", "assets", "icons", "app_logo.png"),
+        os.path.join(SmartPathResolver.get_project_root(), "desktop_app", "resources", "app_icon.png"),
+    ]
+    for cand in local_custom_candidates:
+        if os.path.exists(cand):
+            custom_icon = QIcon(cand)
+            if not custom_icon.isNull():
+                return custom_icon
+
     icon = QIcon()
-    for size in (16, 24, 32, 48, 64, 128):
+    for size in (16, 24, 28, 32, 48, 64, 128):
         pix = QPixmap(size, size)
         pix.fill(Qt.GlobalColor.transparent)
         p = QPainter(pix)
-        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
 
-        # 1. 渐变圆角外壳底板 (Squircle)
-        rect = QRectF(1.0, 1.0, float(size - 2), float(size - 2))
-        radius = float(size) * 0.22
+        scale = size / 64.0
+
+        # 1. 高定曜石墨深蓝流光超椭圆外壳 (Squircle)
+        pad = max(0.8, 1.2 * scale)
+        rect = QRectF(pad, pad, float(size - 2 * pad), float(size - 2 * pad))
+        radius = float(size) * 0.24
         path = QPainterPath()
         path.addRoundedRect(rect, radius, radius)
 
+        # 顶级深海曜石微渐变: #0b1329 (深空极夜) -> #111827 -> #1e3a8a (克莱因深海)
         grad = QLinearGradient(0, 0, size, size)
-        grad.setColorAt(0.0, QColor("#0284c7"))  # 科技克莱因蓝
-        grad.setColorAt(0.55, QColor("#0ea5e9")) # 亮蓝
-        grad.setColorAt(1.0, QColor("#10b981"))  # 活力翡翠绿
+        grad.setColorAt(0.0, QColor("#090d16"))
+        grad.setColorAt(0.40, QColor("#111827"))
+        grad.setColorAt(1.0, QColor("#1e3a8a"))
         p.fillPath(path, QBrush(grad))
 
-        # 2. 手机极简机身轮廓 (纯白细线)
-        scale = size / 64.0
-        p.setPen(QPen(QColor(255, 255, 255, 230), max(1.5 * scale, 1.2)))
-        phone_w = 26.0 * scale
-        phone_h = 44.0 * scale
-        phone_x = (size - phone_w) / 2.0
-        phone_y = (size - phone_h) / 2.0
-        p.drawRoundedRect(QRectF(phone_x, phone_y, phone_w, phone_h), 4.0 * scale, 4.0 * scale)
+        # 2. 细微玻璃态高光内边缘 (Apple 风格 1px 微光倒角)
+        pen_border = QPen(QColor(255, 255, 255, 45), max(1.0, 1.0 * scale))
+        p.setPen(pen_border)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawPath(path)
 
-        # 3. 屏幕中心 UI 审查准星瞄准十字
+        # 3. 四角精密微米对焦点 (Precision Viewfinder Brackets)
+        b_margin = 13.0 * scale
+        b_len = 7.0 * scale
+        pen_bracket = QPen(QColor(56, 189, 248, 225), max(1.4, 2.0 * scale))
+        pen_bracket.setCapStyle(Qt.PenCapStyle.RoundCap)
+        p.setPen(pen_bracket)
+
+        x1 = b_margin
+        y1 = b_margin
+        x2 = size - b_margin
+        y2 = size - b_margin
+
+        # 左上角
+        p.drawLine(QPointF(x1, y1 + b_len), QPointF(x1, y1))
+        p.drawLine(QPointF(x1, y1), QPointF(x1 + b_len, y1))
+        # 右上角
+        p.drawLine(QPointF(x2 - b_len, y1), QPointF(x2, y1))
+        p.drawLine(QPointF(x2, y1), QPointF(x2, y1 + b_len))
+        # 左下角
+        p.drawLine(QPointF(x1, y2 - b_len), QPointF(x1, y2))
+        p.drawLine(QPointF(x1, y2), QPointF(x1 + b_len, y2))
+        # 右下角
+        p.drawLine(QPointF(x2 - b_len, y2), QPointF(x2, y2))
+        p.drawLine(QPointF(x2, y2), QPointF(x2, y2 - b_len))
+
+        # 4. 中心多维层级透视卡片 (UI Layer Stack)
         cx = float(size) / 2.0
         cy = float(size) / 2.0
-        r = 6.0 * scale
-        p.setPen(QPen(QColor(255, 255, 255, 240), max(1.5 * scale, 1.0)))
-        p.drawEllipse(QPointF(cx, cy), r, r)
-        p.drawLine(QPointF(cx - r - 3 * scale, cy), QPointF(cx + r + 3 * scale, cy))
-        p.drawLine(QPointF(cx, cy - r - 3 * scale), QPointF(cx, cy + r + 3 * scale))
+
+        # 底层虚化层级卡片 (淡蓝微光)
+        card_w = 16.0 * scale
+        card_h = 16.0 * scale
+        p.setPen(QPen(QColor(14, 165, 233, 120), max(1.0, 1.2 * scale)))
+        p.setBrush(QBrush(QColor(14, 165, 233, 40)))
+        p.drawRoundedRect(QRectF(cx - card_w / 2.0 - 2.5 * scale, cy - card_h / 2.0 - 2.5 * scale, card_w, card_h), 2.5 * scale, 2.5 * scale)
+
+        # 顶层聚焦层级卡片 (纯白高光，锐利透视)
+        p.setPen(QPen(QColor(255, 255, 255, 240), max(1.2, 1.6 * scale)))
+        p.setBrush(QBrush(QColor(255, 255, 255, 45)))
+        p.drawRoundedRect(QRectF(cx - card_w / 2.0 + 2.0 * scale, cy - card_h / 2.0 + 2.0 * scale, card_w, card_h), 2.5 * scale, 2.5 * scale)
+
+        # 5. 中心全息探测聚焦点 (翡翠光球 / Quantum Spark，呼应三条 Logo)
+        dot_r = max(1.8, 2.8 * scale)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QBrush(QColor("#22c55e")))
+        p.drawEllipse(QPointF(cx + 2.0 * scale, cy + 2.0 * scale), dot_r, dot_r)
 
         p.end()
         icon.addPixmap(pix)
     return icon
+
+
+# ==============================================================================
+# 全局现成矢量与网络图标引擎 (Official SVG & Remote Network Icon Engine)
+# 1. 采用大厂官方现成顶级矢量设计规范 (Lucide Icons / Remix Icons 标准规范)
+# 2. 支持直接传入网络 URL 下载并自动持久化缓存到本地 desktop_app/assets/icons/
+# 3. 支持用户直接向本地 desktop_app/assets/icons/ 文件夹添加现成的 .svg / .png 文件
+# 4. 基于 QtSvg 实时高清无损渲染，动态自适应按状态染色 (科技蓝/纯白/冷灰)
+# ==============================================================================
+
+# 本地现成图标资源存储根目录
+LOCAL_ICON_DIR = os.path.normpath(
+    os.path.join(SmartPathResolver.get_project_root(), "desktop_app", "assets", "icons")
+)
+os.makedirs(LOCAL_ICON_DIR, exist_ok=True)
+
+# 官方标准现成开源 SVG 模板库 (业界顶级 Lucide 官方矢量规范)
+_OFFICIAL_SVG_TEMPLATES = {
+    "refresh": """<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>""",
+    "target": """<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="22" x2="18" y1="12" y2="12"/><line x1="6" x2="2" y1="12" y2="12"/><line x1="12" x2="12" y1="6" y2="2"/><line x1="12" x2="12" y1="22" y2="18"/><circle cx="12" cy="12" r="2.5" fill="{color}"/></svg>""",
+    "tap": """<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z" fill="{color}" fill-opacity="0.2"/><path d="m13 13 6 6"/></svg>""",
+    "search": """<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>""",
+    "cast": """<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/><polygon points="10 7 15 10 10 13 10 7" fill="{color}" stroke="{color}"/></svg>""",
+    "sync": """<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>""",
+    "copy": """<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect width="13" height="13" x="9" y="9" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>""",
+    "save": """<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>""",
+    "expand": """<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/></svg>""",
+    "collapse": """<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" x2="21" y1="10" y2="3"/><line x1="3" x2="10" y1="21" y2="14"/></svg>""",
+    "send": """<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>""",
+    "clear": """<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>""",
+    "play": """<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3" fill="{color}"/></svg>""",
+    "check": """<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>""",
+    "spinner": """<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>""",
+    "loader": """<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>"""
+}
+
+# 自动将官方现成 SVG 模板持久化落盘至本地 assets/icons 目录
+for _name, _raw_svg in _OFFICIAL_SVG_TEMPLATES.items():
+    _svg_file = os.path.join(LOCAL_ICON_DIR, f"{_name}.svg")
+    try:
+        with open(_svg_file, "w", encoding="utf-8") as _f:
+            _f.write(_raw_svg.replace("{color}", "currentColor"))
+    except Exception:
+        pass
+
+def import_network_icon(url: str, save_name: str = "") -> Optional[str]:
+    """从网络 URL 下载现成图标并自动导入至本地图标库缓存中"""
+    try:
+        if not save_name:
+            parsed = urllib.parse.urlparse(url)
+            save_name = os.path.basename(parsed.path) or f"icon_{int(time.time())}.svg"
+        if not save_name.endswith((".svg", ".png", ".jpg", ".webp")):
+            save_name += ".svg"
+        dest_path = os.path.join(LOCAL_ICON_DIR, save_name)
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=4.0) as resp:
+            data = resp.read()
+            with open(dest_path, "wb") as f:
+                f.write(data)
+        return dest_path
+    except Exception as e:
+        logger.warning(f"下载网络图标失败: {url}, 异常: {e}")
+        return None
+
+_TECH_ICON_CACHE: Dict[Tuple[str, str, int, int], QIcon] = {}
+
+def get_tech_icon(name: str, color: str = "#0284c7", size: int = 24, rotation: float = 0.0) -> QIcon:
+    """
+    全方位现成与网络图标加载器：
+    1. 整体按钮图标垂直微调向下移动 2 个像素 (Y_OFFSET = 2)，彻底对齐按钮文本视觉水平中线；
+    2. 支持 rotation 浮点角度旋转参数，为刷新/同步等操作提供原位 Loading 动态转圈状态；
+    3. 支持 QtSvg Retina 视网膜渲染，无模块时平滑降级至纯原生 QPainter 高清抗锯齿矢量绘制；
+    4. 带有内存级缓存，杜绝高频旋转和重复解析的 I/O 损耗。
+    """
+    rot_int = int(round(rotation)) % 360
+    cache_key = (name, color, size, rot_int)
+    if cache_key in _TECH_ICON_CACHE:
+        return _TECH_ICON_CACHE[cache_key]
+
+    # 1. 网络 URL 图标导入处理
+    if name.startswith(("http://", "https://")):
+        cached_file = import_network_icon(name)
+        if cached_file and os.path.exists(cached_file):
+            name = os.path.splitext(os.path.basename(cached_file))[0]
+
+    # 2. 检查本地 assets/icons 现成文件
+    local_svg = os.path.join(LOCAL_ICON_DIR, f"{name}.svg")
+    local_png = os.path.join(LOCAL_ICON_DIR, f"{name}.png")
+
+    svg_content = ""
+    if os.path.exists(local_svg):
+        try:
+            with open(local_svg, "r", encoding="utf-8") as f:
+                svg_content = f.read()
+        except Exception:
+            pass
+
+    name_alias = {
+        "reload": "refresh",
+        "select": "target",
+        "inspect": "target",
+        "pointer": "tap",
+        "touch": "tap",
+        "find": "search",
+        "screen": "cast",
+        "live": "cast",
+        "lightning": "sync",
+        "clone": "copy",
+        "export": "save",
+        "plus": "expand",
+        "minus": "collapse",
+        "trash": "clear",
+        "clean": "clear",
+        "loading": "spinner",
+        "spin": "spinner",
+        "loader": "spinner"
+    }.get(name, name)
+
+    if not svg_content:
+        svg_content = _OFFICIAL_SVG_TEMPLATES.get(name_alias, "")
+
+    Y_OFFSET = 2.0  # 整体按钮前面的图标向下移动两个像素
+
+    # 3. 若当前 Python 环境支持 QtSvg，优先进行 Retina 视网膜矢量渲染与动态染色
+    if _HAS_QTSVG and QSvgRenderer is not None and svg_content:
+        try:
+            colored_svg = svg_content.replace("{color}", color).replace("currentColor", color)
+            icon = QIcon()
+            renderer = QSvgRenderer(QByteArray(colored_svg.encode("utf-8")))
+            if renderer.isValid():
+                for s in (16, 20, 24, 32, 48):
+                    pix = QPixmap(s, s)
+                    pix.fill(Qt.GlobalColor.transparent)
+                    p = QPainter(pix)
+                    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+                    p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+                    if rot_int != 0:
+                        p.translate(s / 2.0, s / 2.0 + Y_OFFSET)
+                        p.rotate(rot_int)
+                        p.translate(-s / 2.0, -(s / 2.0 + Y_OFFSET))
+                    # 目标矩形向下平移 2 像素
+                    renderer.render(p, QRectF(0, Y_OFFSET, s, max(1.0, s - Y_OFFSET)))
+                    p.end()
+                    icon.addPixmap(pix)
+                _TECH_ICON_CACHE[cache_key] = icon
+                return icon
+        except Exception:
+            pass
+
+    # 4. 本地 PNG 现成位图兜底加载
+    if os.path.exists(local_png):
+        src_pix = QPixmap(local_png)
+        icon = QIcon()
+        for s in (16, 20, 24, 32, 48):
+            pix = QPixmap(s, s)
+            pix.fill(Qt.GlobalColor.transparent)
+            p = QPainter(pix)
+            p.setRenderHint(QPainter.RenderHint.Antialiasing)
+            p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+            if rot_int != 0:
+                p.translate(s / 2.0, s / 2.0 + Y_OFFSET)
+                p.rotate(rot_int)
+                p.translate(-s / 2.0, -(s / 2.0 + Y_OFFSET))
+            p.drawPixmap(0, int(Y_OFFSET), s, int(max(1, s - Y_OFFSET)), src_pix)
+            p.end()
+            icon.addPixmap(pix)
+        _TECH_ICON_CACHE[cache_key] = icon
+        return icon
+
+    # 5. 优雅降级：纯原生 QPainter 高清抗锯齿矢量绘制 (零外部模块依赖，向下偏移 2px)
+    icon = QIcon()
+    for s in (16, 20, 24, 32, 48):
+        pix = QPixmap(s, s)
+        pix.fill(Qt.GlobalColor.transparent)
+        p = QPainter(pix)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+
+        if rot_int != 0:
+            p.translate(s / 2.0, s / 2.0 + Y_OFFSET)
+            p.rotate(rot_int)
+            p.translate(-s / 2.0, -(s / 2.0 + Y_OFFSET))
+
+        pen = QPen(QColor(color), max(1.5, s / 12.0))
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        p.setPen(pen)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+
+        pad = s * 0.16
+        w = s - 2 * pad
+        h = max(1.0, s - 2 * pad - Y_OFFSET)
+        cx = s / 2.0
+        cy = s / 2.0 + Y_OFFSET
+
+        if name_alias in ("spinner", "loader", "loading"):
+            r = w * 0.42
+            rect = QRectF(cx - r, cy - r, 2 * r, 2 * r)
+            p.drawArc(rect, 45 * 16, 275 * 16)
+        elif name_alias in ("refresh", "sync"):
+            r = w * 0.42
+            rect = QRectF(cx - r, cy - r, 2 * r, 2 * r)
+            p.drawArc(rect, 45 * 16, 270 * 16)
+            p.drawLine(QPointF(cx + r, cy), QPointF(cx + r + 2.5, cy - 2.5))
+            p.drawLine(QPointF(cx + r, cy), QPointF(cx + r - 2.5, cy - 2.5))
+        elif name_alias in ("target", "inspect"):
+            r = w * 0.44
+            p.drawEllipse(QPointF(cx, cy), r, r)
+            p.drawEllipse(QPointF(cx, cy), r * 0.35, r * 0.35)
+            p.drawLine(QPointF(cx - r - 1.5, cy), QPointF(cx + r + 1.5, cy))
+            p.drawLine(QPointF(cx, cy - r - 1.5), QPointF(cx, cy + r + 1.5))
+        elif name_alias in ("tap", "touch"):
+            p.drawEllipse(QPointF(cx, cy), w * 0.25, w * 0.25)
+            p.drawEllipse(QPointF(cx, cy), w * 0.44, w * 0.44)
+        elif name_alias in ("search", "find"):
+            r = w * 0.32
+            p.drawEllipse(QPointF(cx - 1.5, cy - 1.5), r, r)
+            p.drawLine(QPointF(cx - 1.5 + r * 0.7, cy - 1.5 + r * 0.7), QPointF(cx + w * 0.44, cy + h * 0.44))
+        elif name_alias in ("cast", "screen"):
+            p.drawRoundedRect(QRectF(pad, pad + Y_OFFSET, w, h * 0.72), 2, 2)
+            p.drawLine(QPointF(cx, pad + Y_OFFSET + h * 0.72), QPointF(cx, pad + Y_OFFSET + h * 0.95))
+            p.drawLine(QPointF(cx - w * 0.3, pad + Y_OFFSET + h * 0.95), QPointF(cx + w * 0.3, pad + Y_OFFSET + h * 0.95))
+        elif name_alias in ("copy", "clone"):
+            p.drawRoundedRect(QRectF(pad + w * 0.22, pad + Y_OFFSET, w * 0.68, h * 0.68), 2, 2)
+            p.drawRoundedRect(QRectF(pad, pad + Y_OFFSET + h * 0.22, w * 0.68, h * 0.68), 2, 2)
+        elif name_alias in ("save", "export"):
+            p.drawRoundedRect(QRectF(pad, pad + Y_OFFSET, w, h), 2, 2)
+            p.drawRect(QRectF(pad + w * 0.25, pad + Y_OFFSET, w * 0.5, h * 0.35))
+        elif name_alias in ("expand", "plus"):
+            p.drawLine(QPointF(cx - w * 0.35, cy), QPointF(cx + w * 0.35, cy))
+            p.drawLine(QPointF(cx, cy - h * 0.35), QPointF(cx, cy + h * 0.35))
+        elif name_alias in ("collapse", "minus"):
+            p.drawLine(QPointF(cx - w * 0.35, cy), QPointF(cx + w * 0.35, cy))
+        elif name_alias in ("clear", "trash"):
+            p.drawLine(QPointF(cx - w * 0.3, cy - h * 0.3), QPointF(cx + w * 0.3, cy + h * 0.3))
+            p.drawLine(QPointF(cx + w * 0.3, cy - h * 0.3), QPointF(cx - w * 0.3, cy + h * 0.3))
+        elif name_alias in ("phone", "device"):
+            p.drawRoundedRect(QRectF(pad + w * 0.15, pad + Y_OFFSET, w * 0.7, h), 3, 3)
+            p.drawPoint(QPointF(cx, pad + Y_OFFSET + h * 0.85))
+        else:
+            p.drawRoundedRect(QRectF(pad, pad + Y_OFFSET, w, h), 3, 3)
+
+        p.end()
+        icon.addPixmap(pix)
+
+    _TECH_ICON_CACHE[cache_key] = icon
+    return icon
+
+
+class ButtonSpinner:
+    """
+    工业级通用按钮 Loading 转圈控制器：
+    1. 统一使用专属圆圈 Loading 图标 (Circular Spinner) 进行 360° 加载转圈，杜绝业务图标自身旋转；
+    2. 加载结束时，自动平滑恢复该按钮原本应有的业务静态图标 (如投屏/双向箭头/刷新/播放)；
+    3. 任务完成后恢复原始文字与激活状态，保持高品质科技感交互。
+    """
+    def __init__(self, button: QPushButton, orig_icon_name: str = "refresh", icon_color: str = "#0284c7"):
+        self.button = button
+        self.orig_icon_name = orig_icon_name
+        self.icon_color = icon_color
+        self.loading_icon_name = "spinner"  # 无论什么按钮，加载时统一使用标准圆圈 Loading 图标
+        self.angle = 0
+        self.timer = QTimer(button)
+        self.timer.timeout.connect(self._on_tick)
+        self._orig_text = button.text()
+
+    def start(self, loading_text: Optional[str] = None):
+        self._orig_text = self.button.text()
+        if loading_text is not None:
+            self.button.setText(loading_text)
+        self.angle = 0
+        self.button.setIcon(get_tech_icon(self.loading_icon_name, self.icon_color, rotation=0.0))
+        self.timer.start(35)  # 约 28fps 平滑顺畅旋转
+
+    def _on_tick(self):
+        self.angle = (self.angle + 30) % 360
+        self.button.setIcon(get_tech_icon(self.loading_icon_name, self.icon_color, rotation=self.angle))
+
+    def stop(self, restore_text: bool = True):
+        self.timer.stop()
+        if restore_text and self._orig_text:
+            self.button.setText(self._orig_text)
+        self.button.setIcon(get_tech_icon(self.orig_icon_name, self.icon_color, rotation=0.0))
+        self.button.setEnabled(True)
+
+
+# ==============================================================================
+# 全局统一轻奢圆角置顶弹窗系统 (ModernMessageBox & ModernInputDialog)
+# 1. 纯白轻奢卡片外观 (border-radius: 12px, 柔和高级投影, 与整个审查器 UI 风格一致)
+# 2. 绝对层级置顶强化 (Qt WindowStaysOnTopHint + Win32 SetWindowPos HWND_TOPMOST)
+#    彻底解决弹窗被【元素定位与查找器】等浮窗遮挡的问题
+# ==============================================================================
+
+class ModernMessageBox(QDialog):
+    """
+    全中文轻奢圆角置顶消息对话框：
+    - 统一圆角微光拟物风格 (无生硬系统灰色边框)
+    - 自动吸附屏幕或父窗口中央
+    - 强化最高层级置顶 (最高优先级的 Z-Order，绝不被任何浮窗遮挡)
+    """
+    IconNone = 0
+    IconInformation = 1
+    IconWarning = 2
+    IconCritical = 3
+    IconQuestion = 4
+
+    def __init__(
+        self,
+        title: str = "提示",
+        text: str = "",
+        icon_type: int = IconInformation,
+        buttons: list[str] = None,
+        parent=None
+    ):
+        super().__init__(parent)
+        self.icon_type = icon_type
+        self.clicked_button = ""
+        self._drag_pos = None
+
+        # 1. 无框 + 置顶 + 对话框 + 透明底板
+        self.setWindowFlags(
+            Qt.WindowType.Dialog
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setWindowModality(Qt.WindowModality.ApplicationModal)
+        self.setWindowTitle(title)
+        self.setWindowIcon(create_modern_app_icon())
+
+        if buttons is None:
+            buttons = ["确定"]
+        self.buttons = buttons
+
+        # 2. 布局初始化
+        self._init_ui(title, text)
+
+    def _init_ui(self, title: str, text: str):
+        root_layout = QVBoxLayout(self)
+        root_layout.setContentsMargins(16, 16, 16, 16)
+        root_layout.setSpacing(0)
+
+        # 卡片本体容器
+        self.card = QFrame(self)
+        self.card.setObjectName("ModernMsgCard")
+        self.card.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, True)
+        self.card.setAutoFillBackground(True)
+        self.card.setStyleSheet("""
+            QFrame#ModernMsgCard {
+                background-color: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 12px;
+            }
+        """)
+
+        # 阴影效果
+        shadow = QGraphicsDropShadowEffect(self.card)
+        shadow.setBlurRadius(24)
+        shadow.setColor(QColor(15, 23, 42, 50))
+        shadow.setOffset(0, 6)
+        self.card.setGraphicsEffect(shadow)
+
+        card_layout = QVBoxLayout(self.card)
+        card_layout.setContentsMargins(0, 0, 0, 0)
+        card_layout.setSpacing(0)
+
+        # 1. 顶部标题栏
+        title_bar = QWidget(self.card)
+        title_bar.setFixedHeight(44)
+        title_bar.setAutoFillBackground(True)
+        title_bar.setStyleSheet("""
+            QWidget {
+                background-color: #ffffff;
+                border-top-left-radius: 12px;
+                border-top-right-radius: 12px;
+                border-bottom: 1px solid #f1f5f9;
+            }
+        """)
+        title_layout = QHBoxLayout(title_bar)
+        title_layout.setContentsMargins(16, 0, 12, 0)
+        title_layout.setSpacing(8)
+
+        lbl_title_icon = QLabel()
+        title_icon_map = {
+            self.IconCritical: "❌",
+            self.IconWarning: "⚠️",
+            self.IconInformation: "ℹ️",
+            self.IconQuestion: "❓",
+        }
+        lbl_title_icon.setText(title_icon_map.get(self.icon_type, "💡"))
+        lbl_title_icon.setStyleSheet("font-size: 14px; background-color: #ffffff; border: none;")
+        title_layout.addWidget(lbl_title_icon)
+
+        lbl_title = QLabel(title)
+        lbl_title.setStyleSheet("font-size: 13px; font-weight: bold; color: #0f172a; background-color: #ffffff; border: none;")
+        title_layout.addWidget(lbl_title, 1)
+
+        btn_close = QPushButton("✕")
+        btn_close.setFixedSize(24, 24)
+        btn_close.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_close.setStyleSheet("""
+            QPushButton {
+                background-color: #ffffff;
+                border: none;
+                border-radius: 4px;
+                color: #94a3b8;
+                font-size: 13px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #fee2e2;
+                color: #ef4444;
+            }
+        """)
+        btn_close.clicked.connect(self.reject)
+        title_layout.addWidget(btn_close)
+        card_layout.addWidget(title_bar)
+
+        # 2. 中间内容区
+        content_widget = QWidget(self.card)
+        content_widget.setAutoFillBackground(True)
+        content_widget.setStyleSheet("background-color: #ffffff; border: none;")
+        content_layout = QHBoxLayout(content_widget)
+        content_layout.setContentsMargins(20, 18, 20, 16)
+        content_layout.setSpacing(16)
+
+        badge = QLabel()
+        badge.setFixedSize(46, 46)
+        badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        if self.icon_type == self.IconCritical:
+            badge.setText("✕")
+            badge.setStyleSheet("background-color: #fee2e2; color: #dc2626; font-size: 20px; font-weight: 900; border-radius: 23px; border: 1px solid #fecaca;")
+        elif self.icon_type == self.IconWarning:
+            badge.setText("!")
+            badge.setStyleSheet("background-color: #fef3c7; color: #d97706; font-size: 22px; font-weight: 900; border-radius: 23px; border: 1px solid #fde68a;")
+        elif self.icon_type == self.IconQuestion:
+            badge.setText("?")
+            badge.setStyleSheet("background-color: #e0f2fe; color: #0284c7; font-size: 22px; font-weight: 900; border-radius: 23px; border: 1px solid #bae6fd;")
+        else:
+            badge.setText("ℹ")
+            badge.setStyleSheet("background-color: #e0f2fe; color: #0284c7; font-size: 20px; font-weight: 900; border-radius: 23px; border: 1px solid #bae6fd;")
+        content_layout.addWidget(badge, 0, Qt.AlignmentFlag.AlignTop)
+
+        # 右侧文本排版
+        right_layout = QVBoxLayout()
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(8)
+
+        lines = text.strip().split("\n", 1)
+        headline = lines[0]
+        detail = lines[1] if len(lines) > 1 else ""
+
+        lbl_head = QLabel(headline)
+        lbl_head.setWordWrap(True)
+        lbl_head.setStyleSheet("color: #0f172a; font-size: 14px; font-weight: 600; line-height: 1.4; background-color: #ffffff;")
+        lbl_head.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        right_layout.addWidget(lbl_head)
+        lbl_head.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        right_layout.addWidget(lbl_head)
+
+        if detail:
+            txt_detail = QPlainTextEdit()
+            txt_detail.setReadOnly(True)
+            txt_detail.setPlainText(detail)
+            txt_detail.setStyleSheet("""
+                QPlainTextEdit {
+                    background-color: #f8fafc;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 6px;
+                    color: #334155;
+                    font-size: 12px;
+                    font-family: Consolas, 'Courier New', monospace;
+                    padding: 8px;
+                }
+            """)
+            txt_detail.setMaximumHeight(160)
+            txt_detail.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+            right_layout.addWidget(txt_detail)
+
+        content_layout.addLayout(right_layout, 1)
+        card_layout.addWidget(content_widget, 1)
+
+        # 3. 底部按钮栏
+        btn_bar = QWidget(self.card)
+        btn_bar.setFixedHeight(54)
+        btn_bar.setStyleSheet("""
+            QWidget {
+                background-color: #f8fafc;
+                border-bottom-left-radius: 12px;
+                border-bottom-right-radius: 12px;
+                border-top: 1px solid #f1f5f9;
+            }
+        """)
+        btn_layout = QHBoxLayout(btn_bar)
+        btn_layout.setContentsMargins(16, 0, 20, 0)
+        btn_layout.setSpacing(10)
+        btn_layout.addStretch()
+
+        for btn_text in self.buttons:
+            btn = QPushButton(btn_text)
+            btn.setFixedHeight(32)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            is_primary = (btn_text in ("确定", "OK", "是", "Yes", "保存"))
+            if is_primary:
+                btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #0284c7;
+                        color: #ffffff;
+                        border: none;
+                        border-radius: 6px;
+                        font-size: 12px;
+                        font-weight: 600;
+                        padding: 0 18px;
+                    }
+                    QPushButton:hover { background-color: #0369a1; }
+                    QPushButton:pressed { background-color: #075985; }
+                """)
+            else:
+                btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #ffffff;
+                        color: #475569;
+                        border: 1px solid #cbd5e1;
+                        border-radius: 6px;
+                        font-size: 12px;
+                        font-weight: 500;
+                        padding: 0 16px;
+                    }
+                    QPushButton:hover { background-color: #f1f5f9; color: #0f172a; border-color: #94a3b8; }
+                """)
+            btn.clicked.connect(lambda checked=False, val=btn_text: self._on_btn_clicked(val))
+            btn_layout.addWidget(btn)
+
+        card_layout.addWidget(btn_bar)
+        root_layout.addWidget(self.card)
+
+        self.setMinimumWidth(440)
+        self.setMaximumWidth(580)
+        self.adjustSize()
+
+    def _on_btn_clicked(self, val: str):
+        self.clicked_button = val
+        if val in ("确定", "OK", "是", "Yes", "保存"):
+            self.accept()
+        else:
+            self.reject()
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        if event.buttons() == Qt.MouseButton.LeftButton and self._drag_pos:
+            self.move(event.globalPosition().toPoint() - self._drag_pos)
+            event.accept()
+
+    def mouseReleaseEvent(self, event):
+        self._drag_pos = None
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        # 智能居中于当前前台活跃窗口或屏幕视口中心，彻底消除被【元素定位与查找器】等浮窗遮挡的问题
+        target_rect = None
+        active_w = QApplication.activeWindow()
+        if active_w and active_w.isVisible() and active_w is not self:
+            target_rect = active_w.frameGeometry()
+        elif self.parentWidget() and self.parentWidget().isVisible():
+            target_rect = self.parentWidget().frameGeometry()
+        else:
+            screen = QApplication.primaryScreen()
+            if screen:
+                target_rect = screen.availableGeometry()
+
+        if target_rect:
+            self.move(
+                target_rect.center().x() - self.width() // 2,
+                target_rect.center().y() - self.height() // 2
+            )
+
+        self.raise_()
+        self.activateWindow()
+        self._apply_native_topmost()
+
+    def _apply_native_topmost(self):
+        try:
+            import ctypes
+            hwnd = int(self.winId())
+            HWND_TOPMOST = -1
+            SWP_NOMOVE = 0x0002
+            SWP_NOSIZE = 0x0001
+            SWP_SHOWWINDOW = 0x0040
+            ctypes.windll.user32.SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW)
+            ctypes.windll.user32.BringWindowToTop(hwnd)
+            ctypes.windll.user32.SetForegroundWindow(hwnd)
+        except Exception:
+            pass
+
+    @classmethod
+    def critical(cls, parent, title: str, text: str) -> None:
+        dlg = cls(title=title, text=text, icon_type=cls.IconCritical, buttons=["确定"], parent=parent)
+        dlg.exec()
+
+    @classmethod
+    def warning(cls, parent, title: str, text: str) -> None:
+        dlg = cls(title=title, text=text, icon_type=cls.IconWarning, buttons=["确定"], parent=parent)
+        dlg.exec()
+
+    @classmethod
+    def information(cls, parent, title: str, text: str) -> None:
+        dlg = cls(title=title, text=text, icon_type=cls.IconInformation, buttons=["确定"], parent=parent)
+        dlg.exec()
+
+    @classmethod
+    def question(cls, parent, title: str, text: str, buttons: list[str] = None) -> bool:
+        if buttons is None:
+            buttons = ["确定", "取消"]
+        dlg = cls(title=title, text=text, icon_type=cls.IconQuestion, buttons=buttons, parent=parent)
+        res = dlg.exec()
+        return res == QDialog.DialogCode.Accepted or dlg.clicked_button in ("确定", "是", "Yes")
+
+
+class ModernInputDialog(QDialog):
+    """全中文轻奢圆角置顶输入弹窗 (替代系统默认直角 QInputDialog)"""
+    def __init__(self, parent=None, title: str = "输入内容", label: str = "请输入内容:", default_text: str = ""):
+        super().__init__(parent)
+        self._drag_pos = None
+        self.setWindowFlags(
+            Qt.WindowType.Dialog
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setWindowModality(Qt.WindowModality.ApplicationModal)
+        self.setWindowTitle(title)
+        self.setWindowIcon(create_modern_app_icon())
+
+        root_layout = QVBoxLayout(self)
+        root_layout.setContentsMargins(16, 16, 16, 16)
+
+        card = QFrame(self)
+        card.setObjectName("ModernInputCard")
+        card.setStyleSheet("""
+            QFrame#ModernInputCard {
+                background-color: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 12px;
+            }
+        """)
+        shadow = QGraphicsDropShadowEffect(card)
+        shadow.setBlurRadius(24)
+        shadow.setColor(QColor(15, 23, 42, 50))
+        shadow.setOffset(0, 6)
+        card.setGraphicsEffect(shadow)
+
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(0, 0, 0, 0)
+        card_layout.setSpacing(0)
+
+        # 标题栏
+        title_bar = QWidget(card)
+        title_bar.setFixedHeight(44)
+        title_bar.setStyleSheet("background-color: #ffffff; border-top-left-radius: 12px; border-top-right-radius: 12px; border-bottom: 1px solid #f1f5f9;")
+        t_layout = QHBoxLayout(title_bar)
+        t_layout.setContentsMargins(16, 0, 12, 0)
+        lbl_t = QLabel(f"✏️ {title}")
+        lbl_t.setStyleSheet("font-size: 13px; font-weight: bold; color: #0f172a;")
+        t_layout.addWidget(lbl_t, 1)
+
+        btn_close = QPushButton("✕")
+        btn_close.setFixedSize(24, 24)
+        btn_close.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_close.setStyleSheet("QPushButton { background: transparent; border: none; color: #94a3b8; font-size: 13px; font-weight: bold; } QPushButton:hover { background: #fee2e2; color: #ef4444; border-radius: 4px; }")
+        btn_close.clicked.connect(self.reject)
+        t_layout.addWidget(btn_close)
+        card_layout.addWidget(title_bar)
+
+        # 内容区
+        body = QWidget(card)
+        body.setStyleSheet("background-color: #ffffff;")
+        b_layout = QVBoxLayout(body)
+        b_layout.setContentsMargins(20, 18, 20, 18)
+        b_layout.setSpacing(10)
+
+        lbl_prompt = QLabel(label)
+        lbl_prompt.setStyleSheet("font-size: 13px; color: #334155; font-weight: 500;")
+        b_layout.addWidget(lbl_prompt)
+
+        self.edit_input = QLineEdit(default_text)
+        self.edit_input.setFixedHeight(36)
+        self.edit_input.setStyleSheet("""
+            QLineEdit {
+                background-color: #ffffff;
+                color: #0f172a;
+                border: 1px solid #cbd5e1;
+                border-radius: 6px;
+                padding: 4px 10px;
+                font-size: 13px;
+            }
+            QLineEdit:focus {
+                border-color: #0284c7;
+            }
+        """)
+        self.edit_input.returnPressed.connect(self.accept)
+        b_layout.addWidget(self.edit_input)
+        card_layout.addWidget(body)
+
+        # 底部按钮
+        btn_bar = QWidget(card)
+        btn_bar.setFixedHeight(52)
+        btn_bar.setStyleSheet("background-color: #f8fafc; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; border-top: 1px solid #f1f5f9;")
+        btn_layout = QHBoxLayout(btn_bar)
+        btn_layout.setContentsMargins(16, 0, 20, 0)
+        btn_layout.setSpacing(10)
+        btn_layout.addStretch()
+
+        btn_cancel = QPushButton("取消")
+        btn_cancel.setFixedHeight(32)
+        btn_cancel.setStyleSheet("QPushButton { background: #ffffff; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0 16px; font-size: 12px; } QPushButton:hover { background: #f1f5f9; }")
+        btn_cancel.clicked.connect(self.reject)
+        btn_layout.addWidget(btn_cancel)
+
+        btn_ok = QPushButton("确定")
+        btn_ok.setFixedHeight(32)
+        btn_ok.setStyleSheet("QPushButton { background: #0284c7; color: #ffffff; border: none; border-radius: 6px; padding: 0 18px; font-size: 12px; font-weight: 600; } QPushButton:hover { background: #0369a1; }")
+        btn_ok.clicked.connect(self.accept)
+        btn_layout.addWidget(btn_ok)
+        card_layout.addWidget(btn_bar)
+
+        root_layout.addWidget(card)
+        self.setMinimumWidth(400)
+        self.adjustSize()
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        if event.buttons() == Qt.MouseButton.LeftButton and self._drag_pos:
+            self.move(event.globalPosition().toPoint() - self._drag_pos)
+            event.accept()
+
+    def mouseReleaseEvent(self, event):
+        self._drag_pos = None
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        target_rect = None
+        active_w = QApplication.activeWindow()
+        if active_w and active_w.isVisible() and active_w is not self:
+            target_rect = active_w.frameGeometry()
+        elif self.parentWidget() and self.parentWidget().isVisible():
+            target_rect = self.parentWidget().frameGeometry()
+        else:
+            screen = QApplication.primaryScreen()
+            if screen:
+                target_rect = screen.availableGeometry()
+
+        if target_rect:
+            self.move(
+                target_rect.center().x() - self.width() // 2,
+                target_rect.center().y() - self.height() // 2
+            )
+        self.raise_()
+        self.activateWindow()
+        self._apply_native_topmost()
+        self.edit_input.setFocus()
+
+    def _apply_native_topmost(self):
+        try:
+            import ctypes
+            hwnd = int(self.winId())
+            HWND_TOPMOST = -1
+            SWP_NOMOVE = 0x0002
+            SWP_NOSIZE = 0x0001
+            SWP_SHOWWINDOW = 0x0040
+            ctypes.windll.user32.SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW)
+            ctypes.windll.user32.BringWindowToTop(hwnd)
+            ctypes.windll.user32.SetForegroundWindow(hwnd)
+        except Exception:
+            pass
+
+    @classmethod
+    def getText(cls, parent, title: str, label: str, default_text: str = "") -> tuple[str, bool]:
+        dlg = cls(parent=parent, title=title, label=label, default_text=default_text)
+        res = dlg.exec()
+        if res == QDialog.DialogCode.Accepted:
+            return dlg.edit_input.text().strip(), True
+        return "", False
+
+# 模块级透明映射，彻底杜绝任何系统原生直角灰色弹窗泄漏
+QMessageBox = ModernMessageBox
+QInputDialog = ModernInputDialog
 
 
 # ==============================================================================
@@ -261,7 +1126,82 @@ class IosWdaManager:
     4. 提供清晰精确的诊断信息与原生高速抓取通道。
     """
     _relay_proc: Optional[subprocess.Popen] = None
+    _relay_udid: str = ""
     _active_wda_url: str = "http://127.0.0.1:8100"
+
+    @classmethod
+    def kill_relays(cls, ports: Tuple[int, ...] = (9100,)):
+        """
+        工业级彻底终结孤儿 tidevice relay 进程并回收端口：
+        1. 优雅终止当前类持有的 _relay_proc；
+        2. 扫描 Windows 底层 netstat 并强行释放被独占的 8100/9100 端口，
+           确保新旧 iPhone 切换时绝不发生 [WinError 10048] 端口冲突与流量串连。
+        """
+        if cls._relay_proc is not None:
+            try:
+                cls._relay_proc.terminate()
+                cls._relay_proc.wait(timeout=0.6)
+            except Exception:
+                try:
+                    cls._relay_proc.kill()
+                except Exception:
+                    pass
+            cls._relay_proc = None
+        cls._relay_udid = ""
+
+        if sys.platform == "win32":
+            creationflags = 0x08000000
+            my_pid = os.getpid()
+            for port in ports:
+                try:
+                    out = subprocess.check_output(
+                        f'netstat -ano | findstr ":{port} "',
+                        shell=True,
+                        text=True,
+                        errors="ignore",
+                        creationflags=creationflags
+                    )
+                    for line in out.splitlines():
+                        parts = line.strip().split()
+                        if len(parts) >= 5 and "LISTENING" in line:
+                            pid_str = parts[-1]
+                            if pid_str.isdigit():
+                                pid = int(pid_str)
+                                if pid != my_pid and pid > 4:
+                                    subprocess.run(
+                                        f"taskkill /F /PID {pid}",
+                                        shell=True,
+                                        capture_output=True,
+                                        creationflags=creationflags
+                                    )
+                except Exception:
+                    pass
+
+    _version_cache: Dict[str, str] = {}
+
+    @classmethod
+    def get_device_product_version(cls, udid: str) -> Optional[str]:
+        """毫秒级高速查询目标 iOS 设备的系统版本 (优先内存缓存，0ms 零 I/O 阻塞)"""
+        if not udid or udid.startswith("wda_localhost"):
+            return None
+        cached = cls._version_cache.get(udid)
+        if cached:
+            return cached
+        import asyncio
+        from pymobiledevice3.lockdown import create_using_usbmux
+        async def _query():
+            ld = await create_using_usbmux(serial=udid, autopair=False, connection_type="USB")
+            try:
+                ver = str(getattr(ld, "product_version", "") or "")
+                if ver:
+                    cls._version_cache[udid] = ver
+                return ver
+            finally:
+                await ld.close()
+        try:
+            return asyncio.run(asyncio.wait_for(_query(), timeout=1.0))
+        except Exception:
+            return None
 
     @classmethod
     def test_wda_status(cls, url: str, timeout: float = 1.2) -> bool:
@@ -300,10 +1240,20 @@ class IosWdaManager:
 
         if allow_spawn and udid and not udid.startswith("wda_localhost"):
             tidevice_bin = shutil.which("tidevice")
+            if not tidevice_bin:
+                candidate_td = os.path.join(os.path.dirname(sys.executable), "Scripts", "tidevice.exe")
+                if os.path.isfile(candidate_td):
+                    tidevice_bin = candidate_td
             if tidevice_bin:
                 try:
+                    # 若设备发生变更或当前进程已失效，先彻底释放原有端口并杀死旧设备中继
+                    if cls._relay_udid and cls._relay_udid != udid:
+                        cls.kill_relays((8100,))
+
                     creationflags = 0x08000000 if sys.platform == "win32" else 0
                     if cls._relay_proc is None or cls._relay_proc.poll() is not None:
+                        # 确保端口 8100 未被其他孤儿进程霸占
+                        cls.kill_relays((8100,))
                         relay_cmd = [tidevice_bin, "-u", udid, "relay", "8100", "8100"]
                         cls._relay_proc = subprocess.Popen(
                             relay_cmd,
@@ -311,6 +1261,7 @@ class IosWdaManager:
                             stderr=subprocess.DEVNULL,
                             creationflags=creationflags
                         )
+                        cls._relay_udid = udid
                         time.sleep(0.35)
                     if cls.test_wda_status("http://127.0.0.1:8100", timeout=0.8):
                         cls._active_wda_url = "http://127.0.0.1:8100"
@@ -319,6 +1270,196 @@ class IosWdaManager:
                     pass
 
         return None, "未检测到本地活跃 WDA 端口 (8100/8200)"
+
+
+def check_ios_wda_services() -> Tuple[bool, bool]:
+    """
+    检查 iOS WDA 8100 两个核心服务是否处于运行状态：
+    1. python -m pymobiledevice3 developer dvt xcuitest ... (或带 WebDriverAgentRunner)
+    2. python -m pymobiledevice3 usbmux forward 8100 8100
+    返回: (is_xcuitest_running, is_forward_running)
+    """
+    is_xcuitest = False
+    is_forward = False
+
+    try:
+        for proc in psutil.process_iter(["pid", "name", "cmdline"]):
+            try:
+                cmdline = proc.info.get("cmdline") or []
+                if not cmdline:
+                    continue
+                cmdline_str = " ".join(cmdline).lower()
+
+                # 检查服务 1: developer dvt xcuitest / WebDriverAgentRunner
+                if ("dvt" in cmdline_str and "xcuitest" in cmdline_str) or (
+                    "webdriveragentrunner" in cmdline_str and "pymobiledevice3" in cmdline_str
+                ):
+                    is_xcuitest = True
+
+                # 检查服务 2: usbmux forward 8100
+                if "usbmux" in cmdline_str and "forward" in cmdline_str and "8100" in cmdline_str:
+                    is_forward = True
+
+                if is_xcuitest and is_forward:
+                    break
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                continue
+    except Exception as e:
+        logger.debug(f"[IosService] 扫描服务进程异常: {e}")
+
+    return is_xcuitest, is_forward
+
+
+class IosServiceActionWorker(QThread):
+    """
+    iOS WDA 自动化服务异步控制线程 (静默执行脚本并监控进程生命周期):
+    1. 启动/重启: 静默调用 stop_ios_wda.bat 彻底清理解锁端口，再静默拉起 start_ios_wda.bat 并轮询直到就绪；
+    2. 停止: 静默调用 stop_ios_wda.bat 安全回收；
+    3. 进程完全隔离，CREATE_NO_WINDOW 消除弹窗与黑框，智能处理 pause 避免死锁挂起。
+    """
+    finished_sig = pyqtSignal(bool, str, str)
+
+    def __init__(self, action: str, parent=None):
+        super().__init__(parent)
+        self.action = action  # "start_or_restart" 或 "stop"
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.abspath(os.path.join(base_dir, "..", ".."))
+        try:
+            from desktop_app.core.path_resolver import SmartPathResolver
+            resolved_root = SmartPathResolver.get_project_root()
+            if resolved_root and os.path.isdir(os.path.join(resolved_root, "scripts")):
+                project_root = resolved_root
+        except Exception:
+            pass
+        self.stop_bat = os.path.join(project_root, "scripts", "stop_ios_wda.bat")
+        self.start_bat = os.path.join(project_root, "scripts", "start_ios_wda.bat")
+
+    def _get_python_exe(self) -> str:
+        """获取真实 Python 解释器路径，严禁在打包 EXE 态下误将 sys.executable (GUI 主程序) 当作 python 调用"""
+        if not getattr(sys, "frozen", False) and sys.executable and "python" in os.path.basename(sys.executable).lower():
+            return sys.executable
+        try:
+            from desktop_app.core.path_resolver import SmartPathResolver
+            py_info = SmartPathResolver.discover_python_runtime()
+            if py_info and py_info.get("executable"):
+                return py_info["executable"]
+        except Exception:
+            pass
+        return shutil.which("python") or shutil.which("python3") or "python"
+
+    def _execute_stop_bat(self) -> bool:
+        """静默执行停止脚本，并彻底回收所有看门狗及关联进程树，杜绝自动复活"""
+        stop_py = os.path.join(os.path.dirname(self.stop_bat), "stop_ios_wda.py")
+        creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+        py_exe = self._get_python_exe()
+        try:
+            if os.path.exists(stop_py) and py_exe:
+                subprocess.run(
+                    [py_exe, "-u", stop_py],
+                    capture_output=True,
+                    timeout=8,
+                    creationflags=creationflags,
+                    cwd=os.path.dirname(stop_py),
+                )
+            elif os.path.exists(self.stop_bat):
+                proc = subprocess.Popen(
+                    ["cmd.exe", "/c", self.stop_bat],
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    creationflags=creationflags,
+                    cwd=os.path.dirname(self.stop_bat),
+                )
+                try:
+                    proc.communicate(input=b"\r\n", timeout=8)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    proc.wait()
+        except Exception as e:
+            logger.debug(f"[IosService] 停止脚本执行异常: {e}")
+
+        # 彻底精准终结所有看门狗宿主与整棵关联进程树，物理阻断看门狗几秒后自动重新拉起服务
+        target_kws = [
+            "start_ios_wda",
+            "usbmux forward 8100",
+            "developer dvt xcuitest",
+            "webdriveragentrunner",
+        ]
+        my_pid = os.getpid()
+        for p in psutil.process_iter(["pid", "cmdline"]):
+            try:
+                if p.info["pid"] == my_pid:
+                    continue
+                cmdline = " ".join(p.info.get("cmdline") or []).lower()
+                if any(kw in cmdline for kw in target_kws):
+                    try:
+                        for child in p.children(recursive=True):
+                            try:
+                                child.kill()
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+                    p.kill()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+
+        # 轮询直到操作系统内核彻底回收双项服务进程 (最多等待 3 秒)
+        for _ in range(10):
+            is_xcuitest, is_forward = check_ios_wda_services()
+            if not is_xcuitest and not is_forward:
+                break
+            time.sleep(0.3)
+
+        return True
+
+    def _execute_start_bat(self) -> bool:
+        """静默启动 start_ios_wda.py 守护进程，并在后台轮询等待双服务就绪"""
+        start_py = os.path.join(os.path.dirname(self.start_bat), "start_ios_wda.py")
+        if not os.path.exists(start_py) and not os.path.exists(self.start_bat):
+            logger.warning(f"[IosService] 未找到启动脚本: {self.start_bat}")
+            return False
+        try:
+            creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+            py_exe = self._get_python_exe()
+            if os.path.exists(start_py) and py_exe:
+                subprocess.Popen(
+                    [py_exe, "-u", start_py],
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    creationflags=creationflags,
+                    cwd=os.path.dirname(start_py),
+                )
+            else:
+                subprocess.Popen(
+                    ["cmd.exe", "/c", self.start_bat],
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    creationflags=creationflags,
+                    cwd=os.path.dirname(self.start_bat),
+                )
+
+            # 轮询探测服务是否已双双拉起并就绪 (最多等待 20 秒)
+            for _ in range(40):
+                time.sleep(0.5)
+                is_xcuitest, is_forward = check_ios_wda_services()
+                if is_xcuitest and is_forward:
+                    return True
+            return False
+        except Exception as e:
+            logger.error(f"[IosService] 执行启动脚本异常: {e}")
+            return False
+
+    def run(self):
+        if self.action == "stop":
+            self._execute_stop_bat()
+            self.finished_sig.emit(True, "服务已停止", "stop")
+        else:
+            self._execute_stop_bat()
+            ok = self._execute_start_bat()
+            self.finished_sig.emit(ok, "服务已启动" if ok else "服务启动未完全就绪", "start_or_restart")
 
 
 def run_ios_action(action: str, udid: str = "", **kwargs) -> bool:
@@ -389,24 +1530,6 @@ class DeviceController:
             run_adb(["shell", "input", "swipe", str(x1), str(y1), str(x2), str(y2), str(duration_ms)], udid)
         elif platform == "ios":
             run_ios_action("swipe", udid, x1=x1, y1=y1, x2=x2, y2=y2, duration=duration_ms / 1000.0)
-
-    @staticmethod
-    def key_back(platform: str, udid: str):
-        if platform == "harmony":
-            run_hdc(["shell", "uitest", "uiInput", "keyEvent", "Back"], udid)
-        elif platform == "android":
-            run_adb(["shell", "input", "keyevent", "4"], udid)
-        elif platform == "ios":
-            run_ios_action("swipe", udid, x1=10, y1=400, x2=320, y2=400, duration=0.3)
-
-    @staticmethod
-    def key_home(platform: str, udid: str):
-        if platform == "harmony":
-            run_hdc(["shell", "uitest", "uiInput", "keyEvent", "Home"], udid)
-        elif platform == "android":
-            run_adb(["shell", "input", "keyevent", "3"], udid)
-        elif platform == "ios":
-            run_ios_action("home", udid)
 
     @staticmethod
     def input_text(platform: str, udid: str, text: str, cx: int = 0, cy: int = 0):
@@ -532,6 +1655,9 @@ def get_connected_devices() -> List[Dict[str, Any]]:
                     try:
                         m_name = getattr(ld, "display_name", None) or getattr(ld, "short_product_type", None) or ""
                         d_name = getattr(ld, "device_name", None) or ""
+                        p_ver = str(getattr(ld, "product_version", "") or "")
+                        if p_ver:
+                            IosWdaManager._version_cache[udid] = p_ver
                         if m_name and d_name and d_name != m_name:
                             model_desc = f"{m_name} · {d_name}"
                         elif m_name or d_name:
@@ -543,7 +1669,7 @@ def get_connected_devices() -> List[Dict[str, Any]]:
                 found_ios.append({
                     "udid": udid,
                     "platform": "ios",
-                    "name": f"苹果真机 ({model_desc}): {udid[:12]}...",
+                    "name": f"苹果真机 ({model_desc}): {udid}",
                     "is_real": True,
                 })
             return found_ios
@@ -573,13 +1699,12 @@ def get_connected_devices() -> List[Dict[str, Any]]:
                         devices.append({
                             "udid": udid,
                             "platform": "ios",
-                            "name": f"苹果真机 ({model}): {udid[:12]}...",
+                            "name": f"苹果真机 ({model}): {udid}",
                             "is_real": True
                         })
         except Exception:
             pass
 
-    # 4. 本地 WDA 极速 socket 端口探活 (每次探活仅 40ms 超时，绝不使用重型 urllib 阻塞)
     # 备选 2：Windows 原生 CfgMgr32 / PnP 即插即用硬件层保底扫描 (0ms 开销，手机连接无论是否锁屏 100% 识别)
     if sys.platform == "win32":
         try:
@@ -605,75 +1730,10 @@ def get_connected_devices() -> List[Dict[str, Any]]:
                                 udid = f"{raw_id[:8]}-{raw_id[8:]}" if (len(raw_id) == 24 and "-" not in raw_id) else raw_id
                                 if udid and udid not in seen_udids:
                                     seen_udids.add(udid)
-                                    # 尝试快速获取设备锁屏与信任状态
-                                    desc_name = "iPhone (待解锁/信任)"
-                                    try:
-                                        from pymobiledevice3.lockdown import create_using_usbmux
-                                        async def _quick_check_ld():
-                                            ld = await create_using_usbmux(serial=udid, autopair=False, connection_type="USB")
-                                            dn = getattr(ld, "device_name", "") or getattr(ld, "display_name", "") or "iPhone"
-                                            await ld.close()
-                                            return dn
-                                        resolved = asyncio.run(asyncio.wait_for(_quick_check_ld(), timeout=0.8))
-                                        if resolved:
-                                            desc_name = f"{resolved}"
-                                    except Exception:
-                                        pass
                                     devices.append({
                                         "udid": udid,
                                         "platform": "ios",
-                                        "name": f"苹果真机 ({desc_name}): {udid[:12]}...",
-                                        "is_real": True
-                                    })
-                    except OSError:
-                        break
-        except Exception:
-            pass
-
-    # 4. 本地 WDA 极速 socket 端口探活 (每次探活仅 40ms 超时，绝不使用重型 urllib 阻塞)
-    # 备选 2：Windows 原生 CfgMgr32 / PnP 即插即用硬件层保底扫描 (0ms 开销，手机连接无论是否锁屏 100% 识别)
-    if sys.platform == "win32":
-        try:
-            import ctypes
-            import winreg
-            from ctypes import wintypes
-            cfgmgr32 = ctypes.windll.cfgmgr32
-            base_key = r"SYSTEM\CurrentControlSet\Enum\USB\VID_05AC" + "&PID_12A8"
-            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, base_key) as k:
-                i = 0
-                while True:
-                    try:
-                        sub = winreg.EnumKey(k, i)
-                        i += 1
-                        raw_id = sub.strip()
-                        devnode = wintypes.DWORD()
-                        status = wintypes.DWORD()
-                        problem = wintypes.DWORD()
-                        dev_inst = "USB\\VID_05AC" + "&PID_12A8\\" + raw_id
-                        # 仅探测当前处于真实物理连接在线 (CR_SUCCESS = 0) 的设备
-                        if cfgmgr32.CM_Locate_DevNodeW(ctypes.byref(devnode), dev_inst, 0) == 0:
-                            if cfgmgr32.CM_Get_DevNode_Status(ctypes.byref(status), ctypes.byref(problem), devnode, 0) == 0:
-                                udid = f"{raw_id[:8]}-{raw_id[8:]}" if (len(raw_id) == 24 and "-" not in raw_id) else raw_id
-                                if udid and udid not in seen_udids:
-                                    seen_udids.add(udid)
-                                    # 尝试快速获取设备锁屏与信任状态
-                                    desc_name = "iPhone (请解锁屏幕并信任电脑)"
-                                    try:
-                                        from pymobiledevice3.lockdown import create_using_usbmux
-                                        async def _quick_check_ld():
-                                            ld = await create_using_usbmux(serial=udid, autopair=False, connection_type="USB")
-                                            dn = getattr(ld, "device_name", "") or getattr(ld, "display_name", "") or "iPhone"
-                                            await ld.close()
-                                            return dn
-                                        resolved = asyncio.run(asyncio.wait_for(_quick_check_ld(), timeout=0.8))
-                                        if resolved:
-                                            desc_name = f"{resolved}"
-                                    except Exception:
-                                        pass
-                                    devices.append({
-                                        "udid": udid,
-                                        "platform": "ios",
-                                        "name": f"苹果真机 ({desc_name}): {udid[:12]}...",
+                                        "name": f"苹果真机 (iPhone): {udid}",
                                         "is_real": True
                                     })
                     except OSError:
@@ -730,6 +1790,7 @@ def parse_android_node(elem: ET.Element) -> Dict[str, Any]:
     return {
         "attributes": {
             "type": short_type,
+            "full_type": raw_class,
             "id": res_id,
             "text": text,
             "bounds": bounds,
@@ -738,33 +1799,42 @@ def parse_android_node(elem: ET.Element) -> Dict[str, Any]:
             "package": attrs.get("package", ""),
             "content-desc": attrs.get("content-desc", ""),
             "clickable": attrs.get("clickable", "false"),
+            "longClickable": attrs.get("long-clickable", "false"),
             "enabled": attrs.get("enabled", "true"),
             "focusable": attrs.get("focusable", "false"),
             "scrollable": attrs.get("scrollable", "false"),
+            "visible": attrs.get("visible-to-user", "true"),
+            "hint": attrs.get("hint", ""),
         },
         "children": [parse_android_node(child) for child in elem if child.tag == "node"]
     }
 
 
-def parse_ios_node(elem: ET.Element) -> Dict[str, Any]:
-    """将 iOS WDA XML 节点转换为通用 DOM 结构"""
+def parse_ios_node(elem: ET.Element, scale_x: float = 1.0, scale_y: float = 1.0) -> Dict[str, Any]:
+    """将 iOS WDA XML 节点转换为通用 DOM 结构 (支持 Retina 视网膜点到物理像素坐标自适应映射)"""
     attrs = elem.attrib.copy()
     tag = elem.tag
     short_type = tag.replace("XCUIElementType", "") if tag.startswith("XCUIElementType") else tag
     c_id = attrs.get("name", "")
     c_text = attrs.get("label", "") or attrs.get("value", "")
     try:
-        x = int(float(attrs.get("x", 0)))
-        y = int(float(attrs.get("y", 0)))
-        w = int(float(attrs.get("width", 0)))
-        h = int(float(attrs.get("height", 0)))
-        bounds = f"[{x},{y}][{x + w},{y + h}]"
+        x = float(attrs.get("x", 0))
+        y = float(attrs.get("y", 0))
+        w = float(attrs.get("width", 0))
+        h = float(attrs.get("height", 0))
+        # 乘以 Retina 缩放系数，使 Point 坐标严丝合缝映射到 Pixel 截图物理画面
+        sx = int(round(x * scale_x))
+        sy = int(round(y * scale_y))
+        sw = int(round(w * scale_x))
+        sh = int(round(h * scale_y))
+        bounds = f"[{sx},{sy}][{sx + sw},{sy + sh}]"
     except Exception:
         bounds = attrs.get("bounds", "[0,0][0,0]")
 
     return {
         "attributes": {
             "type": short_type,
+            "full_type": tag,
             "id": c_id,
             "text": c_text,
             "bounds": bounds,
@@ -774,26 +1844,33 @@ def parse_ios_node(elem: ET.Element) -> Dict[str, Any]:
             "enabled": attrs.get("enabled", "true"),
             "visible": attrs.get("visible", "true"),
         },
-        "children": [parse_ios_node(child) for child in elem]
+        "children": [parse_ios_node(child, scale_x, scale_y) for child in elem]
     }
 
 
-def parse_ios_json_node(data: Dict[str, Any]) -> Dict[str, Any]:
-    """将 iOS WDA JSON 节点转换为通用 DOM 结构"""
+def parse_ios_json_node(data: Dict[str, Any], scale_x: float = 1.0, scale_y: float = 1.0) -> Dict[str, Any]:
+    """将 iOS WDA JSON 节点转换为通用 DOM 结构 (支持 Retina 视网膜缩放)"""
+    if not isinstance(data, dict):
+        return {"attributes": {"type": "Element", "full_type": "XCUIElementTypeElement", "bounds": "[0,0][0,0]"}, "children": []}
     raw_type = data.get("type", "Element")
     short_type = raw_type.replace("XCUIElementType", "") if raw_type.startswith("XCUIElementType") else raw_type
     c_id = data.get("name") or data.get("id") or ""
     c_text = data.get("label") or data.get("value") or ""
     rect = data.get("rect", {})
-    x = int(rect.get("x", 0))
-    y = int(rect.get("y", 0))
-    w = int(rect.get("width", 0))
-    h = int(rect.get("height", 0))
-    bounds = f"[{x},{y}][{x + w},{y + h}]"
+    x = float(rect.get("x", 0))
+    y = float(rect.get("y", 0))
+    w = float(rect.get("width", 0))
+    h = float(rect.get("height", 0))
+    sx = int(round(x * scale_x))
+    sy = int(round(y * scale_y))
+    sw = int(round(w * scale_x))
+    sh = int(round(h * scale_y))
+    bounds = f"[{sx},{sy}][{sx + sw},{sy + sh}]"
 
     return {
         "attributes": {
             "type": short_type,
+            "full_type": raw_type if raw_type.startswith("XCUIElementType") else f"XCUIElementType{raw_type}",
             "id": c_id,
             "text": c_text,
             "bounds": bounds,
@@ -803,7 +1880,7 @@ def parse_ios_json_node(data: Dict[str, Any]) -> Dict[str, Any]:
             "enabled": str(data.get("enabled", "true")),
             "visible": str(data.get("visible", "true")),
         },
-        "children": [parse_ios_json_node(child) for child in data.get("children", [])]
+        "children": [parse_ios_json_node(child, scale_x, scale_y) for child in data.get("children", []) if isinstance(child, dict)]
     }
 
 
@@ -940,7 +2017,7 @@ def normalize_harmony_node(node: Dict[str, Any], path_id: str = "root") -> Dict[
 
     attrs = dict(node.get("attributes", {}))
     # 展开可能混在根层级的属性
-    for k in ("type", "id", "key", "text", "originalText", "visible", "clickable", "enabled", "bounds", "rect"):
+    for k in ("type", "id", "key", "text", "originalText", "visible", "visibility", "hidden", "opacity", "alpha", "clip", "description", "clickable", "enabled", "bounds", "rect"):
         if k in node and k not in attrs:
             attrs[k] = node[k]
 
@@ -986,11 +2063,23 @@ def normalize_harmony_node(node: Dict[str, Any], path_id: str = "root") -> Dict[
 def get_layout_physical_size(layout_data: Any, default_w: int = 1084, default_h: int = 2412) -> Tuple[int, int]:
     """
     从布局数据或文件自适应提取真实物理分辨率 (根治投屏降采样帧毒化):
-    鸿蒙 dumpLayout 的根节点或多窗口 attributes 始终明确包含物理绝对分辨率 (如 [0,0][1084,2412])
+    支持鸿蒙 JSON 与安卓/iOS XML 布局文件自动提取最大屏幕物理边界
     """
     try:
         data = None
         if isinstance(layout_data, str) and os.path.exists(layout_data):
+            with open(layout_data, "r", encoding="utf-8") as f:
+                raw_text = f.read(65536).lstrip()
+            if raw_text.startswith("<"):
+                max_w, max_h = 0, 0
+                for m in re.finditer(r'bounds="\[0,0\]\[(\d+),(\d+)\]"', raw_text):
+                    w, h = int(m.group(1)), int(m.group(2))
+                    if w >= 600 and h >= 1000:
+                        max_w = max(max_w, w)
+                        max_h = max(max_h, h)
+                if max_w >= 600 and max_h >= 1000:
+                    return max_w, max_h
+                return default_w, default_h
             with open(layout_data, "r", encoding="utf-8") as f:
                 data = json.load(f)
         elif isinstance(layout_data, (dict, list)):
@@ -1014,8 +2103,12 @@ def get_layout_physical_size(layout_data: Any, default_w: int = 1084, default_h:
 
 def parse_layout_file(layout_path: str, platform: str, screen_w: int = 0, screen_h: int = 0) -> Dict[str, Any]:
     """统一解析三端布局文件为通用的 DOM 节点树格式 (支持动态自适应物理分辨率与多窗口聚合，具备工业级容错兜底)"""
-    if platform == "harmony":
-        phys_w, phys_h = get_layout_physical_size(layout_path, 1084, 2412)
+    if platform in ("harmony", "android"):
+        phys_w, phys_h = get_layout_physical_size(
+            layout_path,
+            1084 if platform == "harmony" else 1080,
+            2412 if platform == "harmony" else 2400,
+        )
         if screen_w < 800 or screen_h < 1200:
             screen_w, screen_h = phys_w, phys_h
 
@@ -1055,28 +2148,107 @@ def parse_layout_file(layout_path: str, platform: str, screen_w: int = 0, screen
         try:
             tree = ET.parse(layout_path)
             root = tree.getroot()
-            first_child = root.find("node")
-            if first_child is not None:
-                return parse_android_node(first_child)
+            top_nodes = [ch for ch in root if ch.tag == "node"]
+            if top_nodes:
+                overlay_keywords = (
+                    "smartsidebar", "sidebar", "float", "touchassistant",
+                    "cocktailbar", "edgepanel", "subscreen", "aod",
+                    "inputmethod", "input_", "keyboard", "pinyin",
+                )
+                launcher_keywords = (
+                    "launcher", "miui.home", "trebuchet", "lawnchair", "wallpaper",
+                )
+
+                def _is_system_overlay(elem: ET.Element) -> bool:
+                    pkg = (elem.attrib.get("package") or "").strip().lower()
+                    if pkg == "com.android.systemui":
+                        return True
+                    return any(k in pkg for k in overlay_keywords)
+
+                def _is_launcher(elem: ET.Element) -> bool:
+                    pkg = (elem.attrib.get("package") or "").strip().lower()
+                    return any(k in pkg for k in launcher_keywords)
+
+                app_nodes = [
+                    n for n in top_nodes
+                    if not _is_system_overlay(n) and not _is_launcher(n)
+                ]
+                if app_nodes:
+                    selected_nodes = app_nodes
+                else:
+                    launcher_nodes = [n for n in top_nodes if _is_launcher(n)]
+                    selected_nodes = launcher_nodes if launcher_nodes else top_nodes
+
+                if len(selected_nodes) == 1:
+                    return parse_android_node(selected_nodes[0])
+                return {
+                    "attributes": {
+                        "type": "Hierarchy",
+                        "bounds": root_bounds,
+                    },
+                    "children": [parse_android_node(n) for n in selected_nodes],
+                }
         except Exception:
             pass
         return {"attributes": {"type": "hierarchy", "bounds": root_bounds}, "children": []}
     elif platform == "ios":
         try:
-            with open(layout_path, "r", encoding="utf-8") as f:
+            if not layout_path or not os.path.exists(layout_path):
+                return {"attributes": {"type": "Screen", "bounds": root_bounds}, "children": []}
+            with open(layout_path, "r", encoding="utf-8", errors="ignore") as f:
                 content = f.read().strip()
+            if not content:
+                return {"attributes": {"type": "Screen", "bounds": root_bounds}, "children": []}
+
+            xml_content = ""
+            json_data = None
             if content.startswith("<"):
-                root = ET.fromstring(content)
-                app_node = root.find(".//XCUIElementTypeApplication")
-                if app_node is not None:
-                    return parse_ios_node(app_node)
-                return parse_ios_node(root)
+                xml_content = content
             else:
-                raw_json = json.loads(content)
-                val = raw_json.get("value", raw_json)
-                return parse_ios_json_node(val)
-        except Exception:
-            return {"attributes": {"type": "Screen", "bounds": "[0,0][1170,2532]"}, "children": []}
+                try:
+                    raw_json = json.loads(content)
+                    val = raw_json.get("value", raw_json)
+                    if isinstance(val, str) and ("<XCUIElementType" in val or "<AppiumAUT" in val or val.strip().startswith("<")):
+                        xml_content = val.strip()
+                    elif isinstance(val, dict):
+                        json_data = val
+                except Exception:
+                    if "<" in content:
+                        xml_content = content[content.find("<"):]
+
+            if xml_content:
+                root = ET.fromstring(xml_content)
+                app_node = root.find(".//XCUIElementTypeApplication")
+                target_node = app_node if app_node is not None else root
+
+                # 动态自适应计算 Retina 缩放倍率 (例如 screen_w=1170, app_w=390 -> scale=3.0)
+                scale_x, scale_y = 1.0, 1.0
+                try:
+                    app_w = float(target_node.attrib.get("width", 0))
+                    app_h = float(target_node.attrib.get("height", 0))
+                    if app_w > 100 and screen_w > app_w * 1.2:
+                        scale_x = screen_w / app_w
+                    if app_h > 100 and screen_h > app_h * 1.2:
+                        scale_y = screen_h / app_h
+                except Exception:
+                    pass
+                return parse_ios_node(target_node, scale_x, scale_y)
+            elif json_data:
+                scale_x, scale_y = 1.0, 1.0
+                try:
+                    rect = json_data.get("rect", {})
+                    app_w = float(rect.get("width", 0))
+                    app_h = float(rect.get("height", 0))
+                    if app_w > 100 and screen_w > app_w * 1.2:
+                        scale_x = screen_w / app_w
+                    if app_h > 100 and screen_h > app_h * 1.2:
+                        scale_y = screen_h / app_h
+                except Exception:
+                    pass
+                return parse_ios_json_node(json_data, scale_x, scale_y)
+        except Exception as e:
+            logging.warning(f"[iOS布局解析] 异常降级: {e}")
+        return {"attributes": {"type": "Screen", "bounds": root_bounds}, "children": []}
     return {}
 
 
@@ -1104,6 +2276,23 @@ class ScreenCastWorker(QThread):
     is_active: bool = False
     _active_ios_server: Optional[Any] = None
     _active_ios_loop: Optional[Any] = None
+    _ios_tunnel_lock: "threading.Lock" = threading.Lock()
+
+    @classmethod
+    def release_all_tunnels(cls):
+        """强制清理并重置残留的 userspace_tunnel 句柄与单例状态 (换机或异常重置时调用)"""
+        try:
+            from pymobiledevice3.remote import userspace_tunnel
+            for attr_name in ("_active_tunnel", "_cli_tunnel"):
+                tun = getattr(userspace_tunnel, attr_name, None)
+                if tun is not None:
+                    with contextlib.suppress(Exception):
+                        if hasattr(tun, "close"):
+                            tun.close()
+                    setattr(userspace_tunnel, attr_name, None)
+            userspace_tunnel.USERSPACE_ACTIVE = False
+        except Exception:
+            pass
 
     @classmethod
     def clear_cache(cls):
@@ -1193,6 +2382,7 @@ class ScreenCastWorker(QThread):
         self._android_server_sock: Optional[socket.socket] = None
         self._android_conn: Optional[socket.socket] = None
         self._ios_stop_hook: Optional[Any] = None
+        self._last_ios_error: str = ""
 
     @staticmethod
     def _extract_nalu(resp_bytes: bytes) -> bytes:
@@ -1390,6 +2580,18 @@ class ScreenCastWorker(QThread):
             except Exception:
                 pass
             self._grpc_channel = None
+        mjpeg_proc = getattr(self, "_ios_mjpeg_relay_proc", None)
+        if mjpeg_proc is not None:
+            try:
+                mjpeg_proc.terminate()
+                mjpeg_proc.wait(timeout=0.5)
+            except Exception:
+                try:
+                    mjpeg_proc.kill()
+                except Exception:
+                    pass
+            self._ios_mjpeg_relay_proc = None
+        IosWdaManager.kill_relays()
         self._cleanup_android_stream()
 
     def _cleanup_android_stream(self):
@@ -1572,14 +2774,37 @@ class ScreenCastWorker(QThread):
                 if cls.is_active or (now - cls.latest_frame_time < 5.0):
                     return cls.get_latest_jpeg_bytes(udid)
 
+        # 核心互斥协同：若实时投屏当前活跃中，严禁建立新隧道引发撞车，直接等待投屏流最新帧
+        if cls.is_active:
+            for _ in range(40):
+                if cls.latest_image is not None and (not udid or cls.latest_udid == udid):
+                    return cls.get_latest_jpeg_bytes(udid)
+                time.sleep(0.05)
+            return cls.get_latest_jpeg_bytes(udid)
+
+        # 尝试非阻塞获取 iOS 隧道锁，若已被投屏引擎持有或启动中则直接复用内存帧，绝不并发争夺 RSD 隧道
+        acquired = cls._ios_tunnel_lock.acquire(blocking=False)
+        if not acquired:
+            for _ in range(30):
+                if cls.latest_image is not None and (not udid or cls.latest_udid == udid):
+                    return cls.get_latest_jpeg_bytes(udid)
+                time.sleep(0.05)
+            return cls.get_latest_jpeg_bytes(udid)
+
         target_udid = udid if (udid and not udid.startswith("wda_localhost")) else None
 
         # 2. 进程内极速单帧握手
         async def _capture_one_frame_async() -> Optional[bytes]:
+            from pymobiledevice3.remote import userspace_tunnel
             from pymobiledevice3.remote.userspace_tunnel import UserspaceRsdTunnel
             from pymobiledevice3.remote.core_device.screen_stream import ScreenStreamServer, _SubState
             from pymobiledevice3.remote.core_device.display_service import DisplayService
             import av
+
+            # 强力重置可能遗留的旧隧道句柄
+            for attr_name in ("_active_tunnel", "_cli_tunnel"):
+                setattr(userspace_tunnel, attr_name, None)
+            userspace_tunnel.USERSPACE_ACTIVE = False
 
             owned_tunnel = UserspaceRsdTunnel(serial=target_udid, autopair=True)
             rsd = None
@@ -1657,11 +2882,16 @@ class ScreenCastWorker(QThread):
                 if owned_tunnel is not None:
                     with contextlib.suppress(Exception):
                         await asyncio.wait_for(owned_tunnel.aclose(), timeout=1.5)
+                for attr_name in ("_active_tunnel", "_cli_tunnel"):
+                    setattr(userspace_tunnel, attr_name, None)
+                userspace_tunnel.USERSPACE_ACTIVE = False
 
         try:
             return asyncio.run(_capture_one_frame_async())
         except Exception:
             return None
+        finally:
+            cls._ios_tunnel_lock.release()
 
     def _run_harmony_scrcpy_stream(self) -> bool:
         """
@@ -2191,21 +3421,6 @@ class ScreenCastWorker(QThread):
         async def _pymobiledevice3_session() -> bool:
             nonlocal emitted_any_frame
 
-            # 1. 快速预检 iOS 主版本号：iOS 16 及以下无 CoreDevice DisplayService，直接返回 False 启用备选方案
-            try:
-                ld = await asyncio.wait_for(create_using_usbmux(serial=target_udid, autopair=True), timeout=3.0)
-                try:
-                    ver_str = str(getattr(ld, "product_version", "") or "")
-                finally:
-                    with contextlib.suppress(Exception):
-                        await ld.close()
-                if ver_str:
-                    major_ver = int(ver_str.split(".")[0])
-                    if 0 < major_ver < 17:
-                        return False
-            except Exception:
-                pass
-
             if not self._is_running:
                 return True
 
@@ -2243,17 +3458,31 @@ class ScreenCastWorker(QThread):
                             from_tunneld = True
 
                 if rsd is None:
+                    # 强力重置与自愈：清理可能遗留的旧隧道句柄
                     for attr_name in ("_active_tunnel", "_cli_tunnel"):
                         prev_tun = getattr(userspace_tunnel, attr_name, None)
                         if prev_tun is not None:
                             with contextlib.suppress(Exception):
-                                await asyncio.wait_for(prev_tun.aclose(), timeout=2.0)
-                            if getattr(userspace_tunnel, attr_name, None) is prev_tun:
-                                setattr(userspace_tunnel, attr_name, None)
+                                await asyncio.wait_for(prev_tun.aclose(), timeout=1.5)
+                            setattr(userspace_tunnel, attr_name, None)
                     userspace_tunnel.USERSPACE_ACTIVE = False
 
-                    owned_tunnel = userspace_tunnel.UserspaceRsdTunnel(serial=target_udid, autopair=True)
-                    rsd = await asyncio.wait_for(owned_tunnel.aopen(), timeout=8.0)
+                    # 尝试建立隧道，若遇端口占用或单例冲突自动退避自愈
+                    for attempt in range(3):
+                        try:
+                            owned_tunnel = userspace_tunnel.UserspaceRsdTunnel(serial=target_udid, autopair=True, remotepairing_fallback=False)
+                            rsd = await asyncio.wait_for(owned_tunnel.aopen(), timeout=8.0)
+                            break
+                        except Exception as open_err:
+                            err_str = str(open_err)
+                            if ("already active" in err_str or "ARP Cache" in err_str or "RemoteXPC" in err_str) and attempt < 2:
+                                logging.info(f"[iOS投屏] 检测到隧道/端口残留冲突，执行重置与等待自愈 ({attempt+1}/3)...")
+                                for attr_name in ("_active_tunnel", "_cli_tunnel"):
+                                    setattr(userspace_tunnel, attr_name, None)
+                                userspace_tunnel.USERSPACE_ACTIVE = False
+                                await asyncio.sleep(0.8)
+                            else:
+                                raise open_err
 
                 if not self._is_running or rsd is None:
                     return True
@@ -2303,6 +3532,33 @@ class ScreenCastWorker(QThread):
 
                 # 4. 启动音视频配对流与 ScreenStreamServer 守护协程组
                 await asyncio.wait_for(server._eager_stream_start(), timeout=15.0)
+                if server._active_service is None:
+                    logging.info("[iOS投屏] 当前设备未提供原生 startmediastream 硬件视频流，就地复用当前 RSD 隧道切入 DVT 开发者通道")
+                    from pymobiledevice3.services.dvt.instruments.dvt_provider import DvtProvider
+                    from pymobiledevice3.services.dvt.instruments.screenshot import Screenshot
+                    async with DvtProvider(rsd) as dvt, Screenshot(dvt) as sc:
+                        if not self._is_running:
+                            return True
+                        last_emit_t = 0.0
+                        while self._is_running and not stop_event.is_set():
+                            raw_bytes = await sc.get_screenshot()
+                            if raw_bytes and self._is_running:
+                                now = time.time()
+                                if self.ui_ready or (now - last_emit_t >= 0.03):
+                                    last_emit_t = now
+                                    self.ui_ready = False
+                                    qimg = QImage.fromData(raw_bytes, "PNG")
+                                    if qimg and not qimg.isNull():
+                                        ScreenCastWorker.latest_image = qimg
+                                        ScreenCastWorker.latest_frame_time = now
+                                        ScreenCastWorker.latest_udid = self.udid
+                                        ScreenCastWorker.latest_frame_bytes = raw_bytes
+                                        if not emitted_any_frame:
+                                            emitted_any_frame = True
+                                            self.state_changed.emit(True, "投屏已连接 (DVT开发者通道)")
+                                        self.frame_ready.emit(qimg, b"")
+                            await asyncio.sleep(0.01)
+                        return emitted_any_frame or (not self._is_running)
                 if server._init_sequence is not None and sub_q.empty():
                     sub_state.needs_key = False
                     sub_state.reset_on_key = False
@@ -2367,6 +3623,7 @@ class ScreenCastWorker(QThread):
                 return emitted_any_frame or (not self._is_running)
 
             except Exception as exc:
+                self._last_ios_error = str(exc)
                 if is_media_in_use_error(exc):
                     self.error_occurred.emit("iPhone 相机或麦克风正被前台应用占用，请退出该应用后重新开启投屏")
                     return True
@@ -2407,6 +3664,9 @@ class ScreenCastWorker(QThread):
                 if owned_tunnel is not None:
                     with contextlib.suppress(Exception):
                         await asyncio.wait_for(owned_tunnel.aclose(), timeout=2.5)
+                for attr_name in ("_active_tunnel", "_cli_tunnel"):
+                    setattr(userspace_tunnel, attr_name, None)
+                userspace_tunnel.USERSPACE_ACTIVE = False
 
                 decode_thread.join(timeout=0.5)
 
@@ -2429,7 +3689,7 @@ class ScreenCastWorker(QThread):
             asyncio.set_event_loop(None)
             loop.close()
 
-    def _run_ios_legacy_fallback_stream(self):
+    def _run_ios_legacy_fallback_stream(self, is_ios_17_plus: bool = True):
         """
         备选 iOS 投屏通道 (当设备系统版本低于 iOS 17 或不支持 CoreDevice 视频流时启用):
         1. 优先探测 WDA 原生 MJPEG 视频流 (/mjpegstream 或 9100 端口)；
@@ -2440,16 +3700,23 @@ class ScreenCastWorker(QThread):
         import base64
         import urllib.request
 
-        wda_url, _ = IosWdaManager.get_wda_url(self.udid, allow_spawn=True)
+        emitted_any = False
+        wda_url, _ = IosWdaManager.get_wda_url(self.udid, allow_spawn=False)
         if not wda_url:
             wda_url = "http://127.0.0.1:8100"
 
         if self.udid and not self.udid.startswith("wda_localhost"):
             tidevice_bin = shutil.which("tidevice")
+            if not tidevice_bin:
+                candidate_td = os.path.join(os.path.dirname(sys.executable), "Scripts", "tidevice.exe")
+                if os.path.isfile(candidate_td):
+                    tidevice_bin = candidate_td
             if tidevice_bin:
                 try:
+                    # 启动针对当前设备的 9100 串流映射前，彻底杀死旧中继
+                    IosWdaManager.kill_relays((9100,))
                     creationflags = 0x08000000 if sys.platform == "win32" else 0
-                    subprocess.Popen(
+                    self._ios_mjpeg_relay_proc = subprocess.Popen(
                         [tidevice_bin, "-u", self.udid, "relay", "9100", "9100"],
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL,
@@ -2458,106 +3725,112 @@ class ScreenCastWorker(QThread):
                 except Exception:
                     pass
 
-        try:
-            settings_payload = json.dumps({
-                "settings": {
-                    "mjpegServerFramerate": 60,
-                    "mjpegServerScreenshotQuality": 30,
-                    "mjpegScalingFactor": 60,
-                    "screenshotQuality": 2
-                }
-            }).encode("utf-8")
-            set_req = urllib.request.Request(
-                f"{wda_url}/appium/settings",
-                data=settings_payload,
-                headers={"Content-Type": "application/json"}
-            )
-            with urllib.request.urlopen(set_req, timeout=0.8) as _:
-                pass
-        except Exception:
-            pass
-
-        candidate_urls = [
-            "http://127.0.0.1:9100",
-            f"{wda_url}/mjpegstream",
-            f"{wda_url}/mjpegstream?scale=0.6",
-            f"{wda_url}/mjpegstream?fps=30",
-        ]
-
-        mjpeg_resp = None
-        for test_url in candidate_urls:
-            if not self._is_running:
-                break
+        # 探测本地 WDA 端口是否在线，若未启动则 0ms 直接穿透至备选 3 (DVT 原生开发者通道)
+        wda_online = IosWdaManager.test_wda_status(wda_url, timeout=0.25)
+        if wda_online:
             try:
-                req = urllib.request.Request(test_url)
-                resp = urllib.request.urlopen(req, timeout=0.8)
-                if resp.status == 200:
-                    mjpeg_resp = resp
+                settings_payload = json.dumps({
+                    "settings": {
+                        "mjpegServerFramerate": 60,
+                        "mjpegServerScreenshotQuality": 30,
+                        "mjpegScalingFactor": 60,
+                        "screenshotQuality": 2
+                    }
+                }).encode("utf-8")
+                set_req = urllib.request.Request(
+                    f"{wda_url}/appium/settings",
+                    data=settings_payload,
+                    headers={"Content-Type": "application/json"}
+                )
+                with urllib.request.urlopen(set_req, timeout=0.8) as _:
+                    pass
+            except Exception:
+                pass
+
+            candidate_urls = [
+                "http://127.0.0.1:9100",
+                f"{wda_url}/mjpegstream",
+                f"{wda_url}/mjpegstream?scale=0.6",
+                f"{wda_url}/mjpegstream?fps=30",
+            ]
+
+            mjpeg_resp = None
+            for test_url in candidate_urls:
+                if not self._is_running:
                     break
-            except Exception:
-                continue
+                try:
+                    req = urllib.request.Request(test_url)
+                    resp = urllib.request.urlopen(req, timeout=0.8)
+                    if resp.status == 200:
+                        mjpeg_resp = resp
+                        break
+                except Exception:
+                    continue
 
-        if mjpeg_resp is not None:
-            try:
-                with mjpeg_resp as resp:
-                    buffer = bytearray()
-                    last_emit_t = 0.0
-                    while self._is_running:
-                        chunk = resp.read1(65536) if hasattr(resp, "read1") else resp.read(8192)
-                        if not chunk:
-                            break
-                        buffer.extend(chunk)
-                        if len(buffer) > 4194304:
-                            last_soi = buffer.rfind(b"\xff\xd8")
-                            if last_soi != -1:
-                                del buffer[:last_soi]
-                            else:
-                                buffer.clear()
-
-                        latest_jpg = None
-                        while True:
-                            start_idx = buffer.find(b"\xff\xd8")
-                            if start_idx == -1:
-                                if len(buffer) > 1:
-                                    del buffer[:-1]
+            if mjpeg_resp is not None:
+                try:
+                    with mjpeg_resp as resp:
+                        buffer = bytearray()
+                        last_emit_t = 0.0
+                        while self._is_running:
+                            chunk = resp.read1(65536) if hasattr(resp, "read1") else resp.read(8192)
+                            if not chunk:
                                 break
-                            end_idx = buffer.find(b"\xff\xd9", start_idx + 2)
-                            if end_idx == -1:
-                                if start_idx > 0:
-                                    del buffer[:start_idx]
-                                break
-                            latest_jpg = bytes(buffer[start_idx : end_idx + 2])
-                            del buffer[: end_idx + 2]
+                            buffer.extend(chunk)
+                            if len(buffer) > 4194304:
+                                last_soi = buffer.rfind(b"\xff\xd8")
+                                if last_soi != -1:
+                                    del buffer[:last_soi]
+                                else:
+                                    buffer.clear()
 
-                        if latest_jpg and self._is_running:
-                            now = time.time()
-                            if (self.ui_ready or (now - last_emit_t >= 0.04)) and (now - last_emit_t >= 0.016):
-                                last_emit_t = now
-                                self.ui_ready = False
-                                qimg = QImage.fromData(latest_jpg, "JPEG")
-                                if qimg and not qimg.isNull():
-                                    ScreenCastWorker.latest_image = qimg
-                                    ScreenCastWorker.latest_frame_time = now
-                                    ScreenCastWorker.latest_udid = self.udid
-                                    ScreenCastWorker.latest_frame_bytes = latest_jpg
-                                    self.frame_ready.emit(qimg, b"")
-                return
-            except Exception:
-                pass
+                            latest_jpg = None
+                            while True:
+                                start_idx = buffer.find(b"\xff\xd8")
+                                if start_idx == -1:
+                                    if len(buffer) > 1:
+                                        del buffer[:-1]
+                                    break
+                                end_idx = buffer.find(b"\xff\xd9", start_idx + 2)
+                                if end_idx == -1:
+                                    if start_idx > 0:
+                                        del buffer[:start_idx]
+                                    break
+                                latest_jpg = bytes(buffer[start_idx : end_idx + 2])
+                                del buffer[: end_idx + 2]
+
+                            if latest_jpg and self._is_running:
+                                now = time.time()
+                                if (self.ui_ready or (now - last_emit_t >= 0.04)) and (now - last_emit_t >= 0.016):
+                                    last_emit_t = now
+                                    self.ui_ready = False
+                                    qimg = QImage.fromData(latest_jpg, "JPEG")
+                                    if qimg and not qimg.isNull():
+                                        ScreenCastWorker.latest_image = qimg
+                                        ScreenCastWorker.latest_frame_time = now
+                                        ScreenCastWorker.latest_udid = self.udid
+                                        ScreenCastWorker.latest_frame_bytes = latest_jpg
+                                        self.frame_ready.emit(qimg, b"")
+                                        emitted_any = True
+                    if emitted_any:
+                        return True
+                except Exception:
+                    pass
 
         if not self._is_running:
-            return
+            return emitted_any
 
-        # 备选 2: WDA /screenshot 轮询通道
+        # 备选 2: WDA /screenshot 极速轮询通道 (原生 20-30 FPS 丝滑出图，多进程防冲突最高保障)
         if IosWdaManager.test_wda_status(wda_url, timeout=0.6) and self._is_running:
             last_poll_t = 0.0
+            consecutive_errors = 0
             while self._is_running:
                 try:
                     now = time.time()
-                    if self.ui_ready or (now - last_poll_t >= 0.04):
+                    if self.ui_ready or (now - last_poll_t >= 0.035):
                         last_poll_t = now
                         req = urllib.request.Request(f"{wda_url}/screenshot", headers={"Accept": "application/json"})
-                        with urllib.request.urlopen(req, timeout=1.0) as resp:
+                        with urllib.request.urlopen(req, timeout=1.2) as resp:
                             if resp.status == 200:
                                 data = json.loads(resp.read().decode("utf-8"))
                                 b64_img = data.get("value", "")
@@ -2570,68 +3843,207 @@ class ScreenCastWorker(QThread):
                                         ScreenCastWorker.latest_frame_time = now
                                         ScreenCastWorker.latest_udid = self.udid
                                         ScreenCastWorker.latest_frame_bytes = raw_bytes
+                                        if not emitted_any:
+                                            emitted_any = True
+                                            self.state_changed.emit(True, "投屏已连接 (WDA自动化通道)")
                                         self.frame_ready.emit(qimg, b"")
+                                        consecutive_errors = 0
                 except Exception:
-                    break
+                    consecutive_errors += 1
+                    if consecutive_errors > 8:
+                        break
+                    time.sleep(0.08)
+                    continue
                 time.sleep(0.005)
-            return
+            if emitted_any:
+                return True
 
         if not self._is_running:
-            return
+            return emitted_any
 
-        # 备选 3: 进程内 DvtProvider 持久会话兜底
+        # 备选 3: 进程内 DvtProvider 持久会话兜底 (双模自适应：RSD 隧道 + Lockdown 双栈兼容)
         async def _run_in_process_dvt():
             from pymobiledevice3.lockdown import create_using_usbmux
+            from pymobiledevice3.remote import userspace_tunnel
             from pymobiledevice3.services.dvt.instruments.dvt_provider import DvtProvider
             from pymobiledevice3.services.dvt.instruments.screenshot import Screenshot
 
             udid = self.udid if (self.udid and not self.udid.startswith("wda_localhost")) else None
-            provider = await create_using_usbmux(serial=udid)
-            async with DvtProvider(provider) as dvt, Screenshot(dvt) as sc:
-                while self._is_running:
-                    raw_bytes = await sc.get_screenshot()
-                    if raw_bytes and self._is_running:
-                        qimg = QImage.fromData(raw_bytes, "PNG")
-                        if qimg and not qimg.isNull():
-                            now = time.time()
-                            ScreenCastWorker.latest_image = qimg
-                            ScreenCastWorker.latest_frame_time = now
-                            ScreenCastWorker.latest_udid = self.udid
-                            ScreenCastWorker.latest_frame_bytes = raw_bytes
-                            self.frame_ready.emit(qimg, b"")
-                    await asyncio.sleep(0.01)
+            provider = None
+            owned_tunnel = None
+            emitted_any = False
+            try:
+                # 仅针对 iOS 17+ 设备尝试 UserspaceRsdTunnel (并禁用 bonjour 广播回退杜绝挂起)
+                if is_ios_17_plus:
+                    try:
+                        for attr_name in ("_active_tunnel", "_cli_tunnel"):
+                            setattr(userspace_tunnel, attr_name, None)
+                        userspace_tunnel.USERSPACE_ACTIVE = False
+                        owned_tunnel = userspace_tunnel.UserspaceRsdTunnel(serial=udid, autopair=True, remotepairing_fallback=False)
+                        provider = await asyncio.wait_for(owned_tunnel.aopen(), timeout=2.5)
+                    except Exception:
+                        provider = None
+
+                # 若 RSD 不支持或系统低于 iOS 17，则降级为传统 USB Lockdown (iOS 16 及以下旧机型)
+                if provider is None:
+                    provider = await create_using_usbmux(serial=udid)
+
+                try:
+                    async with DvtProvider(provider) as dvt, Screenshot(dvt) as sc:
+                        last_emit_t = 0.0
+                        while self._is_running:
+                            raw_bytes = await sc.get_screenshot()
+                            if raw_bytes and self._is_running:
+                                now = time.time()
+                                if self.ui_ready or (now - last_emit_t >= 0.03):
+                                    last_emit_t = now
+                                    self.ui_ready = False
+                                    qimg = QImage.fromData(raw_bytes, "PNG")
+                                    if qimg and not qimg.isNull():
+                                        ScreenCastWorker.latest_image = qimg
+                                        ScreenCastWorker.latest_frame_time = now
+                                        ScreenCastWorker.latest_udid = self.udid
+                                        ScreenCastWorker.latest_frame_bytes = raw_bytes
+                                        if not emitted_any:
+                                            emitted_any = True
+                                            self.state_changed.emit(True, "投屏已连接 (DVT开发者通道)")
+                                        self.frame_ready.emit(qimg, b"")
+                            await asyncio.sleep(0.01)
+                except Exception as dvt_err:
+                    # 若 DVT 服务不可用 (如 iOS <= 16 未挂载 Developer Disk Image)，尝试通过原生 ScreenshotService 兜底
+                    if not emitted_any and not is_ios_17_plus and self._is_running:
+                        try:
+                            from pymobiledevice3.services.screenshot import ScreenshotService
+                            sc_svc = ScreenshotService(provider)
+                            last_emit_t = 0.0
+                            while self._is_running:
+                                raw_bytes = await sc_svc.take_screenshot()
+                                if raw_bytes and self._is_running:
+                                    now = time.time()
+                                    if self.ui_ready or (now - last_emit_t >= 0.04):
+                                        last_emit_t = now
+                                        self.ui_ready = False
+                                        qimg = QImage.fromData(raw_bytes, "PNG")
+                                        if qimg and not qimg.isNull():
+                                            ScreenCastWorker.latest_image = qimg
+                                            ScreenCastWorker.latest_frame_time = now
+                                            ScreenCastWorker.latest_udid = self.udid
+                                            ScreenCastWorker.latest_frame_bytes = raw_bytes
+                                            if not emitted_any:
+                                                emitted_any = True
+                                                self.state_changed.emit(True, "投屏已连接 (原生截屏通道)")
+                                            self.frame_ready.emit(qimg, b"")
+                                await asyncio.sleep(0.01)
+                        except Exception:
+                            pass
+                return emitted_any or (not self._is_running)
+            finally:
+                if owned_tunnel is not None:
+                    with contextlib.suppress(Exception):
+                        await asyncio.wait_for(owned_tunnel.aclose(), timeout=1.5)
+                for attr_name in ("_active_tunnel", "_cli_tunnel"):
+                    setattr(userspace_tunnel, attr_name, None)
+                userspace_tunnel.USERSPACE_ACTIVE = False
 
         try:
-            asyncio.run(_run_in_process_dvt())
+            return asyncio.run(_run_in_process_dvt())
         except Exception as e:
             logging.warning(f"[iOS备选投屏] DvtProvider 通道退出: {e}")
+            return False
+        finally:
+            mjpeg_proc = getattr(self, "_ios_mjpeg_relay_proc", None)
+            if mjpeg_proc is not None:
+                try:
+                    mjpeg_proc.terminate()
+                    mjpeg_proc.wait(timeout=0.5)
+                except Exception:
+                    try:
+                        mjpeg_proc.kill()
+                    except Exception:
+                        pass
+                self._ios_mjpeg_relay_proc = None
 
     def _run_ios_stream(self):
         """
         iOS 实时投屏总调度器：
-        1. 优选使用 pymobiledevice3 原生 ScreenStreamServer 双线程解耦 60FPS 硬件投屏引擎 (_run_ios_pymobiledevice3_stream)；
-        2. 保留原有的 WDA MJPEG / Screenshot / DVT 投屏逻辑作为备选降级选项 (_run_ios_legacy_fallback_stream)。
+        1. 针对 iOS 17+ 架构设备 (iPhone 12/13/14/15/16 等)，优先使用 pymobiledevice3 原生 CoreDevice / DVT 开发者通道 (_run_ios_pymobiledevice3_stream)；
+        2. 针对 iOS 16 及以下旧架构设备 (iPhone 6s/7/8/X 等)，自动跳过 RSD 隧道与 5s 冗余 Bonjour 广播扫描，直连 WDA MJPEG / USB Lockdown DVT 通道；
+        3. 启动前与退出后自动彻底释放 8100/9100 中继端口，杜绝换机端口冲突。
         """
         ScreenCastWorker.is_active = True
+        # 换机安全屏障：启动前彻底清理可能残留的 8100/9100 端口独占
+        IosWdaManager.kill_relays()
+
+        acquired_lock = ScreenCastWorker._ios_tunnel_lock.acquire(blocking=True, timeout=3.5)
+        if not acquired_lock:
+            # 隧道冲突自愈保护：若被旧会话遗留锁占用，强制清理并给予 2.0s 重试
+            ScreenCastWorker.release_all_tunnels()
+            acquired_lock = ScreenCastWorker._ios_tunnel_lock.acquire(blocking=True, timeout=2.0)
+            if not acquired_lock:
+                logging.warning(f"[iOS投屏] 设备 {self.udid} 隧道锁正被占用")
+                self.error_occurred.emit("iOS 投屏通道正忙，请稍候再试")
+                return
         try:
-            while self._is_running:
+            # 极速探测设备 iOS 主版本 (耗时仅 ~40-80ms)
+            is_ios_17_plus = True
+            if self.udid and not self.udid.startswith("wda_localhost"):
                 try:
-                    ok = self._run_ios_pymobiledevice3_stream()
-                    if not self._is_running:
-                        return
-                    if not ok:
-                        # 当前设备不支持 CoreDevice 硬件视频流 (例如 iOS 16 及以下固件)，进入备选通道
-                        break
-                except Exception as e:
-                    logging.warning(f"[iOS投屏] pymobiledevice3 投屏通道异常重试: {e}")
+                    ver_str = IosWdaManager.get_device_product_version(self.udid)
+                    if ver_str:
+                        major_ver = int(ver_str.split(".")[0])
+                        if major_ver < 17:
+                            is_ios_17_plus = False
+                            logging.info(f"[iOS投屏] 设备 {self.udid} 系统版本为 iOS {ver_str} (< 17)，自动跳过 RSD 隧道直接启用经典 USB/WDA 投屏")
+                except Exception:
+                    pass
 
-                if self._is_running:
-                    time.sleep(0.3)
+            ok = False
+            # 智能双模调度：若本地 8100 WDA 服务已在线 (如外部守护脚本已就绪)，优先复用 WDA 高速通道，杜绝底层 RSD 隧道抢占
+            wda_ready = IosWdaManager.test_wda_status("http://127.0.0.1:8100", timeout=0.25)
+            if wda_ready:
+                logging.info(f"[iOS投屏] 检测到 WDA 8100 处于就绪状态，优先复用 WDA 串流通道")
+                ok = bool(self._run_ios_legacy_fallback_stream(is_ios_17_plus=is_ios_17_plus))
 
-            if self._is_running:
-                self._run_ios_legacy_fallback_stream()
+            if not ok and self._is_running and is_ios_17_plus:
+                ok = self._run_ios_pymobiledevice3_stream()
+
+            if not self._is_running:
+                return
+
+            # 若原生硬件流未激活，秒级平滑切入备选 WDA / DVT 通道
+            if not ok and self._is_running:
+                ok = bool(self._run_ios_legacy_fallback_stream(is_ios_17_plus=is_ios_17_plus))
+
+            # 若所有投屏通道均未能建立且 Worker 仍处于运行状态，向用户发出精准提示，彻底杜绝无提示闪退
+            if not ok and self._is_running:
+                import asyncio
+                from pymobiledevice3.usbmux import list_devices as pmd_list_devices
+                online_serials = []
+                with contextlib.suppress(Exception):
+                    mux_devs = asyncio.run(asyncio.wait_for(pmd_list_devices(), timeout=1.0))
+                    online_serials = [str(getattr(m, "serial", "") or "") for m in (mux_devs or [])]
+
+                if self.udid and self.udid not in online_serials:
+                    self.error_occurred.emit(f"未检测到设备 {self.udid} 的USB物理连接，请确认数据线插紧并点击 [🔄] 刷新列表")
+                else:
+                    last_err = getattr(self, "_last_ios_error", "")
+                    is_trust_issue = any(k in last_err.lower() for k in [
+                        "not paired", "passwordprotected", "pairingdialog", "trust", "invalidhostid"
+                    ])
+                    if is_trust_issue:
+                        self.error_occurred.emit("未能从 iPhone 获取投屏画面：请确认屏幕已【点亮并解锁】，且已在手机上点击【信任此电脑】")
+                    elif last_err:
+                        self.error_occurred.emit(f"未能建立 iOS 投屏通道 ({last_err})，请重新点击【实时投屏】开启")
+                    else:
+                        self.error_occurred.emit("未能建立 iOS 投屏通道，请确认手机已点亮解锁并点击 [🔄] 刷新设备")
         finally:
             ScreenCastWorker.is_active = False
+            IosWdaManager.kill_relays()
+            if acquired_lock:
+                try:
+                    ScreenCastWorker._ios_tunnel_lock.release()
+                except RuntimeError:
+                    pass
 
     def run(self):
         self._is_running = True
@@ -2735,6 +4147,198 @@ class CaptureWorker(QThread):
                 return True
         except Exception:
             pass
+
+        return False
+
+    @staticmethod
+    def _dump_android_hierarchy(udid: str, layout_file: str) -> bool:
+        """
+        安卓实时 DOM 树高可靠抓取引擎（彻底根治 uiautomator 服务锁抢占与固定路径旧文件残留污染）：
+        1. 优先探测本地活跃 Appium Session (/sessions -> /source)，调试用例期间零冲突秒级共享最新 DOM；
+        2. 次选复用 uiautomator2 (u2.dump_hierarchy) JSON-RPC 内存直出，与审查器自身 u2 截屏/投屏同进程零锁冲突，且免疫动态光标/动画阻塞；
+        3. 兜底采用唯一时间戳路径的 adb shell uiautomator dump（若遇僵尸 uiautomator 锁冲突则自动释放锁重试，且绝不读取历史残留的旧 XML）。
+        """
+        import urllib.request
+
+        norm_layout = os.path.normpath(os.path.abspath(layout_file))
+        os.makedirs(os.path.dirname(norm_layout), exist_ok=True)
+        if os.path.exists(norm_layout):
+            try:
+                os.remove(norm_layout)
+            except Exception:
+                pass
+
+        # 通道 1：探测本地活跃的 Appium Server 会话，避免与正在调试的 Appium UiAutomator2 争抢 UiAutomation 独占锁
+        for port in (4723, 4725):
+            for prefix in ("", "/wd/hub"):
+                base_url = f"http://127.0.0.1:{port}{prefix}"
+                try:
+                    req = urllib.request.Request(f"{base_url}/sessions")
+                    with urllib.request.urlopen(req, timeout=0.35) as resp:
+                        data = json.loads(resp.read().decode("utf-8", errors="ignore"))
+                    sessions = data.get("value") or []
+                    for sess in sessions:
+                        sid = sess.get("id")
+                        caps = sess.get("capabilities") or {}
+                        sess_udid = str(caps.get("deviceUDID") or caps.get("udid") or caps.get("deviceName") or "")
+                        if sid and (not udid or not sess_udid or udid in sess_udid):
+                            src_req = urllib.request.Request(f"{base_url}/session/{sid}/source")
+                            with urllib.request.urlopen(src_req, timeout=2.5) as src_resp:
+                                src_data = json.loads(src_resp.read().decode("utf-8", errors="ignore"))
+                            xml_str = src_data.get("value") or ""
+                            if isinstance(xml_str, str) and "<hierarchy" in xml_str and len(xml_str) > 100:
+                                with open(norm_layout, "w", encoding="utf-8") as f_xml:
+                                    f_xml.write(xml_str)
+                                return True
+                except Exception:
+                    continue
+
+        # 通道 2：复用 uiautomator2 JSON-RPC 守护进程直接导出最新层级树（与 u2.screenshot 共享服务，零锁冲突，不受页面动态动画阻塞）
+        try:
+            import uiautomator2 as u2
+            d = u2.connect(udid) if udid else u2.connect()
+            xml_text = d.dump_hierarchy(compressed=False)
+            if isinstance(xml_text, str) and "<hierarchy" in xml_text and len(xml_text) > 100:
+                with open(norm_layout, "w", encoding="utf-8") as f_xml:
+                    f_xml.write(xml_text)
+                return True
+        except Exception as e:
+            logging.debug(f"[安卓DOM抓取] uiautomator2 dump_hierarchy 通道未命中，切换 ADB 通道: {e}")
+
+        # 通道 3：原生 ADB uiautomator dump（使用唯一时间戳远端路径，彻底斩断旧文件缓存污染，并在锁冲突时自动清理重试）
+        uid = f"{int(time.time() * 1000)}_{random.randint(1000, 9999)}"
+        remote_xml = f"/data/local/tmp/appium_layout_{uid}.xml"
+        try:
+            # 清理历史遗留的固定路径旧缓存文件
+            run_adb(["shell", "rm", "-f", "/data/local/tmp/appium_layout.xml"], udid, timeout=1.5)
+
+            out = run_adb(["shell", "uiautomator", "dump", remote_xml], udid, timeout=5.0)
+            if "dumped to" not in out.lower():
+                # 释放可能残留的僵尸 uiautomator 占用锁后重试一次
+                run_adb(["shell", "am", "force-stop", "com.github.uiautomator"], udid, timeout=1.5)
+                run_adb(["shell", "pkill", "-f", "uiautomator"], udid, timeout=1.5)
+                time.sleep(0.15)
+                out = run_adb(["shell", "uiautomator", "dump", "--compressed", remote_xml], udid, timeout=5.0)
+                if "dumped to" not in out.lower():
+                    run_adb(["shell", "uiautomator", "dump", remote_xml], udid, timeout=5.0)
+
+            run_adb(["pull", remote_xml, norm_layout], udid, timeout=4.0)
+            if os.path.exists(norm_layout) and os.path.getsize(norm_layout) > 100:
+                return True
+        except Exception as e:
+            logging.warning(f"[安卓DOM抓取] ADB uiautomator dump 异常: {e}")
+        finally:
+            try:
+                run_adb(["shell", "rm", "-f", remote_xml], udid, timeout=1.5)
+            except Exception:
+                pass
+
+        return False
+
+    @staticmethod
+    def _dump_ios_hierarchy(udid: str, layout_file: str) -> bool:
+        """
+        iOS 实时 DOM 树高可靠多通道抓取引擎 (对齐安卓多通道架构与 Appium Inspector):
+        1. 通道 1 (首选)：探测本地活跃的 Appium Server 会话 (4724, 4723, 4725 等)，若 Appium Inspector 或自动化测试正处于调试会话中，直接复用 /session/{sid}/source，耗时仅 1~2s，100% 与 Inspector 原生树完全一致且零冲突；
+        2. 通道 2 (WDA 直连会话)：若未启动 Appium Server，探测本地活跃 WDA 8100/8200 端口；若无会话则自动向 /session 建立通用前台轻量会话，再通过 /session/{sid}/source 快速提取 App 结构；
+        3. 通道 3 (WDA 根降级)：作为保底兜底尝试 GET /source?format=xml。
+        """
+        import urllib.request
+        norm_layout = os.path.normpath(os.path.abspath(layout_file))
+        os.makedirs(os.path.dirname(norm_layout), exist_ok=True)
+        if os.path.exists(norm_layout):
+            try:
+                os.remove(norm_layout)
+            except Exception:
+                pass
+
+        # 通道 1：优先探测本地活跃 Appium Server 会话，直接复用 Appium Inspector / 自动化测试已有 Session
+        for port in (4724, 4723, 4725, 4726, 4728):
+            for prefix in ("", "/wd/hub"):
+                base_url = f"http://127.0.0.1:{port}{prefix}"
+                try:
+                    req = urllib.request.Request(f"{base_url}/sessions")
+                    with urllib.request.urlopen(req, timeout=0.35) as resp:
+                        data = json.loads(resp.read().decode("utf-8", errors="ignore"))
+                    sessions = data.get("value") or []
+                    for sess in sessions:
+                        sid = sess.get("id")
+                        caps = sess.get("capabilities") or {}
+                        plat = str(caps.get("platformName") or "").lower()
+                        sess_udid = str(caps.get("deviceUDID") or caps.get("udid") or "")
+                        # 匹配 iOS 平台会话 (或单会话直接复用)
+                        if sid and (plat in ("ios", "") or len(sessions) == 1):
+                            if not udid or not sess_udid or udid in sess_udid or len(sessions) == 1:
+                                src_req = urllib.request.Request(f"{base_url}/session/{sid}/source")
+                                with urllib.request.urlopen(src_req, timeout=4.5) as src_resp:
+                                    src_data = json.loads(src_resp.read().decode("utf-8", errors="ignore"))
+                                xml_str = src_data.get("value") or ""
+                                if isinstance(xml_str, str) and ("<XCUIElementType" in xml_str or "<AppiumAUT" in xml_str) and len(xml_str) > 100:
+                                    with open(norm_layout, "w", encoding="utf-8") as f_xml:
+                                        f_xml.write(xml_str)
+                                    logging.info(f"[iOS DOM抓取] 成功命中 Appium 活跃会话 (端口 {port}, Session {sid[:8]})")
+                                    return True
+                except Exception:
+                    continue
+
+        # 通道 2：直连本地 WDA 服务端口 (8100 / 8200)，支持自动激活前台轻量会话
+        wda_url, _ = IosWdaManager.get_wda_url(udid, allow_spawn=False)
+        if not wda_url:
+            wda_url = "http://127.0.0.1:8100"
+
+        if IosWdaManager.test_wda_status(wda_url, timeout=0.5):
+            sid = None
+            try:
+                st_req = urllib.request.Request(f"{wda_url}/status")
+                with urllib.request.urlopen(st_req, timeout=1.2) as st_resp:
+                    st_data = json.loads(st_resp.read().decode("utf-8", errors="ignore"))
+                sid = st_data.get("sessionId") or st_data.get("value", {}).get("sessionId")
+            except Exception:
+                pass
+
+            # 若当前尚无活跃会话，毫秒级快速向 WDA 创建通用轻量会话 (用于挂载前台活跃 App)
+            if not sid:
+                try:
+                    init_data = json.dumps({"capabilities": {}}).encode("utf-8")
+                    init_req = urllib.request.Request(
+                        f"{wda_url}/session",
+                        data=init_data,
+                        headers={"Content-Type": "application/json"}
+                    )
+                    with urllib.request.urlopen(init_req, timeout=4.0) as init_resp:
+                        init_res = json.loads(init_resp.read().decode("utf-8", errors="ignore"))
+                        sid = init_res.get("sessionId") or init_res.get("value", {}).get("sessionId")
+                except Exception as e:
+                    logging.debug(f"[iOS DOM抓取] WDA 自动激活会话跳过: {e}")
+
+            # 优先通过 session 获取应用结构 (耗时仅 2~4 秒)
+            if sid:
+                try:
+                    src_url = f"{wda_url}/session/{sid}/source?format=xml"
+                    src_req = urllib.request.Request(src_url)
+                    with urllib.request.urlopen(src_req, timeout=10.0) as src_resp:
+                        raw_bytes = src_resp.read()
+                    if raw_bytes and len(raw_bytes) > 100:
+                        with open(norm_layout, "wb") as f_out:
+                            f_out.write(raw_bytes)
+                        logging.info(f"[iOS DOM抓取] 成功通过 WDA 会话 {sid[:8]} 提取组件树 (大小: {len(raw_bytes)} 字节)")
+                        return True
+                except Exception as e:
+                    logging.debug(f"[iOS DOM抓取] WDA session/source 尝试降级: {e}")
+
+            # 通道 3：兜底直接请求根路径 /source
+            for fmt in ("xml", "json"):
+                try:
+                    req = urllib.request.Request(f"{wda_url}/source?format={fmt}")
+                    with urllib.request.urlopen(req, timeout=8.0) as resp:
+                        raw_bytes = resp.read()
+                    if raw_bytes and len(raw_bytes) > 100:
+                        with open(norm_layout, "wb") as f_out:
+                            f_out.write(raw_bytes)
+                        logging.info(f"[iOS DOM抓取] 成功通过 WDA 根 /source 提取组件树")
+                        return True
+                except Exception:
+                    pass
 
         return False
 
@@ -2923,10 +4527,7 @@ class CaptureWorker(QThread):
 
             elif self.platform == "android":
                 if self.mode == "dom_only":
-                    remote_xml = "/data/local/tmp/appium_layout.xml"
-                    run_adb(["shell", "uiautomator", "dump", remote_xml], self.udid)
-                    run_adb(["pull", remote_xml, layout_file], self.udid)
-                    if os.path.exists(layout_file) and os.path.getsize(layout_file) > 100:
+                    if self._dump_android_hierarchy(self.udid, layout_file):
                         self.dom_finished.emit(layout_file, "android")
                     else:
                         self.failed.emit("获取安卓组件层级树失败，请确认设备屏幕已解锁且已授权 USB 调试。")
@@ -2985,11 +4586,9 @@ class CaptureWorker(QThread):
                         self.failed.emit("获取安卓真机画面失败，请确认屏幕已点亮并解锁。")
                     return
 
-                remote_xml = "/data/local/tmp/appium_layout.xml"
-                run_adb(["shell", "uiautomator", "dump", remote_xml], self.udid)
-                run_adb(["pull", remote_xml, layout_file], self.udid)
+                layout_ok = self._dump_android_hierarchy(self.udid, layout_file)
 
-                if os.path.exists(local_png) and os.path.exists(layout_file):
+                if os.path.exists(local_png) and layout_ok and os.path.exists(layout_file):
                     self.finished.emit(local_png, layout_file, "android")
                 else:
                     self.failed.emit("抓取安卓现场数据失败，请确认设备屏幕已解锁且已授权 USB 调试。")
@@ -2999,8 +4598,20 @@ class CaptureWorker(QThread):
                 shot_ok = False
                 layout_ok = False
 
-                # 1. 优先零拷贝复用 pymobiledevice3 实时投屏内存帧 (兼容隧道首次握手，最多等待 8.0s 首帧就绪，就绪后 0ms 瞬时返回)
-                if self.mode != "dom_only" and (
+                # 1. 纯 DOM 刷新模式：直接调用高可靠多通道引擎，毫秒级提取并返回
+                if self.mode == "dom_only":
+                    if self._dump_ios_hierarchy(self.udid, layout_file):
+                        self.dom_finished.emit(layout_file, "ios")
+                    else:
+                        # 若未开启 WDA，生成基础画布根节点，绝不打断实时投屏
+                        minimal_root = {"attributes": {"type": "Screen", "bounds": "[0,0][1170,2532]"}, "children": []}
+                        with open(layout_file, "w", encoding="utf-8") as f:
+                            json.dump(minimal_root, f)
+                        self.dom_finished.emit(layout_file, "ios")
+                    return
+
+                # 2. 优先零拷贝复用 pymobiledevice3 实时投屏内存帧
+                if (
                     ScreenCastWorker.is_active
                     or (ScreenCastWorker.latest_image is not None and ScreenCastWorker.latest_udid == self.udid)
                 ):
@@ -3022,8 +4633,8 @@ class CaptureWorker(QThread):
                     self.screen_finished.emit(local_png)
                     return
 
-                # 2. 若尚未获取画面（未开实时投屏或投屏尚未出帧），优先使用 CoreDevice 硬件级单帧截屏能力极速获取现场画面
-                if not shot_ok and self.mode != "dom_only":
+                # 3. 若投屏未开启且尚未获取画面，安全尝试 CoreDevice 单帧截屏能力获取现场
+                if not shot_ok and not ScreenCastWorker.is_active:
                     single_bytes = ScreenCastWorker.capture_single_ios_frame(self.udid, timeout=4.0)
                     if single_bytes:
                         try:
@@ -3033,8 +4644,8 @@ class CaptureWorker(QThread):
                         except Exception:
                             pass
 
-                # 2.1 工业级坚固兜底：若硬件流因端口冲突或瞬时超时未返回，立即启用 Apple DVT 原生开发者通道截屏
-                if not shot_ok and self.mode != "dom_only":
+                # 3.1 工业级坚固兜底：若投屏未开启且单帧通道未返回，启用 Apple DVT 原生开发者通道截屏
+                if not shot_ok and not ScreenCastWorker.is_active:
                     try:
                         creationflags = 0x08000000 if sys.platform == "win32" else 0
                         pmd_cmd = ["pymobiledevice3", "developer", "dvt", "screenshot", local_png]
@@ -3045,70 +4656,55 @@ class CaptureWorker(QThread):
                     except Exception:
                         pass
 
-                if self.mode == "screen_only" and shot_ok:
-                    self.screen_finished.emit(local_png)
-                    return
+                # 3.2 终极画面兜底：若前序通道均未取到画面，尝试 WDA /screenshot
+                if not shot_ok:
+                    wda_url, _ = IosWdaManager.get_wda_url(self.udid, allow_spawn=False)
+                    if not wda_url:
+                        wda_url = "http://127.0.0.1:8100"
+                    try:
+                        req = urllib.request.Request(f"{wda_url}/screenshot")
+                        with urllib.request.urlopen(req, timeout=5) as resp:
+                            if resp.status == 200:
+                                data = json.loads(resp.read().decode("utf-8"))
+                                b64_img = data.get("value", "")
+                                if b64_img:
+                                    with open(local_png, "wb") as f:
+                                        f.write(base64.b64decode(b64_img))
+                                    shot_ok = True
+                    except Exception:
+                        pass
 
-                # 3. 探测本地 WDA 端口 (若就绪则拉取 DOM 树，若未运行则生成轻量占位树，绝不卡死主线程)
-                wda_url, wda_diag = IosWdaManager.get_wda_url(self.udid, allow_spawn=False)
-
-                if self.mode == "dom_only":
-                    if wda_url:
-                        for fmt in ("json", "xml"):
-                            try:
-                                req = urllib.request.Request(f"{wda_url}/source?format={fmt}")
-                                with urllib.request.urlopen(req, timeout=8) as resp:
-                                    if resp.status == 200:
-                                        with open(layout_file, "wb") as f:
-                                            f.write(resp.read())
-                                        layout_ok = True
-                                        break
-                            except Exception:
-                                pass
-                    if layout_ok and os.path.exists(layout_file) and os.path.getsize(layout_file) > 100:
-                        self.dom_finished.emit(layout_file, "ios")
+                if self.mode == "screen_only":
+                    if shot_ok:
+                        self.screen_finished.emit(local_png)
                     else:
-                        # 投屏模式下若未开启 WDA，静默生成画布根节点，绝不弹出报错弹窗打断实时投屏
-                        minimal_root = {"attributes": {"type": "Screen", "bounds": "[0,0][1170,2532]"}, "children": []}
-                        with open(layout_file, "w", encoding="utf-8") as f:
-                            json.dump(minimal_root, f)
-                        self.dom_finished.emit(layout_file, "ios")
+                        self.failed.emit("未能从 iOS 设备获取画面：请确认 iPhone 处于【解锁点亮状态】。")
                     return
 
-                if wda_url:
-                    if not shot_ok:
-                        try:
-                            req = urllib.request.Request(f"{wda_url}/screenshot")
-                            with urllib.request.urlopen(req, timeout=6) as resp:
-                                if resp.status == 200:
-                                    data = json.loads(resp.read().decode("utf-8"))
-                                    b64_img = data.get("value", "")
-                                    if b64_img:
-                                        with open(local_png, "wb") as f:
-                                            f.write(base64.b64decode(b64_img))
-                                        shot_ok = True
-                        except Exception:
-                            pass
+                # 4. 抓取 DOM 树：调用工业级多通道高可靠抓取引擎
+                layout_ok = self._dump_ios_hierarchy(self.udid, layout_file)
 
-                    if self.mode == "screen_only":
-                        if shot_ok:
-                            self.screen_finished.emit(local_png)
-                        return
-
-                    for fmt in ("json", "xml"):
-                        try:
-                            req = urllib.request.Request(f"{wda_url}/source?format={fmt}")
-                            with urllib.request.urlopen(req, timeout=8) as resp:
-                                if resp.status == 200:
-                                    with open(layout_file, "wb") as f:
-                                        f.write(resp.read())
-                                    layout_ok = True
-                                    break
-                        except Exception:
-                            pass
-
-                # 4. 结果输出与静默兜底 (绝不弹出阻塞式 QMessageBox 阻断主线程投屏)
+                # 5. 结果输出与静默兜底 (底图与 DOM 树交付)
                 if shot_ok and layout_ok:
+                    self.finished.emit(local_png, layout_file, "ios")
+                elif layout_ok and not shot_ok:
+                    # DOM 结构树已完整获取，画面临时获取超时 -> 自动生成轻量占位背景图，确保 DOM 审查流程畅通无阻
+                    try:
+                        qimg = QImage(1170, 2532, QImage.Format.Format_RGB32)
+                        qimg.fill(QColor("#f8fafc"))
+                        painter = QPainter(qimg)
+                        painter.setPen(QPen(QColor("#cbd5e1"), 2))
+                        painter.drawRect(20, 20, 1130, 2492)
+                        painter.setFont(QFont("Microsoft YaHei", 18, QFont.Weight.Bold))
+                        painter.setPen(QColor("#64748b"))
+                        painter.drawText(QRect(40, 1000, 1090, 100), Qt.AlignmentFlag.AlignCenter, "真机画面获取超时 (屏幕熄灭或权限受限)")
+                        painter.setFont(QFont("Microsoft YaHei", 14))
+                        painter.setPen(QColor("#94a3b8"))
+                        painter.drawText(QRect(40, 1120, 1090, 80), Qt.AlignmentFlag.AlignCenter, "iOS 原生 DOM 组件层级树已成功载入，可在中栏与右栏正常审查")
+                        painter.end()
+                        qimg.save(local_png, "PNG")
+                    except Exception:
+                        pass
                     self.finished.emit(local_png, layout_file, "ios")
                 elif shot_ok:
                     minimal_root = {"attributes": {"type": "Screen", "bounds": "[0,0][1170,2532]"}, "children": []}
@@ -3185,27 +4781,6 @@ class AppiumScreenView(QWidget):
         self.comp_map.clear()
         self.hover_node_id = ""
         self.selected_node_id = ""
-        self.update()
-
-    def update_screen_only(self, img_path: str, keep_components: bool = False):
-        """
-        极速同步真机画面：
-        仅更新底图与分辨率比例，确保 0.05 秒内呈现真机最新画面。
-        如果不保留旧组件 (keep_components=False)，则清除悬停和选中状态，避免旧界面的红框浮在已变更的画面上。
-        """
-        if not os.path.exists(img_path):
-            return
-        pix = QPixmap(img_path)
-        if not pix.isNull():
-            self.pixmap = pix
-            self.screen_image = None
-            self.orig_w = self.pixmap.width()
-            self.orig_h = self.pixmap.height()
-            self.layout_w = self.orig_w
-            self.layout_h = self.orig_h
-        if not keep_components:
-            self.hover_node_id = ""
-            self.selected_node_id = ""
         self.update()
 
     def update_screen_pixmap(self, pix: QPixmap, keep_components: bool = True):
@@ -3410,6 +4985,9 @@ class AppiumScreenView(QWidget):
         """
         matched = []
         for comp in self.flat_components:
+            # 双重防御：绝不拾取或悬停高亮任何被遮挡或未暴露的底层图层
+            if comp.get("is_occluded", False) or not comp.get("is_exposed", True):
+                continue
             if comp["left"] <= dev_x <= comp["right"] and comp["top"] <= dev_y <= comp["bottom"]:
                 # 过滤异常/超出边界的无效项
                 if comp["width"] > 0 and comp["height"] > 0:
@@ -3626,6 +5204,75 @@ class AppiumScreenView(QWidget):
                 self.swipe_cur_pos = None
                 self.update()
                 self.coordinate_swiped.emit(x1, y1, x2, y2)
+
+
+# ==============================================================================
+# XPath 高级扩展函数注册中枢 (为 lxml 注册 matches 正则、lower-case、upper-case、ends-with 等)
+# ==============================================================================
+
+_LXML_EXTENSIONS_REGISTERED = False
+
+def _init_lxml_xpath_extensions():
+    """为 lxml 注册高级扩展函数 (支持 XPath 2.0 的 matches 正则、lower-case、upper-case、ends-with 等)"""
+    global _LXML_EXTENSIONS_REGISTERED
+    if _LXML_EXTENSIONS_REGISTERED:
+        return
+    try:
+        from lxml import etree
+        ns = etree.FunctionNamespace(None)
+
+        def xpath_matches(context, text_arg, pattern_arg, flags_arg=""):
+            try:
+                if isinstance(text_arg, list):
+                    if not text_arg:
+                        return False
+                    first = text_arg[0]
+                    target_str = str(getattr(first, "text", first) or "")
+                else:
+                    target_str = str(text_arg or "")
+                pattern = str(pattern_arg or "")
+                py_flags = 0
+                f = str(flags_arg).lower()
+                if "i" in f:
+                    py_flags |= re.IGNORECASE
+                if "s" in f:
+                    py_flags |= re.DOTALL
+                if "m" in f:
+                    py_flags |= re.MULTILINE
+                return bool(re.search(pattern, target_str, py_flags))
+            except Exception:
+                return False
+
+        def xpath_lower_case(context, text_arg):
+            if isinstance(text_arg, list):
+                s = str(getattr(text_arg[0], "text", text_arg[0]) or "") if text_arg else ""
+            else:
+                s = str(text_arg or "")
+            return s.lower()
+
+        def xpath_upper_case(context, text_arg):
+            if isinstance(text_arg, list):
+                s = str(getattr(text_arg[0], "text", text_arg[0]) or "") if text_arg else ""
+            else:
+                s = str(text_arg or "")
+            return s.upper()
+
+        def xpath_ends_with(context, text_arg, sub_arg):
+            if isinstance(text_arg, list):
+                s = str(getattr(text_arg[0], "text", text_arg[0]) or "") if text_arg else ""
+            else:
+                s = str(text_arg or "")
+            return s.endswith(str(sub_arg or ""))
+
+        ns["matches"] = xpath_matches
+        ns["lower-case"] = xpath_lower_case
+        ns["upper-case"] = xpath_upper_case
+        ns["ends-with"] = xpath_ends_with
+        _LXML_EXTENSIONS_REGISTERED = True
+    except Exception:
+        pass
+
+_init_lxml_xpath_extensions()
 
 
 def validate_xpath_syntax(xpath_str: str) -> Optional[str]:
@@ -3918,17 +5565,20 @@ def validate_xpath_syntax(xpath_str: str) -> Optional[str]:
                 if p_content == "@":
                     return "属性选择符 '@' 后面缺少属性名，例如 [@text='...']"
 
-                # 严格拦截 [w] 等单标识符/非法变量索引
+                # 校验方括号谓语内单标识符（数字索引、系统内置函数或子元素节点测试）
                 if re.match(r"^[a-zA-Z0-9_\-]+$", p_content):
                     if p_content.isdigit():
                         if int(p_content) <= 0:
                             return f"XPath 索引从 1 开始计数，不能使用 0 或负数 '[{p_content}]'"
                     elif p_content in ("last()", "position()", "true()", "false()"):
                         pass
+                    elif re.match(r"^[a-zA-Z_][a-zA-Z0-9_\-]*$", p_content):
+                        # W3C XPath 标准规范：谓语中包含单个标签名属于合法的子元素存在性断言 (例如 //Row[TextInput], //Stack[Search])
+                        pass
                     else:
                         return (
-                            f"谓语 '[{p_content}]' 语法异常：'{p_content}' 既非有效数字索引 (例如 [1])，"
-                            f"也非属性过滤 (若匹配属性请添加 '@' 前缀，如 [@{p_content}])，请检查是否拼写错误"
+                            f"谓语 '[{p_content}]' 语法异常：'{p_content}' 格式非法，"
+                            f"既非有效数字索引，也非合法子元素标签或属性过滤，请检查是否拼写错误"
                         )
 
                 if "=" in p_content and not any(p_content.startswith(fn) for fn in ["contains", "starts-with", "not"]):
@@ -3956,8 +5606,9 @@ def validate_xpath_syntax(xpath_str: str) -> Optional[str]:
                     if sub_err:
                         return f"嵌套谓语 '[{p_content}]' 内部语法错误: {sub_err}"
 
-    # 7. 若系统安装了 lxml，尝试用 lxml 最终深度校验
+    # 7. 若系统安装了 lxml，尝试用 lxml 最终深度校验 (支持 matches 等高级扩展函数)
     try:
+        _init_lxml_xpath_extensions()
         from lxml import etree
         etree.XPath(xp)
     except (ImportError, ModuleNotFoundError):
@@ -3970,9 +5621,533 @@ def validate_xpath_syntax(xpath_str: str) -> Optional[str]:
             return "XPath 谓语语法非法 (Invalid predicate)"
         elif "Undefined namespace" in lxml_err:
             return "未定义的命名空间前缀"
+        elif "Unregistered function" in lxml_err:
+            m_fn = re.search(r"([a-zA-Z_\-]+)\s*\(", xp)
+            fn_name = m_fn.group(1) if m_fn else "所调用的"
+            return (
+                f"不支持的 XPath 函数 '{fn_name}()' (Unregistered function)："
+                f"请核对函数名拼写，当前支持 matches()、contains()、starts-with()、ends-with()、lower-case()、upper-case() 等"
+            )
         return f"XPath 语法错误: {lxml_err}"
 
     return None
+
+
+def tokenize_ios_predicate(raw: str) -> Tuple[Optional[str], List[str], str]:
+    """
+    将 iOS NSPredicate 表达式解析为原子条件列表与纯布尔逻辑表达式。
+    支持保留引号内字符串、IN {...} 集合，识别 AND / OR / NOT / && / || / ! 以及括号 ()。
+    返回: (错误信息, 原子条件列表, Python布尔表达式字符串)
+    若解析成功，错误信息为 None；若语法结构非法，返回具体错误提示。
+    """
+    raw_s = raw.strip()
+    if not raw_s:
+        return ("定位表达式不能为空", [], "")
+
+    in_sq = False
+    in_dq = False
+    in_brace = False
+    tokens: List[Tuple[str, str]] = []
+    buf: List[str] = []
+
+    def flush_atom():
+        nonlocal buf
+        s = "".join(buf).strip()
+        if s:
+            tokens.append(("atom", s))
+        buf = []
+
+    i = 0
+    n = len(raw_s)
+    while i < n:
+        ch = raw_s[i]
+        if ch == '\\':
+            buf.append(ch)
+            if i + 1 < n:
+                buf.append(raw_s[i + 1])
+                i += 2
+            else:
+                i += 1
+            continue
+
+        if ch == "'" and not in_dq:
+            in_sq = not in_sq
+            buf.append(ch)
+            i += 1
+            continue
+        elif ch == '"' and not in_sq:
+            in_dq = not in_dq
+            buf.append(ch)
+            i += 1
+            continue
+
+        if not in_sq and not in_dq:
+            if ch == '{':
+                in_brace = True
+                buf.append(ch)
+                i += 1
+                continue
+            elif ch == '}':
+                in_brace = False
+                buf.append(ch)
+                i += 1
+                continue
+
+            if not in_brace:
+                if ch in ('(', ')'):
+                    flush_atom()
+                    tokens.append(("paren", ch))
+                    i += 1
+                    continue
+
+                sub = raw_s[i:]
+                and_m = re.match(r'^(?:AND\b|&&)', sub, re.IGNORECASE)
+                or_m = re.match(r'^(?:OR\b|\|\|)', sub, re.IGNORECASE)
+                not_m = re.match(r'^(?:NOT\b|!)', sub, re.IGNORECASE)
+
+                if and_m:
+                    flush_atom()
+                    tokens.append(("op", "and"))
+                    i += and_m.end()
+                    continue
+                elif or_m:
+                    flush_atom()
+                    tokens.append(("op", "or"))
+                    i += or_m.end()
+                    continue
+                elif not_m and not "".join(buf).strip():
+                    flush_atom()
+                    tokens.append(("op", "not"))
+                    i += not_m.end()
+                    continue
+
+        buf.append(ch)
+        i += 1
+
+    flush_atom()
+
+    if in_sq:
+        return ("单引号 ''' 未闭合，字符串缺少结束单引号", [], "")
+    if in_dq:
+        return ('双引号 \'"\' 未闭合，字符串缺少结束双引号', [], "")
+    if in_brace:
+        return ("集合花括号 '{{' 未闭合，缺少结束 '}}'", [], "")
+
+    atom_list: List[str] = []
+    py_parts: List[str] = []
+    for t_type, t_val in tokens:
+        if t_type == "atom":
+            atom_idx = len(atom_list)
+            atom_list.append(t_val)
+            py_parts.append(f"_c_{atom_idx}")
+        elif t_type in ("op", "paren"):
+            py_parts.append(t_val)
+
+    py_expr = " ".join(py_parts).strip()
+    if not py_expr:
+        return ("Predicate 表达式不能为空", [], "")
+
+    # 校验布尔逻辑结构合法性 (如连续 AND/OR、操作符悬挂在首尾、括号不匹配等)
+    try:
+        ast.parse(py_expr, mode='eval')
+    except SyntaxError:
+        if py_parts and py_parts[-1] in ("and", "or", "not"):
+            return (f"Predicate 表达式不完整，不能以逻辑运算符 '{py_parts[-1].upper()}' 结尾", [], "")
+        if py_parts and py_parts[0] in ("and", "or"):
+            return (f"Predicate 表达式逻辑结构错误: 不能以逻辑运算符 '{py_parts[0].upper()}' 开头", [], "")
+        if "()" in py_expr or "( )" in py_expr:
+            return ("Predicate 括号内部不能为空", [], "")
+        return ("Predicate 表达式布尔逻辑结构非法，请检查 AND / OR 及括号连接", [], "")
+
+    return (None, atom_list, py_expr)
+
+
+def validate_ios_selector_syntax(strategy: str, val: str) -> Tuple[Optional[str], str]:
+    """
+    iOS 五大核心定位策略工业级严格静态语法校验器 (专用于元素定位与查找器弹窗)：
+    1. id / accessibility id (name / label 标识)
+    2. xpath (XPath 路径表达式)
+    3. class name (XCUIElementType 组件类型)
+    4. ios predicate string (谓词表达式)
+    5. ios class chain (类链表达式)
+
+    返回 (错误提示信息, 推荐标准示例)；若语法合法则返回 (None, "")
+    """
+    if not val or not val.strip():
+        return "定位表达式不能为空", ""
+
+    raw = val.strip()
+
+    # 0. 通用检测：Python 字符串前缀 (f"...", r"...", b"...", u"...")、外层多余引号与尾部游离字符
+    py_prefix_match = re.match(r'^([fFrRuUbB]{1,2})(["\'])(.*)$', raw, re.DOTALL)
+    if py_prefix_match:
+        prefix_str = py_prefix_match.group(1)
+        quote_ch = py_prefix_match.group(2)
+        rest_str = py_prefix_match.group(3)
+        clean_example = rest_str[:-1].strip() if rest_str.endswith(quote_ch) else rest_str.strip()
+        clean_example = clean_example.replace("{_TAP_TYPES}", "{'XCUIElementTypeButton', 'XCUIElementTypeStaticText'}")
+        clean_example = clean_example.replace("{_TEXT_TYPES}", "{'XCUIElementTypeStaticText', 'XCUIElementTypeTextView'}")
+        return (
+            f"检测到 Python 格式化字符串前缀 '{prefix_str}{quote_ch}...'；请移除外部的 {prefix_str}{quote_ch}...{quote_ch} 代码包装，直接输入纯定位表达式",
+            clean_example
+        )
+
+    first_ch = raw[0]
+    if first_ch in ('"', "'"):
+        match_idx = -1
+        i = 1
+        n = len(raw)
+        while i < n:
+            ch = raw[i]
+            if ch == '\\':
+                i += 2
+                continue
+            if ch == first_ch:
+                match_idx = i
+                break
+            i += 1
+        if match_idx != -1:
+            trailing = raw[match_idx + 1:].strip()
+            inner_content = raw[1:match_idx].strip()
+            if trailing:
+                return (
+                    f"引号在第 {match_idx + 1} 位提前闭合，引号后存在非法游离字符 '{trailing}'；请移除外部包裹的引号与尾部残留字符",
+                    inner_content
+                )
+            else:
+                return (
+                    f"表达式无需在最外层包裹多余的代码引号 ({first_ch}...{first_ch})；请直接输入表达式内容",
+                    inner_content
+                )
+
+    # 检测未展开的 Python f-string 变量占位符 (如 {_TAP_TYPES}, {_TEXT_TYPES}, {var})
+    py_var_match = re.search(r'\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}', raw)
+    if py_var_match:
+        var_name = py_var_match.group(1)
+        clean_example = raw.replace("{_TAP_TYPES}", "{'XCUIElementTypeButton', 'XCUIElementTypeStaticText'}")
+        clean_example = clean_example.replace("{_TEXT_TYPES}", "{'XCUIElementTypeStaticText', 'XCUIElementTypeTextView'}")
+        if clean_example == raw:
+            clean_example = re.sub(r'\{\s*' + re.escape(var_name) + r'\s*\}', "{'XCUIElementTypeButton'}", raw)
+        return (
+            f"检测到未展开的 Python 变量占位符 '{{{var_name}}}'；查找器仅接收纯定位表达式（集合内字符串必须加引号）",
+            clean_example
+        )
+
+    # 1. 策略: id / accessibility id (name / label 标识)
+    if strategy == "id":
+        if raw.startswith(("//", "/", ".")) or ("[" in raw and "]" in raw):
+            return (
+                "检测到 XPath 路径语法特征；当前策略为 [id]，若要使用路径定位请切换策略为 [xpath]",
+                "login_button 或 ic delete 48"
+            )
+        if raw.startswith("**/"):
+            return (
+                "检测到 Class Chain 语法特征；当前策略为 [id]，请切换策略为 [ios class chain]",
+                "**/XCUIElementTypeButton[`name == '确定'`]"
+            )
+        if raw.startswith("@"):
+            return (
+                "ID 选择器无需添加 '@' 前缀，请直接输入组件名称或标识",
+                raw.lstrip("@")
+            )
+        if re.search(r'\b(OR|AND|NOT|IN)\b|[=!<>]=?', raw, re.IGNORECASE):
+            return (
+                "ID / Accessibility ID 仅支持单一标识精确匹配，不支持 'OR'/'AND'/'==' 等逻辑运算符；若需多条件二选一，请切换策略为 [ios predicate string] 或 [xpath]",
+                "name IN {'密码验证登录', '短信验证登录'}"
+            )
+        return None, ""
+
+    # 2. 策略: xpath (XPath 路径表达式)
+    elif strategy == "xpath":
+        if not (raw.startswith("/") or raw.startswith("./") or raw.startswith("(")):
+            return (
+                "XPath 表达式必须以 '//' 或 '/' 开头",
+                "//XCUIElementTypeButton[@name='确定'] 或 //Button"
+            )
+        if re.search(r'\[\s*(name|label|value|type|enabled|visible)\s*=', raw):
+            return (
+                "XPath 属性过滤必须以 '@' 开头，请勿漏写 '@' 符号",
+                "//Button[@name='确定']"
+            )
+        xp_err = validate_xpath_syntax(raw)
+        if xp_err:
+            return f"XPath 语法错误: {xp_err}", "//XCUIElementTypeButton[@name='登录']"
+        return None, ""
+
+    # 3. 策略: class name (XCUIElementType 组件类型)
+    elif strategy in ("class name", "type"):
+        if any(ch in raw for ch in ("/", "\\", "[", "]", "@", "=", "(", ")", "'", '"')):
+            return (
+                "Class Name 仅为单一组件类型名称，无需包含斜杠、方括号或属性条件；若要按层级查找请使用 [xpath] 或 [ios class chain]",
+                "XCUIElementTypeButton 或 Button"
+            )
+        if " " in raw:
+            return (
+                "组件类名不能包含空格，请输入合法的类名标识符",
+                "XCUIElementTypeButton"
+            )
+        if raw.startswith("android.") or "widget." in raw:
+            return (
+                "当前为 iOS 平台，不能使用 Android 控件类名 (android.widget.*)；请输入 iOS 的 XCUIElementType* 类名",
+                "XCUIElementTypeButton 或 XCUIElementTypeStaticText"
+            )
+        if not re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', raw):
+            return (
+                "组件类名必须由英文字母、数字或下划线组成",
+                "XCUIElementTypeButton"
+            )
+        return None, ""
+
+    # 4. 策略: ios predicate string (谓词表达式)
+    elif strategy == "predicate":
+        in_sq = False
+        in_dq = False
+        paren_stack = []
+        brace_stack = []
+        bracket_stack = []
+        i = 0
+        n = len(raw)
+        while i < n:
+            ch = raw[i]
+            if ch == '\\':
+                i += 2
+                continue
+            if ch == "'" and not in_dq:
+                in_sq = not in_sq
+            elif ch == '"' and not in_sq:
+                in_dq = not in_dq
+            elif not in_sq and not in_dq:
+                if ch == '(':
+                    paren_stack.append(i)
+                elif ch == ')':
+                    if not paren_stack:
+                        return f"第 {i + 1} 个字符处圆括号 ')' 提前闭合，缺少对应的 '('", "label == '设置'"
+                    paren_stack.pop()
+                elif ch == '{':
+                    brace_stack.append(i)
+                elif ch == '}':
+                    if not brace_stack:
+                        return f"第 {i + 1} 个字符处花括号 '}}' 提前闭合，缺少对应的 '{{'", "name IN {'A', 'B'}"
+                    brace_stack.pop()
+                elif ch == '[':
+                    bracket_stack.append(i)
+                elif ch == ']':
+                    if not bracket_stack:
+                        return f"第 {i + 1} 个字符处方括号 ']' 提前闭合，缺少对应的 '['", "name == '确定'"
+                    bracket_stack.pop()
+            i += 1
+
+        if in_sq:
+            return "单引号 ''' 未闭合，字符串字面量缺少结束单引号", "name == '登录'"
+        if in_dq:
+            return '双引号 \'"\' 未闭合，字符串字面量缺少结束双引号', 'name == "登录"'
+        if paren_stack:
+            return f"第 {paren_stack[-1] + 1} 个字符处圆括号 '(' 未闭合，缺少对应的 ')'", "(name == 'A' OR name == 'B')"
+        if brace_stack:
+            return f"第 {brace_stack[-1] + 1} 个字符处集合花括号 '{{' 未闭合，缺少对应的 '}}'", "name IN {'A', 'B'}"
+        if bracket_stack:
+            return f"第 {bracket_stack[-1] + 1} 个字符处方括号 '[' 未闭合，缺少对应的 ']'", "name == '确定'"
+
+        if raw.startswith(("//", "/", "./", "**/")):
+            return (
+                "检测到路径语法特征；Predicate 为属性比较表达式，无需斜杠；例如: name == '确定' 或 label CONTAINS '登录'",
+                "name == '确定' OR label == '确定'"
+            )
+        if re.search(r'@(name|label|value|type)\b', raw):
+            return (
+                "Predicate 表达式属性名无需添加 '@' 前缀；请直接书写属性名 (例如: name == '确定' 而非 @name)",
+                "name == '确定'"
+            )
+        if re.search(r'\bIN\s*\(', raw, re.IGNORECASE):
+            return (
+                "NSPredicate 的集合语法必须使用花括号 {}，不能使用圆括号 ()",
+                "name IN {'密码验证登录', '短信验证登录'}"
+            )
+        for set_m in re.finditer(r'\bIN\s*\{([^}]*)\}', raw, re.IGNORECASE):
+            set_body = set_m.group(1).strip()
+            if not set_body:
+                return "IN 集合花括号 '{}' 内部不能为空", "name IN {'密码验证登录', '短信验证登录'}"
+            for raw_item in set_body.split(","):
+                it = raw_item.strip()
+                if not it:
+                    continue
+                if not ((it.startswith("'") and it.endswith("'")) or (it.startswith('"') and it.endswith('"')) or it.isdigit()):
+                    return (
+                        f"IN 集合内部的字符串元素 '{it}' 缺少引号包裹；集合元素必须使用单引号或双引号包裹",
+                        "type IN {'XCUIElementTypeButton', 'XCUIElementTypeStaticText'}"
+                    )
+        if re.search(r'\b(AND|OR|NOT|IN|LIKE|CONTAINS|BEGINSWITH|ENDSWITH|MATCHES)\s*$|[=!<>]=?\s*$', raw, re.IGNORECASE):
+            return (
+                "Predicate 表达式不完整，不能以运算符 (如 '==', 'AND', 'OR', 'IN') 结尾",
+                "label == '确定' AND visible == 1"
+            )
+        has_cmp = re.search(r'==|!=|<=|>=|<|>|<>|\b(CONTAINS|BEGINSWITH|ENDSWITH|LIKE|MATCHES|IN|BETWEEN)\b', raw, re.IGNORECASE)
+        if not has_cmp:
+            return (
+                "Predicate 表达式必须包含比较运算符 (如 ==, CONTAINS, IN 等)；若仅按 ID 匹配请切换为 [id] 策略",
+                "label == '设置' 或 name IN {'密码验证登录', '短信验证登录'}"
+            )
+
+        # 逐个校验由 tokenize_ios_predicate 严格分词得出的原子条件子句，拦截尾部多余字符、未加引号字面量或未知属性名
+        err_msg, atom_list, py_expr = tokenize_ios_predicate(raw)
+        if err_msg:
+            return (
+                err_msg,
+                "type == 'Link' AND (label == '注册' OR name == '注册')"
+            )
+
+        valid_pred_attrs = {
+            "name", "label", "value", "type", "enabled", "visible", "accessible",
+            "selected", "focused", "hittable", "wdtype", "wdname", "wdlabel",
+            "wdvalue", "wdrect", "wdvisible", "wdenabled", "wdaccessible", "wduid",
+            "rect", "frame", "placeholdervalue", "title", "identifier", "traits", "index",
+        }
+
+        for atom in atom_list:
+            c_str_no_not = re.sub(r'^(?:NOT\s+|!\s*)', '', atom, flags=re.IGNORECASE).strip()
+            # 1) 检测 IN { ... } 子句及花括号闭合后的非法游离字符
+            in_clause_m = re.match(
+                r'^([A-Za-z_][A-Za-z0-9_\.]*)\s+IN(?:\s*\[[cd]+\])?\s*\{([^}]*)\}(.*)$',
+                c_str_no_not,
+                re.IGNORECASE | re.DOTALL,
+            )
+            if in_clause_m:
+                attr_name = in_clause_m.group(1)
+                set_inner = in_clause_m.group(2)
+                trailing_after_brace = in_clause_m.group(3).strip()
+                if attr_name.lower().split(".")[0] not in valid_pred_attrs:
+                    return (
+                        f"未知的 iOS Predicate 属性名 '{attr_name}'；常用属性包括: name, label, value, type, enabled, visible",
+                        f"name IN {{{set_inner}}}"
+                    )
+                if trailing_after_brace:
+                    return (
+                        f"集合表达式 '}}' 闭合后存在非法多余内容 '{trailing_after_brace}'；条件之间必须使用 AND / OR 连接，请移除尾部多余字符",
+                        f"{attr_name} IN {{{set_inner}}}"
+                    )
+                continue
+
+            # 2) 检测比较运算子句 (==, !=, =, <>, <=, >=, <, >, CONTAINS, BEGINSWITH, ENDSWITH, LIKE, MATCHES 等)
+            cmp_clause_m = re.match(
+                r'^([A-Za-z_][A-Za-z0-9_\.]*)\s*(==|!=|=|<>|<=|>=|<|>|\b(?:CONTAINS|BEGINSWITH|ENDSWITH|LIKE|MATCHES)\b(?:\s*\[[cd]+\])?)\s*(.+)$',
+                c_str_no_not,
+                re.IGNORECASE | re.DOTALL,
+            )
+            if cmp_clause_m:
+                attr_name = cmp_clause_m.group(1)
+                op_str = cmp_clause_m.group(2).strip()
+                rhs_str = cmp_clause_m.group(3).strip()
+                if attr_name.lower().split(".")[0] not in valid_pred_attrs:
+                    return (
+                        f"未知的 iOS Predicate 属性名 '{attr_name}'；常用属性包括: name, label, value, type, enabled, visible",
+                        f"name {op_str} {rhs_str}"
+                    )
+                if rhs_str[0] in ("'", '"'):
+                    q_ch = rhs_str[0]
+                    q_end = -1
+                    k = 1
+                    while k < len(rhs_str):
+                        if rhs_str[k] == '\\':
+                            k += 2
+                            continue
+                        if rhs_str[k] == q_ch:
+                            q_end = k
+                            break
+                        k += 1
+                    if q_end != -1:
+                        rhs_trailing = rhs_str[q_end + 1:].strip()
+                        if rhs_trailing:
+                            clean_rhs = rhs_str[:q_end + 1]
+                            return (
+                                f"字符串字面量 {clean_rhs} 闭合引号后存在非法多余内容 '{rhs_trailing}'；请移除多余字符或使用 AND / OR 连接新条件",
+                                f"{attr_name} {op_str} {clean_rhs}"
+                            )
+                else:
+                    if not re.match(r'^(?:true|false|yes|no|nil|null|\d+(?:\.\d+)?)$', rhs_str, re.IGNORECASE):
+                        return (
+                            f"比较运算符 '{op_str}' 右侧的字符串值 '{rhs_str}' 缺少引号包裹，或包含多余字符",
+                            f"{attr_name} {op_str} '{rhs_str}'"
+                        )
+                continue
+
+            # 3) 检测布尔常量或独立布尔属性
+            if re.match(r'^(?:TRUEPREDICATE|FALSEPREDICATE|1|0|true|false|enabled|visible|accessible|selected|hittable)$', c_str_no_not, re.IGNORECASE):
+                continue
+
+            return (
+                f"Predicate 子表达式 '{atom}' 语法格式非法；每个条件子句必须为 '属性 运算符 值' 格式 (如 name == '确定' 或 name IN {{'A', 'B'}})",
+                "type == 'Link' AND (label == '注册' OR name == '注册')"
+            )
+
+        return None, ""
+
+    # 5. 策略: ios class chain (类链表达式)
+    elif strategy == "class chain":
+        if not (raw.startswith("**/") or raw.startswith("/*") or raw.startswith("/")):
+            return (
+                "Class Chain 表达式必须以 '**/' 或 '/' 开头",
+                "**/XCUIElementTypeButton[`name == '确定'`]"
+            )
+        if raw.count("[") != raw.count("]"):
+            return "Class Chain 表达式方括号 '[' 与 ']' 未成对闭合", "**/XCUIElementTypeButton[`name == '确定'`]"
+        if raw.count("`") % 2 != 0:
+            return "Class Chain 嵌套谓词反引号 '`' 未成对闭合", "**/XCUIElementTypeButton[`label == '确定'`]"
+        if raw.count('"') % 2 != 0 or raw.count("'") % 2 != 0:
+            return "Class Chain 内部字符串引号未成对闭合", "**/XCUIElementTypeButton[`name == '确定'`]"
+        if re.search(r'\[\s*@(name|label|text)', raw):
+            return (
+                "Class Chain 中的属性过滤需使用反引号包裹 Predicate 语法，如 [`name == '确定'`]，无需使用 XPath 的 '@' 属性语法",
+                "**/XCUIElementTypeButton[`name == '确定'`]"
+            )
+        if "//" in raw and not raw.startswith("**/"):
+            return (
+                "Class Chain 使用 '**/' 表示任意深度后代遍历，不能使用 XPath 的 '//'",
+                "**/XCUIElementTypeButton[`name == '确定'`]"
+            )
+        # 校验 Class Chain 各层级节点段以及方括号闭合后的非法游离字符
+        cc_segs = []
+        cc_buf = []
+        cc_bt = False
+        cc_sq = False
+        cc_dq = False
+        for ch in raw:
+            if ch == "`" and not cc_sq and not cc_dq:
+                cc_bt = not cc_bt
+                cc_buf.append(ch)
+            elif ch == "'" and not cc_dq:
+                cc_sq = not cc_sq
+                cc_buf.append(ch)
+            elif ch == '"' and not cc_sq:
+                cc_dq = not cc_dq
+                cc_buf.append(ch)
+            elif ch == "/" and not cc_bt and not cc_sq and not cc_dq:
+                cc_segs.append("".join(cc_buf))
+                cc_buf = []
+            else:
+                cc_buf.append(ch)
+        cc_segs.append("".join(cc_buf))
+        for seg in cc_segs:
+            seg_s = seg.strip()
+            if not seg_s or seg_s in ("**", "*"):
+                continue
+            seg_m = re.match(r'^(\*|[A-Za-z_][A-Za-z0-9_]*)(.*)$', seg_s, re.DOTALL)
+            if not seg_m:
+                return f"Class Chain 节点段 '{seg_s}' 类名格式非法", "**/XCUIElementTypeButton[`name == '确定'`]"
+            seg_rest = seg_m.group(2).strip()
+            if seg_rest:
+                if not seg_rest.startswith("[") or not seg_rest.endswith("]"):
+                    return (
+                        f"Class Chain 节点 '{seg_m.group(1)}' 后存在未包裹在方括号 '[]' 内的非法多余字符: '{seg_rest}'",
+                        f"**/{seg_m.group(1)}[`name == '确定'`]"
+                    )
+                for bt_m in re.finditer(r'\[\s*`([^`]*)`\s*\]', seg_rest):
+                    inner_p_err, inner_p_ex = validate_ios_selector_syntax("predicate", bt_m.group(1))
+                    if inner_p_err:
+                        inner_fallback = inner_p_ex if inner_p_ex else "name == '确定'"
+                        return f"Class Chain 反引号内部 Predicate 语法错误: {inner_p_err}", f"**/{seg_m.group(1)}[`{inner_fallback}`]"
+        return None, ""
+
+    return None, ""
 
 
 # ==============================================================================
@@ -4056,6 +6231,31 @@ class AutoResizingTextEdit(QTextEdit):
 
 
 # ==============================================================================
+# 自适应内容换行状态标签控件 (防止单行长文本撑大窗口)
+# ==============================================================================
+
+class AutoWrapStatusLabel(QLabel):
+    """
+    自适应内容换行的状态标签：
+    1. 彻底断绝单行长文本向外撑开父级布局/窗口宽度；
+    2. 水平方向不向父级索取超长尺寸 (minimumSizeHint 返回 0 宽度)；
+    3. 根据当前实际获得宽度自适应多行折行渲染 (WordWrap)，高度自适应增高。
+    """
+    def __init__(self, text: str = "", parent=None):
+        super().__init__(text, parent)
+        self.setWordWrap(True)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+
+    def minimumSizeHint(self) -> QSize:
+        return QSize(0, super().minimumSizeHint().height())
+
+    def sizeHint(self) -> QSize:
+        w = self.width() if self.width() > 50 else 300
+        h = self.heightForWidth(w)
+        return QSize(w, max(24, h))
+
+
+# ==============================================================================
 # 现代浅色高级感：Search for element 对话框
 # ==============================================================================
 
@@ -4096,7 +6296,7 @@ class SearchElementDialog(QDialog):
         self.platform = (platform or "harmony").lower()
         plat_map = {"harmony": "HarmonyOS NEXT", "android": "Android", "ios": "iOS"}
         plat_title = plat_map.get(self.platform, "多端统一")
-        self.setWindowTitle(f"🔎 元素定位与查找器 ({plat_title})")
+        self.setWindowTitle(f"元素定位与查找器 ({plat_title})")
         self.resize(750, 560)
         self.flat_components = flat_components
         self.comp_map = comp_map or {}
@@ -4124,10 +6324,11 @@ class SearchElementDialog(QDialog):
             }
             QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus { border: 1.5px solid #0284c7; }
 
-            /* 统一标准按钮基类 (紧凑 28px 高度、圆角 6px、细边框白底黑字) */
+            /* 统一标准按钮基类 (规整 32px 高度、圆角 6px、细边框白底黑字，字号 13px) */
             QPushButton {
                 background-color: #ffffff; color: #1e293b; border: 1px solid #cbd5e1;
-                border-radius: 6px; padding: 0 14px; font-weight: 600; font-size: 12px; min-height: 28px;
+                border-radius: 6px; padding: 0 16px; font-weight: 600; font-size: 13px; min-height: 32px;
+                text-align: center;
             }
             QPushButton:hover {
                 background-color: #f8fafc; border-color: #94a3b8; color: #0f172a;
@@ -4142,7 +6343,8 @@ class SearchElementDialog(QDialog):
             /* 执行查找 Primary 主按钮 (醒目高质感主题蓝，与界面设计系统同构) */
             QPushButton#btnSearchExec {
                 background-color: #0284c7; color: #ffffff; border: 1px solid #0284c7;
-                font-size: 12px; font-weight: 600; padding: 0 16px;
+                font-size: 13px; font-weight: 600; padding: 0 18px; min-height: 32px;
+                text-align: center;
             }
             QPushButton#btnSearchExec:hover {
                 background-color: #0369a1; border-color: #0369a1;
@@ -4154,6 +6356,7 @@ class SearchElementDialog(QDialog):
             /* 取消关闭按钮 */
             QPushButton#btnCancel {
                 background-color: #ffffff; color: #475569; border: 1px solid #cbd5e1;
+                font-size: 13px; min-height: 32px;
             }
             QPushButton#btnCancel:hover {
                 background-color: #f1f5f9; color: #0f172a; border-color: #94a3b8;
@@ -4179,7 +6382,7 @@ class SearchElementDialog(QDialog):
         top_ctrl_bar.addWidget(lbl_strat)
         top_ctrl_bar.addStretch()
 
-        self.chk_stay_on_top = QCheckBox("📌 保持置顶 (防遮挡)")
+        self.chk_stay_on_top = QCheckBox("保持置顶 (防遮挡)")
         self.chk_stay_on_top.setChecked(True)
         self.chk_stay_on_top.setToolTip("保持查找窗口在审查器内始终置顶防遮挡；切换至其他外部应用时自动让位，绝不遮挡其他应用")
         self.chk_stay_on_top.setStyleSheet("color: #0284c7; font-size: 12px; font-weight: 600;")
@@ -4192,6 +6395,13 @@ class SearchElementDialog(QDialog):
         self.combo_strategy.setCursor(Qt.CursorShape.PointingHandCursor)
         layout.addWidget(self.combo_strategy)
 
+        # 快速格式切换胶囊按钮组 (Locator Format Quick Pills)
+        self.format_pill_layout = QHBoxLayout()
+        self.format_pill_layout.setSpacing(6)
+        self.format_pill_layout.setContentsMargins(0, 0, 0, 0)
+        self.format_pill_buttons: Dict[str, QPushButton] = {}
+        layout.addLayout(self.format_pill_layout)
+
         layout.addWidget(QLabel("选择器表达式 (Selector):"))
         sel_row = QHBoxLayout()
         # 核心：使用 AutoResizingTextEdit 随填写内容上下自适应调整输入框高度 (默认 54px，更大更宽裕，最高自适应撑开至 180px)，左右宽度由父布局撑满
@@ -4199,7 +6409,9 @@ class SearchElementDialog(QDialog):
         self.edit_selector.textChanged.connect(self._on_selector_text_changed)
         sel_row.addWidget(self.edit_selector, 1)
 
-        self.btn_pick_current = QPushButton("🎯 填入主视窗选中元素")
+        self.btn_pick_current = QPushButton("填入主视窗选中元素")
+        self.btn_pick_current.setIcon(get_tech_icon("target", "#0284c7"))
+        self.btn_pick_current.setIconSize(QSize(14, 14))
         self.btn_pick_current.setFixedHeight(34)
         self.btn_pick_current.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_pick_current.setToolTip("将当前在真机画面或 DOM 树中选中的组件表达式快速填入输入框")
@@ -4208,15 +6420,15 @@ class SearchElementDialog(QDialog):
         layout.addLayout(sel_row)
 
         # 跟随主界面点击自动填充复选框
-        self.chk_auto_pick = QCheckBox("💡 在主视窗点击真机或 DOM 树时，自动将推荐定位器填入上方输入框")
+        self.chk_auto_pick = QCheckBox("主视窗点击真机或 DOM 树时，自动填充推荐定位器")
         self.chk_auto_pick.setChecked(False)
         self.chk_auto_pick.setStyleSheet("color: #475569; font-size: 12px;")
         layout.addWidget(self.chk_auto_pick)
 
         # 智能过滤被遮挡/未展开的隐藏层元素复选框
-        self.chk_only_visible = QCheckBox("👁️ 仅匹配当前真实展示元素 (智能过滤被遮挡/未展开的隐藏层)")
+        self.chk_only_visible = QCheckBox("仅匹配当前真实展示元素 (智能过滤被遮挡/未展开的隐藏层)")
         self.chk_only_visible.setChecked(True)
-        self.chk_only_visible.setStyleSheet("color: #0369a1; font-size: 12px; font-weight: 600;")
+        self.chk_only_visible.setStyleSheet("color: #0284c7; font-size: 12px; font-weight: 600;")
         self.chk_only_visible.stateChanged.connect(self._on_only_visible_changed)
         layout.addWidget(self.chk_only_visible)
 
@@ -4225,34 +6437,43 @@ class SearchElementDialog(QDialog):
         self.combo_strategy.currentIndexChanged.connect(self._on_strategy_changed)
 
         btn_layout = QHBoxLayout()
-        self.btn_search = QPushButton("🔍 查找匹配元素 (Search)")
+        self.btn_search = QPushButton("查找匹配元素 (Search)")
+        self.btn_search.setIcon(get_tech_icon("search", "#ffffff"))
+        self.btn_search.setIconSize(QSize(15, 15))
         self.btn_search.setObjectName("btnSearchExec")
-        self.btn_search.setFixedHeight(30)
+        self.btn_search.setFixedHeight(32)
         self.btn_search.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_search.clicked.connect(self.do_search)
         self.edit_selector.returnPressed.connect(self.do_search)
-        btn_layout.addWidget(self.btn_search)
+        btn_layout.addWidget(self.btn_search, 0, Qt.AlignmentFlag.AlignTop)
 
-        self.lbl_status = QLabel("就绪，请输入表达式或点击主视窗元素后点击查找")
+        self.lbl_status = AutoWrapStatusLabel("就绪，请输入表达式或点击主视窗元素后点击查找")
         self.lbl_status.setStyleSheet("color: #0284c7; font-weight: 600;")
-        btn_layout.addWidget(self.lbl_status, 1)
+        btn_layout.addWidget(self.lbl_status, 1, Qt.AlignmentFlag.AlignVCenter)
         layout.addLayout(btn_layout)
 
         layout.addWidget(QLabel("匹配到的元素列表 (Elements Found):"))
         self.list_results = QListWidget()
+        self.list_results.setWordWrap(True)
+        self.list_results.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.list_results.itemClicked.connect(self.on_item_clicked)
         layout.addWidget(self.list_results, 1)
 
         bottom_box = QHBoxLayout()
-        self.btn_tap = QPushButton("👆 点击该元素 (Tap)")
-        self.btn_tap.setFixedHeight(30)
+        bottom_box.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+        self.btn_tap = QPushButton("点击该元素 (Tap)")
+        self.btn_tap.setIcon(get_tech_icon("tap", "#0284c7"))
+        self.btn_tap.setIconSize(QSize(15, 15))
+        self.btn_tap.setFixedHeight(32)
         self.btn_tap.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_tap.setEnabled(False)
         self.btn_tap.clicked.connect(self.on_tap_clicked)
         bottom_box.addWidget(self.btn_tap)
 
-        self.btn_send_keys = QPushButton("⌨️ 输入文本内容 (Send Keys)")
-        self.btn_send_keys.setFixedHeight(30)
+        self.btn_send_keys = QPushButton("输入文本 (Send Keys)")
+        self.btn_send_keys.setIcon(get_tech_icon("send", "#0284c7"))
+        self.btn_send_keys.setIconSize(QSize(15, 15))
+        self.btn_send_keys.setFixedHeight(32)
         self.btn_send_keys.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_send_keys.setEnabled(False)
         self.btn_send_keys.clicked.connect(self.on_send_keys_clicked)
@@ -4260,7 +6481,7 @@ class SearchElementDialog(QDialog):
 
         bottom_box.addStretch()
         btn_close = QPushButton("关闭")
-        btn_close.setFixedHeight(30)
+        btn_close.setFixedHeight(32)
         btn_close.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_close.setObjectName("btnCancel")
         btn_close.clicked.connect(self.close)
@@ -4268,63 +6489,188 @@ class SearchElementDialog(QDialog):
         layout.addLayout(bottom_box)
 
     def _rebuild_strategies(self):
-        """根据当前运行平台重建所支持的查找定位策略，并保持默认或记忆值"""
+        """根据当前运行平台重建所支持的查找定位策略胶囊与下拉项，并保持默认或记忆值"""
         self.combo_strategy.blockSignals(True)
         self.combo_strategy.clear()
+
+        # 清除旧胶囊按钮
+        if hasattr(self, "format_pill_layout"):
+            while self.format_pill_layout.count():
+                item = self.format_pill_layout.takeAt(0)
+                w = item.widget()
+                if w:
+                    w.deleteLater()
+            self.format_pill_buttons.clear()
+
+        strategies = []
         if self.platform == "android":
-            self.combo_strategy.addItem("id (resource-id 标识)", "id")
-            self.combo_strategy.addItem("xpath (XPath 路径表达式)", "xpath")
-            self.combo_strategy.addItem("accessibility id (content-desc 文本或描述)", "accessibility id")
-            self.combo_strategy.addItem("class name (组件类名)", "class name")
-            self.combo_strategy.addItem("android uiautomator (UiSelector 语法表达式)", "uiautomator")
+            strategies = [
+                ("xpath", "XPath", "xpath (XPath 路径表达式)"),
+                ("id", "Resource-ID", "id (resource-id 标识)"),
+                ("accessibility id", "Accessibility ID", "accessibility id (content-desc 文本或描述)"),
+                ("class name", "Class Name", "class name (组件类名)"),
+                ("uiautomator", "UiAutomator", "android uiautomator (UiSelector 语法表达式)"),
+            ]
         elif self.platform == "ios":
-            self.combo_strategy.addItem("id / accessibility id (name / label 标识)", "id")
-            self.combo_strategy.addItem("xpath (XPath 路径表达式)", "xpath")
-            self.combo_strategy.addItem("class name (XCUIElementType 组件类型)", "class name")
-            self.combo_strategy.addItem("ios predicate string (谓词表达式)", "predicate")
-            self.combo_strategy.addItem("ios class chain (类链表达式)", "class chain")
+            strategies = [
+                ("xpath", "XPath", "xpath (XPath 路径表达式)"),
+                ("predicate", "Predicate String", "ios predicate string (谓词表达式)"),
+                ("class chain", "Class Chain", "ios class chain (类链表达式)"),
+                ("id", "Accessibility ID", "id / accessibility id (name / label 标识)"),
+                ("class name", "Class Name", "class name (XCUIElementType 组件类型)"),
+            ]
         else:
-            self.combo_strategy.addItem("id (组件 Key / ID 标识 - By.id)", "id")
-            self.combo_strategy.addItem("xpath (XPath 路径表达式)", "xpath")
-            self.combo_strategy.addItem("text (文本内容 - By.text)", "text")
-            self.combo_strategy.addItem("type / class name (ArkUI 组件类型名 - By.type)", "type")
-            self.combo_strategy.addItem("description (无障碍描述 - By.description)", "description")
+            strategies = [
+                ("xpath", "XPath", "xpath (XPath 路径表达式)"),
+                ("id", "ID / Key", "id (组件 Key / ID 标识 - By.id)"),
+                ("text", "Text 文本", "text (文本内容 - By.text)"),
+                ("type", "Type 类型", "type / class name (ArkUI 组件类型名 - By.type)"),
+                ("description", "Description", "description (无障碍描述 - By.description)"),
+            ]
+
+        for s_key, s_short, s_full in strategies:
+            self.combo_strategy.addItem(s_full, s_key)
+            if hasattr(self, "format_pill_layout"):
+                btn = QPushButton(s_short)
+                btn.setFixedHeight(26)
+                btn.setCursor(Qt.CursorShape.PointingHandCursor)
+                btn.setToolTip(f"一键切换至 [{s_short}] 格式并自动填入表达式")
+                btn.clicked.connect(lambda checked=False, k=s_key: self._on_format_pill_clicked(k))
+                self.format_pill_layout.addWidget(btn)
+                self.format_pill_buttons[s_key] = btn
+
+        if hasattr(self, "format_pill_layout"):
+            self.format_pill_layout.addStretch()
 
         self.combo_strategy.setCurrentIndex(0)
         self.combo_strategy.blockSignals(False)
+        self._update_format_pills_active_state(self.combo_strategy.currentData())
         self.update_placeholder()
 
+    def _update_format_pills_active_state(self, active_key: str):
+        """刷新胶囊按钮的高亮选中状态"""
+        if not hasattr(self, "format_pill_buttons"):
+            return
+        for k, btn in self.format_pill_buttons.items():
+            if k == active_key:
+                btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #0284c7; color: #ffffff;
+                        border: 1px solid #0284c7; border-radius: 13px;
+                        padding: 0 12px; font-weight: 700; font-size: 11px; min-height: 26px;
+                    }
+                    QPushButton:hover { background-color: #0369a1; }
+                """)
+            else:
+                btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #f8fafc; color: #475569;
+                        border: 1px solid #cbd5e1; border-radius: 13px;
+                        padding: 0 12px; font-weight: 600; font-size: 11px; min-height: 26px;
+                    }
+                    QPushButton:hover { background-color: #f1f5f9; color: #0f172a; border-color: #94a3b8; }
+                """)
+
+    def _on_format_pill_clicked(self, strategy_key: str):
+        """用户点击快捷格式胶囊标签时，秒级切换定位策略并智能回填"""
+        idx = self.combo_strategy.findData(strategy_key)
+        if idx >= 0:
+            self.combo_strategy.setCurrentIndex(idx)
+
+    def _get_expression_for_strategy(self, strategy: str, comp: Dict[str, Any]) -> str:
+        """根据定位策略智能提取组件对应的标准化推荐表达式"""
+        if not comp:
+            return ""
+        rec_xp = comp.get("rec_xpath") or comp.get("xpath") or ""
+        rec_id = comp.get("rec_id") or comp.get("id") or ""
+        rec_text = comp.get("text") or ""
+        rec_type = comp.get("type") or ""
+        rec_full_type = comp.get("full_type") or comp.get("rec_class") or rec_type
+        rec_pred = comp.get("rec_predicate") or ""
+        rec_chain = comp.get("rec_class_chain") or ""
+        raw_attrs = comp.get("raw_attributes") or comp.get("raw") or {}
+
+        if strategy == "xpath":
+            return rec_xp
+        elif strategy == "predicate":
+            if rec_pred:
+                return rec_pred
+            ios_val = raw_attrs.get("value") or ""
+            if rec_id:
+                return f'type == "{rec_full_type}" AND name == "{rec_id}"'
+            elif rec_text:
+                return f'type == "{rec_full_type}" AND (label == "{rec_text}" OR name == "{rec_text}")'
+            elif ios_val:
+                return f'type == "{rec_full_type}" AND value == "{ios_val}"'
+            return f'type == "{rec_full_type}"'
+        elif strategy == "class chain":
+            if rec_chain:
+                return rec_chain
+            if rec_id:
+                return f'**/{rec_full_type}[`name == "{rec_id}"`]'
+            elif rec_text:
+                return f'**/{rec_full_type}[`label == "{rec_text}"`]'
+            return f'**/{rec_full_type}'
+        elif strategy in ("id", "accessibility id"):
+            if self.platform == "ios":
+                ios_name = raw_attrs.get("name") or raw_attrs.get("id") or rec_id
+                ios_label = raw_attrs.get("label") or rec_text
+                return ios_name or ios_label or rec_id
+            return rec_id or rec_text
+        elif strategy in ("class name", "type"):
+            return rec_full_type if self.platform in ("ios", "android") else rec_type
+        elif strategy == "text":
+            return rec_text
+        elif strategy == "description":
+            return str(raw_attrs.get("description") or raw_attrs.get("content-desc") or rec_text)
+        elif strategy == "uiautomator":
+            if rec_text:
+                return f'text("{rec_text}")'
+            elif rec_id:
+                return f'resourceId("{rec_id}")'
+            elif rec_full_type:
+                return f'className("{rec_full_type}")'
+            return ""
+        return rec_xp
+
     def _on_strategy_changed(self):
+        strat = self.combo_strategy.currentData()
+        self._update_format_pills_active_state(strat)
         self.update_placeholder()
         self._save_memory()
+
+        # 若主视窗当前已选中元素，切换格式时自动刷新输入框中的表达式
+        comp = getattr(self, "last_main_selected_comp", None)
+        if comp:
+            expr = self._get_expression_for_strategy(strat, comp)
+            if expr:
+                self.edit_selector.setText(expr)
+                strat_name = self.combo_strategy.currentText().split(" (")[0]
+                self.lbl_status.setText(f"已切换为 [{strat_name}] 格式表达式，点击【查找】验证")
 
     def _on_only_visible_changed(self):
         self._save_memory()
         if hasattr(self, "edit_selector") and self.edit_selector.text().strip():
             self.do_search()
 
-    def _is_app_in_foreground(self) -> bool:
-        """精准探测当前系统前台聚焦的窗口是否属于本审查器进程 (Win32 原生探测 + Qt 兜底)"""
-        if sys.platform == "win32":
-            try:
-                import ctypes
-                fg_hwnd = ctypes.windll.user32.GetForegroundWindow()
-                if not fg_hwnd:
-                    return False
-                pid = ctypes.c_ulong()
-                ctypes.windll.user32.GetWindowThreadProcessId(fg_hwnd, ctypes.byref(pid))
-                return pid.value == os.getpid()
-            except Exception:
-                pass
-        app = QApplication.instance()
-        return bool(app and app.applicationState() == Qt.ApplicationState.ApplicationActive)
-
     def _apply_native_topmost(self, on_top: bool):
         """
-        动态应用或解除窗口置顶：
-        - on_top 为 True：置顶于当前应用窗口上方，防止主视窗点击时被遮挡；
-        - on_top 为 False：取消置顶并让位，绝不遮挡其他外部应用。
+        可靠切换窗口置顶状态 (Qt 标准 WindowStaysOnTopHint + Win32 SetWindowPos 双重加固):
+        1. 必须始终显式同步 Qt 自身的 WindowStaysOnTopHint 窗口标志，确保 Qt 内部重绘/激活状态机不会覆盖置顶；
+        2. Windows 平台通过 SetWindowPos 深度加固 HWND_TOPMOST / HWND_NOTOPMOST，确保 100% 绝对置顶于主视窗之上防遮挡。
         """
+        was_visible = self.isVisible()
+        flags = self.windowFlags()
+        if on_top:
+            flags |= Qt.WindowType.WindowStaysOnTopHint
+        else:
+            flags &= ~Qt.WindowType.WindowStaysOnTopHint
+
+        if self.windowFlags() != flags:
+            self.setWindowFlags(flags)
+            if was_visible:
+                self.show()
+
         if sys.platform == "win32":
             try:
                 import ctypes
@@ -4334,58 +6680,34 @@ class SearchElementDialog(QDialog):
                 SWP_NOMOVE = 0x0002
                 SWP_NOSIZE = 0x0001
                 SWP_NOACTIVATE = 0x0010
-                flags = SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE
+                flags_pos = SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE
                 target = HWND_TOPMOST if on_top else HWND_NOTOPMOST
-                ctypes.windll.user32.SetWindowPos(hwnd, target, 0, 0, 0, 0, flags)
-
-                # 切换至外部应用时，主动将自身排在外部前台窗口之后
-                if not on_top:
-                    fg = ctypes.windll.user32.GetForegroundWindow()
-                    if fg and fg != hwnd:
-                        ctypes.windll.user32.SetWindowPos(hwnd, fg, 0, 0, 0, 0, flags)
-                return
+                ctypes.windll.user32.SetWindowPos(hwnd, target, 0, 0, 0, 0, flags_pos)
             except Exception as e:
                 logger.debug(f"Win32 SetWindowPos 调度异常: {e}")
 
-        # 跨平台 Qt 兜底
-        flags = self.windowFlags()
-        if on_top:
-            flags |= Qt.WindowType.WindowStaysOnTopHint
-        else:
-            flags &= ~Qt.WindowType.WindowStaysOnTopHint
-        if self.windowFlags() != flags:
-            was_visible = self.isVisible()
-            self.setWindowFlags(flags)
-            if was_visible:
-                self.show()
-
     def _update_stay_on_top_state(self):
-        """核心调度：综合置顶开关与当前前台进程状态，动态判定是否置顶"""
+        """核心调度：直接严格遵从用户勾选状态进行置顶，彻底消除焦点切换带来的闪烁与误解除"""
         if not hasattr(self, "chk_stay_on_top"):
             return
-        if not self.chk_stay_on_top.isChecked() or not self.isVisible():
-            self._apply_native_topmost(False)
-            return
-
-        is_active = self._is_app_in_foreground()
-        self._apply_native_topmost(is_active)
+        on_top = self.chk_stay_on_top.isChecked() and self.isVisible()
+        self._apply_native_topmost(on_top)
 
     def _toggle_stay_on_top(self, checked: bool):
+        """响应用户点击【📌 保持置顶】复选框：100% 即刻生效"""
         self._save_memory()
-        self._update_stay_on_top_state()
+        self._apply_native_topmost(checked)
         if checked:
             self.raise_()
             self.activateWindow()
 
     def _on_app_state_changed(self, state: Qt.ApplicationState):
-        """系统级应用状态变化监听：切到外部应用时立即让位，切回本应用时恢复置顶"""
-        self._update_stay_on_top_state()
+        """系统级应用状态变化监听"""
+        pass
 
     def changeEvent(self, event: QEvent):
         """窗口激活状态变化监听"""
         super().changeEvent(event)
-        if event.type() == QEvent.Type.ActivationChange:
-            self._update_stay_on_top_state()
 
     def showEvent(self, event):
         """窗口展示时按需激活置顶"""
@@ -4496,7 +6818,7 @@ class SearchElementDialog(QDialog):
         if platform_changed:
             plat_map = {"harmony": "HarmonyOS NEXT", "android": "Android", "ios": "iOS"}
             plat_title = plat_map.get(self.platform, "多端统一")
-            self.setWindowTitle(f"🔎 元素定位与查找器 ({plat_title})")
+            self.setWindowTitle(f"元素定位与查找器 ({plat_title})")
             self._rebuild_strategies()
             self._load_memory()
         else:
@@ -4510,36 +6832,50 @@ class SearchElementDialog(QDialog):
         else:
             c_tag = comp.get("type", "Component")
             c_bounds = f"[{comp.get('left')},{comp.get('top')}][{comp.get('right')},{comp.get('bottom')}]"
-            self.lbl_status.setText(f"主视窗已选中: <{c_tag} bounds=\"{c_bounds}\"> (点击【🎯 填入主视窗选中元素】)")
+            raw_attrs = comp.get("raw_attributes") or comp.get("raw") or {}
+            attr_summary = ""
+            if self.platform == "ios":
+                ios_name = raw_attrs.get("name") or raw_attrs.get("id") or comp.get("id") or ""
+                ios_label = raw_attrs.get("label") or ""
+                ios_value = raw_attrs.get("value") or comp.get("text") or ""
+                if ios_value:
+                    short_v = ios_value if len(ios_value) <= 20 else ios_value[:20] + "..."
+                    attr_summary += f' value="{short_v}"'
+                if ios_name:
+                    short_n = ios_name if len(ios_name) <= 20 else ios_name[:20] + "..."
+                    attr_summary += f' name="{short_n}"'
+                if ios_label and ios_label != ios_value:
+                    short_l = ios_label if len(ios_label) <= 20 else ios_label[:20] + "..."
+                    attr_summary += f' label="{short_l}"'
+            else:
+                if comp.get("id"):
+                    attr_summary += f' id="{comp["id"]}"'
+                if comp.get("text"):
+                    short_t = comp["text"] if len(comp["text"]) <= 22 else comp["text"][:22] + "..."
+                    attr_summary += f' text="{short_t}"'
+            self.lbl_status.setText(f"主视窗已选中: <{c_tag}{attr_summary} bounds=\"{c_bounds}\"> (点击【填入主视窗选中元素】)")
 
     def pick_current_element_to_input(self):
-        """将主视窗当前选中的组件推荐表达式填入选择器输入框"""
+        """将主视窗当前选中的组件推荐表达式按当前策略填入选择器输入框"""
         comp = getattr(self, "last_main_selected_comp", None)
         if not comp:
             self.lbl_status.setText("提示: 请先在主视窗点击选中任意真机或 DOM 树元素")
             return
 
-        rec_xp = comp.get("rec_xpath") or comp.get("xpath") or ""
-        rec_id = comp.get("id") or ""
-        rec_text = comp.get("text") or ""
-        rec_type = comp.get("type") or ""
         curr_strat = self.combo_strategy.currentData()
-
-        if curr_strat == "id" and rec_id:
-            self.edit_selector.setText(rec_id)
-        elif curr_strat == "text" and rec_text:
-            self.edit_selector.setText(rec_text)
-        elif curr_strat in ("type", "class name") and rec_type:
-            self.edit_selector.setText(rec_type)
-        else:
-            # 默认切换至最通用的 XPath 策略并填入推荐表达式
+        target_expr = self._get_expression_for_strategy(curr_strat, comp)
+        if not target_expr:
+            # 若当前策略无法为该组件生成表达式，则自动切换至通用 xpath 策略并填入
+            target_expr = comp.get("rec_xpath") or comp.get("xpath") or ""
             xp_idx = self.combo_strategy.findData("xpath")
             if xp_idx >= 0:
                 self.combo_strategy.setCurrentIndex(xp_idx)
-            if rec_xp:
-                self.edit_selector.setText(rec_xp)
 
-        self.lbl_status.setText(f"已同步 <{comp.get('type')}> 推荐表达式，点击【查找】验证")
+        if target_expr:
+            self.edit_selector.setText(target_expr)
+
+        strat_title = self.combo_strategy.currentText().split(" (")[0]
+        self.lbl_status.setText(f"已按 [{strat_title}] 策略填入 <{comp.get('type')}> 推荐表达式，点击【查找】验证")
 
     def closeEvent(self, event):
         self._save_memory()
@@ -4563,7 +6899,7 @@ class SearchElementDialog(QDialog):
             }
         elif self.platform == "ios":
             tips = {
-                "id": "例如: login_button 或 send_btn (Accessibility Identifier/Name)",
+                "id": "例如: ic delete 48 或 login_btn (Accessibility ID / Name / Label 标识)",
                 "xpath": "例如: //XCUIElementTypeButton[@name='发送']",
                 "class name": "例如: XCUIElementTypeButton 或 XCUIElementTypeStaticText",
                 "predicate": "例如: label == '发送' AND visible == 1",
@@ -4609,7 +6945,9 @@ class SearchElementDialog(QDialog):
         # 1. 严格语法静态校验与前置拦截 (杜绝语法错误时伪装成“匹配到 0 个元素”)
         syntax_err = None
         example_str = ""
-        if strategy == "xpath":
+        if self.platform == "ios":
+            syntax_err, example_str = validate_ios_selector_syntax(strategy, val)
+        elif strategy == "xpath":
             syntax_err = validate_xpath_syntax(val)
             example_str = "//Text[@text='会员中心'] 或 //Button[contains(@text, '发送')]"
         elif strategy == "id":
@@ -4619,7 +6957,7 @@ class SearchElementDialog(QDialog):
             elif val.startswith("@"):
                 syntax_err = "ID 选择器无需添加 '@' 前缀；请直接输入组件 ID 或 Key"
                 example_str = val.lstrip("@")
-            elif " " in val:
+            elif " " in val and self.platform != "ios":
                 syntax_err = "组件 ID 标识通常不包含空格；若要根据展示文本匹配，请将策略切换为 [text]"
                 example_str = val.replace(" ", "_")
         elif strategy == "text":
@@ -4669,9 +7007,12 @@ class SearchElementDialog(QDialog):
             if strategy == "id":
                 for c in self.flat_components:
                     cid = c.get("id", "")
-                    raw_id = c.get("raw_attributes", {}).get("resource-id", "") or c.get("raw_attributes", {}).get("name", "")
-                    if (cid and (val_lower == cid.lower() or val_lower in cid.lower())) or \
-                       (raw_id and (val_lower == raw_id.lower() or val_lower in raw_id.lower())):
+                    raw_attrs = c.get("raw_attributes", {}) or c.get("raw", {})
+                    raw_id = raw_attrs.get("resource-id", "") or raw_attrs.get("name", "") or raw_attrs.get("id", "")
+                    raw_label = raw_attrs.get("label", "") if self.platform == "ios" else ""
+                    raw_ident = raw_attrs.get("identifier", "") if self.platform == "ios" else ""
+                    targets = [t for t in (cid, raw_id, raw_label, raw_ident) if t]
+                    if any(val_lower == t.lower() or val_lower in t.lower() for t in targets):
                         matched.append(c)
             elif strategy == "accessibility id":
                 for c in self.flat_components:
@@ -4722,26 +7063,110 @@ class SearchElementDialog(QDialog):
                             continue
                     matched.append(c)
             elif strategy == "predicate":
-                m_label = re.search(r'label\s*(?:==|CONTAINS|like)\s*["\']([^"\']+)["\']', val, re.IGNORECASE)
-                m_name = re.search(r'name\s*(?:==|CONTAINS|like)\s*["\']([^"\']+)["\']', val, re.IGNORECASE)
-                m_type = re.search(r'type\s*(?:==|CONTAINS|like)\s*["\']([^"\']+)["\']', val, re.IGNORECASE)
-                target_l = m_label.group(1).lower() if m_label else None
-                target_n = m_name.group(1).lower() if m_name else None
-                target_t = m_type.group(1).lower() if m_type else None
+                # 支持 iOS 原生 Predicate 表达式 (完整覆盖 AST 级布尔树、括号嵌套、OR/AND/NOT、IN {...} 集合与 ==/CONTAINS)
+                err_msg, atom_list, py_expr = tokenize_ios_predicate(val)
+                if err_msg or not atom_list:
+                    atom_list = [val]
+                    py_expr = "_c_0"
+
+                def eval_atomic_predicate(atom_expr: str, comp: Dict[str, Any]) -> bool:
+                    sub = atom_expr.strip().strip("()")
+                    if not sub:
+                        return True
+                    is_neg = False
+                    if re.match(r'^(?:NOT\s+|!\s*)', sub, re.IGNORECASE):
+                        is_neg = True
+                        sub = re.sub(r'^(?:NOT\s+|!\s*)', '', sub, flags=re.IGNORECASE).strip().strip("()")
+
+                    raw_attrs = comp.get("raw_attributes", {}) or comp.get("raw", {})
+                    c_label = str(raw_attrs.get("label", "") or comp.get("text", "") or raw_attrs.get("value", "")).lower()
+                    c_name = str(raw_attrs.get("name", "") or comp.get("id", "") or raw_attrs.get("label", "")).lower()
+                    c_type = comp.get("type", "").lower()
+                    c_type_full = c_type if c_type.startswith("xcuielementtype") else f"xcuielementtype{c_type}"
+                    c_type_short = c_type.replace("xcuielementtype", "")
+                    c_val = str(raw_attrs.get("value", "")).lower()
+
+                    res = True
+                    # 1. 优先支持集合判定: type IN {'XCUIElementTypeButton', ...} 或 label IN {'a', 'b'}
+                    in_match = re.search(r'^([A-Za-z_][A-Za-z0-9_\.]*)\s+IN(?:\s*\[[cd]+\])?\s*\{([^}]+)\}$', sub, re.IGNORECASE)
+                    if in_match:
+                        attr_key = in_match.group(1).lower()
+                        items = [s.strip(" '\"").lower() for s in in_match.group(2).split(",") if s.strip(" '\"")]
+                        if attr_key == "type":
+                            res = (c_type in items) or (c_type_full in items) or (c_type_short in items)
+                        else:
+                            target_val = c_label if attr_key == "label" else (c_name if attr_key == "name" else c_val)
+                            res = target_val in items
+                    else:
+                        # 2. 基础比较运算符判定 (==, =, !=, CONTAINS, BEGINSWITH, ENDSWITH, LIKE, MATCHES)
+                        cmp_m = re.search(
+                            r'^([A-Za-z_][A-Za-z0-9_\.]*)\s*(==|!=|=|<>|<=|>=|<|>|\b(?:CONTAINS|BEGINSWITH|ENDSWITH|LIKE|MATCHES)\b(?:\s*\[[cd]+\])?)\s*(.+)$',
+                            sub,
+                            re.IGNORECASE,
+                        )
+                        if cmp_m:
+                            attr_key = cmp_m.group(1).lower()
+                            op = cmp_m.group(2).upper()
+                            rhs = cmp_m.group(3).strip()
+                            if (rhs.startswith("'") and rhs.endswith("'")) or (rhs.startswith('"') and rhs.endswith('"')):
+                                rhs = rhs[1:-1]
+                            rhs_lower = rhs.lower()
+                            if attr_key == "type":
+                                rhs_short = rhs_lower.replace("xcuielementtype", "")
+                                rhs_full = rhs_lower if rhs_lower.startswith("xcuielementtype") else f"xcuielementtype{rhs_lower}"
+                                is_type_eq = (c_type == rhs_lower or c_type == rhs_short or c_type_full == rhs_full or c_type_short == rhs_short)
+                                res = is_type_eq if op in ("==", "=") else not is_type_eq
+                            else:
+                                lhs = c_label if attr_key == "label" else (c_name if attr_key == "name" else (c_val if attr_key == "value" else str(raw_attrs.get(attr_key, "")).lower()))
+                                if op in ("==", "="):
+                                    res = (lhs == rhs_lower)
+                                elif op in ("!=", "<>"):
+                                    res = (lhs != rhs_lower)
+                                elif op.startswith("BEGINSWITH"):
+                                    res = lhs.startswith(rhs_lower)
+                                elif op.startswith("ENDSWITH"):
+                                    res = lhs.endswith(rhs_lower)
+                                elif op.startswith("MATCHES"):
+                                    try:
+                                        res = bool(re.search(rhs, raw_attrs.get(attr_key, "") or ""))
+                                    except Exception:
+                                        res = False
+                                else:
+                                    res = (rhs_lower in lhs)
+                        else:
+                            res = False
+
+                    return (not res) if is_neg else res
+
+                try:
+                    eval_tree = ast.parse(py_expr, mode='eval')
+                except Exception:
+                    eval_tree = None
+
+                def eval_ast_bool(node, c_map: Dict[str, bool]) -> bool:
+                    if isinstance(node, ast.Expression):
+                        return eval_ast_bool(node.body, c_map)
+                    elif isinstance(node, ast.BoolOp):
+                        if isinstance(node.op, ast.And):
+                            return all(eval_ast_bool(v, c_map) for v in node.values)
+                        elif isinstance(node.op, ast.Or):
+                            return any(eval_ast_bool(v, c_map) for v in node.values)
+                    elif isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+                        return not eval_ast_bool(node.operand, c_map)
+                    elif isinstance(node, ast.Name):
+                        return c_map.get(node.id, False)
+                    elif isinstance(node, ast.Constant):
+                        return bool(node.value)
+                    return False
+
                 for c in self.flat_components:
-                    c_label = str(c.get("raw_attributes", {}).get("label", "") or c.get("text", "")).lower()
-                    c_name = str(c.get("raw_attributes", {}).get("name", "") or c.get("id", "")).lower()
-                    c_type = c.get("type", "").lower()
-                    if target_l and target_l not in c_label:
-                        continue
-                    if target_n and target_n not in c_name:
-                        continue
-                    if target_t and target_t not in c_type:
-                        continue
-                    if not any([target_l, target_n, target_t]):
-                        if val_lower not in c_label and val_lower not in c_name:
-                            continue
-                    matched.append(c)
+                    if eval_tree:
+                        c_map = {f"_c_{k}": eval_atomic_predicate(atom, c) for k, atom in enumerate(atom_list)}
+                        if eval_ast_bool(eval_tree, c_map):
+                            matched.append(c)
+                    else:
+                        if all(eval_atomic_predicate(atom, c) for atom in atom_list):
+                            matched.append(c)
             elif strategy == "class chain":
                 clean_chain = val.replace("**/", "").replace("/*", "").strip()
                 chain_type = clean_chain.split("[")[0].strip() if "[" in clean_chain else clean_chain
@@ -4774,7 +7199,7 @@ class SearchElementDialog(QDialog):
         if not matched:
             strat_tips = {
                 "id": "建议核对组件 Key/ID 属性是否存在，或切换为 [text] / [xpath] 策略重试",
-                "xpath": "建议核对标签名大小写、属性值及层级，或点击【🎯 填入主视窗选中元素】获取推荐路径",
+                "xpath": "建议核对标签名大小写、属性值及层级，或点击【填入主视窗选中元素】获取推荐路径",
                 "text": "建议核对文本大小写、去除首尾空格，或取消勾选【仅匹配当前真实展示元素】重试",
                 "type": "未找到该类型的组件，请核对组件类型拼写 (如 Button、Text、ListItem、Flex)",
                 "class name": "未找到该类型的组件，请核对类型名拼写",
@@ -4782,7 +7207,7 @@ class SearchElementDialog(QDialog):
                 "accessibility id": "未找到包含该描述的组件，请检查 content-desc / label 属性",
             }
             tip_detail = strat_tips.get(strategy, "请核对选择器表达式与当前真机画面组件是否匹配")
-            strat_label = self.combo_strategy.currentText().split(" ")[0]
+            strat_label = self.combo_strategy.currentText().split(" (")[0]
             item = QListWidgetItem(f"⚠️ 未找到任何符合条件的元素 (策略: {strat_label})")
             item.setForeground(QColor("#d97706"))
             item.setFlags(Qt.ItemFlag.NoItemFlags)
@@ -4800,12 +7225,30 @@ class SearchElementDialog(QDialog):
         # 限制列表项最多渲染 200 条，杜绝海量渲染卡死
         render_limit = 200
         for idx, comp in enumerate(matched[:render_limit]):
-            c_scheme = get_dom_tag_color(comp.get("type", ""))
-            title = f"元素 {idx + 1} - <{comp['type']}"
-            if comp.get('id'):
-                title += f" id=\"{comp['id']}\""
-            if comp.get('text'):
-                title += f" text=\"{comp['text']}\""
+            c_type = comp.get("type", "Component")
+            c_scheme = get_dom_tag_color(c_type)
+            title = f"元素 {idx + 1} - <{c_type}"
+            raw_attrs = comp.get("raw_attributes") or comp.get("raw") or {}
+            if self.platform == "ios":
+                ios_name = raw_attrs.get("name") or raw_attrs.get("id") or comp.get("id") or ""
+                ios_label = raw_attrs.get("label") or ""
+                ios_value = raw_attrs.get("value") or comp.get("text") or ""
+                if ios_value:
+                    short_v = ios_value if len(ios_value) <= 20 else ios_value[:20] + "..."
+                    title += f' value="{short_v}"'
+                if ios_name:
+                    short_n = ios_name if len(ios_name) <= 20 else ios_name[:20] + "..."
+                    title += f' name="{short_n}"'
+                if ios_label and ios_label != ios_value:
+                    short_l = ios_label if len(ios_label) <= 20 else ios_label[:20] + "..."
+                    title += f' label="{short_l}"'
+            else:
+                if comp.get('id'):
+                    title += f" id=\"{comp['id']}\""
+                if comp.get('text'):
+                    c_text = comp['text']
+                    short_t = c_text if len(c_text) <= 22 else c_text[:22] + "..."
+                    title += f" text=\"{short_t}\""
             title += f" bounds=\"[{comp['left']},{comp['top']}][{comp['right']},{comp['bottom']}]\">"
             list_item = QListWidgetItem(title)
             list_item.setData(Qt.ItemDataRole.UserRole, comp["node_id"])
@@ -4842,10 +7285,21 @@ class SearchElementDialog(QDialog):
                         comp = c
                         break
             if comp:
-                elem_tag = getattr(elem, "tag", "")
-                comp_type = comp.get("type", "")
-                if elem_tag and comp_type and elem_tag != "Component":
-                    if elem_tag.lower() != comp_type.lower():
+                elem_tag = str(getattr(elem, "tag", "")).lower()
+                comp_type = str(comp.get("type", "")).lower()
+                comp_full = str(comp.get("full_type", "")).lower()
+                if elem_tag and comp_type and elem_tag != "component":
+                    elem_short = elem.attrib.get("short_type", "").lower() if hasattr(elem, "attrib") else ""
+                    if not elem_short:
+                        elem_short = elem_tag.replace("xcuielementtype", "").split(".")[-1]
+                    # 双向兼容匹配短类型、完整原生类型与标签后缀
+                    type_matched = (
+                        elem_tag == comp_type
+                        or elem_tag == comp_full
+                        or elem_short == comp_type
+                        or elem_tag.endswith(comp_type)
+                    )
+                    if not type_matched:
                         continue
                 matched.append(comp)
         return matched
@@ -5056,10 +7510,22 @@ class SearchElementDialog(QDialog):
                         if node in candidates:
                             candidates.remove(node)
 
-                # 按标签类型初筛
+                # 按标签类型初筛 (双向容错支持短类型与完整原生类名，如 XCUIElementTypeTextField <=> TextField)
                 filtered_by_tag = []
+                query_short_l = tag_lower.replace("xcuielementtype", "").split(".")[-1]
                 for cand in candidates:
-                    if tag_name == "*" or cand.tag.lower() == tag_lower:
+                    cand_tag_l = cand.tag.lower()
+                    cand_full_l = str(cand.attrib.get("full_type", "")).lower()
+                    cand_short_l = str(cand.attrib.get("short_type", "")).lower() or cand_tag_l.replace("xcuielementtype", "").split(".")[-1]
+                    match_tag = (
+                        tag_name == "*"
+                        or cand_tag_l == tag_lower
+                        or cand_full_l == tag_lower
+                        or cand_short_l == query_short_l
+                        or cand_short_l == tag_lower
+                        or cand_tag_l.endswith(tag_lower)
+                    )
+                    if match_tag:
                         filtered_by_tag.append(cand)
 
                 # 按谓词过滤 (支持嵌套方括号、子路径谓词断言、属性与数字索引)
@@ -5107,23 +7573,29 @@ class SearchElementDialog(QDialog):
                             cand_results = [cand_results[-1]] if cand_results else []
                             continue
 
-                        pred_matched = []
-                        for el in cand_results:
-                            attrs = el.attrib
+                        def _eval_atomic(el_node, p_str):
+                            p_str = p_str.strip()
+                            attrs = el_node.attrib
                             # 1. contains(@attr, 'val') 或 contains(text(), 'val')
-                            m_contains = re.match(r"^contains\s*\(\s*(@[a-zA-Z0-9_\-]+|text\(\))\s*,\s*['\"](.*?)['\"]\s*\)$", pred, re.IGNORECASE)
+                            m_contains = re.match(r"^contains\s*\(\s*(@[a-zA-Z0-9_\-]+|text\(\))\s*,\s*['\"](.*?)['\"]\s*\)$", p_str, re.IGNORECASE)
                             if m_contains:
                                 target_k, target_v = m_contains.group(1), m_contains.group(2)
-                                if target_k == "text()":
-                                    actual_val = attrs.get("text", "") or attrs.get("label", "") or (el.text or "")
-                                else:
-                                    actual_val = attrs.get(target_k[1:], "")
-                                if target_v in str(actual_val):
-                                    pred_matched.append(el)
-                                continue
+                                actual_val = (attrs.get("text", "") or attrs.get("label", "") or (el_node.text or "")) if target_k == "text()" else attrs.get(target_k[1:], "")
+                                return target_v in str(actual_val)
 
-                            # 2. @attr='val' 或 @attr="val"
-                            m_eq = re.match(r"^@([a-zA-Z0-9_\-]+)\s*=\s*['\"](.*?)['\"]$", pred)
+                            # 2. matches(@attr, 'pattern') 或 matches(text(), 'pattern')
+                            m_matches = re.match(r"^matches\s*\(\s*(@[a-zA-Z0-9_\-]+|text\(\))\s*,\s*['\"](.*?)['\"](?:\s*,\s*['\"](.*?)['\"])?\s*\)$", p_str, re.IGNORECASE)
+                            if m_matches:
+                                target_k, pat, flags = m_matches.group(1), m_matches.group(2), m_matches.group(3) or ""
+                                actual_val = (attrs.get("text", "") or attrs.get("label", "") or (el_node.text or "")) if target_k == "text()" else attrs.get(target_k[1:], "")
+                                py_flags = re.IGNORECASE if "i" in flags.lower() else 0
+                                try:
+                                    return bool(re.search(pat, str(actual_val), py_flags))
+                                except Exception:
+                                    return False
+
+                            # 3. @attr='val' 或 @attr="val"
+                            m_eq = re.match(r"^@([a-zA-Z0-9_\-]+)\s*=\s*['\"](.*?)['\"]$", p_str)
                             if m_eq:
                                 attr_k, attr_v = m_eq.group(1), m_eq.group(2)
                                 actual_v = attrs.get(attr_k, "")
@@ -5131,32 +7603,35 @@ class SearchElementDialog(QDialog):
                                     actual_v = attrs.get("id") or attrs.get("resource-id") or attrs.get("name") or ""
                                 elif not actual_v and attr_k in ("text", "label", "value"):
                                     actual_v = attrs.get("text") or attrs.get("label") or attrs.get("value") or ""
-                                if str(actual_v) == attr_v:
-                                    pred_matched.append(el)
-                                continue
+                                return str(actual_v) == attr_v
 
-                            # 3. [@id] 存在性过滤
-                            if pred.startswith("@"):
-                                if pred[1:] in attrs and attrs[pred[1:]]:
-                                    pred_matched.append(el)
-                                continue
+                            # 4. [@id] 存在性过滤
+                            if p_str.startswith("@"):
+                                return bool(p_str[1:] in attrs and attrs[p_str[1:]])
 
-                            # 4. 子路径或后代节点断言 (支持如 [.//Text[@text='测试0225']] 或 [Row//Text])
-                            if pred.startswith((".", "//", "/")):
+                            # 5. 子路径或后代节点断言 (支持如 [.//Text[@text='...']] 或 [Row//Text])
+                            if p_str.startswith((".", "//", "/")):
                                 try:
-                                    sub_res = self._evaluate_xpath_natively(el, pred)
-                                    if sub_res:
-                                        pred_matched.append(el)
+                                    return bool(self._evaluate_xpath_natively(el_node, p_str))
                                 except Exception:
-                                    pass
-                                continue
+                                    return False
 
-                            # 5. 子元素标签名存在性过滤：例如 //Stack[Search]
-                            if any(sub.tag.lower() == pred.lower() for sub in el.iter() if sub is not el):
-                                pred_matched.append(el)
-                                continue
+                            # 6. 子元素标签名存在性过滤：例如 //Row[TextInput], //Stack[Search]
+                            return any(sub.tag.lower() == p_str.lower() for sub in el_node.iter() if sub is not el_node)
 
-                            # 严格剔除不满足谓语条件的候选节点，禁止兜底放行
+                        def _eval_predicate(el_node, p_str):
+                            p_str = p_str.strip()
+                            # 处理 ' or ' 逻辑析取
+                            if " or " in p_str:
+                                or_branches = re.split(r"\s+or\s+", p_str)
+                                return any(_eval_predicate(el_node, b) for b in or_branches)
+                            # 处理 ' and ' 逻辑合取
+                            if " and " in p_str:
+                                and_branches = re.split(r"\s+and\s+", p_str)
+                                return all(_eval_predicate(el_node, b) for b in and_branches)
+                            return _eval_atomic(el_node, p_str)
+
+                        pred_matched = [el for el in cand_results if _eval_predicate(el, pred)]
 
                         cand_results = pred_matched
                     next_nodes.extend(cand_results)
@@ -5196,6 +7671,7 @@ class SearchElementDialog(QDialog):
 
         if has_lxml and self.xml_root is not None:
             try:
+                _init_lxml_xpath_extensions()
                 xml_bytes = ET.tostring(self.xml_root, encoding="utf-8")
                 ltree = etree.fromstring(xml_bytes)
                 matched_nodes = ltree.xpath(xp)
@@ -5250,34 +7726,34 @@ class SearchElementDialog(QDialog):
         if curr:
             node_id = curr.data(Qt.ItemDataRole.UserRole)
             if node_id:
-                self.lbl_status.setText("⚡ 正在真机上执行点击动作...")
+                self.lbl_status.setText("正在真机上执行点击动作...")
                 QApplication.processEvents()
                 self.tap_requested.emit(node_id)
-                self.lbl_status.setText("✅ 已在设备上成功执行点击动作！")
+                self.lbl_status.setText("已在设备上成功执行点击动作")
 
     def on_send_keys_clicked(self):
         curr = self.list_results.currentItem()
         if curr:
             node_id = curr.data(Qt.ItemDataRole.UserRole)
             if node_id:
-                text, ok = QInputDialog.getText(self, "输入文本", "请输入要发送至该元素的文本内容:")
+                text, ok = ModernInputDialog.getText(self, "输入文本", "请输入要发送至该元素的文本内容:")
                 if ok and text:
-                    self.lbl_status.setText("⚡ 正在向设备下发文本内容...")
+                    self.lbl_status.setText("正在向设备下发文本内容...")
                     QApplication.processEvents()
                     self.send_keys_requested.emit(node_id, text)
-                    self.lbl_status.setText(f"✅ 文本已成功发送至目标组件！")
+                    self.lbl_status.setText("文本已成功发送至目标组件")
 
 
 
 # ==============================================================================
-# 轻量高颜值无阻塞 Toast 悬浮提示条 (1 秒自动消失)
+# 轻量高颜值无阻塞 Toast 悬浮提示条 (纯透明背景，绿色大号居中)
 # ==============================================================================
 
 class ToastNotification(QLabel):
     """
     轻量高颜值无阻塞 Toast 悬浮提示条：
-    1. 居中悬浮展示 (视口正中央)，背景纯透明，鼠标事件完全穿透；
-    2. 默认 1 秒 (1000ms) 后自动消失，杜绝弹窗阻塞打断用户心流。
+    1. 居中悬浮展示 (视口正中央)，纯透明背景，绿色大号粗体醒目提示，鼠标事件完全穿透；
+    2. 默认 1.5 秒后自动平滑消失，杜绝弹窗阻塞打断用户心流。
     """
 
     def __init__(self, parent=None):
@@ -5299,7 +7775,7 @@ class ToastNotification(QLabel):
         self._timer.setSingleShot(True)
         self._timer.timeout.connect(self.hide)
 
-    def show_message(self, message: str, duration_ms: int = 1000):
+    def show_message(self, message: str, duration_ms: int = 1500):
         self.setText(message)
         self.adjustSize()
         if self.parentWidget():
@@ -5310,6 +7786,84 @@ class ToastNotification(QLabel):
         self.show()
         self.raise_()
         self._timer.start(duration_ms)
+
+
+class DeviceComboBox(QComboBox):
+    """
+    零残影纯原生菜单式设备选择下拉框：
+    彻底弃用 Qt 默认的 QComboBoxPrivateContainer (380x127 浮动容器)，
+    从根源上 100% 物理消除 Windows DWM 下切换设备或点击服务按钮时产生的 380x127 透明幽灵方框。
+    """
+
+    def __init__(self, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self._active_menu: Optional[QMenu] = None
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
+    def showPopup(self) -> None:
+        """拦截默认 QComboBoxPrivateContainer 弹窗，改用一次性轻量级实体 QMenu 并在关闭后立即销毁"""
+        self.hidePopup()
+        if self.count() <= 0:
+            return
+
+        menu = QMenu(self)
+        self._active_menu = menu
+        menu.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+        menu.setWindowFlags(Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint | Qt.WindowType.NoDropShadowWindowHint)
+        menu.setMinimumWidth(self.width())
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: #ffffff;
+                color: #0f172a;
+                border: 1px solid #cbd5e1;
+                padding: 4px;
+                font-family: 'Segoe UI', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+                font-size: 13px;
+            }
+            QMenu::item {
+                padding: 6px 12px;
+                border-radius: 4px;
+                background-color: #ffffff;
+                color: #0f172a;
+            }
+            QMenu::item:selected {
+                background-color: #e0f2fe;
+                color: #0284c7;
+                font-weight: 600;
+            }
+        """)
+
+        actions_map = {}
+        curr_idx = self.currentIndex()
+        for i in range(self.count()):
+            act = menu.addAction(self.itemText(i))
+            if i == curr_idx:
+                font = act.font()
+                font.setBold(True)
+                act.setFont(font)
+            actions_map[act] = i
+
+        popup_pos = self.mapToGlobal(QPoint(0, self.height() + 2))
+        chosen_act = menu.exec(popup_pos)
+        self.hidePopup()
+
+        if chosen_act is not None and chosen_act in actions_map:
+            target_idx = actions_map[chosen_act]
+            if target_idx != self.currentIndex():
+                QTimer.singleShot(0, lambda idx=target_idx: self.setCurrentIndex(idx))
+
+    def hidePopup(self) -> None:
+        """彻底隐藏并销毁弹出菜单"""
+        if self._active_menu is not None:
+            try:
+                self._active_menu.hide()
+                self._active_menu.close()
+                self._active_menu.deleteLater()
+            except Exception:
+                pass
+            self._active_menu = None
+        super().hidePopup()
+
 
 
 # ==============================================================================
@@ -5478,14 +8032,6 @@ class DOMTreeWidget(QTreeWidget):
         self.selected_word_text = ""
         super().clear()
 
-    def clear_word_selection(self):
-        """主动清除当前的局部单词文本选中状态"""
-        if self.selected_word_item:
-            self.selected_word_item = None
-            self.selected_word_range = None
-            self.selected_word_text = ""
-            self.viewport().update()
-
     def scrollTo(self, index, hint=QAbstractItemView.ScrollHint.EnsureVisible):
         # 拦截所有 scrollTo 调用，强制锁死水平拖动条数值，仅允许垂直方向更新
         h_bar = self.horizontalScrollBar()
@@ -5644,6 +8190,12 @@ class HarmonyAppiumInspector(QMainWindow):
         self._timer_refresh.setSingleShot(True)
         self._timer_refresh.timeout.connect(self._on_refresh_timeout)
 
+        # iOS WDA 服务状态定时探活定时器 (轻量进程扫描，2.5s 周期自愈刷新)
+        self.timer_ios_service = QTimer(self)
+        self.timer_ios_service.setInterval(2500)
+        self.timer_ios_service.timeout.connect(self._on_ios_service_timer_tick)
+        self.timer_ios_service.start()
+
         self.apply_white_luxury_theme()
         self.init_ui()
 
@@ -5656,34 +8208,45 @@ class HarmonyAppiumInspector(QMainWindow):
 
 
     def apply_white_luxury_theme(self):
-        """采用现代高级纯白 + 浅灰科技感设计系统 (全面杜绝文本被截断)"""
+        """采用现代高级纯白 + 极客科技感设计系统 (统一色系、字体、几何边框与交互态)"""
         self.setStyleSheet("""
-            /* 全局基础背景与字体设置 */
-            QMainWindow { background-color: #f1f5f9; }
+            /* 全局基础背景与高保真字体中枢 */
+            QMainWindow { background-color: #f8fafc; }
             QWidget {
-                color: #0f172a; font-family: 'Segoe UI', 'PingFang SC', sans-serif; font-size: 13px;
+                color: #0f172a;
+                font-family: 'Segoe UI', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+                font-size: 12px;
             }
-            
-            /* 顶部纯白卡片操作栏 (紧凑优雅) */
+
+            /* 顶部纯白科技操作栏 */
             QFrame#topBar {
                 background-color: #ffffff;
                 border-bottom: 1px solid #e2e8f0;
-                min-height: 44px;
+                min-height: 52px;
+                max-height: 52px;
             }
             QLabel#topBrand {
-                font-weight: 800; color: #0f172a; font-size: 14px; margin-right: 2px;
+                font-weight: 800; color: #0f172a; font-size: 15px; margin-right: 6px;
             }
             QLabel#platformBadge {
                 background-color: #e0f2fe; color: #0284c7; font-weight: 700;
-                font-size: 11px; padding: 2px 8px; border-radius: 4px; border: 1px solid #bae6fd;
+                font-size: 11.5px; padding: 3px 9px; border-radius: 4px; border: 1px solid #bae6fd;
             }
-            
-            /* 设备选择下拉框 (精致紧凑 30px，充足右侧留白避免遮挡) */
+
+            /* 统一设备选择下拉框 (强制 combobox-popup: 0，禁止创建 Windows Native 浮动窗口，彻底根除透明幽灵框) */
             QComboBox {
-                background-color: #ffffff; color: #0f172a; border: 1px solid #cbd5e1;
-                border-radius: 6px; padding: 2px 28px 2px 10px; font-weight: 500; font-size: 12px; min-height: 26px;
+                combobox-popup: 0;
+                background-color: #ffffff;
+                color: #0f172a;
+                border: 1px solid #cbd5e1;
+                border-radius: 6px;
+                padding: 2px 28px 2px 10px;
+                font-weight: 500;
+                font-size: 13px;
+                min-height: 32px;
             }
             QComboBox:hover { border-color: #0284c7; }
+            QComboBox:focus { border: 1px solid #0284c7; }
             QComboBox::drop-down {
                 subcontrol-origin: padding;
                 subcontrol-position: top right;
@@ -5692,78 +8255,81 @@ class HarmonyAppiumInspector(QMainWindow):
             }
             QComboBox QAbstractItemView {
                 background-color: #ffffff;
+                color: #0f172a;
                 border: 1px solid #cbd5e1;
-                border-radius: 6px;
                 selection-background-color: #e0f2fe;
                 selection-color: #0284c7;
-                color: #0f172a;
                 padding: 4px;
-                font-size: 12px;
+                outline: none;
             }
-            
-            /* 模式切换分段按钮 (紧凑 30px，规格统一) */
+
+            /* 统一模式切换分段按钮 (34px 高度，字号 13.5px 加粗，图标文本严格垂直对齐) */
             QPushButton.mode-btn {
-                background-color: #ffffff; color: #334155; border: 1px solid #cbd5e1;
-                border-radius: 6px; padding: 0 4px; font-weight: 600; font-size: 12px; min-height: 28px;
+                background-color: #ffffff; color: #475569; border: 1px solid #cbd5e1;
+                border-radius: 6px; padding: 0 14px; font-weight: 600; font-size: 13.5px; min-height: 34px; max-height: 34px;
+                text-align: center;
             }
             QPushButton.mode-btn:hover {
-                background-color: #f8fafc; border-color: #0284c7; color: #0284c7;
+                background-color: #f1f5f9; border-color: #0284c7; color: #0284c7;
             }
             QPushButton.mode-btn:checked {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0284c7, stop:1 #0ea5e9);
-                color: #ffffff; border: 1px solid #0284c7; font-weight: bold;
+                background-color: #0284c7; color: #ffffff; border: 1px solid #0284c7; font-weight: 700;
             }
-            
-            /* 功能动作按钮 (统一 30px 规格，统一 12px 字号) */
+
+            /* 顶部功能操作按钮 (统一 34px 规格，字号 13.5px 加粗，图标文本严格对齐) */
             QPushButton.action-btn {
-                background-color: #ffffff; color: #1e293b; border: 1px solid #cbd5e1;
-                border-radius: 6px; padding: 0 4px; font-weight: 600; font-size: 12px; min-height: 28px;
+                background-color: #ffffff; color: #334155; border: 1px solid #cbd5e1;
+                border-radius: 6px; padding: 0 14px; font-weight: 600; font-size: 13.5px; min-height: 34px; max-height: 34px;
+                text-align: center;
             }
             QPushButton.action-btn:hover {
                 background-color: #f8fafc; border-color: #0284c7; color: #0284c7;
             }
-            QPushButton.action-btn#btnRefresh {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #059669, stop:1 #10b981);
-                border: none; color: #ffffff; font-size: 12px; font-weight: 700; padding: 0 4px;
+            QPushButton.action-btn:pressed {
+                background-color: #f1f5f9;
             }
-            QPushButton.action-btn#btnRefresh:hover { opacity: 0.9; }
-            
-            QPushButton.action-btn#btnSearch {
-                background-color: #ffffff; color: #1e293b; border: 1px solid #cbd5e1;
+
+            /* 次级功能操作按钮 (统一 30px 高度，字号 12.5px 加粗，圆角 6px，精致科技风) */
+            QPushButton.sub-action-btn {
+                background-color: #ffffff; color: #334155; border: 1px solid #cbd5e1;
+                border-radius: 6px; padding: 0 12px; font-weight: 600; font-size: 12.5px; min-height: 30px; max-height: 30px;
+                text-align: center;
             }
-            QPushButton.action-btn#btnSearch:hover {
-                background-color: #f8fafc; border-color: #0284c7; color: #0284c7;
+            QPushButton.sub-action-btn:hover {
+                background-color: #f1f5f9; border-color: #0284c7; color: #0284c7;
             }
-            
-            /* 分割线与三栏背景容器 (自由拖拽手柄：精致 3px 极细设计) */
+            QPushButton.sub-action-btn:pressed {
+                background-color: #e2e8f0;
+            }
+
+            /* 分割线与三栏背景容器 (自由拖拽手柄：精致 3px 极细科技设计) */
             QSplitter::handle:horizontal {
                 background-color: #e2e8f0; width: 3px; margin: 0px; border-radius: 1px;
             }
             QSplitter::handle:horizontal:hover {
-                background-color: #0ea5e9;
+                background-color: #0284c7;
             }
             QFrame.panel-card {
-                background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px;
+                background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px;
             }
-            
-            /* App Source DOM 树形视图 (紧凑层级排版 + 底部横向拖动条) */
+
+            /* App Source DOM 树形视图 (紧凑层级排版 + 科技高亮) */
             QTreeWidget {
                 background-color: #ffffff; border: 1px solid #e2e8f0;
-                border-radius: 8px; padding: 4px; color: #0f172a; font-family: Consolas, monospace;
-                font-size: 12px;
+                border-radius: 6px; padding: 4px; color: #0f172a;
+                font-family: 'JetBrains Mono', Consolas, monospace; font-size: 12px;
             }
             QTreeWidget::item {
                 min-height: 22px; padding: 1px 4px; border-radius: 4px; margin-bottom: 1px;
             }
             QTreeWidget::item:hover {
-                background-color: #f1f5f9;
-                border: 1px solid #cbd5e1;
+                background-color: #f1f5f9; border: 1px solid #cbd5e1;
             }
             QTreeWidget::item:selected, QTreeWidget::item:selected:active, QTreeWidget::item:selected:!active {
                 background-color: rgba(2, 132, 199, 0.08);
                 border: 1px dashed #38bdf8;
             }
-            
+
             /* 现代轻奢极细拖动条 (4px 极薄透明轨道，现代精简质感) */
             QScrollBar:horizontal {
                 background: transparent; height: 4px; margin: 0px; border: none;
@@ -5791,31 +8357,32 @@ class HarmonyAppiumInspector(QMainWindow):
             QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
                 background: none; width: 0px; height: 0px; border: none;
             }
-            
+
             /* 属性表格 */
             QTableWidget {
                 background-color: #ffffff; border: 1px solid #e2e8f0;
-                border-radius: 8px; gridline-color: #f1f5f9; color: #0f172a;
+                border-radius: 6px; gridline-color: #f1f5f9; color: #0f172a;
+                font-size: 12px;
             }
             QHeaderView::section {
                 background-color: #f8fafc; color: #475569; border: none;
-                border-bottom: 1px solid #e2e8f0; padding: 8px 10px; font-weight: 700;
+                border-bottom: 1px solid #e2e8f0; padding: 6px 10px; font-weight: 700; font-size: 11px;
             }
-            
-            /* 定位器复制输入框：去除过大垂直 padding，提供充足垂直渲染高度 */
+
+            /* 统一文本输入框 */
             QLineEdit {
                 background-color: #ffffff; border: 1px solid #cbd5e1;
                 border-radius: 6px; padding: 2px 10px; color: #0f172a;
-                font-family: 'Segoe UI', 'PingFang SC', Consolas, sans-serif; font-size: 13px;
+                font-family: 'Segoe UI', -apple-system, sans-serif; font-size: 12px;
                 selection-background-color: #0284c7; selection-color: #ffffff;
             }
             QLineEdit:focus { border: 1px solid #0284c7; }
-            
+
             /* 面包屑导航栏：支持多行舒展展示 */
             QLabel#breadcrumb {
                 background-color: #f8fafc; border: 1px solid #e2e8f0;
-                border-radius: 6px; padding: 8px 12px; color: #0284c7;
-                font-family: 'Segoe UI', 'PingFang SC', Consolas, sans-serif; font-size: 12px;
+                border-radius: 6px; padding: 6px 12px; color: #0284c7;
+                font-family: 'JetBrains Mono', Consolas, monospace; font-size: 11px;
                 line-height: 1.4;
             }
         """)
@@ -5843,48 +8410,56 @@ class HarmonyAppiumInspector(QMainWindow):
         brand_layout.setSpacing(6)
 
         lbl_logo = QLabel()
-        lbl_logo.setPixmap(create_modern_app_icon().pixmap(24, 24))
+        lbl_logo.setPixmap(create_modern_app_icon().pixmap(28, 28))
+        lbl_logo.setAlignment(Qt.AlignmentFlag.AlignVCenter)
         brand_layout.addWidget(lbl_logo)
 
         lbl_brand = QLabel("三条 UI 审查器")
         lbl_brand.setObjectName("topBrand")
+        lbl_brand.setAlignment(Qt.AlignmentFlag.AlignVCenter)
         brand_layout.addWidget(lbl_brand)
 
         self.lbl_platform_badge = QLabel("HarmonyOS")
         self.lbl_platform_badge.setObjectName("platformBadge")
+        self.lbl_platform_badge.setAlignment(Qt.AlignmentFlag.AlignVCenter)
         brand_layout.addWidget(self.lbl_platform_badge)
+        brand_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
         top_layout.addWidget(brand_widget)
 
         top_layout.addSpacing(6)
 
         # 设备选择器
         lbl_dev = QLabel("设备:")
-        lbl_dev.setStyleSheet("color: #64748b; font-weight: 600; font-size: 12px;")
+        lbl_dev.setStyleSheet("color: #64748b; font-weight: 600; font-size: 13px;")
         top_layout.addWidget(lbl_dev)
 
-        self.combo_devices = QComboBox()
-        self.combo_devices.setFixedHeight(30)
+        self.combo_devices = DeviceComboBox()
+        self.combo_devices.setFixedHeight(34)
         self.combo_devices.setFixedWidth(380)  # 固定 380px 黄金规整宽度，杜绝随文本内容无限撑大
         self.combo_devices.setCursor(Qt.CursorShape.PointingHandCursor)
         self.combo_devices.currentIndexChanged.connect(self.on_device_changed)
         top_layout.addWidget(self.combo_devices)
 
-        self.btn_refresh_devices = QPushButton("🔄")
+        self.btn_refresh_devices = QPushButton()
+        self.btn_refresh_devices.setIcon(get_tech_icon("refresh", "#0284c7"))
+        self.btn_refresh_devices.setIconSize(QSize(18, 18))
         self.btn_refresh_devices.setToolTip("点击获取并刷新当前已连接的设备列表")
         self.btn_refresh_devices.setProperty("class", "action-btn")
-        self.btn_refresh_devices.setFixedSize(30, 30)
+        self.btn_refresh_devices.setFixedSize(34, 34)
         self.btn_refresh_devices.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_refresh_devices.clicked.connect(self.refresh_devices_action)
         top_layout.addWidget(self.btn_refresh_devices)
 
         top_layout.addSpacing(6)
 
-        # 统一主要操作按键规格 (100px × 30px)
-        BTN_W = 100
-        BTN_H = 30
+        # 统一主要操作按键规格 (112px × 34px，字号 13.5px 加粗，图标 16x16 极客饱满)
+        BTN_W = 112
+        BTN_H = 34
 
-        # 模式切换分段按钮 (100x30 统一规格)
-        self.btn_mode_select = QPushButton("🎯 元素审查")
+        # 模式切换分段按钮 (112x34 统一规格，矢量图标)
+        self.btn_mode_select = QPushButton("元素审查")
+        self.btn_mode_select.setIcon(get_tech_icon("target", "#ffffff"))
+        self.btn_mode_select.setIconSize(QSize(16, 16))
         self.btn_mode_select.setProperty("class", "mode-btn")
         self.btn_mode_select.setFixedSize(BTN_W, BTN_H)
         self.btn_mode_select.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -5893,7 +8468,9 @@ class HarmonyAppiumInspector(QMainWindow):
         self.btn_mode_select.clicked.connect(lambda: self.switch_mode(InspectorMode.SELECT))
         top_layout.addWidget(self.btn_mode_select)
 
-        self.btn_mode_tap = QPushButton("👆 坐标点击")
+        self.btn_mode_tap = QPushButton("坐标点击")
+        self.btn_mode_tap.setIcon(get_tech_icon("tap", "#475569"))
+        self.btn_mode_tap.setIconSize(QSize(16, 16))
         self.btn_mode_tap.setProperty("class", "mode-btn")
         self.btn_mode_tap.setFixedSize(BTN_W, BTN_H)
         self.btn_mode_tap.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -5903,28 +8480,47 @@ class HarmonyAppiumInspector(QMainWindow):
 
         top_layout.addSpacing(6)
 
-
-
-
-
-        btn_search_modal = QPushButton("🔎 查找元素")
+        btn_search_modal = QPushButton("查找元素")
+        btn_search_modal.setIcon(get_tech_icon("search", "#0284c7"))
+        btn_search_modal.setIconSize(QSize(16, 16))
         btn_search_modal.setProperty("class", "action-btn")
         btn_search_modal.setObjectName("btnSearch")
         btn_search_modal.setFixedSize(BTN_W, BTN_H)
         btn_search_modal.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_search_modal.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         btn_search_modal.clicked.connect(self.open_search_dialog)
         top_layout.addWidget(btn_search_modal)
 
+        top_layout.addSpacing(6)
+
+        # iOS WDA 服务控制按钮 (仅选择 iOS 设备时显示)
+        self.btn_ios_service = QPushButton("启动服务")
+        self.btn_ios_service.setObjectName("btnIosService")
+        self.btn_ios_service.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # 严格隔离焦点：被 disabled 禁用或切换时绝不向外部或设备下拉框转移焦点
+        self.btn_ios_service.setIcon(get_tech_icon("play", "#475569"))
+        self.btn_ios_service.setIconSize(QSize(16, 16))
+        self.btn_ios_service.setFixedSize(BTN_W, BTN_H)
+        self.btn_ios_service.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_ios_service.clicked.connect(self.on_ios_service_btn_clicked)
+        self.btn_ios_service.hide()  # 默认隐藏，只有选择 iOS 设备时才显示
+        top_layout.addWidget(self.btn_ios_service)
+
+        self.spinner_ios_service = ButtonSpinner(self.btn_ios_service, "refresh", "#0284c7")
+
         top_layout.addStretch()
 
-        btn_copy_xml = QPushButton("📋 复制源码")
+        btn_copy_xml = QPushButton("复制源码")
+        btn_copy_xml.setIcon(get_tech_icon("copy", "#475569"))
+        btn_copy_xml.setIconSize(QSize(16, 16))
         btn_copy_xml.setProperty("class", "action-btn")
         btn_copy_xml.setFixedSize(BTN_W, BTN_H)
         btn_copy_xml.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_copy_xml.clicked.connect(self.copy_xml_source)
         top_layout.addWidget(btn_copy_xml)
 
-        btn_save_shot = QPushButton("💾 保存截图")
+        btn_save_shot = QPushButton("保存截图")
+        btn_save_shot.setIcon(get_tech_icon("save", "#475569"))
+        btn_save_shot.setIconSize(QSize(16, 16))
         btn_save_shot.setProperty("class", "action-btn")
         btn_save_shot.setFixedSize(BTN_W, BTN_H)
         btn_save_shot.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -5949,50 +8545,54 @@ class HarmonyAppiumInspector(QMainWindow):
         left_layout.setSpacing(10)
 
         left_header = QHBoxLayout()
-        lbl_left_title = QLabel("📱 设备真机画面")
-        lbl_left_title.setStyleSheet("color: #475569; font-weight: 700; font-size: 13px;")
+        left_header.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+        lbl_left_title = QLabel("真机实时视窗")
+        lbl_left_title.setStyleSheet("color: #334155; font-weight: 700; font-size: 13.5px;")
         left_header.addWidget(lbl_left_title)
         left_header.addSpacing(8)
 
-        # 实时投屏控制按钮 (默认未开启状态: False)
-        self.btn_screencast = QPushButton("📺 开启实时投屏")
+        # 统一副操作按键规格 (100px × 30px，字号 12.5px 加粗，图标 15x15 垂直微调居中)
+        SUB_BTN_W = 100
+
+        # 实时投屏控制按钮
+        self.btn_screencast = QPushButton("实时投屏")
+        self.btn_screencast.setIcon(get_tech_icon("cast", "#0284c7"))
+        self.btn_screencast.setIconSize(QSize(15, 15))
+        self.btn_screencast.setFixedSize(SUB_BTN_W, 30)
         self.btn_screencast.setToolTip("切换真机低延迟实时投屏 (0 截屏广播，完全不触发软件内部截屏通知)")
-        self.btn_screencast.setFixedHeight(24)
+        self.btn_screencast.setProperty("class", "sub-action-btn")
         self.btn_screencast.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_screencast.setStyleSheet(
-            "QPushButton { background: #eff6ff; border: 1px solid #93c5fd; border-radius: 4px; "
-            "color: #1d4ed8; font-size: 11px; font-weight: 600; padding: 2px 8px; } "
-            "QPushButton:hover { background: #dbeafe; border-color: #60a5fa; }"
-        )
         self.btn_screencast.clicked.connect(self.toggle_screencast)
         left_header.addWidget(self.btn_screencast)
         left_header.addSpacing(6)
 
-        self.btn_sync_screen = QPushButton("⚡ 同步真机画面")
+        self.btn_sync_screen = QPushButton("同步画面")
+        self.btn_sync_screen.setIcon(get_tech_icon("sync", "#0284c7"))
+        self.btn_sync_screen.setIconSize(QSize(15, 15))
+        self.btn_sync_screen.setFixedSize(SUB_BTN_W, 30)
         self.btn_sync_screen.setToolTip("仅极速拉取真机最新画面 (0.05s)，与投屏即刻保持一致")
-        self.btn_sync_screen.setFixedHeight(24)
+        self.btn_sync_screen.setProperty("class", "sub-action-btn")
         self.btn_sync_screen.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_sync_screen.setStyleSheet(
-            "QPushButton { background: #f0fdf4; border: 1px solid #86efac; border-radius: 4px; "
-            "color: #166534; font-size: 11px; font-weight: 600; padding: 2px 8px; } "
-            "QPushButton:hover { background: #dcfce7; border-color: #4ade80; }"
-        )
         self.btn_sync_screen.clicked.connect(self.refresh_screen_only)
         left_header.addWidget(self.btn_sync_screen)
         left_header.addSpacing(6)
 
-        # 刷新界面按钮 (仅刷新 DOM 树，保留当前画面底图)
-        self.btn_refresh = QPushButton("🔄 刷新界面")
+        # 刷新界面按钮
+        self.btn_refresh = QPushButton("刷新界面")
+        self.btn_refresh.setIcon(get_tech_icon("refresh", "#0284c7"))
+        self.btn_refresh.setIconSize(QSize(15, 15))
+        self.btn_refresh.setFixedSize(SUB_BTN_W, 30)
         self.btn_refresh.setToolTip("仅刷新 DOM 控件树，保留当前画面底图")
-        self.btn_refresh.setFixedHeight(24)
+        self.btn_refresh.setProperty("class", "sub-action-btn")
         self.btn_refresh.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_refresh.setStyleSheet(
-            "QPushButton { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px; "
-            "color: #334155; font-size: 11px; font-weight: 600; padding: 2px 8px; } "
-            "QPushButton:hover { background: #f1f5f9; border-color: #94a3b8; }"
-        )
         self.btn_refresh.clicked.connect(self.refresh_screen_and_dom)
         left_header.addWidget(self.btn_refresh)
+
+        # 实例化专属 Loading 转圈动画控制器 (无沙漏 emoji，原位 360° 平滑转圈)
+        self.spinner_dev_refresh = ButtonSpinner(self.btn_refresh_devices, "refresh", "#0284c7")
+        self.spinner_screencast = ButtonSpinner(self.btn_screencast, "cast", "#0284c7")
+        self.spinner_sync = ButtonSpinner(self.btn_sync_screen, "sync", "#0284c7")
+        self.spinner_refresh = ButtonSpinner(self.btn_refresh, "refresh", "#0284c7")
 
         left_header.addStretch()
         left_layout.addLayout(left_header)
@@ -6015,32 +8615,42 @@ class HarmonyAppiumInspector(QMainWindow):
         mid_layout.setSpacing(10)
 
         tree_header = QHBoxLayout()
-        lbl_mid_title = QLabel("🌳 DOM 组件层级树 (App Source)")
-        lbl_mid_title.setStyleSheet("color: #475569; font-weight: 700; font-size: 13px;")
+        tree_header.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+        lbl_mid_title = QLabel("ArkUI 组件层级树")
+        lbl_mid_title.setStyleSheet("color: #334155; font-weight: 700; font-size: 13.5px;")
         tree_header.addWidget(lbl_mid_title)
         tree_header.addStretch()
 
-        btn_search_dom = QPushButton("🔍 搜索 (Ctrl+F)")
+        btn_search_dom = QPushButton("搜索 (Ctrl+F)")
+        btn_search_dom.setIcon(get_tech_icon("search", "#0284c7"))
+        btn_search_dom.setIconSize(QSize(15, 15))
+        btn_search_dom.setFixedHeight(30)
+        btn_search_dom.setProperty("class", "sub-action-btn")
         btn_search_dom.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_search_dom.setStyleSheet("padding: 4px 10px; font-size: 11px; background-color: #f0fdf4; border: 1px solid #86efac; border-radius: 4px; color: #166534; font-weight: 600;")
         btn_search_dom.clicked.connect(self.toggle_dom_search)
         tree_header.addWidget(btn_search_dom)
 
         btn_expand = QPushButton("展开全部")
+        btn_expand.setIcon(get_tech_icon("expand", "#475569"))
+        btn_expand.setIconSize(QSize(14, 14))
+        btn_expand.setFixedHeight(30)
+        btn_expand.setProperty("class", "sub-action-btn")
         btn_expand.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_expand.setStyleSheet("padding: 4px 10px; font-size: 11px; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; color: #334155;")
         btn_expand.clicked.connect(lambda: self.tree_widget.expandAll())
         tree_header.addWidget(btn_expand)
 
         btn_collapse = QPushButton("折叠全部")
+        btn_collapse.setIcon(get_tech_icon("collapse", "#475569"))
+        btn_collapse.setIconSize(QSize(14, 14))
+        btn_collapse.setFixedHeight(30)
+        btn_collapse.setProperty("class", "sub-action-btn")
         btn_collapse.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_collapse.setStyleSheet("padding: 4px 10px; font-size: 11px; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; color: #334155;")
         btn_collapse.clicked.connect(lambda: self.tree_widget.collapseAll())
         tree_header.addWidget(btn_collapse)
         mid_layout.addLayout(tree_header)
 
         # 面包屑路径 (开启自动换行，绝不单行截断溢出)
-        self.lbl_breadcrumb = QLabel("📍 路径: Hierarchy (根节点)")
+        self.lbl_breadcrumb = QLabel("路径: Hierarchy (根节点)")
         self.lbl_breadcrumb.setObjectName("breadcrumb")
         self.lbl_breadcrumb.setWordWrap(True)
         mid_layout.addWidget(self.lbl_breadcrumb)
@@ -6060,8 +8670,9 @@ class HarmonyAppiumInspector(QMainWindow):
         search_layout.setContentsMargins(4, 3, 4, 3)
         search_layout.setSpacing(6)
 
-        lbl_s_icon = QLabel("🔍")
-        lbl_s_icon.setStyleSheet("font-size: 12px; background: transparent; border: none;")
+        lbl_s_icon = QLabel()
+        lbl_s_icon.setPixmap(get_tech_icon("search", "#0284c7").pixmap(14, 14))
+        lbl_s_icon.setStyleSheet("background: transparent; border: none;")
         search_layout.addWidget(lbl_s_icon)
 
         self.edit_dom_search = QLineEdit()
@@ -6069,14 +8680,14 @@ class HarmonyAppiumInspector(QMainWindow):
         self.edit_dom_search.setStyleSheet("""
             QLineEdit {
                 background: #ffffff;
-                border: 1px solid #bbf7d0;
+                border: 1px solid #cbd5e1;
                 border-radius: 4px;
                 padding: 3px 8px;
                 font-size: 12px;
-                color: #1e293b;
+                color: #0f172a;
             }
             QLineEdit:focus {
-                border: 1px solid #22c55e;
+                border: 1px solid #0284c7;
             }
         """)
         self.edit_dom_search.textChanged.connect(self.on_dom_search_text_changed)
@@ -6161,14 +8772,14 @@ class HarmonyAppiumInspector(QMainWindow):
         search_layout.addWidget(self.btn_match_regex)
 
         self.lbl_dom_search_count = QLabel("0/0")
-        self.lbl_dom_search_count.setStyleSheet("color: #15803d; font-weight: 700; font-size: 11px; min-width: 40px; background: transparent; border: none;")
+        self.lbl_dom_search_count.setStyleSheet("color: #0284c7; font-weight: 700; font-size: 11px; min-width: 40px; background: transparent; border: none;")
         search_layout.addWidget(self.lbl_dom_search_count)
 
         btn_prev_match = QPushButton("↑")
         btn_prev_match.setToolTip("上一个匹配项 (Shift+Enter)")
         btn_prev_match.setFixedSize(24, 24)
         btn_prev_match.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_prev_match.setStyleSheet("QPushButton { background: #dcfce7; border: 1px solid #86efac; border-radius: 4px; color: #166534; font-weight: bold; font-size: 13px; } QPushButton:hover { background: #bbf7d0; }")
+        btn_prev_match.setStyleSheet("QPushButton { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; color: #0284c7; font-weight: bold; font-size: 12px; } QPushButton:hover { background: #e0f2fe; border-color: #0284c7; }")
         btn_prev_match.clicked.connect(self.on_dom_search_prev)
         search_layout.addWidget(btn_prev_match)
 
@@ -6176,7 +8787,7 @@ class HarmonyAppiumInspector(QMainWindow):
         btn_next_match.setToolTip("下一个匹配项 (Enter)")
         btn_next_match.setFixedSize(24, 24)
         btn_next_match.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_next_match.setStyleSheet("QPushButton { background: #dcfce7; border: 1px solid #86efac; border-radius: 4px; color: #166534; font-weight: bold; font-size: 13px; } QPushButton:hover { background: #bbf7d0; }")
+        btn_next_match.setStyleSheet("QPushButton { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; color: #0284c7; font-weight: bold; font-size: 12px; } QPushButton:hover { background: #e0f2fe; border-color: #0284c7; }")
         btn_next_match.clicked.connect(self.on_dom_search_next)
         search_layout.addWidget(btn_next_match)
 
@@ -6211,8 +8822,8 @@ class HarmonyAppiumInspector(QMainWindow):
         header_bar_layout.addWidget(lbl_tree_title)
 
         self.chk_show_occluded = QCheckBox("显示被遮挡元素")
-        self.chk_show_occluded.setChecked(True)
-        self.chk_show_occluded.setToolTip("勾选展示被遮挡/未暴露的 DOM 树元素，取消勾选则隐藏")
+        self.chk_show_occluded.setChecked(False)
+        self.chk_show_occluded.setToolTip("默认隐藏看不见/被遮挡的底层元素；勾选后可查看被遮挡或隐藏的元素")
         self.chk_show_occluded.setCursor(Qt.CursorShape.PointingHandCursor)
         self.chk_show_occluded.setStyleSheet("""
             QCheckBox {
@@ -6231,6 +8842,28 @@ class HarmonyAppiumInspector(QMainWindow):
         """)
         self.chk_show_occluded.stateChanged.connect(self.on_toggle_show_occluded)
         header_bar_layout.addWidget(self.chk_show_occluded)
+
+        self.chk_show_full_type = QCheckBox("显示原生完整类型")
+        self.chk_show_full_type.setChecked(False)
+        self.chk_show_full_type.setToolTip("开启后，iOS 将呈现 XCUIElementTypeLink 等全类名，Android 将呈现 android.widget.TextView 等全类名")
+        self.chk_show_full_type.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.chk_show_full_type.setStyleSheet("""
+            QCheckBox {
+                color: #0369a1;
+                font-size: 12px;
+                font-weight: 600;
+                background: transparent;
+            }
+            QCheckBox::indicator {
+                width: 14px;
+                height: 14px;
+            }
+            QCheckBox:hover {
+                color: #0284c7;
+            }
+        """)
+        self.chk_show_full_type.stateChanged.connect(self.on_toggle_show_full_type)
+        header_bar_layout.addWidget(self.chk_show_full_type)
         header_bar_layout.addStretch()
 
         self.tree_widget.itemClicked.connect(self.on_tree_item_clicked)
@@ -6261,8 +8894,8 @@ class HarmonyAppiumInspector(QMainWindow):
         sync_layout.setContentsMargins(10, 8, 10, 8)
         sync_layout.setSpacing(6)
 
-        lbl_sync_title = QLabel("✍️ 输入框内容实时同步编辑框 (实时同步至真机与 DOM)")
-        lbl_sync_title.setStyleSheet("color: #166534; font-weight: 700; font-size: 12px; border: none; background: transparent;")
+        lbl_sync_title = QLabel("输入框实时调试与下发")
+        lbl_sync_title.setStyleSheet("color: #0284c7; font-weight: 700; font-size: 12px; border: none; background: transparent;")
         sync_layout.addWidget(lbl_sync_title)
 
         row_sync = QHBoxLayout()
@@ -6276,30 +8909,31 @@ class HarmonyAppiumInspector(QMainWindow):
         self.edit_live_input.returnPressed.connect(self.sync_live_input)
         row_sync.addWidget(self.edit_live_input, 1)
 
-        self.btn_sync_send = QPushButton("🚀 实时同步")
+        self.btn_sync_send = QPushButton("实时下发")
+        self.btn_sync_send.setIcon(get_tech_icon("send", "#ffffff"))
+        self.btn_sync_send.setIconSize(QSize(13, 13))
         self.btn_sync_send.setFixedHeight(30)
-        self.btn_sync_send.setFixedWidth(78)
+        self.btn_sync_send.setFixedWidth(84)
         self.btn_sync_send.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_sync_send.setStyleSheet(
-            "background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #16a34a, stop:1 #22c55e); "
-            "color: #ffffff; font-weight: 700; border: none; border-radius: 5px; font-size: 11px; padding: 0 4px;"
+            "background-color: #0284c7; color: #ffffff; font-weight: 700; border: none; border-radius: 5px; font-size: 11px; padding: 0 4px;"
         )
         self.btn_sync_send.clicked.connect(self.sync_live_input)
         row_sync.addWidget(self.btn_sync_send)
 
-        self.btn_sync_clear = QPushButton("🧹 清空")
+        self.btn_sync_clear = QPushButton("清空")
+        self.btn_sync_clear.setIcon(get_tech_icon("clear", "#475569"))
+        self.btn_sync_clear.setIconSize(QSize(13, 13))
         self.btn_sync_clear.setFixedHeight(30)
-        self.btn_sync_clear.setFixedWidth(54)
+        self.btn_sync_clear.setFixedWidth(60)
         self.btn_sync_clear.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_sync_clear.setStyleSheet(
-            "background-color: #ffffff; color: #475569; border: 1px solid #cbd5e1; "
-            "border-radius: 5px; font-weight: 600; font-size: 11px;"
+            "background-color: #ffffff; color: #475569; border: 1px solid #cbd5e1; border-radius: 5px; font-weight: 600; font-size: 11px;"
         )
         self.btn_sync_clear.clicked.connect(self.action_element_clear)
         row_sync.addWidget(self.btn_sync_clear)
 
         sync_layout.addLayout(row_sync)
-        # 初始默认隐藏，仅在选中输入框/文本框时动态显现
         self.input_sync_box.setVisible(False)
         right_layout.addWidget(self.input_sync_box)
 
@@ -6315,7 +8949,7 @@ class HarmonyAppiumInspector(QMainWindow):
         loc_layout.setContentsMargins(10, 8, 10, 8)
         loc_layout.setSpacing(6)
 
-        lbl_loc_title = QLabel("🚀 自动化定位代码推荐 (一键复制到 Page Object)")
+        lbl_loc_title = QLabel("自动化定位代码推荐 (一键复用)")
         lbl_loc_title.setStyleSheet("color: #0284c7; font-weight: 700; font-size: 12px; border: none; background: transparent;")
         loc_layout.addWidget(lbl_loc_title)
 
@@ -6326,22 +8960,24 @@ class HarmonyAppiumInspector(QMainWindow):
 
         def _create_loc_row(label_text: str, placeholder: str, row_idx: int):
             lbl = QLabel(label_text)
-            lbl.setFixedWidth(46)
+            lbl.setFixedWidth(56)
             lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            lbl.setStyleSheet("color: #475569; font-weight: 700; font-size: 11px; font-family: Consolas, monospace; border: none; background: transparent;")
+            lbl.setStyleSheet("color: #475569; font-weight: 700; font-size: 11px; font-family: 'JetBrains Mono', Consolas, monospace; border: none; background: transparent;")
 
             txt = QLineEdit()
             txt.setFixedHeight(30)
             txt.setReadOnly(True)
-            txt.setStyleSheet("font-size: 12px; padding: 2px 8px;")
+            txt.setStyleSheet("font-size: 12px; padding: 2px 8px; font-family: 'JetBrains Mono', Consolas, monospace;")
             txt.setPlaceholderText(placeholder)
 
             btn = QPushButton("复制")
+            btn.setIcon(get_tech_icon("copy", "#0284c7"))
+            btn.setIconSize(QSize(13, 13))
             btn.setFixedHeight(30)
-            btn.setFixedWidth(54)
+            btn.setFixedWidth(64)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setStyleSheet(
-                "QPushButton { background-color: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; border-radius: 5px; font-weight: 700; font-size: 11px; }"
+                "QPushButton { background-color: #ffffff; color: #0284c7; border: 1px solid #bae6fd; border-radius: 5px; font-weight: 700; font-size: 11px; }"
                 "QPushButton:hover { background-color: #0284c7; color: #ffffff; border-color: #0284c7; }"
             )
             btn.clicked.connect(lambda: self.copy_to_clip(txt.text()))
@@ -6353,14 +8989,16 @@ class HarmonyAppiumInspector(QMainWindow):
 
         self.txt_loc_id = _create_loc_row("id", "ID 定位代码: (该元素无 ID)", 0)
         self.txt_loc_xpath = _create_loc_row("xpath", "XPath 表达式", 1)
-        self.txt_loc_py = _create_loc_row("python", "Python 语句", 2)
+        self.txt_loc_predicate = _create_loc_row("predicate", "iOS Predicate 谓词表达式", 2)
+        self.txt_loc_class_chain = _create_loc_row("chain", "iOS Class Chain 类链表达式", 3)
+        self.txt_loc_py = _create_loc_row("python", "Python 语句", 4)
 
         loc_layout.addLayout(grid_loc)
         right_layout.addWidget(loc_box)
 
         # 详细属性表 (优化默认行高与文本展示，消除上下截断)
-        lbl_attr_header = QLabel("📋 详细属性清单 (Attributes)")
-        lbl_attr_header.setStyleSheet("color: #475569; font-weight: 700; margin-top: 4px;")
+        lbl_attr_header = QLabel("详细属性清单 (Attributes)")
+        lbl_attr_header.setStyleSheet("color: #334155; font-weight: 700; font-size: 13px; margin-top: 4px;")
         right_layout.addWidget(lbl_attr_header)
 
         self.table_attrs = QTableWidget()
@@ -6393,10 +9031,9 @@ class HarmonyAppiumInspector(QMainWindow):
 
         if hasattr(self, "btn_refresh_devices"):
             self.btn_refresh_devices.setEnabled(False)
-            self.btn_refresh_devices.setText("⏳")
 
         if self.combo_devices.count() == 0:
-            self.combo_devices.addItem("🔍 正在秒级扫描连接设备...", None)
+            self.combo_devices.addItem("正在扫描已连接设备...", None)
 
         self.scan_worker = DeviceScanWorker()
         self.scan_worker.devices_ready.connect(lambda devs: self._on_devices_scanned(devs, auto_capture))
@@ -6404,17 +9041,20 @@ class HarmonyAppiumInspector(QMainWindow):
 
     def _on_devices_scanned(self, devices: List[Dict[str, Any]], auto_capture: bool):
         """异步扫描完成后的主线程无缝回调与智能设备选中"""
+        if hasattr(self, "spinner_dev_refresh"):
+            self.spinner_dev_refresh.stop()
         if hasattr(self, "btn_refresh_devices"):
             self.btn_refresh_devices.setEnabled(True)
-            self.btn_refresh_devices.setText("🔄")
 
         self.combo_devices.blockSignals(True)
         self.combo_devices.clear()
 
         if devices:
             target_index = -1
+            item_texts = []
             for idx, dev in enumerate(devices):
                 item_text = f"[{dev['platform'].upper()}] {dev['name']}"
+                item_texts.append(item_text)
                 self.combo_devices.addItem(item_text, dev)
                 self.combo_devices.setItemData(idx, f"序列号 (UDID): {dev['udid']}\n机型描述: {dev['name']}", Qt.ItemDataRole.ToolTipRole)
                 if dev["udid"] == self.current_udid:
@@ -6423,6 +9063,7 @@ class HarmonyAppiumInspector(QMainWindow):
             if target_index >= 0:
                 self.combo_devices.setCurrentIndex(target_index)
                 self.combo_devices.setToolTip(f"当前选中设备 UDID: {self.current_udid}")
+                self.update_platform_badge()
                 self.combo_devices.blockSignals(False)
             else:
                 first = devices[0]
@@ -6453,7 +9094,9 @@ class HarmonyAppiumInspector(QMainWindow):
             self.combo_devices.blockSignals(False)
 
     def refresh_devices_action(self):
-        """用户点击 [🔄] 按钮，异步扫描并刷新当前真实在线设备列表"""
+        """用户点击 [🔄] 按钮，原位图标启动 Loading 360°顺滑转圈，绝无多余按钮与沙漏"""
+        if hasattr(self, "spinner_dev_refresh"):
+            self.spinner_dev_refresh.start()
         self.load_device_list(auto_capture=False)
 
     def on_device_changed(self, index: int):
@@ -6462,11 +9105,26 @@ class HarmonyAppiumInspector(QMainWindow):
             new_udid = dev.get("udid", "")
             new_plat = dev.get("platform", "harmony")
             self.combo_devices.setToolTip(f"当前选中设备 UDID: {new_udid}")
+
+            # 切换或选中 iOS 设备时，立即主动检测服务状态并更新按钮
+            if new_plat == "ios":
+                if hasattr(self, "btn_ios_service"):
+                    self.btn_ios_service.show()
+                    self.refresh_ios_service_status()
+            else:
+                if hasattr(self, "btn_ios_service"):
+                    self.btn_ios_service.hide()
+
             if new_udid != self.current_udid or new_plat != self.current_platform:
                 was_screencasting = self.is_screencasting
                 if self.screencast_worker:
+                    old_worker = self.screencast_worker
                     self.stop_screencast()
-                # 换机隔离：彻底清空全量内存投屏帧缓存与前台画布，杜绝跨设备旧画面残留
+                    if old_worker.isRunning():
+                        old_worker.wait(800)
+                # 换机隔离：强力终结旧设备所有残留端口中继 (8100/9100)、释放 RSD 隧道并清理内存帧
+                IosWdaManager.kill_relays()
+                ScreenCastWorker.release_all_tunnels()
                 ScreenCastWorker.clear_cache()
                 self.current_screenshot_path = ""
                 if hasattr(self, "canvas") and self.canvas is not None:
@@ -6475,31 +9133,192 @@ class HarmonyAppiumInspector(QMainWindow):
                 self.current_platform = new_plat
                 self.update_platform_badge()
                 if was_screencasting:
-                    QTimer.singleShot(150, self.start_screencast)
-                    QTimer.singleShot(850, self.refresh_screen_only)
+                    QTimer.singleShot(400, self.start_screencast)
+                    QTimer.singleShot(1100, self.refresh_screen_only)
                 else:
                     QTimer.singleShot(350, self.refresh_screen_only)
 
     def update_platform_badge(self):
-        """动态更新顶部品牌栏的系统类型胶囊徽章"""
+        """动态更新顶部品牌栏的系统类型胶囊徽章与平台专属控件显隐"""
         if self.current_platform == "harmony":
             self.lbl_platform_badge.setText("HarmonyOS NEXT")
             self.lbl_platform_badge.setStyleSheet(
                 "background-color: #e0f2fe; color: #0284c7; font-weight: 700; "
                 "font-size: 11px; padding: 2px 8px; border-radius: 4px; border: 1px solid #bae6fd;"
             )
+            if hasattr(self, "btn_ios_service"):
+                self.btn_ios_service.hide()
         elif self.current_platform == "android":
             self.lbl_platform_badge.setText("Android")
             self.lbl_platform_badge.setStyleSheet(
                 "background-color: #dcfce7; color: #16a34a; font-weight: 700; "
                 "font-size: 11px; padding: 2px 8px; border-radius: 4px; border: 1px solid #bbf7d0;"
             )
+            if hasattr(self, "btn_ios_service"):
+                self.btn_ios_service.hide()
         elif self.current_platform == "ios":
             self.lbl_platform_badge.setText("iOS")
             self.lbl_platform_badge.setStyleSheet(
                 "background-color: #f1f5f9; color: #334155; font-weight: 700; "
                 "font-size: 11px; padding: 2px 8px; border-radius: 4px; border: 1px solid #cbd5e1;"
             )
+            if hasattr(self, "btn_ios_service"):
+                self.btn_ios_service.show()
+                self.refresh_ios_service_status()
+
+    def refresh_ios_service_status(self, force_state: Optional[str] = None):
+        """
+        根据底层核心服务运行状态或指定状态动态更新按钮呈现：
+        1. running (两者均运行): 文本【正在运行】，背景翠绿高亮；
+        2. abnormal (仅单服务存活): 文本【重启服务】，背景警告橙黄 (异常状态)；
+        3. stopped (均未运行): 文本【启动服务】，背景白色半透明。
+        """
+        if not hasattr(self, "btn_ios_service"):
+            return
+        if force_state is None and getattr(self, "_ios_service_running_action", False):
+            return  # 异步任务执行中保持 Loading 态，避免状态抖动
+
+        if force_state in ("running", "abnormal", "stopped"):
+            target_state = force_state
+        else:
+            is_xcuitest, is_forward = check_ios_wda_services()
+            if is_xcuitest and is_forward:
+                target_state = "running"
+            elif is_xcuitest or is_forward:
+                target_state = "abnormal"
+            else:
+                target_state = "stopped"
+
+        if target_state == "running":
+            self._ios_service_state = "running"
+            self.btn_ios_service.setText("正在运行")
+            self.btn_ios_service.setIcon(get_tech_icon("check", "#ffffff"))
+            self.btn_ios_service.setToolTip("iOS WDA 自动化服务与 8100 端口正常运行中 (点击可一键停止服务)")
+            self.btn_ios_service.setStyleSheet("""
+                QPushButton#btnIosService {
+                    background-color: #10b981;
+                    color: #ffffff;
+                    border: 1px solid #059669;
+                    border-radius: 6px;
+                    font-weight: 600;
+                    font-size: 12px;
+                }
+                QPushButton#btnIosService:hover {
+                    background-color: #059669;
+                }
+                QPushButton#btnIosService:disabled {
+                    background-color: #6ee7b7;
+                    color: #f0fdf4;
+                }
+            """)
+        elif target_state == "abnormal":
+            self._ios_service_state = "abnormal"
+            self.btn_ios_service.setText("重启服务")
+            self.btn_ios_service.setIcon(get_tech_icon("refresh", "#ffffff"))
+            self.btn_ios_service.setToolTip("检测到仅单项子服务运行 (状态异常)，点击一键停止并重启 WDA 服务")
+            self.btn_ios_service.setStyleSheet("""
+                QPushButton#btnIosService {
+                    background-color: #f59e0b;
+                    color: #ffffff;
+                    border: 1px solid #d97706;
+                    border-radius: 6px;
+                    font-weight: 600;
+                    font-size: 12px;
+                }
+                QPushButton#btnIosService:hover {
+                    background-color: #d97706;
+                }
+                QPushButton#btnIosService:disabled {
+                    background-color: #fcd34d;
+                    color: #fffbeb;
+                }
+            """)
+        else:
+            self._ios_service_state = "stopped"
+            self.btn_ios_service.setText("启动服务")
+            self.btn_ios_service.setIcon(get_tech_icon("play", "#475569"))
+            self.btn_ios_service.setToolTip("点击一键启动 iOS WDA 守护进程与 8100 端口透传")
+            self.btn_ios_service.setStyleSheet("""
+                QPushButton#btnIosService {
+                    background-color: rgba(255, 255, 255, 0.9);
+                    color: #334155;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 6px;
+                    font-weight: 600;
+                    font-size: 12px;
+                }
+                QPushButton#btnIosService:hover {
+                    background-color: #f1f5f9;
+                    border-color: #94a3b8;
+                    color: #0f172a;
+                }
+                QPushButton#btnIosService:disabled {
+                    background-color: #f8fafc;
+                    color: #94a3b8;
+                }
+            """)
+
+    def _on_ios_service_timer_tick(self):
+        """轻量定时探活：仅在选择 iOS 设备且未执行异步任务时周期性同步状态"""
+        if self.current_platform != "ios":
+            return
+        if not hasattr(self, "btn_ios_service") or not self.btn_ios_service.isVisible():
+            return
+        if getattr(self, "_ios_service_running_action", False):
+            return
+        self.refresh_ios_service_status()
+
+    def on_ios_service_btn_clicked(self):
+        """iOS 服务控制按钮点击事件 (智能派发启动/重启或停止操作)"""
+        if getattr(self, "_ios_service_running_action", False):
+            return
+
+        if hasattr(self, "toast") and self.toast:
+            self.toast.hide()
+
+        current_state = getattr(self, "_ios_service_state", "stopped")
+
+        if current_state == "running":
+            action = "stop"
+            loading_text = "正在停止..."
+        else:
+            action = "start_or_restart"
+            loading_text = "正在启动..."
+
+        self._ios_service_running_action = True
+        self.setFocus()  # 将键盘焦点收回主窗口，彻底阻断禁用按钮引起的焦点回退至设备下拉框
+        self.btn_ios_service.setEnabled(False)
+
+        # 启动 360° Loading 转圈动画
+        if hasattr(self, "spinner_ios_service"):
+            if current_state in ("running", "abnormal"):
+                self.spinner_ios_service.icon_color = "#ffffff"
+            else:
+                self.spinner_ios_service.icon_color = "#0284c7"
+            self.spinner_ios_service.start(loading_text)
+
+        self._ios_service_worker = IosServiceActionWorker(action, parent=self)
+        self._ios_service_worker.finished_sig.connect(self._on_ios_service_action_finished)
+        self._ios_service_worker.start()
+
+    def _on_ios_service_action_finished(self, success: bool, message: str, action: str = ""):
+        """服务操作完成回调：停止转圈，直接刷新按钮状态，弹出高质感轻量 Toast 提示"""
+        self._ios_service_running_action = False
+
+        if hasattr(self, "spinner_ios_service"):
+            self.spinner_ios_service.stop(restore_text=False)
+        self.btn_ios_service.setEnabled(True)
+
+        if action == "stop":
+            self.refresh_ios_service_status(force_state="stopped")
+            self.show_toast("✅ 服务已停止", duration_ms=1500)
+        else:
+            if success:
+                self.refresh_ios_service_status(force_state="running")
+                self.show_toast("✅ 服务已启动", duration_ms=1500)
+            else:
+                self.refresh_ios_service_status() 
+                self.show_toast("⚠️ 服务启动未完全就绪，请重试", duration_ms=2000)
 
     def refresh_screen_and_dom(self):
         """
@@ -6507,7 +9326,7 @@ class HarmonyAppiumInspector(QMainWindow):
         仅刷新 DOM 控件树，保留当前真机画面底图 (零截屏广播通知，30~50ms 极速响应，带 12s 超时防死锁机制)
         """
         if not self.current_udid:
-            QMessageBox.warning(self, "设备未连接", "未检测到在线移动设备，请确认开启 USB 调试并连接设备。")
+            ModernMessageBox.warning(self, "设备未连接", "未检测到在线移动设备，请确认开启 USB 调试并连接设备。")
             return
 
         if self.capture_worker and self.capture_worker.isRunning():
@@ -6523,7 +9342,10 @@ class HarmonyAppiumInspector(QMainWindow):
 
         self._worker_start_time = time.time()
         self.btn_refresh.setEnabled(False)
-        self.btn_refresh.setText("⏳ 正在刷新...")
+        if hasattr(self, "spinner_refresh"):
+            self.spinner_refresh.start(loading_text="正在刷新...")
+        else:
+            self.btn_refresh.setText("正在刷新...")
         self._timer_refresh.start(12000)
 
         project_root = SmartPathResolver.get_project_root()
@@ -6537,15 +9359,20 @@ class HarmonyAppiumInspector(QMainWindow):
         self.capture_worker.start()
 
     def _reset_capture_buttons(self):
-        """重置同步真机画面与刷新界面按钮状态"""
+        """重置同步真机画面与刷新界面按钮状态，停止 Loading 转圈动画"""
         self._timer_sync_screen.stop()
         self._timer_refresh.stop()
-        if hasattr(self, "btn_sync_screen"):
+        if hasattr(self, "spinner_sync"):
+            self.spinner_sync.stop(restore_text=True)
+        elif hasattr(self, "btn_sync_screen"):
             self.btn_sync_screen.setEnabled(True)
-            self.btn_sync_screen.setText("⚡ 同步真机画面")
-        if hasattr(self, "btn_refresh"):
+            self.btn_sync_screen.setText("同步画面")
+
+        if hasattr(self, "spinner_refresh"):
+            self.spinner_refresh.stop(restore_text=True)
+        elif hasattr(self, "btn_refresh"):
             self.btn_refresh.setEnabled(True)
-            self.btn_refresh.setText("🔄 刷新界面")
+            self.btn_refresh.setText("刷新界面")
 
     def _on_sync_screen_timeout(self):
         """同步真机画面超时回调"""
@@ -6604,13 +9431,20 @@ class HarmonyAppiumInspector(QMainWindow):
             self.tree_widget.clear()
             self.node_counter = 0
 
-            # 全局模态弹窗预检测：检查整机当前是否展示了处于活跃状态的模态弹窗
+            # 全局模态弹窗预检测：检查整机当前是否展示了处于活跃状态且具备真实几何尺寸的模态弹窗
             def find_active_dialogs(n: Dict[str, Any]) -> bool:
                 a = n.get("attributes", {})
                 t = a.get("type", "")
                 vis = str(a.get("visible", "true")).lower() != "false"
                 if t in ("Dialog", "CustomDialog", "ActionSheet", "AlertDialog", "Popup") and vis:
-                    return True
+                    b_str = a.get("bounds", "")
+                    m_b = re.match(r"\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]", b_str)
+                    if m_b:
+                        w = int(m_b.group(3)) - int(m_b.group(1))
+                        h = int(m_b.group(4)) - int(m_b.group(2))
+                        # 必须满足有效物理展示尺寸 (>=100x100) 且子节点不为空，杜绝空结构常驻误判
+                        if w >= 100 and h >= 100 and len(n.get("children", [])) > 0:
+                            return True
                 for ch in n.get("children", []):
                     if find_active_dialogs(ch):
                         return True
@@ -6627,6 +9461,10 @@ class HarmonyAppiumInspector(QMainWindow):
                 has_active_dialog=has_active_dialog,
                 is_in_dialog=False
             )
+
+            # 全树构建完成后，依据当前复选框状态统一进行一次自底向上可见性保护同步 (防断枝误杀)
+            show_occluded = self.chk_show_occluded.isChecked() if hasattr(self, "chk_show_occluded") else False
+            self.apply_occluded_visibility_to_tree(show_occluded)
 
             # 仅刷新组件层级，保留当前画布底图与缩放视口 (对齐 HoKit 投屏 Overlay 机制)
             self.canvas.update_components_only(self.flat_components)
@@ -6683,13 +9521,20 @@ class HarmonyAppiumInspector(QMainWindow):
             self.tree_widget.clear()
             self.node_counter = 0
 
-            # 全局模态弹窗预检测：检查整机当前是否展示了处于活跃状态的模态弹窗
+            # 全局模态弹窗预检测：检查整机当前是否展示了处于活跃状态且具备真实几何尺寸的模态弹窗
             def find_active_dialogs(n: Dict[str, Any]) -> bool:
                 a = n.get("attributes", {})
                 t = a.get("type", "")
                 vis = str(a.get("visible", "true")).lower() != "false"
                 if t in ("Dialog", "CustomDialog", "ActionSheet", "AlertDialog", "Popup") and vis:
-                    return True
+                    b_str = a.get("bounds", "")
+                    m_b = re.match(r"\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]", b_str)
+                    if m_b:
+                        w = int(m_b.group(3)) - int(m_b.group(1))
+                        h = int(m_b.group(4)) - int(m_b.group(2))
+                        # 必须满足有效物理展示尺寸 (>=100x100) 且子节点不为空，杜绝空结构常驻误判
+                        if w >= 100 and h >= 100 and len(n.get("children", [])) > 0:
+                            return True
                 for ch in n.get("children", []):
                     if find_active_dialogs(ch):
                         return True
@@ -6706,6 +9551,10 @@ class HarmonyAppiumInspector(QMainWindow):
                 has_active_dialog=has_active_dialog,
                 is_in_dialog=False
             )
+
+            # 全树构建完成后，依据当前复选框状态统一进行一次自底向上可见性保护同步 (防断枝误杀)
+            show_occluded = self.chk_show_occluded.isChecked() if hasattr(self, "chk_show_occluded") else False
+            self.apply_occluded_visibility_to_tree(show_occluded)
 
             # 工业级高保真视窗装载：装载底图与组件
             if is_real_shot:
@@ -6749,10 +9598,13 @@ class HarmonyAppiumInspector(QMainWindow):
 
     def on_capture_failed(self, err_msg: str):
         self._reset_capture_buttons()
-        if self.current_platform == "ios" and (self.is_screencasting or ScreenCastWorker.is_active or ScreenCastWorker.latest_image is not None):
+        # 若当前正在执行 iOS 服务的启停/重启操作，静默忽略过渡期的连接失败，绝不弹窗打扰
+        if getattr(self, "_ios_service_running_action", False):
+            return
+        if self.current_platform == "ios":
             self.show_toast(f"📱 iOS 提示: {err_msg}")
             return
-        QMessageBox.critical(self, "抓取失败", f"无法获取设备现场界面与布局:\n{err_msg}")
+        ModernMessageBox.critical(self, "抓取失败", f"无法获取设备现场界面与布局:\n{err_msg}")
 
     def refresh_screen_only(self):
         """
@@ -6760,11 +9612,11 @@ class HarmonyAppiumInspector(QMainWindow):
         同时刷新真机画面与 DOM 树 (对齐用户诉求：全量同步最新现场，带 12s 超时防死锁机制)
         """
         if not self.current_udid:
-            QMessageBox.warning(self, "设备未连接", "未检测到在线设备，请先连接并选中设备。")
+            ModernMessageBox.warning(self, "设备未连接", "未检测到在线设备，请先连接并选中设备。")
             return
 
         if self.capture_worker and self.capture_worker.isRunning():
-            self.show_toast("⏳ 任务正在执行中，请勿重复点击")
+            self.show_toast("任务正在执行中，请勿重复点击")
             return
 
         project_root = SmartPathResolver.get_project_root()
@@ -6785,7 +9637,10 @@ class HarmonyAppiumInspector(QMainWindow):
                         pass
 
         self.btn_sync_screen.setEnabled(False)
-        self.btn_sync_screen.setText("⏳ 同步中...")
+        if hasattr(self, "spinner_sync"):
+            self.spinner_sync.start(loading_text="正在同步...")
+        else:
+            self.btn_sync_screen.setText("正在同步...")
         self._timer_sync_screen.start(12000)
 
         # 核心：执行 full 全量抓取，同时刷新画面与 DOM 树
@@ -6804,24 +9659,56 @@ class HarmonyAppiumInspector(QMainWindow):
     def start_screencast(self):
         """启动后台低延迟实时投屏流 (iOS 优选 pymobiledevice3 引擎，鸿蒙/安卓原生流引擎，带 15s 超时防死锁)"""
         if not self.current_udid:
-            QMessageBox.warning(self, "设备未连接", "未检测到在线设备，请先连接并选中设备。")
+            ModernMessageBox.warning(self, "设备未连接", "未检测到在线设备，请先连接并选中设备。")
             return
 
         self.btn_screencast.setEnabled(False)
-        self.btn_screencast.setText("⏳ 连接投屏中...")
+        if hasattr(self, "spinner_screencast"):
+            self.spinner_screencast.start(loading_text="连接中...")
+        else:
+            self.btn_screencast.setText("连接中...")
         self._timer_screencast.start(15000)
 
-        # 换设备安全自愈：若当前 worker 正在运行但绑定的 UDID 与当前选中设备不一致，或未在正常推流状态，则平滑终止并重建
-        if self.screencast_worker and self.screencast_worker.isRunning():
-            if getattr(self.screencast_worker, "udid", "") == self.current_udid and self.is_screencasting:
-                return
-            else:
-                try:
-                    self.screencast_worker.stop()
-                    self.screencast_worker.wait(400)
-                except Exception:
-                    pass
-                self.screencast_worker = None
+        # 1. 抓取与投屏互斥治理：若当前有抓取工作线程正在运行，立即断开其信号并停止，避免与投屏争抢 USB 隧道
+        if hasattr(self, "capture_worker") and self.capture_worker and self.capture_worker.isRunning():
+            try:
+                self.capture_worker.finished.disconnect()
+            except Exception:
+                pass
+            try:
+                self.capture_worker.screen_finished.disconnect()
+            except Exception:
+                pass
+            try:
+                self.capture_worker.dom_finished.disconnect()
+            except Exception:
+                pass
+            try:
+                self.capture_worker.failed.disconnect()
+            except Exception:
+                pass
+            self.capture_worker.quit()
+            self.capture_worker.wait(300)
+
+        # 2. 换设备安全自愈：对已存在的旧 worker 彻底切断所有 Qt 信号连接，并真正等待其结束退出
+        if self.screencast_worker:
+            old_w = self.screencast_worker
+            self.screencast_worker = None
+            try:
+                old_w.frame_ready.disconnect()
+            except Exception:
+                pass
+            try:
+                old_w.state_changed.disconnect()
+            except Exception:
+                pass
+            try:
+                old_w.error_occurred.disconnect()
+            except Exception:
+                pass
+            old_w.stop()
+            if old_w.isRunning():
+                old_w.wait(1500)
 
         self.screencast_worker = ScreenCastWorker(self.current_udid, self.current_platform)
         self.screencast_worker.frame_ready.connect(self.on_screencast_frame)
@@ -6844,8 +9731,13 @@ class HarmonyAppiumInspector(QMainWindow):
             except Exception:
                 pass
             worker.stop()
-            # 异步延时回收线程，绝不在主线程做同步 wait 引起 UI 卡顿
-            QTimer.singleShot(0, lambda: worker.wait(300))
+            # 异步延时回收线程并释放中继端口
+            def _async_cleanup():
+                worker.wait(500)
+                IosWdaManager.kill_relays()
+            QTimer.singleShot(0, _async_cleanup)
+        else:
+            IosWdaManager.kill_relays()
 
     def on_screencast_frame(self, image: QImage, raw_bytes: bytes):
         """收到最新一帧投屏画面：实时更新画布 (100% 显存/内存直通，零磁盘 I/O 阻塞主线程)"""
@@ -6902,26 +9794,30 @@ class HarmonyAppiumInspector(QMainWindow):
         self._timer_screencast.stop()
         self.is_screencasting = False
         self._update_screencast_btn_style(False)
-        self.show_toast(f"⚠️ 投屏提示: {err_msg}")
+        self.show_toast(f"⚠️ 投屏提示: {err_msg}", duration_ms=4500)
 
     def _update_screencast_btn_style(self, is_running: bool):
         """动态更新实时投屏控制按钮视觉呈现"""
         if not hasattr(self, "btn_screencast"):
             return
+        if hasattr(self, "spinner_screencast"):
+            self.spinner_screencast.stop(restore_text=False)
         self.btn_screencast.setEnabled(True)
         if is_running:
-            self.btn_screencast.setText("⏹️ 停止实时投屏")
+            self.btn_screencast.setText("停止投屏")
+            self.btn_screencast.setIcon(get_tech_icon("cast", "#ef4444"))
             self.btn_screencast.setStyleSheet(
-                "QPushButton { background: #fee2e2; border: 1px solid #fca5a5; border-radius: 4px; "
-                "color: #b91c1c; font-size: 11px; font-weight: 700; padding: 2px 8px; } "
-                "QPushButton:hover { background: #fecaca; border-color: #f87171; }"
+                "QPushButton { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 5px; "
+                "color: #dc2626; font-size: 11px; font-weight: 700; padding: 0 10px; min-height: 26px; } "
+                "QPushButton:hover { background: #fee2e2; border-color: #ef4444; }"
             )
         else:
-            self.btn_screencast.setText("📺 开启实时投屏")
+            self.btn_screencast.setText("实时投屏")
+            self.btn_screencast.setIcon(get_tech_icon("cast", "#0284c7"))
             self.btn_screencast.setStyleSheet(
-                "QPushButton { background: #eff6ff; border: 1px solid #93c5fd; border-radius: 4px; "
-                "color: #1d4ed8; font-size: 11px; font-weight: 600; padding: 2px 8px; } "
-                "QPushButton:hover { background: #dbeafe; border-color: #60a5fa; }"
+                "QPushButton { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 5px; "
+                "color: #334155; font-size: 11px; font-weight: 600; padding: 0 10px; min-height: 26px; } "
+                "QPushButton:hover { background: #f1f5f9; border-color: #0284c7; color: #0284c7; }"
             )
 
     def build_dom_tree(
@@ -6953,13 +9849,28 @@ class HarmonyAppiumInspector(QMainWindow):
         width = max(0, right - left)
         height = max(0, bottom - top)
         c_type = attrs.get("type") or ("Hierarchy" if depth == 0 else "Component")
+        full_type = attrs.get("full_type") or attrs.get("class") or c_type
+        if self.current_platform == "ios" and not full_type.startswith("XCUIElementType"):
+            full_type = f"XCUIElementType{c_type}"
+        elif self.current_platform == "android" and "." not in full_type and attrs.get("class"):
+            full_type = attrs.get("class")
+
         c_id = attrs.get("id") or attrs.get("resource-id") or attrs.get("key") or ""
+        if self.current_platform == "ios" and not c_id:
+            c_id = attrs.get("name") or attrs.get("label") or ""
         c_text = attrs.get("text") or attrs.get("label") or attrs.get("originalText") or ""
 
-        # 可见性基础属性校验
-        is_visible = str(attrs.get("visible", "true")).lower() != "false"
+        # 1. 深度综合判定组件自身的可见性属性 (全面覆盖鸿蒙 ArkUI、Android 与 iOS)
+        raw_visible = str(attrs.get("visible", "")).strip().lower()
+        raw_visibility = str(attrs.get("visibility", "")).strip().lower()
+        is_hidden_attr = str(attrs.get("hidden", "")).lower() in ("true", "1") or str(attrs.get("isHidden", "")).lower() in ("true", "1")
+        # 鸿蒙 ArkUI 专属：visibility (None / Hidden / Visible，或数字 0=Visible, 1=Hidden, 2=None)
+        is_visibility_hidden = raw_visibility in ("none", "hidden", "2", "1")
+        is_explicitly_invisible = raw_visible in ("false", "0") or is_visibility_hidden or is_hidden_attr
+
+        is_visible = not is_explicitly_invisible
         try:
-            opacity = float(attrs.get("opacity", "1.0"))
+            opacity = float(attrs.get("opacity", attrs.get("alpha", "1.0")))
         except Exception:
             opacity = 1.0
 
@@ -6981,13 +9892,37 @@ class HarmonyAppiumInspector(QMainWindow):
         # 核心图形学与几何实体遮挡判定 (Geometry Occlusion & Hit-Test)
         # 1. 纯透明布局容器（如 Row, Column, Stack, Flex, RelativeContainer 等且有子节点）本身不绘制实体背景像素，
         #    其自身遮挡状态由其子节点自底向上聚合决定，绝不能因容器外框与上方实体相交而判定整行/整列容器被遮挡！
-        is_transparent_container = c_type in ("Row", "Column", "Stack", "Flex", "RelativeContainer", "__Common__", "List", "ListItem", "Scroll", "Grid") and len(node.get("children", [])) > 0
+        ARKUI_CONTAINER_TYPES = (
+            "Row", "Column", "Stack", "Flex", "RelativeContainer", "__Common__",
+            "List", "ListItem", "ListItemGroup", "Scroll", "Grid", "GridRow", "GridCol", "GridItem",
+            "Swiper", "WaterFlow", "FlowItem", "Refresh", "Navigation", "NavDestination",
+            "NavDestinationContent", "NavRouter", "Tabs", "TabContent", "SideBarContainer", "Panel",
+            "root", "Component", "Page", "Window", "Stage", "Ability", "Hierarchy", "UIComponent",
+            "View", "ViewGroup", "FrameLayout", "LinearLayout", "RelativeLayout",
+            "XCUIElementTypeWindow", "XCUIElementTypeOther", "XCUIElementTypeApplication"
+        )
+        has_child_nodes = len(node.get("children", [])) > 0
+        is_transparent_container = (
+            c_type in ARKUI_CONTAINER_TYPES
+            or c_type.lower() in ("root", "component", "page", "window", "stage", "ability", "hierarchy", "uicomponent")
+            or c_type.endswith("Container")
+            or c_type.endswith("Layout")
+            or c_type.endswith("Group")
+            or (has_child_nodes and c_type not in (
+                "Text", "Button", "TextInput", "Image", "TextArea", "Toggle", "Checkbox",
+                "Radio", "Slider", "Progress", "LoadingProgress", "DatePicker", "TimePicker"
+            ))
+        ) and has_child_nodes
 
         # 模态弹窗排他性规则 (Modal Dialog Exclusivity)
         is_dialog_root = c_type in ("Dialog", "CustomDialog", "ActionSheet", "AlertDialog", "Popup")
         current_is_dialog = is_in_dialog or is_dialog_root
+        # 顶层应用视窗骨架保护：根节点与一级容器绝不可被误判为遮挡，确保 DOM 树结构永不坍塌
+        is_top_level_skeleton = depth <= 1 or c_type in ("Hierarchy", "root", "Component", "Page", "WindowScene", "XCUIElementTypeWindow")
 
-        if is_dialog_root:
+        if is_top_level_skeleton:
+            is_node_occluded = False
+        elif is_dialog_root:
             is_node_occluded = False
         elif has_active_dialog and not current_is_dialog:
             is_node_occluded = True
@@ -7001,21 +9936,37 @@ class HarmonyAppiumInspector(QMainWindow):
             center_x = left + width // 2
             center_y = top + height // 2
             node_area = width * height
+            total_inter_area = 0
             for c_l, c_t, c_r, c_b in covering_rects:
                 # 规则 1: 遮挡物覆盖了该组件的几何中心交互点 (交互点击命中区)
                 if c_l <= center_x <= c_r and c_t <= center_y <= c_b:
                     is_node_occluded = True
                     break
-                # 规则 2: 遮挡物覆盖了该组件 >= 60% 的实质面积
+                # 规则 2: 累积重叠面积计算 (支持多个图层/小图标聚合覆盖，彻底根治气泡内多个表情覆盖背景图片的问题)
                 inter_l = max(left, c_l)
                 inter_t = max(top, c_t)
                 inter_r = min(right, c_r)
                 inter_b = min(bottom, c_b)
                 if inter_r > inter_l and inter_b > inter_t:
                     inter_area = (inter_r - inter_l) * (inter_b - inter_t)
-                    if inter_area / node_area >= 0.60:
+                    total_inter_area += inter_area
+                    if inter_area / node_area >= 0.50:
                         is_node_occluded = True
                         break
+            if not is_node_occluded and node_area > 0 and (total_inter_area / node_area >= 0.40):
+                is_node_occluded = True
+
+        # 3. 针对无文字、无描述、不可交互且纯属底层占位/背景缝隙的退化节点深度过滤
+        is_clickable_comp = str(attrs.get("clickable", "false")).lower() in ("true", "1") or str(attrs.get("longClickable", "false")).lower() in ("true", "1")
+        has_content = bool(c_text or c_id or attrs.get("description") or attrs.get("content-desc") or is_clickable_comp)
+
+        # 极细缝隙组件 (高度或宽度 <= 8 像素的空占位容器) 判定为已遮挡/未暴露层
+        if (width <= 8 or height <= 8) and not has_content and depth > 0:
+            is_node_occluded = True
+
+        # 针对 Image 组件：若没有文字、没有 ID、没有描述且不可点击，且其处于 Stack 内部存在实心覆盖物时，判定为已遮挡背景层
+        if c_type == "Image" and not has_content and covering_rects:
+            is_node_occluded = True
 
         is_exposed = node_visible and (not is_node_occluded)
         is_node_exposed = is_exposed and node_in_active_page
@@ -7028,32 +9979,49 @@ class HarmonyAppiumInspector(QMainWindow):
         vw = screen_w if screen_w >= 800 else 1084
         vh = screen_h if screen_h >= 1200 else 2412
         is_in_viewport = not (right <= 0 or left >= vw or bottom <= 0 or top >= vh)
-        # 核心优化：画布交互拾取仅限真实暴露在顶层的有效组件 (is_exposed)
-        is_interactive = node_in_active_page and is_exposed and is_in_viewport and width >= 4 and height >= 4
+        # 核心优化：画布交互拾取仅限真实暴露在顶层的有效组件 (is_exposed) 且排除微细占位
+        is_valid_size = (width >= 10 and height >= 10) if not has_content else (width >= 4 and height >= 4)
+        is_interactive = node_in_active_page and is_exposed and is_in_viewport and is_valid_size
 
         node_xpath = f"{current_xpath}/{c_type}"
         
         # 智能推荐定位器代码 (区分鸿蒙、安卓与 iOS 权威最佳实践)
         rec_id = c_id if c_id else ""
+        rec_predicate = ""
+        rec_class_chain = ""
         if self.current_platform == "android":
             if c_id:
                 rec_xpath = f"//*[@resource-id='{c_id}']"
                 rec_py = f"driver.find_element(AppiumBy.ID, '{c_id}')"
             elif c_text:
-                rec_xpath = f"//*[@text='{c_text}']"
-                rec_py = f"driver.find_element(AppiumBy.XPATH, \"//*[@text='{c_text}']\")"
+                rec_xpath = f"//{full_type}[@text='{c_text}']"
+                rec_py = f"driver.find_element(AppiumBy.XPATH, \"//{full_type}[@text='{c_text}']\")"
             else:
                 rec_xpath = node_xpath
                 rec_py = f"driver.find_element(AppiumBy.XPATH, \"{rec_xpath}\")"
+            rec_predicate = f'text == "{c_text}"' if c_text else ""
+            rec_class_chain = ""
         elif self.current_platform == "ios":
+            ios_val = attrs.get("value") or ""
             if c_id:
-                rec_xpath = f"//*[@name='{c_id}']"
+                rec_xpath = f"//{full_type}[@name='{c_id}']"
+                rec_predicate = f'type == "{full_type}" AND name == "{c_id}"'
+                rec_class_chain = f'**/{full_type}[`name == "{c_id}"`]'
                 rec_py = f"driver.find_element(AppiumBy.ACCESSIBILITY_ID, '{c_id}')"
             elif c_text:
-                rec_xpath = f"//*[@label='{c_text}']"
-                rec_py = f"driver.find_element(AppiumBy.XPATH, \"//*[@label='{c_text}']\")"
+                rec_xpath = f"//{full_type}[@label='{c_text}']"
+                rec_predicate = f'type == "{full_type}" AND (label == "{c_text}" OR name == "{c_text}")'
+                rec_class_chain = f'**/{full_type}[`label == "{c_text}"`]'
+                rec_py = f"driver.find_element(AppiumBy.IOS_PREDICATE, '{rec_predicate}')"
+            elif ios_val:
+                rec_xpath = f"//{full_type}[@value='{ios_val}']"
+                rec_predicate = f'type == "{full_type}" AND value == "{ios_val}"'
+                rec_class_chain = f'**/{full_type}[`value == "{ios_val}"`]'
+                rec_py = f"driver.find_element(AppiumBy.IOS_PREDICATE, '{rec_predicate}')"
             else:
-                rec_xpath = node_xpath
+                rec_xpath = f"//{full_type}" if full_type else node_xpath
+                rec_predicate = f'type == "{full_type}"'
+                rec_class_chain = f'**/{full_type}'
                 rec_py = f"driver.find_element(AppiumBy.XPATH, \"{rec_xpath}\")"
         else:  # harmony
             if c_id:
@@ -7065,10 +10033,13 @@ class HarmonyAppiumInspector(QMainWindow):
             else:
                 rec_xpath = node_xpath
                 rec_py = f"driver.find_element(AppiumBy.XPATH, \"{rec_xpath}\")"
+            rec_predicate = ""
+            rec_class_chain = ""
 
         comp = {
             "node_id": node_id,
             "type": c_type,
+            "full_type": full_type,
             "id": c_id,
             "text": c_text,
             "left": left,
@@ -7082,9 +10053,11 @@ class HarmonyAppiumInspector(QMainWindow):
             "depth": depth,
             "xpath": node_xpath,
             "rec_xpath": rec_xpath,
+            "rec_predicate": rec_predicate,
+            "rec_class_chain": rec_class_chain,
             "rec_id": rec_id,
             "rec_py": rec_py,
-            "rec_class": c_type,
+            "rec_class": full_type,
             "is_visible": is_visible,
             "opacity": opacity,
             "is_occluded": is_node_occluded,
@@ -7100,8 +10073,9 @@ class HarmonyAppiumInspector(QMainWindow):
             self.flat_components.append(comp)
         self.comp_map[node_id] = comp
 
-        # 安全清洗并生成标准 XML 标签与属性字典
-        safe_tag = re.sub(r'[^a-zA-Z0-9_\-]', '', c_type) or "Component"
+        # 安全清洗并生成标准 XML 标签与属性字典 (iOS 优先使用原生全称 XCUIElementType...)
+        target_tag = full_type if (self.current_platform == "ios" or (self.current_platform == "android" and "." not in full_type)) else c_type
+        safe_tag = re.sub(r'[^a-zA-Z0-9_\-]', '', target_tag) or "Component"
         if safe_tag[0].isdigit() or safe_tag[0] == '-':
             safe_tag = f"comp_{safe_tag}"
 
@@ -7110,6 +10084,8 @@ class HarmonyAppiumInspector(QMainWindow):
             "id": c_id,
             "text": c_text,
             "type": c_type,
+            "full_type": full_type,
+            "short_type": c_type,
             "bounds": bounds_str,
             "clickable": str(attrs.get("clickable", "")),
             "enabled": str(attrs.get("enabled", "")),
@@ -7140,14 +10116,30 @@ class HarmonyAppiumInspector(QMainWindow):
 
         xml_elem = ET.SubElement(xml_parent, safe_tag, clean_xml_attrs)
 
-        # 高颜值彩色节点标签渲染
-        type_badge = f"<{c_type}"
+        # 高颜值彩色节点标签渲染 (支持精炼视图 / 原生全类名双模切换)
+        is_full_mode = self.chk_show_full_type.isChecked() if hasattr(self, "chk_show_full_type") else False
+        display_type = full_type if is_full_mode else c_type
+        type_badge = f"<{display_type}"
         attrs_str = ""
-        if c_id:
-            attrs_str += f' id="{c_id}"'
-        if c_text:
-            short_t = c_text if len(c_text) <= 22 else c_text[:22] + "..."
-            attrs_str += f' text="{short_t}"'
+        if self.current_platform == "ios":
+            ios_name = attrs.get("name") or attrs.get("id") or ""
+            ios_label = attrs.get("label") or ""
+            ios_value = attrs.get("value") or ""
+            if ios_value:
+                short_v = ios_value if len(ios_value) <= 20 else ios_value[:20] + "..."
+                attrs_str += f' value="{short_v}"'
+            if ios_name:
+                short_n = ios_name if len(ios_name) <= 20 else ios_name[:20] + "..."
+                attrs_str += f' name="{short_n}"'
+            if ios_label and ios_label != ios_value:
+                short_l = ios_label if len(ios_label) <= 20 else ios_label[:20] + "..."
+                attrs_str += f' label="{short_l}"'
+        else:
+            if c_id:
+                attrs_str += f' id="{c_id}"'
+            if c_text:
+                short_t = c_text if len(c_text) <= 22 else c_text[:22] + "..."
+                attrs_str += f' text="{short_t}"'
         attrs_str += f' bounds="{bounds_str}"'
         if is_occluded_node:
             attrs_str += ' occluded="true"'
@@ -7156,6 +10148,7 @@ class HarmonyAppiumInspector(QMainWindow):
         item = QTreeWidgetItem([f"{type_badge}{attrs_str}"])
         item.setData(0, Qt.ItemDataRole.UserRole, node_id)
         item.setData(0, Qt.ItemDataRole.UserRole + 1, bool(is_occluded_node))
+        item.setToolTip(0, f"原生全类名: {full_type}\n精炼类型: {c_type}\n边界范围: {bounds_str}")
 
         # 统一为各组件类型专属的高颜值莫兰迪配色 (被遮挡元素使用优雅弱化浅灰调)
         if is_occluded_node:
@@ -7166,9 +10159,10 @@ class HarmonyAppiumInspector(QMainWindow):
             item.setForeground(0, QColor(scheme["text"]))
             item.setBackground(0, QBrush(QColor(scheme["bg"])))
 
-        # 根据当前复选框状态决定初始是否隐藏 (默认为勾选状态即展示)
-        show_occluded = self.chk_show_occluded.isChecked() if hasattr(self, "chk_show_occluded") else True
-        if is_occluded_node and not show_occluded:
+        # 根据当前复选框状态决定初始是否隐藏 (默认不展示被遮挡/不可见元素，有子节点的容器交由后序遍历自底向上处理防误杀)
+        show_occluded = self.chk_show_occluded.isChecked() if hasattr(self, "chk_show_occluded") else False
+        has_children_init = len(node.get("children", [])) > 0
+        if is_occluded_node and not show_occluded and not has_children_init:
             item.setHidden(True)
 
         self.tree_item_map[node_id] = item
@@ -7261,8 +10255,9 @@ class HarmonyAppiumInspector(QMainWindow):
                 has_any_exposed_child = True
 
         # 核心图形学聚合（Bottom-Up Aggregation）：
-        # 如果当前节点是纯透明布局容器且包含子节点，只要有至少一个子节点真实暴露可见，
-        # 则该容器自身绝不是被遮挡状态！
+        # 如果当前节点是纯透明布局容器且包含子节点：
+        # 1. 只要有至少一个子节点真实暴露可见，则该容器自身判定为有效暴露；
+        # 2. 若所有子节点全部被判定为被遮挡/不可见，则该父容器视觉上无任何有效内容，必须严格自底向上继承并标记为已遮挡！
         if is_transparent_container:
             if has_any_exposed_child:
                 is_node_occluded = False
@@ -7277,9 +10272,35 @@ class HarmonyAppiumInspector(QMainWindow):
                 item.setForeground(0, QColor(scheme["text"]))
                 item.setBackground(0, QBrush(QColor(scheme["bg"])))
                 attrs_str_clean = re.sub(r'\s+occluded="[^"]*"', '', attrs_str)
-                item.setText(0, f"{type_badge}{attrs_str_clean}>")
+                if not attrs_str_clean.endswith('>'):
+                    attrs_str_clean += '>'
+                item.setText(0, f"{type_badge}{attrs_str_clean}")
                 item.setData(0, Qt.ItemDataRole.UserRole + 1, False)
                 item.setHidden(False)
+            else:
+                is_node_occluded = True
+                is_occluded_node = True
+                comp["is_occluded"] = True
+                comp["is_exposed"] = False
+                comp["is_interactive"] = False
+                clean_xml_attrs["occluded"] = "true"
+                clean_xml_attrs["exposed"] = "false"
+                xml_elem.attrib["occluded"] = "true"
+                xml_elem.attrib["exposed"] = "false"
+                item.setForeground(0, QColor("#94a3b8"))
+                item.setBackground(0, QBrush(QColor("#f8fafc")))
+                base_txt = re.sub(r'\s+occluded="[^"]*"', '', attrs_str)
+                if base_txt.endswith('>'):
+                    base_txt = base_txt[:-1]
+                item.setText(0, f"{type_badge}{base_txt} occluded=\"true\">")
+                item.setData(0, Qt.ItemDataRole.UserRole + 1, True)
+                # 关键：彻底从画布交互拾取列表中剔除，绝不可再被鼠标悬停或点击拾取出来！
+                if comp in self.flat_components:
+                    self.flat_components.remove(comp)
+                # 若未勾选【显示被遮挡元素】，默认将全遮挡父容器随子节点一同隐藏
+                show_occluded = self.chk_show_occluded.isChecked() if hasattr(self, "chk_show_occluded") else False
+                if not show_occluded:
+                    item.setHidden(True)
 
         # 当前子树是否拥有实质可见暴露节点：
         # 实心组件取决于自身的 is_node_exposed；透明容器取决于 has_any_exposed_child
@@ -7516,8 +10537,11 @@ class HarmonyAppiumInspector(QMainWindow):
     # --------------------------------------------------------------------------
 
     def switch_mode(self, mode: str):
-        self.btn_mode_select.setChecked(mode == InspectorMode.SELECT)
-        self.btn_mode_tap.setChecked(mode == InspectorMode.TAP)
+        is_sel = (mode == InspectorMode.SELECT)
+        self.btn_mode_select.setChecked(is_sel)
+        self.btn_mode_tap.setChecked(not is_sel)
+        self.btn_mode_select.setIcon(get_tech_icon("target", "#ffffff" if is_sel else "#475569"))
+        self.btn_mode_tap.setIcon(get_tech_icon("tap", "#ffffff" if not is_sel else "#475569"))
         self.canvas.set_mode(mode)
 
 
@@ -7533,7 +10557,7 @@ class HarmonyAppiumInspector(QMainWindow):
         path, _ = QFileDialog.getSaveFileName(self, "保存真机截图", f"{self.current_platform}_screen.png", "PNG Images (*.png)")
         if path:
             self.canvas.pixmap.save(path, "PNG")
-            QMessageBox.information(self, "保存成功", f"截图已保存至:\n{path}")
+            ModernMessageBox.information(self, "保存成功", f"截图已保存至:\n{path}")
 
     def open_search_dialog(self):
         if self.search_dialog is None:
@@ -7593,22 +10617,104 @@ class HarmonyAppiumInspector(QMainWindow):
 
     def on_toggle_show_occluded(self, state: int):
         """响应【显示被遮挡元素】复选框状态切换，秒级刷新 DOM 树可见性"""
-        show_occluded = self.chk_show_occluded.isChecked() if hasattr(self, "chk_show_occluded") else True
+        show_occluded = self.chk_show_occluded.isChecked() if hasattr(self, "chk_show_occluded") else False
         self.apply_occluded_visibility_to_tree(show_occluded)
 
-    def apply_occluded_visibility_to_tree(self, show_occluded: bool):
-        """动态更新当前 DOM 树中所有被遮挡节点的显示/隐藏状态"""
-        def traverse_item(item: QTreeWidgetItem):
-            is_occluded = bool(item.data(0, Qt.ItemDataRole.UserRole + 1))
-            if is_occluded:
-                item.setHidden(not show_occluded)
-            for i in range(item.childCount()):
-                traverse_item(item.child(i))
+    def on_toggle_show_full_type(self, state: int):
+        """响应【显示原生完整类型】复选框切换，毫秒级无损平滑切换 DOM 树标签全称与简称"""
+        is_full = self.chk_show_full_type.isChecked() if hasattr(self, "chk_show_full_type") else False
+        for node_id, item in self.tree_item_map.items():
+            comp = self.comp_map.get(node_id)
+            if not comp:
+                continue
+            full_t = comp.get("full_type") or comp.get("type", "Component")
+            short_t = comp.get("type", "Component")
+            disp_t = full_t if is_full else short_t
 
+            raw_attrs = comp.get("raw") or comp.get("raw_attributes") or {}
+            c_id = comp.get("id", "")
+            c_text = comp.get("text", "")
+            bounds_str = f"[{comp['left']},{comp['top']}][{comp['right']},{comp['bottom']}]"
+            is_occluded = comp.get("is_occluded", False)
+
+            attrs_str = ""
+            if self.current_platform == "ios":
+                ios_name = raw_attrs.get("name") or c_id
+                ios_label = raw_attrs.get("label") or ""
+                ios_value = raw_attrs.get("value") or ""
+                if ios_value:
+                    short_v = ios_value if len(ios_value) <= 20 else ios_value[:20] + "..."
+                    attrs_str += f' value="{short_v}"'
+                if ios_name:
+                    short_n = ios_name if len(ios_name) <= 20 else ios_name[:20] + "..."
+                    attrs_str += f' name="{short_n}"'
+                if ios_label and ios_label != ios_value:
+                    short_l = ios_label if len(ios_label) <= 20 else ios_label[:20] + "..."
+                    attrs_str += f' label="{short_l}"'
+            else:
+                if c_id:
+                    attrs_str += f' id="{c_id}"'
+                if c_text:
+                    short_text = c_text if len(c_text) <= 22 else c_text[:22] + "..."
+                    attrs_str += f' text="{short_text}"'
+            attrs_str += f' bounds="{bounds_str}"'
+            if is_occluded:
+                attrs_str += ' occluded="true"'
+
+            item.setText(0, f"<{disp_t}{attrs_str}>")
+
+    def apply_occluded_visibility_to_tree(self, show_occluded: bool):
+        """
+        动态更新当前 DOM 树中所有被遮挡节点的显示/隐藏状态：
+        遵循严格的【自底向上保护法则】(Bottom-Up Visibility Guard)：
+        1. 若勾选【显示被遮挡元素】(show_occluded=True)：全部节点 100% 展开可见；
+        2. 若取消勾选 (show_occluded=False)：仅隐藏自身被遮挡且【没有任何可见子孙】的节点；
+           若某个节点自身虽然带有 occluded 标记，但其子树中含有可见内容，坚决保留该节点展示，绝不连坐隐藏整个子树！
+        """
+        def update_item_visibility(item: QTreeWidgetItem) -> bool:
+            """后序遍历返回该节点及其子树中是否至少存在一个可见节点"""
+            has_visible_child = False
+            for i in range(item.childCount()):
+                child_visible = update_item_visibility(item.child(i))
+                if child_visible:
+                    has_visible_child = True
+
+            is_self_occluded = bool(item.data(0, Qt.ItemDataRole.UserRole + 1))
+
+            if show_occluded:
+                item.setHidden(False)
+                return True
+            else:
+                # 隐藏被遮挡模式：
+                # 核心防连坐：若子树中包含有效可见节点，父级容器坚决保留显示！
+                if has_visible_child:
+                    item.setHidden(False)
+                    return True
+                elif is_self_occluded:
+                    item.setHidden(True)
+                    return False
+                else:
+                    item.setHidden(False)
+                    return True
+
+        visible_top_count = 0
         for idx in range(self.tree_widget.topLevelItemCount()):
             top = self.tree_widget.topLevelItem(idx)
             if top:
-                traverse_item(top)
+                has_vis = update_item_visibility(top)
+                # 核心防消失：顶层根节点是视窗主干骨架，永远不被隐藏
+                top.setHidden(False)
+                if has_vis:
+                    visible_top_count += 1
+
+        # 终极保护：若所有子树节点均因遮挡判定被折叠隐藏，自动回退展示前两层，确保 DOM 树绝不全部消失
+        if not show_occluded and visible_top_count == 0 and self.tree_widget.topLevelItemCount() > 0:
+            for idx in range(self.tree_widget.topLevelItemCount()):
+                top = self.tree_widget.topLevelItem(idx)
+                if top:
+                    top.setHidden(False)
+                    for c_idx in range(top.childCount()):
+                        top.child(c_idx).setHidden(False)
 
         # 树可见性更新后，若内置搜索栏正在激活，自动重新计算匹配结果并刷新
         if hasattr(self, "dom_search_bar") and self.dom_search_bar.isVisible() and hasattr(self, "edit_dom_search") and self.edit_dom_search.text().strip():
@@ -7696,10 +10802,10 @@ class HarmonyAppiumInspector(QMainWindow):
         self.edit_live_input.setText(c_text)
         self.edit_live_input.blockSignals(False)
 
-        # 核心：这块只有输入框和文本框才进行展示
+        # 核心：输入框和文本框才展示实时输入区
         is_input_or_text = (
-            c_type in ("TextInput", "TextArea", "Search", "Text", "RichText", "Span")
-            or any(k in c_type.lower() for k in ("input", "edit", "text", "search"))
+            c_type in ("TextInput", "TextArea", "Search", "Text", "RichText", "Span", "TextField", "SecureTextField")
+            or any(k in c_type.lower() for k in ("input", "edit", "text", "search", "field"))
             or bool(c_text and c_text.strip())
         )
         self.input_sync_box.setVisible(is_input_or_text)
@@ -7712,10 +10818,16 @@ class HarmonyAppiumInspector(QMainWindow):
             f"border: 1px solid {scheme['border']}; border-radius: 6px; padding: 4px 8px; font-weight: 600;"
         )
 
-        # 推荐定位器
+        # 推荐定位器展示 (各端原生定位语法支持)
         self.txt_loc_id.setText(comp.get("rec_id", ""))
         self.txt_loc_xpath.setText(comp.get("rec_xpath", ""))
         self.txt_loc_py.setText(comp.get("rec_py", ""))
+        if hasattr(self, "txt_loc_predicate"):
+            self.txt_loc_predicate.setText(comp.get("rec_predicate", ""))
+            self.txt_loc_predicate.setCursorPosition(0)
+        if hasattr(self, "txt_loc_class_chain"):
+            self.txt_loc_class_chain.setText(comp.get("rec_class_chain", ""))
+            self.txt_loc_class_chain.setCursorPosition(0)
 
         self.txt_loc_id.setCursorPosition(0)
         self.txt_loc_xpath.setCursorPosition(0)
@@ -7732,10 +10844,14 @@ class HarmonyAppiumInspector(QMainWindow):
         else:
             id_show = "-"
 
+        full_type_val = comp.get("full_type") or comp.get("rec_class") or c_type
         display_attrs = [
-            ("id / key", id_show),
-            ("text / originalText", comp.get("text", "-")),
-            ("class / type", comp.get("type", "-")),
+            ("原生全类名 (Full Type)", full_type_val),
+            ("精炼类型 (Type)", c_type),
+            ("id / name / key", id_show),
+            ("text / label / value", comp.get("text", "-")),
+            ("Predicate (iOS谓词)", comp.get("rec_predicate", "-")),
+            ("Class Chain (iOS类链)", comp.get("rec_class_chain", "-")),
             ("bounds (坐标范围)", f"[{comp['left']},{comp['top']}][{comp['right']},{comp['bottom']}]"),
             ("size (尺寸宽高)", f"{comp['width']} × {comp['height']}"),
             ("clickable (可点击)", str(raw.get("clickable", "-"))),
@@ -7747,7 +10863,7 @@ class HarmonyAppiumInspector(QMainWindow):
             ("xpath (完整绝对路径)", comp.get("xpath", "-")),
         ]
 
-        known_keys = {"id", "key", "text", "originalText", "type", "bounds", "bundleName", "clickable", "enabled", "focusable", "focused", "scrollable", "visible"}
+        known_keys = {"id", "key", "text", "originalText", "type", "full_type", "bounds", "bundleName", "clickable", "enabled", "focusable", "focused", "scrollable", "visible"}
         for k, v in raw.items():
             if k not in known_keys:
                 display_attrs.append((f"raw: {k}", str(v)))
@@ -7758,7 +10874,7 @@ class HarmonyAppiumInspector(QMainWindow):
             k_item = QTableWidgetItem(str(k))
             v_item = QTableWidgetItem(str(v))
             v_item.setToolTip(str(v))
-            if any(key in k for key in ("id", "text", "class", "xpath", "bounds", "size")):
+            if any(key in k for key in ("Full Type", "Type", "id", "text", "Predicate", "Class Chain", "xpath", "bounds", "size")):
                 k_item.setForeground(QColor("#0284c7"))
                 v_item.setForeground(QColor("#d97706"))
                 k_item.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
@@ -7770,11 +10886,11 @@ class HarmonyAppiumInspector(QMainWindow):
         self.table_attrs.setUpdatesEnabled(True)
 
     # --------------------------------------------------------------------------
-    # 核心新增：实时输入同步 (Live Input & Device Sync)
+    # 实时输入同步 (Live Input & Device Sync)
     # --------------------------------------------------------------------------
 
     def sync_live_input(self):
-        """将实时输入框中的文字下发到鸿蒙真机，并即时同步全量视图"""
+        """将实时输入框中的文字下发到真机，并即时同步全量视图"""
         curr_id = self.canvas.selected_node_id
         if not curr_id:
             QMessageBox.information(self, "提示", "请先在左侧或 DOM 树中选择目标输入框/编辑框组件！")
@@ -7783,7 +10899,6 @@ class HarmonyAppiumInspector(QMainWindow):
         text = self.edit_live_input.text()
         self.direct_send_keys_to_element(curr_id, text)
 
-
     def direct_tap_element(self, node_id: str):
         comp = self.comp_map.get(node_id)
         if comp and self.current_udid:
@@ -7791,12 +10906,11 @@ class HarmonyAppiumInspector(QMainWindow):
             DeviceController.tap(self.current_platform, self.current_udid, cx, cy)
             self.refresh_screen_and_dom()
 
-
     def direct_send_keys_to_element(self, node_id: str, text: str):
         """
         向目标组件下发文本，并实现零延迟的视图与真机双向实时同步：
         1. 跨平台指令下发到真机执行物理输入
-        2. 立即就地更新内存中该节点的 text 与 XPath 表达式
+        2. 立即就地更新内存中该节点的 text 与定位表达式
         3. 即时刷新 DOM 树、属性表格、实时输入框
         4. 异步刷新真机原画截图并重新锚定当前节点
         """
@@ -7809,29 +10923,31 @@ class HarmonyAppiumInspector(QMainWindow):
 
         # 1. 立即就地同步内存对象中的属性
         comp["text"] = text
-        comp["raw_attributes"]["text"] = text
-        comp["raw_attributes"]["originalText"] = text
+        if "raw_attributes" in comp:
+            comp["raw_attributes"]["text"] = text
+            comp["raw_attributes"]["originalText"] = text
 
         # 2. 立即更新推荐定位代码
         c_type = comp.get("type", "Component")
+        full_type = comp.get("full_type") or comp.get("rec_class") or c_type
         c_id = comp.get("id", "")
         if self.current_platform == "android":
             if c_id:
                 rec_xpath = f"//*[@resource-id='{c_id}']"
                 rec_py = f"driver.find_element(AppiumBy.ID, '{c_id}')"
             elif text:
-                rec_xpath = f"//*[@text='{text}']"
-                rec_py = f"driver.find_element(AppiumBy.XPATH, \"//*[@text='{text}']\")"
+                rec_xpath = f"//{full_type}[@text='{text}']"
+                rec_py = f"driver.find_element(AppiumBy.XPATH, \"//{full_type}[@text='{text}']\")"
             else:
                 rec_xpath = comp.get("xpath", "")
                 rec_py = f"driver.find_element(AppiumBy.XPATH, \"{rec_xpath}\")"
         elif self.current_platform == "ios":
             if c_id:
-                rec_xpath = f"//*[@name='{c_id}']"
+                rec_xpath = f"//{full_type}[@name='{c_id}']"
                 rec_py = f"driver.find_element(AppiumBy.ACCESSIBILITY_ID, '{c_id}')"
             elif text:
-                rec_xpath = f"//*[@label='{text}']"
-                rec_py = f"driver.find_element(AppiumBy.XPATH, \"//*[@label='{text}']\")"
+                rec_xpath = f"//{full_type}[@label='{text}']"
+                rec_py = f"driver.find_element(AppiumBy.IOS_PREDICATE, 'type == \"{full_type}\" AND label == \"{text}\"')"
             else:
                 rec_xpath = comp.get("xpath", "")
                 rec_py = f"driver.find_element(AppiumBy.XPATH, \"{rec_xpath}\")"
@@ -7856,12 +10972,14 @@ class HarmonyAppiumInspector(QMainWindow):
             short_t = text if len(text) <= 22 else text[:22] + "..."
             id_attr = f' id="{c_id}"' if c_id else ""
             txt_attr = f' text="{short_t}"' if text else ""
-            item.setText(0, f"<{c_type}{id_attr}{txt_attr} bounds=\"{bounds_str}\">")
+            is_full = self.chk_show_full_type.isChecked() if hasattr(self, "chk_show_full_type") else False
+            tag_name = full_type if is_full else c_type
+            item.setText(0, f"<{tag_name}{id_attr}{txt_attr} bounds=\"{bounds_str}\">")
 
         # 4. 立即更新右侧属性表与实时输入框
         self.update_selected_element_panel(node_id)
 
-        # 5. 极速模式：仅异步刷新真机最新原画截图，0.3 秒无感更新左侧视窗，不重构庞大的 DOM 树
+        # 5. 异步刷新真机最新截图
         self.refresh_screen_only()
 
     def action_element_clear(self):
@@ -7871,15 +10989,13 @@ class HarmonyAppiumInspector(QMainWindow):
         if comp and self.current_udid:
             cx, cy = comp["center_x"], comp["center_y"]
             DeviceController.clear_text(self.current_platform, self.current_udid, cx, cy)
-            
-            # 本地属性立即同步清空
+
             comp["text"] = ""
-            comp["raw_attributes"]["text"] = ""
-            comp["raw_attributes"]["originalText"] = ""
+            if "raw_attributes" in comp:
+                comp["raw_attributes"]["text"] = ""
+                comp["raw_attributes"]["originalText"] = ""
             self.edit_live_input.setText("")
             self.update_selected_element_panel(curr_id)
-            
-            # 后台快速刷新最新截图
             self.refresh_screen_only()
 
     def copy_to_clip(self, text: str):
@@ -7901,7 +11017,6 @@ class HarmonyAppiumInspector(QMainWindow):
             x = (parent_rect.width() - self.toast.width()) // 2
             y = (parent_rect.height() - self.toast.height()) // 2
             self.toast.move(x, y)
-
 
     def changeEvent(self, event):
         """主视窗状态变化监听：从最小化恢复时，保证子任务窗口不丢失并提升"""
@@ -7928,7 +11043,6 @@ class HarmonyAppiumInspector(QMainWindow):
 
 
 def main():
-    # 在 Windows 系统上显式声明进程级 AppUserModelID，使应用下的所有顶级子窗口在任务栏聚合显示多任务缩略图卡片
     if sys.platform == "win32":
         try:
             import ctypes

@@ -534,6 +534,7 @@ class MainWindow(QMainWindow):
     def _on_hotkey_restart(self):
         """Ctrl+R 快捷键：极速热重启当前桌面应用进程 (0.3 秒无缝重载全量 UI 源码)"""
         try:
+            import ctypes
             from PyQt6.QtCore import QProcess
             from PyQt6.QtWidgets import QApplication
             if hasattr(self, "page_mobile") and hasattr(self.page_mobile, "save_layout_state"):
@@ -545,8 +546,29 @@ class MainWindow(QMainWindow):
                     pass
             desktop_config.save()
 
-            # 以相同命令参数在外部独立拉起新进程，随后退出当前进程
-            QProcess.startDetached(sys.executable, sys.argv)
+            # 1. 显式释放并关闭当前进程持有的单实例互斥锁句柄
+            import desktop_app.main as main_mod
+            if getattr(main_mod, "_MUTEX_HANDLE", None) and sys.platform == "win32":
+                try:
+                    ctypes.windll.kernel32.CloseHandle(main_mod._MUTEX_HANDLE)
+                    main_mod._MUTEX_HANDLE = None
+                except Exception:
+                    pass
+
+            # 2. 构造干净的命令行参数，附带旧 PID 便于新进程优雅等待握手
+            is_frozen = getattr(sys, "frozen", False)
+            if is_frozen:
+                program = sys.executable
+                raw_args = sys.argv[1:]
+            else:
+                program = sys.executable
+                raw_args = sys.argv
+
+            restart_args = [arg for arg in raw_args if not arg.startswith("--restart-from-pid=")]
+            restart_args.append(f"--restart-from-pid={os.getpid()}")
+
+            # 3. 独立拉起新进程并退出当前应用
+            QProcess.startDetached(program, restart_args)
             QApplication.quit()
         except Exception:
             pass

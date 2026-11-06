@@ -6,6 +6,7 @@ from pages.main.main_page import MainPage
 from pages.moments.moments_page import MomentsPage
 from pages.home.home_page import HomePage
 from pages.common.album_page import CommonAlbumPage
+from common.toast_enums import ToastMsg
 from core.logger_utils import logger, LogIcon
 
 
@@ -52,7 +53,7 @@ class BaseSmokeMoments:
 
     def _verify_moment_published(self, expected_content: str, timeout: int = 15) -> bool:
         """通用发布成功校验：等待 Toast，轮询刷新列表，直到最新内容出现在首位"""
-        toast = self.momentsPage.get_toast('发布成功', timeout=timeout)
+        toast = self.momentsPage.get_toast(ToastMsg.MOMENT_PUBLISH_SUCCESS, timeout=timeout)
         check.is_true(toast, '❌ 朋友圈未正常弹出‘发布成功’提示')
         self.momentsPage.wait_for_moments_page_load(timeout=timeout)
 

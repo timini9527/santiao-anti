@@ -107,7 +107,7 @@ def catch_exception(func):
             # 场景 3：默认模式 → 真正的异常，记 ERROR + 截图
             logger.error(f"{LogIcon.FAIL} 查找元素失败: {locator} | 原因: {type(e).__name__}")
             if hasattr(self, 'driver') and self.driver:
-                _take_screenshot_on_failure(self.driver, locator)
+                pass  # 规避底层查找时频繁触发真机系统截屏，防止 IM 插入防截屏通知
             return None
         except HTTPError as error:
             logger.error(
@@ -154,6 +154,7 @@ def catch_elements_exception(func):
                 logger.info(
                     f"{LogIcon.SUCCESS} 元素列表预期为空: {locator}"
                 )
+
                 return []
 
             if not raise_err:
@@ -161,6 +162,7 @@ def catch_elements_exception(func):
                     f"{LogIcon.WARN} 未找到元素列表，静默返回: "
                     f"{LogIcon.WARN} {locator}"
                 )
+
                 return []
 
             logger.error(
@@ -169,10 +171,10 @@ def catch_elements_exception(func):
             )
 
             if hasattr(self, "driver") and self.driver:
-                _take_screenshot_on_failure(
-                    self.driver,
-                    locator,
-                )
+                pass  # 规避列表探测时触发真机截屏
+
+
+
 
             return []
 

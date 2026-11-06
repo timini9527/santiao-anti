@@ -9,6 +9,8 @@ class CommonLocatorHos:
     底层深度原生对齐 ArkUI 组件树标签 (Navigation, NavDestination, Stack, Column, Row, Text, Button, Image, Dialog 等)
     全面覆盖顶部导航条、全局返回键、主页/子页面标题、操作按钮、系统与业务弹窗确认/取消、Toast 提示及动态参数化定位工厂。
     """
+    
+    PACKAGE_ID = 'com.santiaohms.im'
 
     # --------------------------------------------------------------------------
     # 1. 顶部全局导航栏与通用返回键 (Top Navigation Bar & Back Actions)

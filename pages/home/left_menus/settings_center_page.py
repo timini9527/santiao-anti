@@ -1,5 +1,6 @@
 import time
 from common.base_page import BasePage
+from common.toast_enums import ToastMsg
 from core.logger_utils import logger, LogIcon
 from locators.home.left_menus.settings_center_locator import SettingsCenterLocator
 
@@ -94,7 +95,7 @@ class SettingsCenterPage(BasePage):
         logger.info(f"{LogIcon.SETUP} 点击退出登录二次确认【取消】按钮")
         self.click(SettingsCenterLocator.LOGOUT_CANCEL_BTN)
 
-    def get_logout_success_msg(self, target_text: str = "已退出登录", timeout: int = 5) -> str:
+    def get_logout_success_msg(self, target_text: str = ToastMsg.LOGOUT_SUCCESS, timeout: int = 5) -> str:
         """
         轮询获取退出登录后的 Toast 提示
         :param target_text: 目标期望匹配文本 (默认 "已退出登录")

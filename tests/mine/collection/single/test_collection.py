@@ -14,6 +14,7 @@ from core.logger_utils import logger, LogIcon
 from strategy.chat.chat_strategy import PRIVATE_USER1, GROUP_STRATEGY
 from pages.common.contact_select_page import ContactSelectPage
 import time
+from common.toast_enums import ToastMsg
 
 @allure.epic('IM核心功能测试')
 @allure.feature('我的收藏-收藏夹')
@@ -48,7 +49,7 @@ class TestCollection:
         self.longPressPage.long_press_last_message()
         self.longPressPage.click_menu_item('收藏')
         toast = self.collectionPage.get_toast()
-        check.equal('收藏成功', toast, f'收藏失败，实际 Toast：{toast}')
+        check.equal(ToastMsg.COLLECT_SUCCESS, toast, f'收藏失败，实际 Toast：{toast}')
 
     def _build_text(self, prefix: str, strategy) -> str:
         """生成本次测试唯一文本，避免被历史收藏数据干扰"""
@@ -114,7 +115,7 @@ class TestCollection:
         with allure.step('4. 分享到聊天窗口'):
             self.contactSelectPage.click_contact_by_name(strategy.name)
             self.contactSelectPage.click_fb_action()
-            toast = self.collectionPage.get_toast('发送成功')
+            toast = self.collectionPage.get_toast(ToastMsg.SEND_SUCCESS)
             check.is_true(toast, '发送失败')
         with allure.step('5. 进入聊天窗口并校验'):
             self.mainPage.go_to_main_page()

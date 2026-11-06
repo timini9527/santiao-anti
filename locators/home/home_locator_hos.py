@@ -13,13 +13,13 @@ class HomeLocatorHos:
     # --------------------------------------------------------------------------
 
     # 顶部左上角抽屉菜单/个人中心头像入口 (基于列表前驱结构定位，稳定度 100%)
-    LEFT_MENU = (AppiumBy.XPATH, "(//NavDestinationContent//Image)[1]")
+    LEFT_MENU = (AppiumBy.XPATH, "(//NavDestinationContent//Stack/__Common__//Row[2]/Column/Row/Stack/Image)[1]")
 
     # 顶部中间标题 (应用名 "三条" 或 消息连接状态)
     MIDDLE_TITLE = (AppiumBy.XPATH, "//Text[contains(@text, '三条')]")
 
     # 顶部右上角添加 "+" 功能菜单按钮 (完全脱离页面标题)
-    RIGHT_MENU = (AppiumBy.XPATH, "(//NavDestinationContent//Image)[2]")
+    RIGHT_MENU = (AppiumBy.XPATH, "(//NavDestinationContent//Stack/__Common__//Row[2]/Column/Image)[1]")
 
     # 展开菜单 - 发起群聊
     EXPAND_START_GROUP_CHAT = (AppiumBy.XPATH, "//Text[@text='发起群聊'] | //Dialog//Row/Text[1]")
@@ -93,8 +93,8 @@ class HomeLocatorHos:
     # 单个会话卡片条目根容器
     CONVERSATION_ITEM = (AppiumBy.XPATH, "//ListItem")
 
-    # 会话标题/联系人或群聊名称 (锁定 ListItem 第一行标题区域首个 Text 节点)
-    CONVERSATION_NAME = (AppiumBy.XPATH, "//ListItem//Row[2]//Flex/Text[1]")
+    # 会话标题/联系人或群聊名称 (锁定 ListItem 标题区域首个 Text 节点，兼容 Flex 与直属结构)
+    CONVERSATION_NAME = (AppiumBy.XPATH, "//ListItem//Row[2]//Flex/Text[1] | //ListItem//Flex/Text[1] | //ListItem//Text[1]")
 
     # 会话发送者和自己发送消息的内容
     CONVERSATION_SENDER = (AppiumBy.XPATH, "//ListItem//Row[2]//Row[2]//Row/Text[last()]")

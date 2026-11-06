@@ -88,14 +88,14 @@ class LocatorPlatformManager:
                 # 4. Appium Capabilities 判断
                 caps = getattr(driver, "capabilities", None) or getattr(driver, "caps", None)
                 if isinstance(caps, dict):
-                    p_cap = caps.get("platformName")
+                    p_cap = caps.get("platformName") or caps.get("automationName")
                     if p_cap:
                         p_str = str(p_cap).strip().lower()
                         if p_str in ("harmonyos", "openharmony", "hos"):
                             return "harmonyos"
-                        elif p_str in ("android",):
+                        elif p_str in ("android", "uiautomator2"):
                             return "android"
-                        elif p_str in ("ios", "apple"):
+                        elif p_str in ("ios", "apple", "xcuitest"):
                             return "ios"
         except Exception:
             pass
@@ -170,6 +170,15 @@ class DynamicLocatorProxy:
             return self._ios_cls or self._android_cls
         return self._android_cls
 
+    def __mro_entries__(self, bases):
+        """
+        PEP 560 标准继承协议：
+        当子类定位器显式继承 DynamicLocatorProxy 实例（如 class _LoginLocatorAndroid(CommonLocator):）时，
+        将其平滑解析为真实的底层物理基类，彻底杜绝 Python 将 DynamicLocatorProxy 误作为元类 (metaclass) 调用的隐患。
+        """
+        target_cls = self._resolve_target_cls()
+        return (target_cls,)
+
     def __getattr__(self, name: str) -> Any:
         target_cls = self._resolve_target_cls()
 
@@ -182,9 +191,11 @@ class DynamicLocatorProxy:
         if hasattr(self._android_cls, name):
             return getattr(self._android_cls, name)
 
+        target_name = getattr(target_cls, "__name__", str(target_cls))
+        base_name = getattr(self._android_cls, "__name__", str(self._android_cls))
         raise AttributeError(
             f"跨端元素定位器代理错误: 平台 '{LocatorPlatformManager.get_current_platform()}' 对应的 "
-            f"[{target_cls.__name__}] 及基础类 [{self._android_cls.__name__}] 均未定义属性或方法: '{name}'"
+            f"[{target_name}] 及基础类 [{base_name}] 均未定义属性或方法: '{name}'"
         )
 
     def __dir__(self):
@@ -195,6 +206,8 @@ class DynamicLocatorProxy:
     def __repr__(self) -> str:
         try:
             target_cls = self._resolve_target_cls()
-            return f"<DynamicLocatorProxy(active_class='{target_cls.__name__}')>"
+            target_name = getattr(target_cls, "__name__", str(target_cls))
+            return f"<DynamicLocatorProxy(active_class='{target_name}')>"
         except Exception:
-            return f"<DynamicLocatorProxy(base='{self._android_cls.__name__}')>"
+            base_name = getattr(self._android_cls, "__name__", str(self._android_cls))
+            return f"<DynamicLocatorProxy(base='{base_name}')>"

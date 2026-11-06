@@ -7,6 +7,7 @@ from pages.moments.moments_page import MomentsPage
 from pages.home.home_page import HomePage
 from core.logger_utils import logger, LogIcon
 from utils.file_reader.data_loader import load_yaml_data
+from common.toast_enums import ToastMsg
 
 
 @allure.epic("IM核心功能测试")
@@ -43,7 +44,7 @@ class TestMomentsInteraction:
 
     def _verify_moment_published(self, expected_content: str, timeout: int=10):
         """校验朋友圈发布结果：验证弹出‘发布成功’，且最新发布的动态首条匹配"""
-        toast = self.momentsPage.get_toast("发布成功", timeout=timeout)
+        toast = self.momentsPage.get_toast(ToastMsg.MOMENT_PUBLISH_SUCCESS, timeout=timeout)
         check.is_true(toast, "❌ 朋友圈发布动态未能弹出‘发布成功’提示")
         self.momentsPage.wait_for_moments_page_load(timeout=timeout)
         

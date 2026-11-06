@@ -6,6 +6,7 @@ from pages.main.main_page import MainPage
 from pages.home.home_page import HomePage
 from pages.home.side_slip_page import SideSlipPage
 from pages.personal.other_page import OtherPage
+from common.toast_enums import ToastMsg
 from core.logger_utils import logger, LogIcon
 
 class BaseSmokePersonal:
@@ -141,7 +142,7 @@ class TestSmokePersonal(BaseSmokePersonal):
             with allure.step('3. 点击保存二维码并校验成功 Toast'):
                 self.otherPage.click_save_qrcode()
                 toast_msg = self.otherPage.get_qrcode_toast()
-                check.is_in('已保存到相册', toast_msg, f"❌ 保存二维码失败或未捕获到对应Toast提示，实际提示: '{toast_msg}'")
+                check.is_in(ToastMsg.SAVED_TO_ALBUM, toast_msg, f"❌ 保存二维码失败或未捕获到对应Toast提示，实际提示: '{toast_msg}'")
         finally:
             with allure.step('4. 页面闭环退出：返回个人资料主页面'):
                 try:

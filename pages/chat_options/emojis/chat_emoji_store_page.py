@@ -5,6 +5,7 @@ from typing import Any, List
 from core.logger_utils import logger, LogIcon
 from locators.chat_options.emojis.chat_emoji_locator import ChatEmojiLocator
 from pages.chat_options.emojis.chat_emoji_panel_base import ChatEmojiPanelBase
+from common.toast_enums import ToastMsg
 
 
 class ChatEmojiStorePage(ChatEmojiPanelBase):
@@ -166,7 +167,7 @@ class ChatEmojiStorePage(ChatEmojiPanelBase):
                 # 获取 toast 消息并记录状态
                 toast_text = self.get_add_success_toast()  
                 logger.info(f"{LogIcon.ACTION} 获取toast消息: {toast_text}")
-                add_dict[pkg_name] = True if toast_text == "添加成功" else False
+                add_dict[pkg_name] = True if toast_text == ToastMsg.ADD_SUCCESS else False
                 
                 # 返回到上一页（商店主列表）
                 self.back_to_emoji_store()

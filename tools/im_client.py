@@ -1166,7 +1166,7 @@ if __name__ == "__main__":
         ),
         # 设备 3: 绑定 测试群003
         DeviceAccountConfig(
-            device_id="emulator-5566",
+            device_id="emulator-5570",
             sender_cust_id="1500692599990554624",
             sender_name="19200000052",
             mobile="19200000052",
@@ -1244,7 +1244,7 @@ if __name__ == "__main__":
         USE_CLUSTER = True
 
         # 每台设备对各自会话（专属群聊+公共单聊）发送的消息数量（如设为 20 条）
-        COUNT_PER_TARGET = 1500
+        COUNT_PER_TARGET = 200
         # COUNT_PER_TARGET = 28572
 
         if USE_CLUSTER:

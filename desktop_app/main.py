@@ -81,6 +81,19 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 os.chdir(PROJECT_ROOT)
 
+# 在本地工程源码目录下运行打包 EXE 时，优先加载本地 desktop_app 最新源码，确保 Ctrl+R 热重启实时生效
+if getattr(sys, "frozen", False) and os.path.isdir(os.path.join(PROJECT_ROOT, "desktop_app", "ui")):
+    try:
+        import importlib.machinery
+        if importlib.machinery.PathFinder in sys.meta_path:
+            sys.meta_path.remove(importlib.machinery.PathFinder)
+        sys.meta_path.insert(0, importlib.machinery.PathFinder)
+        for _mod_name in list(sys.modules.keys()):
+            if _mod_name.startswith("desktop_app.ui") or _mod_name == "desktop_app.style":
+                sys.modules.pop(_mod_name, None)
+    except Exception:
+        pass
+
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
@@ -209,6 +222,7 @@ def _acquire_single_instance_lock() -> bool:
     单实例互斥锁：
     若当前已有实例在运行，自动唤醒前台窗口并返回 False；
     若为首个实例，成功获取系统全局命名互斥体并返回 True。
+    支持 Ctrl+R 热重启平滑握手：等待旧进程彻底终结，杜绝时序竞争导致的闪退。
     """
     global _MUTEX_HANDLE
     if sys.platform != "win32":
@@ -218,20 +232,45 @@ def _acquire_single_instance_lock() -> bool:
     ERROR_ALREADY_EXISTS = 183
     mutex_name = "Local\\Santiao_IM_AutoTest_Console_SingleInstance_Mutex"
 
-    # 创建命名互斥体
-    _MUTEX_HANDLE = kernel32.CreateMutexW(None, False, mutex_name)
-    last_error = kernel32.GetLastError()
+    # 1. 检测是否是由 Ctrl+R 热重启拉起的新进程
+    restarting_pid = None
+    for arg in sys.argv:
+        if arg.startswith("--restart-from-pid="):
+            try:
+                restarting_pid = int(arg.split("=", 1)[1])
+            except Exception:
+                pass
+            break
 
-    if last_error == ERROR_ALREADY_EXISTS:
-        # 重复启动：尝试唤醒并置顶已存在的窗口（最多重试 1 秒以防主窗口还在初始化）
-        import time
-        for _ in range(5):
-            if _activate_existing_window():
-                break
-            time.sleep(0.2)
-        return False
+    # 若为热重启场景，新进程精准等待旧进程完全退出（毫秒级释放内核资源）
+    if restarting_pid:
+        PROCESS_SYNCHRONIZE = 0x00100000
+        h_old_proc = kernel32.OpenProcess(PROCESS_SYNCHRONIZE, False, restarting_pid)
+        if h_old_proc:
+            # 最多等待 3000ms，旧进程一旦退出内核立即返回 WAIT_OBJECT_0
+            kernel32.WaitForSingleObject(h_old_proc, 3000)
+            kernel32.CloseHandle(h_old_proc)
 
-    return True
+    # 2. 循环重试获取互斥锁（热重启时轮询重试最多 20 次，每次 50ms）
+    max_retries = 20 if restarting_pid else 1
+    import time
+    for _ in range(max_retries):
+        if _MUTEX_HANDLE:
+            kernel32.CloseHandle(_MUTEX_HANDLE)
+            _MUTEX_HANDLE = None
+
+        _MUTEX_HANDLE = kernel32.CreateMutexW(None, False, mutex_name)
+        last_error = kernel32.GetLastError()
+        if last_error != ERROR_ALREADY_EXISTS:
+            return True
+        time.sleep(0.05)
+
+    # 3. 若多次重试后仍然冲突，且非热重启场景，则属于普通双击多开：激活已有窗口并退出
+    for _ in range(5):
+        if _activate_existing_window():
+            break
+        time.sleep(0.2)
+    return False
 
 
 def get_best_app_icon_path() -> Optional[str]:
@@ -366,4 +405,3 @@ if __name__ == '__main__':
     if not _acquire_single_instance_lock():
         sys.exit(0)
     run_app()
-

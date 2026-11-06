@@ -14,35 +14,68 @@
   },
   {
     "file": "tests/test_demo_harmony.py",
-    "display_name": "冒烟测试-鸿蒙端-主页与生命周期",
+    "display_name": "鸿蒙端框架对比-Appium-HarmonyOS-Driver",
     "classes": [
       {
-        "name": "TestSmokeHarmony",
-        "display_name": "冒烟测试-鸿蒙端-主页与生命周期",
+        "name": "TestAppiumHarmonyOSDriver",
+        "display_name": "鸿蒙端框架对比-Appium-HarmonyOS-Driver",
         "priority": "P2",
         "tests": [
           {
-            "name": "test_harmony_launch_and_home_render",
-            "display_name": "验证鸿蒙端App冷启动与主页核心元素渲染-状态：已完成",
+            "name": "test_send_message_via_appium_harmonyos_driver",
+            "display_name": "使用 appium-harmonyos-driver 在测试0222会话中发送文本消息",
             "params": [],
             "priority": "P0"
-          },
+          }
+        ]
+      },
+      {
+        "name": "TestHypiumDriver",
+        "display_name": "鸿蒙端框架对比-Huawei-Hypium",
+        "priority": "P2",
+        "tests": [
           {
-            "name": "test_harmony_drawer_menu_interaction",
-            "display_name": "验证鸿蒙端主页侧滑抽屉菜单打开与返回-状态：已完成",
+            "name": "test_send_message_via_hypium",
+            "display_name": "使用华为官方 Hypium 框架在测试0222会话中发送文本消息",
             "params": [],
-            "priority": "P1"
-          },
+            "priority": "P0"
+          }
+        ]
+      },
+      {
+        "name": "TestHarmonyAppiumFrameworkIntegration",
+        "display_name": "鸿蒙端框架重构-工业级工程化标准接入",
+        "priority": "P2",
+        "tests": [
           {
-            "name": "test_harmony_add_button_expand",
-            "display_name": "验证鸿蒙端主页右上角加号菜单展开交互-状态：已完成",
+            "name": "test_send_message_via_standard_framework",
+            "display_name": "使用项目标准架构向会话发送文本消息 (appium-harmonyos-driver)",
             "params": [],
-            "priority": "P1"
+            "priority": "P0"
           }
         ]
       }
     ],
     "tests": []
+  },
+  {
+    "file": "tests/test_demo_ios.py",
+    "display_name": "验证 iOS App 启动后处于前台运行状态",
+    "classes": [],
+    "tests": [
+      {
+        "name": "test_ios_app_launch_state",
+        "display_name": "验证 iOS App 启动后处于前台运行状态",
+        "params": [],
+        "priority": "P2"
+      },
+      {
+        "name": "test_ios_page_source_available",
+        "display_name": "验证 iOS 当前页面控件树可正常抓取",
+        "params": [],
+        "priority": "P2"
+      }
+    ]
   },
   {
     "file": "tests/chat/core/test_chat.py",
@@ -1276,14 +1309,18 @@
             "name": "test_basic_voice_send",
             "display_name": "基础语音发送测试-状态：已完成",
             "params": [
-              "?",
-              "?",
-              "?",
-              "?",
-              "?",
-              "?",
-              "?",
-              "?"
+              "私聊模式-0秒-太短",
+              "私聊模式-1秒-正常",
+              "私聊模式-30秒-正常",
+              "私聊模式-59秒-临界",
+              "私聊模式-60秒-上限",
+              "私聊模式-61秒-超限",
+              "群聊模式-0秒-太短",
+              "群聊模式-1秒-正常",
+              "群聊模式-30秒-正常",
+              "群聊模式-59秒-临界",
+              "群聊模式-60秒-上限",
+              "群聊模式-61秒-超限"
             ],
             "priority": "P1"
           },
@@ -1291,10 +1328,8 @@
             "name": "test_voice_record_cancel",
             "display_name": "语音录制取消测试-状态：已完成",
             "params": [
-              "?",
-              "?",
-              "?",
-              "?"
+              "私聊模式-悬停5秒-按压1秒",
+              "群聊模式-悬停5秒-按压1秒"
             ],
             "priority": "P2"
           },
@@ -1302,12 +1337,10 @@
             "name": "test_voice_swipe_to_preview_and_action",
             "display_name": "语音进阶交互：滑动试听测试并操作(发送/取消)，并验证-状态：已完成",
             "params": [
-              "?",
-              "?",
-              "?",
-              "?",
-              "?",
-              "?"
+              "私聊模式-悬停5秒-按压1秒-发送",
+              "私聊模式-悬停5秒-按压1秒-取消",
+              "群聊模式-悬停5秒-按压1秒-发送",
+              "群聊模式-悬停5秒-按压1秒-取消"
             ],
             "priority": "P1"
           },
@@ -1315,16 +1348,22 @@
             "name": "test_voice_preview_multi_scenarios",
             "display_name": "语音进阶交互：试听模式多场景操作测试 (播放/暂停、听筒/扬声器切换) + 最终发送/取消校验-状态：已完成",
             "params": [
-              "?",
-              "?",
-              "?",
-              "?",
-              "?",
-              "?",
-              "?",
-              "?",
-              "?",
-              "?"
+              "私聊模式-试听播放-最终发送-悬停5秒-按压1秒",
+              "私聊模式-试听播放-最终取消-悬停5秒-按压1秒",
+              "私聊模式-试听暂停-最终发送-悬停5秒-按压1秒",
+              "私聊模式-试听暂停-最终取消-悬停5秒-按压1秒",
+              "私聊模式-听筒模式-最终发送-悬停5秒-按压1秒",
+              "私聊模式-听筒模式-最终取消-悬停5秒-按压1秒",
+              "私聊模式-扬声器模式-最终发送-悬停5秒-按压1秒",
+              "私聊模式-扬声器模式-最终取消-悬停5秒-按压1秒",
+              "群聊模式-试听播放-最终发送-悬停5秒-按压1秒",
+              "群聊模式-试听播放-最终取消-悬停5秒-按压1秒",
+              "群聊模式-试听暂停-最终发送-悬停5秒-按压1秒",
+              "群聊模式-试听暂停-最终取消-悬停5秒-按压1秒",
+              "群聊模式-听筒模式-最终发送-悬停5秒-按压1秒",
+              "群聊模式-听筒模式-最终取消-悬停5秒-按压1秒",
+              "群聊模式-扬声器模式-最终发送-悬停5秒-按压1秒",
+              "群聊模式-扬声器模式-最终取消-悬停5秒-按压1秒"
             ],
             "priority": "P2"
           },
@@ -1332,10 +1371,8 @@
             "name": "test_voice_recognize_content",
             "display_name": "识别语音内容-状态：未完成",
             "params": [
-              "?",
-              "?",
-              "?",
-              "?"
+              "私聊模式-悬停10秒-按压1秒",
+              "群聊模式-悬停10秒-按压1秒"
             ],
             "priority": "P2"
           },
@@ -1343,9 +1380,8 @@
             "name": "test_voice_network_failure",
             "display_name": "断网异常测试：无网络下发送语音验证红点提示-状态：未完成",
             "params": [
-              "?",
-              "?",
-              "?"
+              "私聊模式-悬停2秒",
+              "群聊模式-悬停2秒"
             ],
             "priority": "P2"
           }
@@ -1764,15 +1800,7 @@
           {
             "name": "test_keyword_action_mute",
             "display_name": "命中违规关键词 - 触发群助手撤回并禁言发送者-状态：已完成",
-            "params": [
-              "禁言-10分钟",
-              "禁言-30分钟",
-              "禁言-2小时",
-              "禁言-1天",
-              "禁言-7天",
-              "禁言-30天",
-              "禁言-永久禁言"
-            ],
+            "params": [],
             "priority": "P1"
           },
           {
@@ -1798,50 +1826,35 @@
           {
             "name": "test_keyword_add_valid_single",
             "display_name": "校验单个关键词合规录入与10字上限: {title}-状态：已完成",
-            "params": [
-              "纯中文合规",
-              "纯英文合规",
-              "纯数字合规",
-              "中英数混合合规",
-              "刚好10个中文字符边界"
-            ],
+            "params": [],
             "priority": "P1"
           },
           {
             "name": "test_keyword_batch_add_by_space",
             "display_name": "校验空格分隔批量添加关键词: {title}-状态：已完成",
-            "params": [
-              "标准空格分隔批量添加",
-              "含多重空格及前后空格分词"
-            ],
+            "params": [],
             "priority": "P1"
           },
           {
             "name": "test_keyword_add_length_truncate",
             "display_name": "校验超过10字超长拦截与截断录入规则: {title}-状态：已完成",
-            "params": [
-              "超过10字超长违规词截断"
-            ],
+            "params": [],
             "priority": "P2"
           },
           {
             "name": "test_keyword_add_invalid_characters",
             "display_name": "校验非法字符拦截规则: {title}-状态：已完成",
-            "params": [
-              "包含特殊符号拦截",
-              "纯特殊符号拦截",
-              "邮箱格式拦截"
-            ],
+            "params": [],
             "priority": "P2"
           },
           {
             "name": "test_keyword_max_limit",
             "display_name": "校验最多添加 50 个关键词上限-状态：已完成",
             "params": [
-              "添加 0 个关键词",
-              "添加第1个关键词",
-              "添加第50个关键词",
-              "添加第51个关键词"
+              "?",
+              "?",
+              "?",
+              "?"
             ],
             "priority": "P2"
           },
@@ -1849,8 +1862,8 @@
             "name": "test_keyword_delete",
             "display_name": "校验删除关键词成功-状态：已完成: {title}",
             "params": [
-              "删除单条关键词",
-              "清空所有关键词"
+              "?",
+              "?"
             ],
             "priority": "P1"
           },
@@ -1858,8 +1871,8 @@
             "name": "test_keyword_delete_flow",
             "display_name": "校验删除关键词二次确认流程-状态：已完成: {confirm_action}",
             "params": [
-              "确认删除",
-              "取消删除"
+              "?",
+              "?"
             ],
             "priority": "P2"
           },
@@ -1867,11 +1880,11 @@
             "name": "test_group_bot_keyword_warning_message_setting",
             "display_name": "自定义警告语 - 配置校验与上限测试-状态：已完成: {title}",
             "params": [
-              "空输入拦截",
-              "敏感词拦截",
-              "超限10条拦截",
-              "添加单条警告语",
-              "添加至10条上限"
+              "?",
+              "?",
+              "?",
+              "?",
+              "?"
             ],
             "priority": "P2"
           },
@@ -1879,9 +1892,9 @@
             "name": "test_group_bot_keyword_delete_warning_msg",
             "display_name": "删除自定义警告语-状态：已完成: {id_title}",
             "params": [
-              "删除单条_确认",
-              "删除单条_取消",
-              "尝试删除最后一条警告语拦截"
+              "?",
+              "?",
+              "?"
             ],
             "priority": "P2"
           }

@@ -12,6 +12,7 @@ from pages.home.home_page import HomePage
 from pages.home.side_slip_page import SideSlipPage
 from pages.home.left_menus.settings_center_page import SettingsCenterPage
 from pages.login.login_page import LoginPage
+from common.toast_enums import ToastMsg
 
 
 @pytest.mark.usefixtures('enter_personal_info')
@@ -403,8 +404,8 @@ class TestAvatar:
         with allure.step('1. 点击保存图片按钮'):
             self.avatarPage.click_save_image()
         with allure.step('2. 获取并验证 Toast 提示信息'):
-            toast_msg = self.avatarPage.get_toast(expected_toast='已保存到相册')
-            assert toast_msg, "保存图片失败！未显示 '已保存到相册' 提示"
+            toast_msg = self.avatarPage.get_toast(expected_toast=ToastMsg.SAVED_TO_ALBUM)
+            assert toast_msg, f"保存图片失败！未显示 '{ToastMsg.SAVED_TO_ALBUM}' 提示"
 
     @allure.story('逆向流：取消更换动作')
     @allure.title('在头像操作页点击取消，验证页面回退且头像未变')

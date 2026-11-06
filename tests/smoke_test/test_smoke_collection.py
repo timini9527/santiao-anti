@@ -14,6 +14,7 @@ from pages.home.side_slip_page import SideSlipPage
 from pages.chat_options.images.chat_image_page import ChatImagePage
 from core.logger_utils import logger, LogIcon
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, PRIVATE_USER3
+from common.toast_enums import ToastMsg
 
 class BaseSmokeCollectionSingle:
     """单端收藏夹测试基类，统一管理单端 Page 的初始化以及公共辅助方法"""
@@ -66,7 +67,7 @@ class BaseSmokeCollectionSingle:
         self.longPressPage.long_press_last_message()
         self.longPressPage.click_menu_item('收藏')
         toast = self.collectionPage.get_toast()
-        if toast != '添加成功':
+        if toast != ToastMsg.ADD_SUCCESS:
             pytest.fail(f'❌ 收藏失败，实际 Toast：{toast}')
 
     def _send_image_and_collect(self):
@@ -81,7 +82,7 @@ class BaseSmokeCollectionSingle:
         self.longPressPage.long_press_last_message()
         self.longPressPage.click_menu_item('收藏')
         toast = self.collectionPage.get_toast()
-        if toast != '添加成功':
+        if toast != ToastMsg.ADD_SUCCESS:
             pytest.fail(f'❌ 收藏图片失败，实际 Toast：{toast}')
 
     def _assert_latest_text_collection(self, expected_text: str) -> str:

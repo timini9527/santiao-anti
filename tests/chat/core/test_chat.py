@@ -12,7 +12,6 @@ CHAT_DATA = load_yaml_data('chat/chat.yaml').get('test_data')
 CHAT_CSV_DATA = load_csv_data('chat/chat_messages.csv')
 
 
-
 @allure.epic('IM核心功能测试')
 @allure.feature('聊天模块-文本消息收发')
 class TestChat:
@@ -58,20 +57,22 @@ class TestChat:
 
     def _enter_chat(self, chat_name: str) -> None:
         """进入指定的聊天会话（支持同会话直接复用，跨会话自动退回主页重新进入）"""
-        if self.__class__._chat_target != chat_name:
-            if self.__class__._in_chat:
-                logger.info(f'{LogIcon.ACTION} [Lock] 会话切换: {self.__class__._chat_target} -> {chat_name}，退回主页重新进入')
-                try:
-                    self.mainPage.go_to_main_page()
-                except Exception as e:
-                    logger.error(f'{LogIcon.WARN} 切换会话退回主页失败: {e}')
-            self.__class__._in_chat = False
-            self.__class__._chat_target = chat_name
+        if self.__class__._in_chat and self.__class__._chat_target == chat_name:
+            logger.info(f'{LogIcon.SUCCESS} 🔒 [Lock] 会话已锁定在【{chat_name}】，直接复用无需重复进入')
+            return
 
-        if not self.__class__._in_chat:
-            self.chatListPage.enter_chat(chat_name)
-            self.__class__._in_chat = True
-            logger.info(f'{LogIcon.SUCCESS} 🔓 [Lock] 已成功进入与【{chat_name}】的会话，开启会话保持锁')
+        if self.__class__._in_chat:
+            logger.info(f'{LogIcon.ACTION} [Lock] 会话切换: {self.__class__._chat_target} -> {chat_name}，退回主页重新进入')
+            try:
+                self.mainPage.go_to_main_page()
+            except Exception as e:
+                logger.error(f'{LogIcon.WARN} 切换会话退回主页失败: {e}')
+            self.__class__._in_chat = False
+
+        self.__class__._chat_target = chat_name
+        self.chatListPage.enter_chat(chat_name)
+        self.__class__._in_chat = True
+        logger.info(f'{LogIcon.SUCCESS} 🔓 [Lock] 已成功进入与【{chat_name}】的会话，开启会话保持锁')
 
     def _reenter_chat(self, chat_name: str) -> None:
         """重新进入当前会话：用于大批量消息发送后刷新视口并强制锚定至最新消息底部"""
@@ -79,8 +80,6 @@ class TestChat:
         self.mainPage.go_to_main_page()
         self.__class__._in_chat = False
         self._enter_chat(chat_name)
-
-
 
     @pytest.mark.p0
     @allure.severity(allure.severity_level.BLOCKER)
@@ -103,12 +102,11 @@ class TestChat:
             self._enter_chat(strategy.name)
 
         with allure.step(f"2. 发送文本消息: '{payload}'"):
-            self.chatPage.send_message(payload)
+            self.chatPage.send_message(payload, fast=True)
 
         with allure.step("3. 校验最新发送消息回显内容"):
             actual_text = self.chatPage.get_text_message_content_by_index(index=-1, side='sent')
             check.equal(actual_text, expected, f"❌ 消息回显不匹配！期望: '{expected}', 实际: '{actual_text}'")
-
 
     @pytest.mark.p1
     @allure.severity(allure.severity_level.CRITICAL)

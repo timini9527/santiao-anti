@@ -46,8 +46,15 @@ app:
   "appium:settings[waitForSelectorTimeout]": 500
 
 harmony_app:
-  # --- 鸿蒙应用与引擎配置 (HarmonyOS NEXT 6.0+) ---
+  # --- 鸿蒙应用与引擎配置 (appium-harmonyos-driver 2.x 标准化架构) ---
   "platformName": "HarmonyOS"
+  "appium:automationName": "harmonyos"
+  "appium:appPackage": "com.santiaohms.im"
+  "appium:appActivity": "EntryAbility"
+  "appium:newCommandTimeout": 120
+  "appium:noReset": true
+  "appium:skipHilogCapture": true
+  # 保留原有业务字段与配置
   "bundleName": "com.santiaohms.im"
   "abilityName": "EntryAbility"
   "moduleName": "phone"
@@ -58,7 +65,9 @@ ios_app:
   # --- iOS 应用与引擎配置 (XCUITest) ---
   "appium:automationName": "XCUITest"
   "appium:platformName": "iOS"
-  "appium:bundleId": "com.santiaotalk.im"
+  "appium:bundleId": "com.baimo.santiao"
+  "appium:webDriverAgentUrl": "http://127.0.0.1:8100"  # 核心：Win11 直连本地 WDA 转发端口
+  "appium:usePrebuiltWDA": true                      # 跳过 Xcode 编译，直接复用已安装的 WDA
   "appium:newCommandTimeout": 120
   "appium:noReset": true
   "appium:fullReset": false
@@ -69,44 +78,52 @@ ios_app:
 
 devices:
   dev:
-    # --- 鸿蒙环境设备 ---
+    # --- 鸿蒙环境设备 (appium-harmonyos-driver 标准配置) ---
     harmony_sender:
       platformName: "HarmonyOS"
+      automationName: "harmonyos"
       udid: "4UQ9K25530068061"
+      # udid: "3YZ9K25104007630"
       deviceName: "HarmonyPhone"
       bundleName: "com.santiaohms.im"
       abilityName: "EntryAbility"
+      appPackage: "com.santiaohms.im"
+      appActivity: "EntryAbility"
       moduleName: "phone"
       lock_password: "1111"
+      appiumServerUrl: "http://127.0.0.1:4723"
 
     harmony_receiver:
       platformName: "HarmonyOS"
-      udid: "4UQ9K25530068062"
+      automationName: "harmonyos"
+      udid: "4UQ9K25530068061"
       deviceName: "HarmonyReceiverPhone"
       bundleName: "com.santiaohms.im"
       abilityName: "EntryAbility"
+      appPackage: "com.santiaohms.im"
+      appActivity: "EntryAbility"
       moduleName: "phone"
       lock_password: "1111"
+      appiumServerUrl: "http://127.0.0.1:4725"
 
     # --- iOS 环境设备 ---
     ios_sender:
       platformName: "iOS"
-      udid: "00008101-001234567890001E"  # iOS 主测/发送方 UDID
-      deviceName: "iPhone 15 Pro"
+      udid: "00008101-001538462600001E"   # 真实已连接 iPhone 12 UDID
+      deviceName: "iPhone 12"
       platformVersion: "17.0"
       wdaLocalPort: 8100                  # 关键！iOS XCUITest 通信端口，必须唯一
-      appiumServerUrl: "http://127.0.0.1:4725"
+      appiumServerUrl: "http://127.0.0.1:4723"
 
     ios_receiver:
       platformName: "iOS"
-      udid: "00008101-001234567890002E"  # iOS 接收方 UDID
+      udid: "00008101-001234567890002E"   # iOS 接收方 UDID
       deviceName: "iPhone 14"
       platformVersion: "16.5"
       wdaLocalPort: 8101
       appiumServerUrl: "http://127.0.0.1:4726"
 
     # --- 安卓环境设备 ---
-
     sender:
       platformName: "Android"
       # udid: "192.168.1.29:5554"
@@ -167,7 +184,7 @@ devices:
 
     device7:
       platformName: "Android"
-      udid: "emulator-5566"   
+      udid: "emulator-5570"   
       deviceName: "Device7Phone"
       systemPort: 8206
       appiumServerUrl: "http://127.0.0.1:4729"
@@ -188,24 +205,32 @@ devices:
 
 
   test:
-    # --- 鸿蒙环境设备 ---
+    # --- 鸿蒙环境设备 (appium-harmonyos-driver 标准配置) ---
     harmony_sender:
       platformName: "HarmonyOS"
+      automationName: "harmonyos"
       udid: "4UQ9K25530068061"
       deviceName: "HarmonyPhone"
       bundleName: "com.santiaohms.im"
       abilityName: "EntryAbility"
+      appPackage: "com.santiaohms.im"
+      appActivity: "EntryAbility"
       moduleName: "phone"
       lock_password: "1111"
+      appiumServerUrl: "http://127.0.0.1:4723"
 
     harmony_receiver:
       platformName: "HarmonyOS"
+      automationName: "harmonyos"
       udid: "4UQ9K25530068062"
       deviceName: "HarmonyReceiverPhone"
       bundleName: "com.santiaohms.im"
       abilityName: "EntryAbility"
+      appPackage: "com.santiaohms.im"
+      appActivity: "EntryAbility"
       moduleName: "phone"
       lock_password: "1111"
+      appiumServerUrl: "http://127.0.0.1:4725"
 
     # --- iOS 环境设备 ---
     ios_sender:

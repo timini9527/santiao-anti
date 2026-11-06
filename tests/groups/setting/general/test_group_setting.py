@@ -12,6 +12,7 @@ from pages.chat.core.chat_page import ChatPage
 from pages.chat.list.chat_list_page import ChatListPage
 from pages.common.contact_select_page import ContactSelectPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, GROUP_STRATEGY, GROUP_STRATEGY2
+from common.toast_enums import ToastMsg
 from utils.cv_recognition.screenshot_utils import ImageComparator
 
 @allure.epic('IM核心功能测试')
@@ -80,7 +81,7 @@ class TestGroupSetting:
         self.chatPage.wait_for_chat_page_load()
         self.chatPage.click_more_button()
         toast = self.chatPage.get_toast_text()
-        check.is_in('群不存在', toast, '❌ 群聊已被解散')
+        check.is_in(ToastMsg.GROUP_NOT_EXIST, toast, '❌ 群聊已被解散')
         self.groupSettingPage.click_quick_more()
         self.groupSettingPage.click_delete_and_out()
         self.groupSettingPage.click_tv_confirm_button()
@@ -89,7 +90,7 @@ class TestGroupSetting:
         """执行确认解散、校验回首页并彻底清理失效会话"""
         with allure.step('-> [解散与清理] 确认解散群聊并销毁失效会话'):
             self.groupSettingPage.click_tv_confirm_button()
-            toast = self.groupSettingPage.verify_toast_exist('解散成功')
+            toast = self.groupSettingPage.verify_toast_exist(ToastMsg.GROUP_DISMISS_SUCCESS)
             check.is_true(toast, '❌ 解散群聊后未弹出解散成功提示')
             title = self.homePage.get_top_middle_title(10)
             check.is_in('三条', title, '❌ 解散群聊后未能返回消息首页')
@@ -333,7 +334,7 @@ class TestGroupSetting:
                 self.groupAvatarPage.wait_album_panel_load()
                 self.groupAvatarPage.click_album_image_by_index(index=0)
                 toast_text = self.groupAvatarPage.get_toast()
-                check.equal('头像更新成功', toast_text, f'❌ 未弹出【头像更新成功】提示，实际:【{toast_text}】')
+                check.equal(ToastMsg.AVATAR_UPDATE_SUCCESS, toast_text, f'❌ 未弹出【头像更新成功】提示，实际:【{toast_text}】')
                 self.groupAvatarPage.wait_group_avatar_page_load()
             with allure.step('3. 校验群头像哈希已发生物理变更'):
                 self.groupAvatarPage.click_back_to_group_setting()

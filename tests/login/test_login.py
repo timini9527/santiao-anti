@@ -2,6 +2,7 @@ import pytest
 import allure
 import pytest_check as check
 from pages.login.login_page import LoginPage
+from common.toast_enums import ToastMsg
 from core.logger_utils import logger, LogIcon
 from utils.file_reader.data_loader import load_yaml_data
 from dataclasses import dataclass
@@ -171,7 +172,7 @@ class TestLogin:
                 if self.loginPage.is_login_success():  
                     logger.info(f"{LogIcon.SETUP} 环境清理：检测到账号处于登录状态，执行强制登出...")
                     msg = self.loginPage.logout_if_logged_in()
-                    check.equal(msg, '已退出登录', f"⚠️ 环境清理失败：退出登录动作未成功！")
+                    check.equal(msg, ToastMsg.LOGOUT_SUCCESS, f"⚠️ 环境清理失败：退出登录动作未成功！")
                     is_success = self.loginPage.wait_for_login_page()
                     check.is_true(is_success, f"❌ 账号 {case.account} 退出登录失败，未回到登录页")
                 
@@ -208,7 +209,7 @@ class TestLogin:
             
             with allure.step(f"账号 {idx} ({account}) - 4. 退出登录并验证状态"):
                 msg = self.loginPage.logout_if_logged_in()
-                check.equal(msg, '已退出登录', f"⚠️ 环境清理失败：退出登录动作未成功！")
+                check.equal(msg, ToastMsg.LOGOUT_SUCCESS, f"⚠️ 环境清理失败：退出登录动作未成功！")
                 is_success = self.loginPage.wait_for_login_page()
                 check.is_true(is_success, f"❌ 账号 {account} 退出登录失败，未回到登录页")
             

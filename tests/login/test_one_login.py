@@ -2,6 +2,7 @@ import pytest
 import allure
 import pytest_check as check
 from pages.login.login_page import LoginPage
+from common.toast_enums import ToastMsg
 from core.logger_utils import logger, LogIcon
 from utils.cv_recognition.ocr_utils import OcrUtils
 
@@ -47,4 +48,4 @@ class TestOneLogin:
             self.loginPage.click_one_click_login_button()
         with allure.step('2. 验证Toast'):
             msg = self.loginPage.get_toast_text()
-            check.equal(msg, '尝试更换网络环境', f"❌ 预期Toast为: '尝试更换网络环境', 实际: '{msg}'")
+            check.equal(msg, ToastMsg.SWITCH_NETWORK, f"❌ 预期Toast为: '{ToastMsg.SWITCH_NETWORK}', 实际: '{msg}'")

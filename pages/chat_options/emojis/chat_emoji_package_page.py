@@ -6,6 +6,7 @@ from locators.chat_options.emojis.chat_emoji_locator import ChatEmojiLocator
 from pages.chat_options.emojis.chat_emoji_panel_base import ChatEmojiPanelBase
 from appium.webdriver.webelement import WebElement
 from utils.cv_recognition.screenshot_utils import ScreenshotUtils, ImageComparator
+from common.toast_enums import ToastMsg
 
 
 class ChatEmojiPackagePage(ChatEmojiPanelBase):
@@ -259,7 +260,7 @@ class ChatEmojiPackagePage(ChatEmojiPanelBase):
             del_pkg_names.append(pkg_name)
             time.sleep(0.5)  
 
-            toast_text = "删除成功"
+            toast_text = ToastMsg.DELETE_SUCCESS
             aft_current_items = self._get_unadded_packages_on_screen()
             if not aft_current_items:
                 del_status = True
@@ -366,7 +367,7 @@ class ChatEmojiPackagePage(ChatEmojiPanelBase):
                     toast_text = None
                     logger.debug(f"{LogIcon.FIND} 未能抓取到 Toast，可能是隐藏过快: {e}")
                 
-                if toast_text == "添加成功" or toast_text == "已添加" or toast_text == "该表情已添加" or toast_text == "":
+                if toast_text in (ToastMsg.ADD_SUCCESS, ToastMsg.ALREADY_ADDED, ToastMsg.EMOJI_ALREADY_ADDED, ""):
                     logger.info(f"{LogIcon.SUCCESS} 第 {i+1} 个表情包添加过关，提示: {toast_text}")
                     success_count += 1
                     status_dict[f"item_{i+1}"] = True

@@ -20,6 +20,7 @@ from pages.common.session_select_page import SessionSelectPage
 from pages.chat.core.chat_panel_page import ChatPanelPage
 from pages.chat.core.chat_long_press_page import ChatLongPressPage
 from strategy.chat.chat_strategy import PRIVATE_USER1, PRIVATE_USER2, GROUP_STRATEGY
+from common.toast_enums import ToastMsg
 from utils.cv_recognition.screenshot_utils import ImageComparator
 
 class BaseSmokeGroupSingle:
@@ -248,7 +249,7 @@ class TestSmokeGroupManage(BaseSmokeGroupSingle):
         with allure.step('4. 测试保存群二维码到本地'):
             self.groupQrCodePage.click_save_qrcode()
             toast = self.groupQrCodePage.get_toast()
-            check.is_in('已保存到相册', toast, '❌ 保存二维码的提示信息有误')
+            check.is_in(ToastMsg.SAVED_TO_ALBUM, toast, '❌ 保存二维码的提示信息有误')
 
     @pytest.mark.p1
     @allure.severity(allure.severity_level.CRITICAL)
@@ -306,7 +307,7 @@ class TestSmokeGroupManage(BaseSmokeGroupSingle):
                 self.groupAvatarPage.wait_album_panel_load()
                 self.groupAvatarPage.click_album_image_by_index(index=0)
                 toast_text = self.groupAvatarPage.get_toast()
-                check.equal('头像更新成功', toast_text, f'❌ 未弹出【头像更新成功】提示,实际:【{toast_text}】')
+                check.equal(ToastMsg.AVATAR_UPDATE_SUCCESS, toast_text, f'❌ 未弹出【{ToastMsg.AVATAR_UPDATE_SUCCESS}】提示,实际:【{toast_text}】')
                 self.groupAvatarPage.wait_group_avatar_page_load()
                 modified = True
             with allure.step('3. 验证头像是否变更'):
@@ -391,7 +392,7 @@ class TestSmokeGroupManage(BaseSmokeGroupSingle):
             self.groupManagerPage.click_dismiss_group()
         with allure.step('3. 确认弹窗解散群聊'):
             self.groupSettingPage.click_tv_confirm_button()
-            toast = self.groupSettingPage.get_toast(expected_toast='解散成功')
+            toast = self.groupSettingPage.get_toast(expected_toast=ToastMsg.GROUP_DISMISS_SUCCESS)
             check.is_true(toast, '❌ 解散群聊后未弹出提示')
         with allure.step('4. 验证群聊解散后系统自动退回消息首页'):
             is_home_loaded = self.homePage.wait_home_page(timeout=10)
