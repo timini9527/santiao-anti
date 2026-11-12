@@ -107,60 +107,113 @@ def detect_raw_connected_devices() -> list[tuple[str, str, bool]]:
     except Exception as e:
         logger.warning(f"HDC 设备探测异常: {e}")
 
-    # 3. 尝试使用 tidevice / idevice_id / xcrun 探测 iOS 设备 (跨 Windows 与 macOS)
-    tidevice_bin = toolchain.get("tidevice") or shutil.which("tidevice")
-    idevice_bin = toolchain.get("idevice_id") or shutil.which("idevice_id")
-    xcrun_bin = toolchain.get("xcrun") or shutil.which("xcrun")
+    # 3. 尝试探测 iOS 设备 (五重跨平台兜底: 内嵌 tidevice -> 内嵌 pymobiledevice3 -> 外部 CLI -> macOS 原生 USB 总线 -> xcrun)
+    ios_udids_seen = set()
 
-    ios_detected = False
+    # 3.1 首选：直接调用内嵌 Python tidevice._usbmux 库直连 usbmuxd 探测 (打包零外部 CLI 依赖)
+    try:
+        from tidevice._usbmux import Usbmux
+        usbmux_devs = Usbmux().device_list()
+        for dev in usbmux_devs:
+            udid = getattr(dev, "udid", "").strip()
+            if udid and udid not in ios_udids_seen:
+                ios_udids_seen.add(udid)
+                raw_devices.append((udid, "iOS", True))
+    except Exception as e:
+        logger.warning(f"内嵌 tidevice.Usbmux iOS 设备探测异常: {e}")
 
-    # 3.1 优先通过 tidevice list 探测 (跨 Windows / macOS 均可直连识别 USB iPhone)
-    if tidevice_bin:
+    # 3.2 次选：直接调用内嵌 pymobiledevice3.usbmux 探测
+    if not ios_udids_seen:
         try:
-            out = subprocess.check_output([tidevice_bin, "list"], timeout=4, creationflags=no_window).decode('utf-8', errors='ignore')
-            lines = out.strip().split('\n')
-            for line in lines[1:]:
-                parts = line.split()
-                if parts:
-                    udid = parts[0].strip()
-                    if len(udid) >= 24 and all(c in "0123456789abcdefABCDEF-" for c in udid):
-                        raw_devices.append((udid, "iOS", True))
-                        ios_detected = True
-        except Exception as e:
-            logger.warning(f"tidevice iOS 设备探测异常: {e}")
-
-    # 3.2 次选通过 idevice_id -l 探测 (libimobiledevice 原生)
-    if not ios_detected and idevice_bin:
-        try:
-            out = subprocess.check_output([idevice_bin, "-l"], timeout=4, creationflags=no_window).decode('utf-8', errors='ignore')
-            for line in out.strip().splitlines():
-                udid = line.strip()
-                if len(udid) >= 24 and all(c in "0123456789abcdefABCDEF-" for c in udid):
+            from pymobiledevice3 import usbmux as pmd_usbmux
+            for dev in pmd_usbmux.list_devices():
+                udid = getattr(dev, "serial", "").strip()
+                if udid and udid not in ios_udids_seen:
+                    ios_udids_seen.add(udid)
                     raw_devices.append((udid, "iOS", True))
-                    ios_detected = True
         except Exception as e:
-            logger.warning(f"idevice_id iOS 设备探测异常: {e}")
+            logger.warning(f"内嵌 pymobiledevice3 iOS 设备探测异常: {e}")
 
-    # 3.3 macOS 原生特选: xcrun xctrace list devices
-    if not ios_detected and sys.platform == "darwin" and xcrun_bin:
-        try:
-            out = subprocess.check_output([xcrun_bin, "xctrace", "list", "devices"], timeout=5).decode('utf-8', errors='ignore')
-            in_devices_section = False
-            for line in out.splitlines():
-                if "== Devices ==" in line:
-                    in_devices_section = True
-                    continue
-                if "== Simulators ==" in line:
-                    break
-                if in_devices_section and "(" in line and ")" in line:
-                    import re
-                    match = re.search(r'\(([0-9a-fA-F\-]{24,})\)', line)
-                    if match:
-                        udid = match.group(1).strip()
+    # 3.3 备选：外部 tidevice / idevice_id CLI 探测
+    if not ios_udids_seen:
+        tidevice_bin = toolchain.get("tidevice") or shutil.which("tidevice")
+        if tidevice_bin:
+            try:
+                out = subprocess.check_output([tidevice_bin, "list"], timeout=4, creationflags=no_window).decode('utf-8', errors='ignore')
+                lines = out.strip().split('\n')
+                for line in lines[1:]:
+                    parts = line.split()
+                    if parts:
+                        udid = parts[0].strip()
+                        if len(udid) >= 24 and all(c in "0123456789abcdefABCDEF-" for c in udid) and udid not in ios_udids_seen:
+                            ios_udids_seen.add(udid)
+                            raw_devices.append((udid, "iOS", True))
+            except Exception as e:
+                logger.warning(f"tidevice CLI iOS 设备探测异常: {e}")
+
+    if not ios_udids_seen:
+        idevice_bin = toolchain.get("idevice_id") or shutil.which("idevice_id")
+        if idevice_bin:
+            try:
+                out = subprocess.check_output([idevice_bin, "-l"], timeout=4, creationflags=no_window).decode('utf-8', errors='ignore')
+                for line in out.strip().splitlines():
+                    udid = line.strip()
+                    if len(udid) >= 24 and all(c in "0123456789abcdefABCDEF-" for c in udid) and udid not in ios_udids_seen:
+                        ios_udids_seen.add(udid)
                         raw_devices.append((udid, "iOS", True))
-                        ios_detected = True
+            except Exception as e:
+                logger.warning(f"idevice_id iOS 设备探测异常: {e}")
+
+    # 3.4 macOS 原生兜底：system_profiler SPUSBDataType (100% 系统自带，免 Xcode，毫秒级响应)
+    if not ios_udids_seen and sys.platform == "darwin":
+        try:
+            out = subprocess.check_output(["system_profiler", "SPUSBDataType"], timeout=5).decode('utf-8', errors='ignore')
+            current_is_ios = False
+            for line in out.splitlines():
+                stripped = line.strip()
+                if stripped.startswith(("iPhone:", "iPad:")):
+                    current_is_ios = True
+                elif stripped.endswith(":") and not stripped.startswith(("Serial Number:", "Vendor ID:", "Product ID:")):
+                    if "Apple" not in stripped:
+                        current_is_ios = False
+                elif current_is_ios and stripped.startswith("Serial Number:"):
+                    serial = stripped.split(":", 1)[1].strip()
+                    if len(serial) == 24 and all(c in "0123456789abcdefABCDEF" for c in serial):
+                        udid = f"{serial[:8]}-{serial[8:]}"
+                    elif len(serial) >= 24 and all(c in "0123456789abcdefABCDEF-" for c in serial):
+                        udid = serial
+                    else:
+                        udid = ""
+                    if udid and udid not in ios_udids_seen:
+                        ios_udids_seen.add(udid)
+                        raw_devices.append((udid, "iOS", True))
+                    current_is_ios = False
         except Exception as e:
-            logger.warning(f"xcrun iOS 设备探测异常: {e}")
+            logger.warning(f"system_profiler iOS 设备探测异常: {e}")
+
+    # 3.5 macOS 最终兜底：xcrun xctrace list devices
+    if not ios_udids_seen and sys.platform == "darwin":
+        xcrun_bin = toolchain.get("xcrun") or shutil.which("xcrun")
+        if xcrun_bin:
+            try:
+                out = subprocess.check_output([xcrun_bin, "xctrace", "list", "devices"], timeout=12).decode('utf-8', errors='ignore')
+                in_devices_section = False
+                for line in out.splitlines():
+                    if "== Devices ==" in line:
+                        in_devices_section = True
+                        continue
+                    if "== Simulators ==" in line:
+                        break
+                    if in_devices_section and "(" in line and ")" in line:
+                        import re
+                        match = re.search(r'\(([0-9a-fA-F\-]{24,})\)', line)
+                        if match:
+                            udid = match.group(1).strip()
+                            if udid not in ios_udids_seen:
+                                ios_udids_seen.add(udid)
+                                raw_devices.append((udid, "iOS", True))
+            except Exception as e:
+                logger.warning(f"xcrun iOS 设备探测异常: {e}")
 
     return raw_devices
 

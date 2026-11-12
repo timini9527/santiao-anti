@@ -24,6 +24,7 @@ def ensure_cross_platform_path() -> None:
     无法定位 homebrew (如 /opt/homebrew/bin)、nvm、sdk 等命令行工具链的固有顽疾。
     """
     if sys.platform == "darwin":
+        import glob
         extra_paths = [
             "/opt/homebrew/bin",
             "/opt/homebrew/sbin",
@@ -31,14 +32,25 @@ def ensure_cross_platform_path() -> None:
             "/usr/local/sbin",
             os.path.expanduser("~/bin"),
             os.path.expanduser("~/.local/bin"),
+            # Android SDK 默认目录 (adb)
+            os.path.expanduser("~/Library/Android/sdk/platform-tools"),
+            # 鸿蒙 DevEco Studio 内置默认 toolchains 目录 (hdc)
+            "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains",
+            "/Applications/DevEco-Studio.app/Contents/tools/ohpm/bin",
         ]
-        nvm_dir = os.path.expanduser("~/.nvm/versions/node")
-        if os.path.isdir(nvm_dir):
+        glob_patterns = [
+            os.path.expanduser("~/Library/Huawei/Sdk/*/openharmony/toolchains"),
+            os.path.expanduser("~/Library/Huawei/Sdk/openharmony/*/toolchains"),
+            os.path.expanduser("~/Library/OpenHarmony/Sdk/*/toolchains"),
+            os.path.expanduser("~/Library/Python/3.*/bin"),
+            "/Library/Frameworks/Python.framework/Versions/3.*/bin",
+            os.path.expanduser("~/.nvm/versions/node/*/bin"),
+        ]
+        for pat in glob_patterns:
             try:
-                for ver in sorted(os.listdir(nvm_dir), reverse=True):
-                    cand = os.path.join(nvm_dir, ver, "bin")
-                    if os.path.isdir(cand):
-                        extra_paths.append(cand)
+                for matched in sorted(glob.glob(pat), reverse=True):
+                    if os.path.isdir(matched):
+                        extra_paths.append(matched)
             except Exception:
                 pass
         current_path = os.environ.get("PATH", "")

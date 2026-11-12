@@ -1778,8 +1778,8 @@ class MobilePage(QWidget):
     def load_persisted_config(self):
         cfg = desktop_config.get_section("mobile")
         current_host_os = "Win" if sys.platform == "win32" else ("Mac" if sys.platform == "darwin" else "Linux")
-        saved_os = cfg.get("os_type")
-        self.combo_os.setCurrentText(saved_os if saved_os in ["Win", "Mac", "Linux"] else current_host_os)
+        # 始终优先跟随当前宿主机真实操作系统，防止跨平台打包残留的 Win/Mac 配置误导
+        self.combo_os.setCurrentText(current_host_os)
         
         ap1 = cfg.get("remote_appium", f"{self.lan_ip}:4723 (局域网本机)")
         ap2 = cfg.get("remote_appium2", f"{self.lan_ip}:4724 (局域网本机)")
