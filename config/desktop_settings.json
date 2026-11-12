@@ -22,7 +22,7 @@
     ],
     "log_collapsed": false,
     "last_log_height": 275,
-    "params_collapsed": true,
+    "params_collapsed": false,
     "node_status_map": {
       "tests/chat/core/test_chat/TestChat::test_send_text_message": "passed",
       "tests/chat/list/test_chat_list.py::TestChatList::test_enter_chat": "passed",
