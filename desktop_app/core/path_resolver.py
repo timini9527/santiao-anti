@@ -87,7 +87,16 @@ class SmartPathResolver:
             if os.path.isdir(os.path.join(exe_dir, "tests")) or os.path.isdir(os.path.join(exe_dir, "config")):
                 cls._cached_project_root = exe_dir
                 return cls._cached_project_root
-            # 2.2 若位于本地工程编译产物目录 (dist/三条IM自动化测试控制台)，向上回溯定位工程根目录
+            # 2.2 macOS .app Bundle 标准资源目录 (Contents/Resources) 与 PyInstaller _MEIPASS
+            meipass = getattr(sys, "_MEIPASS", "")
+            if meipass and (os.path.isdir(os.path.join(meipass, "tests")) or os.path.isdir(os.path.join(meipass, "config"))):
+                cls._cached_project_root = os.path.abspath(meipass)
+                return cls._cached_project_root
+            mac_resources = os.path.abspath(os.path.join(exe_dir, "..", "Resources"))
+            if os.path.isdir(os.path.join(mac_resources, "tests")) or os.path.isdir(os.path.join(mac_resources, "config")):
+                cls._cached_project_root = mac_resources
+                return cls._cached_project_root
+            # 2.3 若位于本地工程编译产物目录 (dist/三条IM自动化测试控制台)，向上回溯定位工程根目录
             parent = os.path.dirname(exe_dir)
             while parent and parent != os.path.dirname(parent):
                 if os.path.isdir(os.path.join(parent, "tests")) or os.path.isdir(os.path.join(parent, "config")):

@@ -109,18 +109,142 @@ def build_dmg(app_bundle_path: str, output_dmg_path: str):
         shutil.rmtree(dmg_temp_dir, ignore_errors=True)
 
 
+def _resolve_github_actions_url() -> str:
+    """从本地 Git 远程仓库配置动态解析 GitHub Actions 构建页面链接"""
+    default_url = "https://github.com/timini9527/santiao-anti/actions/workflows/build_mac_dmg.yml"
+    try:
+        res = subprocess.run(
+            ["git", "remote", "get-url", "origin"],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        remote_url = res.stdout.strip()
+        if remote_url:
+            if remote_url.startswith("git@github.com:"):
+                repo_path = remote_url.replace("git@github.com:", "").removesuffix(".git")
+                return f"https://github.com/{repo_path}/actions/workflows/build_mac_dmg.yml"
+            if "github.com/" in remote_url:
+                repo_path = remote_url.split("github.com/", 1)[1].removesuffix(".git")
+                return f"https://github.com/{repo_path}/actions/workflows/build_mac_dmg.yml"
+    except Exception:
+        pass
+    return default_url
+
+
+def trigger_github_cloud_build():
+    """
+    在非 macOS 环境下运行本脚本时，全自动执行：
+    1. 自动暂存与提交当前本地所有源码变更 (排除临时数据库等垃圾文件)；
+    2. 仅推送至构建分支 (origin/build-mac)；
+    3. 触发 GitHub Actions 云端 macOS 虚拟机编译 .app 与封装 .dmg；
+    4. 若无代码改动且装有 gh CLI，则通过 workflow_dispatch 强制触发云端重打。
+    """
+    from datetime import datetime
+
+    print("\n" + "=" * 66)
+    print(f" [双模分发] 当前系统为 {sys.platform}，启动【一键自动 Push + GitHub 云端打包】")
+    print("=" * 66)
+
+    actions_url = _resolve_github_actions_url()
+
+    # 1. 自动暂存并提交本地所有有效改动 (排除 androguard.db 等临时文件)
+    print(" ▶ [1/3] 正在检查并自动提交本地代码修改...")
+    try:
+        # 仅暂存已追踪文件的修改以及项目核心目录的新文件，跳过临时数据库
+        subprocess.run(["git", "add", "-u"], cwd=PROJECT_ROOT, capture_output=True, timeout=10)
+        for track_dir in ["desktop_app", "web_platform", "config", "tests", "pages", "locators", "core", "utils", "scripts", ".github"]:
+            dir_path = os.path.join(PROJECT_ROOT, track_dir)
+            if os.path.exists(dir_path):
+                subprocess.run(["git", "add", track_dir], cwd=PROJECT_ROOT, capture_output=True, timeout=10)
+
+        diff_res = subprocess.run(
+            ["git", "diff", "--cached", "--name-only"],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        staged_files = [f.strip() for f in diff_res.stdout.splitlines() if f.strip()]
+        if staged_files:
+            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            commit_msg = f"chore: 自动提交并触发 macOS 云端构建打包 ({ts})"
+            commit_res = subprocess.run(
+                ["git", "commit", "-m", commit_msg],
+                cwd=PROJECT_ROOT,
+                capture_output=True,
+                text=True,
+                timeout=15
+            )
+            if commit_res.returncode == 0:
+                print(f" ✅ 已自动提交 {len(staged_files)} 个变更文件 -> {commit_msg}")
+            else:
+                print(f" ⚠️ 自动提交提示: {(commit_res.stderr or commit_res.stdout).strip()}")
+        else:
+            print(" ℹ️ 本地工作区干净，无新增未提交修改。")
+    except Exception as e:
+        print(f" ⚠️ 检查/提交本地修改异常: {e}")
+
+    # 2. 仅自动推送至 build-mac 分支触发云端构建
+    print(" ▶ [2/3] 正在自动推送代码至 GitHub (origin/build-mac)...")
+    push_triggered = False
+    try:
+        # 仅推送至 build-mac 分支触发工作流
+        push_res = subprocess.run(
+            ["git", "push", "origin", "HEAD:build-mac"],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        push_output = (push_res.stdout + "\n" + push_res.stderr).strip()
+        if push_res.returncode == 0:
+            if "Everything up-to-date" in push_output:
+                print(" ℹ️ 远程 build-mac 分支已是最新提交状态。")
+            else:
+                print(" ✅ 已成功推送最新代码至 origin/build-mac，GitHub 云端打包已自动触发！")
+                push_triggered = True
+        else:
+            print(f" ⚠️ 推送至 origin/build-mac 失败: {push_output}")
+    except Exception as e:
+        print(f" ⚠️ Git 推送异常: {e}")
+
+    # 3. 若未产生新提交且装有 gh CLI，自动调用 workflow_dispatch 强制触发云端打包
+    gh_bin = shutil.which("gh")
+    if not push_triggered and gh_bin:
+        print(" ▶ [3/3] 检测到 GitHub CLI (gh)，正在远程派发强制云端打包任务...")
+        try:
+            gh_res = subprocess.run(
+                [gh_bin, "workflow", "run", "build_mac_dmg.yml", "--ref", "build-mac"],
+                cwd=PROJECT_ROOT,
+                capture_output=True,
+                text=True,
+                timeout=15
+            )
+            if gh_res.returncode == 0:
+                print(" ✅ 已成功通过 GitHub CLI 触发云端 macOS 打包任务！")
+                push_triggered = True
+            else:
+                print(f" ⚠️ GitHub CLI 触发未成功: {(gh_res.stderr or gh_res.stdout).strip()}")
+        except Exception as e:
+            print(f" ⚠️ GitHub CLI 调用异常: {e}")
+    else:
+        print(" ▶ [3/3] 打包派发校验完成。")
+
+    print("\n" + "=" * 66)
+    if push_triggered:
+        print(" 🚀 [成功] 已自动 Push 并触发 GitHub 云端 macOS 打包！")
+    else:
+        print(" ℹ️ [提示] 代码已是最新；如需强制重打，请打开下方链接点击 [Run workflow]：")
+    print(f" 🔗 查看构建进度与下载 DMG 安装包：\n    {actions_url}")
+    print("=" * 66 + "\n")
+
+
 def build_mac(build_dmg_flag: bool = BUILD_DMG):
     """macOS 端全流程自动化构建核心入口"""
     if sys.platform != "darwin":
-        print("\n" + "=" * 62)
-        print(" [平台拦截] 当前运行环境为 Windows (" + sys.platform + ")，无法构建 macOS 产物！")
-        print("=" * 62)
-        print(" 核心原因说明：")
-        print(" 1. 【DMG 机制】：.dmg 是苹果专有磁盘镜像，必须调用 macOS 系统内核的原生工具 'hdiutil'。")
-        print(" 2. 【二进制差异】：PyInstaller 无法在 Windows 上跨平台编译出苹果 Mach-O 可执行文件。")
-        print(" 3. 【标准落地方式】：请在 Mac 电脑 (或 macOS GitHub Actions / GitLab CI) 上运行本脚本：")
-        print("    终端命令: python desktop_app/build_mac_app.py")
-        print("=" * 62 + "\n")
+        trigger_github_cloud_build()
         return
 
     check_and_kill_running_mac_instance()
@@ -128,6 +252,22 @@ def build_mac(build_dmg_flag: bool = BUILD_DMG):
     print(" [macOS 打包] 正在构建 纯原生 macOS 桌面应用程序 (.app)...")
     print(f" [架构模式] 是否生成 DMG 安装镜像 (BUILD_DMG): {build_dmg_flag}")
     print("==================================================")
+
+    # 0. 自动预提取最新全量用例元数据并同步刷新 tests_catalog.json 静态索引
+    try:
+        import json
+        if PROJECT_ROOT not in sys.path:
+            sys.path.insert(0, PROJECT_ROOT)
+        from web_platform.backend.collector import collect_all_tests
+        src_tests = os.path.join(PROJECT_ROOT, "tests")
+        if os.path.exists(src_tests):
+            catalog = collect_all_tests(src_tests)
+            catalog_file = os.path.join(src_tests, "tests_catalog.json")
+            with open(catalog_file, "w", encoding="utf-8") as f:
+                json.dump(catalog, f, ensure_ascii=False, indent=2)
+            print(f" [用例索引] 已同步刷新测试用例索引: {catalog_file} (收录 {len(catalog)} 个测试文件)")
+    except Exception as e:
+        print(f" [用例警告] 自动刷新 tests_catalog.json 提示: {e}")
 
     main_entry = os.path.join(CURRENT_DIR, "main.py")
     dist_dir = os.path.join(PROJECT_ROOT, "dist")
@@ -151,8 +291,14 @@ def build_mac(build_dmg_flag: bool = BUILD_DMG):
         "--hidden-import=desktop_app.style",
         "--hidden-import=desktop_app.config",
         "--hidden-import=desktop_app.core",
+        "--hidden-import=desktop_app.core.path_resolver",
+        "--hidden-import=desktop_app.core.device_manager",
+        "--hidden-import=desktop_app.core.test_collector",
+        "--hidden-import=desktop_app.core.test_runner",
         "--hidden-import=desktop_app.ui",
         "--hidden-import=desktop_app.ui.main_window",
+        "--hidden-import=web_platform.backend.devices",
+        "--hidden-import=web_platform.backend.collector",
         "--hidden-import=PyQt6",
         "--hidden-import=PyQt6.QtCore",
         "--hidden-import=PyQt6.QtGui",
@@ -160,6 +306,32 @@ def build_mac(build_dmg_flag: bool = BUILD_DMG):
         "--hidden-import=pytest",
         "--hidden-import=allure_pytest",
     ]
+
+    # 附加 desktop_app/assets
+    assets_dir = os.path.join(CURRENT_DIR, "assets")
+    if os.path.isdir(assets_dir):
+        cmd.append(f"--add-data={assets_dir}:desktop_app/assets")
+
+    # 注入全量测试用例与业务资产 (tests, pages, locators, config, data, core, conftest.py 等)
+    try:
+        if PROJECT_ROOT not in sys.path:
+            sys.path.insert(0, PROJECT_ROOT)
+        from desktop_app.core.path_resolver import SmartPathResolver
+        project_assets = SmartPathResolver.discover_project_assets(PROJECT_ROOT)
+        for d_name in project_assets.get("business_dirs", []):
+            if d_name == "bin":
+                # 跳过 Windows 专属的 .exe/.dll 工具目录，减小 macOS 包体积
+                continue
+            src_d = os.path.join(PROJECT_ROOT, d_name)
+            if os.path.isdir(src_d):
+                cmd.append(f"--add-data={src_d}:{d_name}")
+        for f_name in project_assets.get("core_files", []):
+            src_f = os.path.join(PROJECT_ROOT, f_name)
+            if os.path.isfile(src_f):
+                cmd.append(f"--add-data={src_f}:.")
+        print(f" [资产打包] 已注入业务目录: {project_assets.get('business_dirs', [])}")
+    except Exception as e:
+        print(f" [资产警告] 注入测试业务目录异常: {e}")
 
     if icns_icon:
         cmd.append(f"--icon={icns_icon}")

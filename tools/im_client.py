@@ -133,6 +133,45 @@ class AppRuntimeBridge:
     _BRIDGE_JS = """
     var WebSocketMgr = null;
     var SocketClientPendingField = null;
+    var JavaThreadCls = null;
+    var _skipSendDbWrite = false;
+    var _activeSendThreadId = -1;
+    var _dbHooksInstalled = false;
+
+    function installSkipDbHooks() {
+        if (_dbHooksInstalled) {
+            return;
+        }
+        Java.perform(function() {
+            try {
+                JavaThreadCls = Java.use('java.lang.Thread');
+                var msgCls = 'com.bm.santiaotalk.store.entity.w.Message';
+                var MessageDao = Java.use('com.bm.santiaotalk.store.dao.w.MessageDao');
+                MessageDao.insert.overload(msgCls).implementation = function(msg) {
+                    if (_skipSendDbWrite && JavaThreadCls.currentThread().getId() === _activeSendThreadId) {
+                        return;
+                    }
+                    return this.insert(msg);
+                };
+                var ShardedMessageDao = Java.use('com.bm.santiaotalk.store.dao.w.ShardedMessageDao');
+                ShardedMessageDao.insert.overload(msgCls).implementation = function(msg) {
+                    if (_skipSendDbWrite && JavaThreadCls.currentThread().getId() === _activeSendThreadId) {
+                        return;
+                    }
+                    return this.insert(msg);
+                };
+                ShardedMessageDao.insertToYear.overload(msgCls).implementation = function(msg) {
+                    if (_skipSendDbWrite && JavaThreadCls.currentThread().getId() === _activeSendThreadId) {
+                        return;
+                    }
+                    return this.insertToYear(msg);
+                };
+                _dbHooksInstalled = true;
+            } catch (e) {
+                console.log("[Bridge] 安装跳过写库 Hook 异常: " + e.toString());
+            }
+        });
+    }
 
     function getPendingCount() {
         var count = 0;
@@ -173,6 +212,14 @@ class AppRuntimeBridge:
         // 获取底层 SocketClient 当前在途等待服务端 ACK 的消息总数
         getInflightCount: function() {
             return getPendingCount();
+        },
+        // 开关：压测发消息时是否跳过本地 WCDB 落库（仅当前发送线程生效，不干扰接收与 ACK 线程）
+        setSkipDbWrite: function(enabled) {
+            _skipSendDbWrite = !!enabled;
+            if (_skipSendDbWrite) {
+                installSkipDbHooks();
+            }
+            return _skipSendDbWrite;
         },
         // 通用发送入口：自动适配单聊 (chatType=1) 与群聊 (chatType=2)
         sendTextMessage: function(chatId, chatType, fromCustId, fromCustName, toCustId, content) {
@@ -218,20 +265,30 @@ class AppRuntimeBridge:
                         WebSocketMgr = Java.use('com.network.lib.socket.WebSocketManager').INSTANCE.value;
                     }
                     if (WebSocketMgr) {
-                        for (; i < len; i++) {
-                            var item = list[i];
-                            var ok = WebSocketMgr.sendTextMessage(
-                                item.chatId,
-                                item.chatType,
-                                item.fromCustId,
-                                item.fromCustName,
-                                item.toCustId,
-                                item.content,
-                                0, null, null, null, false, false
-                            );
-                            if (!ok) {
-                                break;
+                        if (_skipSendDbWrite) {
+                            if (!JavaThreadCls) {
+                                JavaThreadCls = Java.use('java.lang.Thread');
                             }
+                            _activeSendThreadId = JavaThreadCls.currentThread().getId();
+                        }
+                        try {
+                            for (; i < len; i++) {
+                                var item = list[i];
+                                var ok = WebSocketMgr.sendTextMessage(
+                                    item.chatId,
+                                    item.chatType,
+                                    item.fromCustId,
+                                    item.fromCustName,
+                                    item.toCustId,
+                                    item.content,
+                                    0, null, null, null, false, false
+                                );
+                                if (!ok) {
+                                    break;
+                                }
+                            }
+                        } finally {
+                            _activeSendThreadId = -1;
                         }
                     }
                 } catch (e) {
@@ -416,6 +473,17 @@ class AppRuntimeBridge:
 
         def _invoke() -> int:
             return int(self._script.exports_sync.get_inflight_count())
+
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(self._executor, _invoke)
+
+    async def set_skip_db_write(self, enabled: bool) -> bool:
+        """设置压测发消息时是否跳过本地 WCDB 落库（仅对当前发送线程生效）。"""
+        await self.ensure_connected()
+        assert self._script is not None
+
+        def _invoke() -> bool:
+            return bool(self._script.exports_sync.set_skip_db_write(enabled))
 
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(self._executor, _invoke)
@@ -691,6 +759,7 @@ class IMClient:
         high_watermark: int = 25,
         low_watermark: int = 10,
         enforce_fifo_order: bool = True,
+        skip_local_db: bool = False,
     ) -> Dict[str, Any]:
         """【多会话流式并发压测引擎】全面支持批量高速管道、总量轮询打散与齐步等量并发。
         
@@ -904,12 +973,23 @@ class IMClient:
                         last_report_time = now
                         last_report_count = completed
 
+        if skip_local_db:
+            await self.bridge.set_skip_db_write(True)
+            print(f"[📱 {self.sender_name} | {self.device_id}] ⚡ [极速压测模式] 已开启跳过发送端本地写库 Hook（仅走网络发包，不写本地 message 库）")
+
         producer_task = asyncio.create_task(producer())
         workers = [asyncio.create_task(worker()) for _ in range(concurrency)]
 
-        await producer_task
-        await queue.join()
-        await asyncio.gather(*workers)
+        try:
+            await producer_task
+            await queue.join()
+            await asyncio.gather(*workers)
+        finally:
+            if skip_local_db:
+                try:
+                    await self.bridge.set_skip_db_write(False)
+                except Exception:
+                    pass
 
         total_time = max(0.001, time.time() - start_time)
         avg_tps = sent_count / total_time
@@ -957,6 +1037,7 @@ class IMClient:
         low_watermark: int = 150,
         use_csv_data: bool = True,
         enforce_fifo_order: bool = True,
+        skip_local_db: bool = False,
     ) -> Dict[str, Any]:
         """【模式三：多会话齐步并行等量压测】同时对所有指定会话各自发送相同数量的消息。
         
@@ -985,6 +1066,7 @@ class IMClient:
             low_watermark=low_watermark,
             use_csv_data=use_csv_data,
             enforce_fifo_order=enforce_fifo_order,
+            skip_local_db=skip_local_db,
         )
 
 
@@ -1515,12 +1597,13 @@ if __name__ == "__main__":
             await client.send_matrix(
                 count_per_target=COUNT_PER_TARGET,
                 concurrency=1,              # 单设备单协程顺序流水线，杜绝锁争抢与 Socket 洪峰
-                batch_size=200,             # 批次大小（每批 100 条）
+                batch_size=200,             # 批次大小（每批 200 条）
                 report_interval=200,        # 打点间隔
                 high_watermark=300,         # 高水位线（需大于 batch_size，避免每批都触发排空）
                 low_watermark=150,          # 低水位线（需大于 batch_size，避免每批必等待）
                 max_pace=0.3,               # 退避休眠上限降至 0.3s，避免单批固定卡死 1s
                 enforce_fifo_order=True,    # 开启单会话严格保序屏障
+                skip_local_db=True,         # 跳过发送端本地写库，彻底解决 1.7G WAL 膨胀与提速
             )
             await client.stop()
 

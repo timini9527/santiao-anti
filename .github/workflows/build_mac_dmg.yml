@@ -10,6 +10,7 @@ on:
       - build-mac
     paths:
       - 'desktop_app/**'
+      - 'web_platform/backend/devices.py'
       - '.github/workflows/build_mac_dmg.yml'
 
 jobs:
