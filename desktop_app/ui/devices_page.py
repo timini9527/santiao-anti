@@ -636,7 +636,12 @@ class DevicesPage(QWidget):
             is_real = item.get("is_real", True)
             platform = item.get("platform", "Android")
             dev_type = "USB真机" if is_real else "模拟器"
-            driver = "HarmonyOS (ArkTS)" if platform == "HarmonyOS" else "Android (UIAutomator2)"
+            if platform == "HarmonyOS":
+                driver = "HarmonyOS (ArkTS)"
+            elif platform == "iOS":
+                driver = "iOS (XCUITest)"
+            else:
+                driver = "Android (UIAutomator2)"
             port_num = 4723 if idx == 0 else (4724 + (idx - 1))
 
             res = self._fetch_device_resolution(adb_bin, udid, platform)

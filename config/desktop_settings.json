@@ -1,20 +1,20 @@
 {
   "mobile": {
     "os_type": "Win",
-    "remote_appium": "172.18.0.1:4723 (局域网本机)",
+    "remote_appium": "198.18.0.1:4723 (服务在线)",
     "remote_udid": "3B65BN02GU600000",
-    "remote_appium2": "172.18.0.1:4724 (局域网本机)",
-    "remote_udid2": "3B65BN02GU600000",
+    "remote_appium2": "198.18.0.1:4724 (服务在线)",
+    "remote_udid2": "00008101-001538462600001E",
     "private_chat_name": "",
     "group_chat_name": "",
     "env": "dev",
     "debug_mode": false,
     "role": "business",
     "selected_test_file": "",
-    "auto_scroll_log": false,
+    "auto_scroll_log": true,
     "splitter_h_sizes": [
-      464,
-      1356
+      556,
+      1264
     ],
     "splitter_v_sizes": [
       638,
@@ -22,7 +22,7 @@
     ],
     "log_collapsed": false,
     "last_log_height": 275,
-    "params_collapsed": true,
+    "params_collapsed": false,
     "node_status_map": {
       "tests/chat/core/test_chat/TestChat::test_send_text_message": "passed",
       "tests/chat/list/test_chat_list.py::TestChatList::test_enter_chat": "passed",
@@ -255,7 +255,14 @@
       "tests/mine/collection/single/test_chat_collection.py::TestChatCollection::test_collection_batch_text": "passed",
       "tests/mine/collection/single/test_chat_collection.py::TestChatCollection": "passed",
       "tests/mine/collection/single/test_chat_collection.py": "passed",
-      "tests/mine": "passed"
+      "tests/mine": "passed",
+      "tests/groups/create/test_group_create.py::TestGroupCreate::test_create_group_success_x[10人]": "failed",
+      "tests/groups/create/test_group_create.py::TestGroupCreate::test_create_group_success_x": "failed",
+      "tests/groups/create/test_group_create.py::TestGroupCreate": "failed",
+      "tests/groups/create/test_group_create.py": "failed",
+      "tests/groups": "failed",
+      "tests/groups/create/test_group_create.py::TestGroupCreate::test_create_group_success": "failed",
+      "tests/groups/create/test_group_create.py::TestGroupCreate::test_create_group_success_x[0人]": "failed"
     },
     "expanded_targets": [
       "tests"
@@ -287,7 +294,7 @@
   },
   "window": {
     "x": 504,
-    "y": 1028,
+    "y": 284,
     "width": 1406,
     "height": 864,
     "maximized": true

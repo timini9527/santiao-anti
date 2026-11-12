@@ -1,0 +1,206 @@
+# ==============================================================================
+# 🎯 三条 IM 多设备压测会话策略配置 (config/im_targets.yaml)
+# ==============================================================================
+# 核心定位：
+#   1. 实现压测目标会话与执行代码彻底解耦（DDT 数据驱动架构）。
+#   2. 支持「设备本地 SQLite 动态自发现 (Zero Config)」与「静态目标兜底」双模式。
+#   3. 通过切换 active_profile 一键切换压测场景，告别手动注释代码。
+# ==============================================================================
+
+# 当前全局激活的压测场景预设 (可选: offline_groups / dedicated_groups / single_chat)
+active_profile: "offline_groups"
+
+# ------------------------------------------------------------------------------
+# 压测场景配置矩阵
+# ------------------------------------------------------------------------------
+profiles:
+  # 场景 1：1-50群 齐步集群压测 (默认推荐，支持 5 台设备严格分片，每台独占 10 个群)
+  offline_groups:
+    description: "1-50群 齐步集群压测 (5 台设备严格平均分片发送)"
+    discovery_mode: "static"        # static: 严格读取下方 static_targets 中已配置好的 1-50 群；auto：自动分配会话
+    pattern_prefix: "正式群"            # 匹配群聊名称 (支持 "1群" ~ "50群", 前后缀匹配： 离线群)
+    max_groups: 50                  # 限制拉取最大群数
+    shard_by_device: true           # 开启 5 台设备分片发送 (每台设备仅向专属 10 个群发送，消除 seq 冲突)
+    include_dedicated_group: false  # 压测公共群时，不向各设备专属测试群(测试群001~005)发送
+
+  # 场景 2：设备专属群一对一独立压测
+  dedicated_groups:
+    description: "5 台设备各自独占绑定的测试群 (测试群001 ~ 测试群005)"
+    discovery_mode: "auto"
+    pattern_prefix: "测试群"
+    max_groups: 5
+    shard_by_device: false
+    include_dedicated_group: true
+
+  # 场景 3：好友单聊并发压测
+  single_chat:
+    description: "好友单聊并发压测 (支持千人真实好友 Zero Config 动态自发现)"
+    discovery_mode: "auto"          # auto: 自动连接设备 SQLite 抓取近 1000 个真实好友; static: 读取下方静态列表
+    max_friends: 1000               # 限制拉取最大好友数
+    shard_by_device: false
+    include_dedicated_group: false
+
+# ------------------------------------------------------------------------------
+# 5 台设备默认专属绑定群映射 (供 dedicated_groups 场景与单机模式使用)
+# ------------------------------------------------------------------------------
+device_dedicated_groups:
+  emulator-5562:
+    name: "测试群001"
+    chat_type: "GROUP"
+    chat_id: "1558306114846638080"
+    is_top: true
+  emulator-5564:
+    name: "测试群002"
+    chat_type: "GROUP"
+    chat_id: "1553530733224574976"
+    is_top: true
+  emulator-5566:
+    name: "测试群003"
+    chat_type: "GROUP"
+    chat_id: "1553531260331147264"
+    is_top: true
+  emulator-5568:
+    name: "测试群004"
+    chat_type: "GROUP"
+    chat_id: "1553530999466409984"
+    is_top: true
+  emulator-5572:
+    name: "测试群005"
+    chat_type: "GROUP"
+    chat_id: "1553531578875953152"
+    is_top: true
+
+# ==============================================================================
+# 静态备选池 (当 discovery_mode: "static" 或动态发现未就绪时自动兜底)
+# ==============================================================================
+static_targets:
+  # 1. 离线群 001 ~ 050
+  - { name: "离线群001", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528503207346176", is_top: false }
+  - { name: "离线群002", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528515853172736", is_top: false }
+  - { name: "离线群003", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528527010021376", is_top: false }
+  - { name: "离线群004", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528537286066176", is_top: false }
+  - { name: "离线群005", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528547591471104", is_top: false }
+  - { name: "离线群006", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528557804601344", is_top: false }
+  - { name: "离线群007", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528568529436672", is_top: false }
+  - { name: "离线群008", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528579141025792", is_top: false }
+  - { name: "离线群009", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528589186383872", is_top: false }
+  - { name: "离线群010", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528599529537536", is_top: false }
+  - { name: "离线群011", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528609642004480", is_top: false }
+  - { name: "离线群012", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528619649613824", is_top: false }
+  - { name: "离线群013", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528629866938368", is_top: false }
+  - { name: "离线群014", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528639807438848", is_top: false }
+  - { name: "离线群015", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528650049929216", is_top: false }
+  - { name: "离线群016", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528660040761344", is_top: false }
+  - { name: "离线群017", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528670115479552", is_top: false }
+  - { name: "离线群018", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528680127283200", is_top: false }
+  - { name: "离线群019", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528690386550784", is_top: false }
+  - { name: "离线群020", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528701417570304", is_top: false }
+  - { name: "离线群021", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528712624750592", is_top: false }
+  - { name: "离线群022", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578529513992667136", is_top: false }
+  - { name: "离线群023", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528769809891328", is_top: false }
+  - { name: "离线群024", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528779905581056", is_top: false }
+  - { name: "离线群025", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528790504587264", is_top: false }
+  - { name: "离线群026", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528801023901696", is_top: false }
+  - { name: "离线群027", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528811299946496", is_top: false }
+  - { name: "离线群028", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528825795461120", is_top: false }
+  - { name: "离线群029", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528836025368576", is_top: false }
+  - { name: "离线群030", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528846037172224", is_top: false }
+  - { name: "离线群031", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528862327848960", is_top: false }
+  - { name: "离线群032", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528873237233664", is_top: false }
+  - { name: "离线群033", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528884285030400", is_top: false }
+  - { name: "离线群034", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528894380720128", is_top: false }
+  - { name: "离线群035", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528904421883904", is_top: false }
+  - { name: "离线群036", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528914534350848", is_top: false }
+  - { name: "离线群037", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528924764258304", is_top: false }
+  - { name: "离线群038", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528934700564480", is_top: false }
+  - { name: "离线群039", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528944733339648", is_top: false }
+  - { name: "离线群040", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528954824835072", is_top: false }
+  - { name: "离线群041", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528964777918464", is_top: false }
+  - { name: "离线群042", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528974760361984", is_top: false }
+  - { name: "离线群043", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528984814108672", is_top: false }
+  - { name: "离线群044", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578528994817523712", is_top: false }
+  - { name: "离线群045", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578529005273923584", is_top: false }
+  - { name: "离线群046", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578529558741696512", is_top: false }
+  - { name: "离线群047", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578529062157074432", is_top: false }
+  - { name: "离线群048", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578529072512811008", is_top: false }
+  - { name: "离线群049", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578529082675609600", is_top: false }
+  - { name: "离线群050", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578529092897128448", is_top: false }
+
+  # 1-50群 (emulator-5562)
+  - { name: "1群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578109239631593472", is_top: false }
+  - { name: "2群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578110396550660096", is_top: false }
+  - { name: "3群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578124145504337920", is_top: false }
+  - { name: "4群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578172439135830016", is_top: false }
+  - { name: "5群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578184517699551232", is_top: false }
+  - { name: "6群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578184662151380992", is_top: false }
+  - { name: "7群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578184803088384000", is_top: false }
+  - { name: "8群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578184946042847232", is_top: false }
+  - { name: "9群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578185140952154112", is_top: false }
+  - { name: "10群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578185331621019648", is_top: false }
+  - { name: "11群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578189031424966656", is_top: false }
+  - { name: "12群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578189144440487936", is_top: false }
+  - { name: "13群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578189258810769408", is_top: false }
+  - { name: "14群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578189371914371072", is_top: false }
+  - { name: "15群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578189464776261632", is_top: false }
+  - { name: "16群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578189562532904960", is_top: false }
+  - { name: "17群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578189658884456448", is_top: false }
+  - { name: "18群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578189899390042112", is_top: false }
+  - { name: "19群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578190085654888448", is_top: false }
+  - { name: "20群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578190289615503360", is_top: false }
+  - { name: "21群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578190403197255680", is_top: false }
+  - { name: "22群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578190497539735552", is_top: false }
+  - { name: "23群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578190625210155008", is_top: false }
+  - { name: "24群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578190714901151744", is_top: false }
+  - { name: "25群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578190809478512640", is_top: false }
+  - { name: "26群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578190909374251008", is_top: false }
+  - { name: "27群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578191013657231360", is_top: false }
+  - { name: "28群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578191113355837440", is_top: false }
+  - { name: "29群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578191215348727808", is_top: false }
+  - { name: "30群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578191329207304192", is_top: false }
+  - { name: "31群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578191431774814208", is_top: false }
+  - { name: "32群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578191521918795776", is_top: false }
+  - { name: "33群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578191609202262016", is_top: false }
+  - { name: "34群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578191704991776768", is_top: false }
+  - { name: "35群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578191804111568896", is_top: false }
+  - { name: "36群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578191919765307392", is_top: false }
+  - { name: "37群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578192066490449920", is_top: false }
+  - { name: "38群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578192151207002112", is_top: false }
+  - { name: "39群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578192281071042560", is_top: false }
+  - { name: "40群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578192384041205760", is_top: false }
+  - { name: "41群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578192470972350464", is_top: false }
+  - { name: "42群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578192592674275328", is_top: false }
+  - { name: "43群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578193579422040064", is_top: false }
+  - { name: "44群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578197259776999424", is_top: false }
+  - { name: "45群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578197400613339136", is_top: false }
+  - { name: "46群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578197540568875008", is_top: false }
+  - { name: "47群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578200766051565568", is_top: false }
+  - { name: "48群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578201057295646720", is_top: false }
+  - { name: "49群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578201201835556864", is_top: false }
+  - { name: "50群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578201298795282432", is_top: false }
+
+  # 正式群 001 ~ 010 (emulator-5562)
+  - { name: "正式群001", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579288459233771520", is_top: false }
+  - { name: "正式群002", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579288480507281408", is_top: false }
+  - { name: "正式群003", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579288489927688192", is_top: false }
+  - { name: "正式群004", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579288500140818432", is_top: false }
+  - { name: "正式群005", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579288518700613632", is_top: false }
+  - { name: "正式群006", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579288523658280960", is_top: false }
+  - { name: "正式群007", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579288539533721600", is_top: false }
+  - { name: "正式群008", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579288546030698496", is_top: false }
+  - { name: "正式群009", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579288559695740928", is_top: false }
+  - { name: "正式群010", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579288570412187648", is_top: false }
+
+  # 2. 单聊测试账号
+  # - { name: "测试130", chat_type: "SINGLE", to_cust_id: "1500692627358388224", chat_id: "0", is_top: true }
+  # - { name: "测试131", chat_type: "SINGLE", to_cust_id: "1500692627706515456", chat_id: "0", is_top: true }
+  # - { name: "测试132", chat_type: "SINGLE", to_cust_id: "1500692628088197120", chat_id: "0", is_top: true }
+  # - { name: "测试133", chat_type: "SINGLE", to_cust_id: "1500692628398575616", chat_id: "0", is_top: true }
+  # - { name: "测试134", chat_type: "SINGLE", to_cust_id: "1500692628729925632", chat_id: "0", is_top: true }
+  # - { name: "测试135", chat_type: "SINGLE", to_cust_id: "1500692629031915520", chat_id: "0", is_top: true }
+  # - { name: "测试136", chat_type: "SINGLE", to_cust_id: "1500692629333905408", chat_id: "0", is_top: true }
+  # - { name: "测试137", chat_type: "SINGLE", to_cust_id: "1500692629816250368", chat_id: "0", is_top: true }
+  # - { name: "测试138", chat_type: "SINGLE", to_cust_id: "1500692630298595328", chat_id: "0", is_top: true }
+  # - { name: "测试139", chat_type: "SINGLE", to_cust_id: "1500692630617362432", chat_id: "0", is_top: true }
+  # - { name: "测试140", chat_type: "SINGLE", to_cust_id: "1500692630927740928", chat_id: "0", is_top: true }
+  # - { name: "A0110", chat_type: "SINGLE", to_cust_id: "1500692620387454976", chat_id: "0", is_top: false }
+

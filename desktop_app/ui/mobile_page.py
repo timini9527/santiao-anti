@@ -611,8 +611,10 @@ class MobilePage(QWidget):
         body_layout.addLayout(lbl_box1, 0, 0, 1, 2)
 
         row1_input = QHBoxLayout()
+        current_host_os = "Win" if sys.platform == "win32" else ("Mac" if sys.platform == "darwin" else "Linux")
         self.combo_os = QComboBox()
         self.combo_os.addItems(["Win", "Mac", "Linux"])
+        self.combo_os.setCurrentText(current_host_os)
         self.combo_os.setFixedWidth(88)
         self.combo_os.setStyleSheet("""
             QComboBox {
@@ -1775,7 +1777,9 @@ class MobilePage(QWidget):
     # ==================== 6. 状态持久化 ====================
     def load_persisted_config(self):
         cfg = desktop_config.get_section("mobile")
-        self.combo_os.setCurrentText(cfg.get("os_type", "Win"))
+        current_host_os = "Win" if sys.platform == "win32" else ("Mac" if sys.platform == "darwin" else "Linux")
+        saved_os = cfg.get("os_type")
+        self.combo_os.setCurrentText(saved_os if saved_os in ["Win", "Mac", "Linux"] else current_host_os)
         
         ap1 = cfg.get("remote_appium", f"{self.lan_ip}:4723 (局域网本机)")
         ap2 = cfg.get("remote_appium2", f"{self.lan_ip}:4724 (局域网本机)")
@@ -1983,32 +1987,75 @@ class MobilePage(QWidget):
             self.lbl_device_pill.setText(f"🟢 设备: {online_count} 台在线")
 
     def _detect_single_device(self, target_idx: int):
+        """
+        单端极速真机检测与自动绑定：
+        支持跨 Windows 与 macOS，深度检测 iOS (tidevice/idevice_id/xcrun)、
+        鸿蒙 HarmonyOS NEXT (hdc) 与 Android (adb) 物理硬件真机。
+        """
+        self.append_log("--------------------------------------------------")
+        self.append_log(f"🔍 [检测真机] 正在深度扫描移动端物理真机 (iOS / 鸿蒙 / Android)...")
+        QApplication.processEvents()
+
         details = DeviceManager.scan_connected_devices()
+        device_items = details.get("device_items", [])
         real_list = details.get("real_devices", [])
         all_list = details.get("all_devices", [])
 
+        # 建立设备 UDID 到属性的快速映射
+        dev_map = {item.get("udid"): item for item in device_items}
+
+        # 内存同步下拉选项
+        for udid in all_list:
+            if self.combo_udid1.findText(udid) == -1:
+                self.combo_udid1.addItem(udid)
+            if self.combo_udid2.findText(udid) == -1:
+                self.combo_udid2.addItem(udid)
+
+        # 同步更新顶部药丸计数
+        total_online = len(all_list)
+        if hasattr(self, 'top_status_pill'):
+            self.top_status_pill.update_device_count(total_online)
+        elif hasattr(self, 'lbl_device_pill'):
+            self.lbl_device_pill.setText(f"🟢 设备: {total_online} 台在线" if total_online else "⚪ 设备: 0 台在线")
+
         if target_idx == 1:
             if real_list:
-                self.combo_udid1.setEditText(real_list[0])
-                self.append_log(f"✅ 已直接获取 USB 连接真机并替换发送端: {real_list[0]}")
+                chosen_udid = real_list[0]
+                item = dev_map.get(chosen_udid, {})
+                plat = item.get("platform", "移动端")
+                self.combo_udid1.setEditText(chosen_udid)
+                self.append_log(f"✅ [发送端] 成功识别并绑定 USB 物理真机 [{plat}]: {chosen_udid}")
             elif all_list:
-                self.combo_udid1.setEditText(all_list[0])
-                self.append_log(f"ℹ️ 已获取在线设备并替换发送端: {all_list[0]}")
+                chosen_udid = all_list[0]
+                item = dev_map.get(chosen_udid, {})
+                plat = item.get("platform", "移动端")
+                self.combo_udid1.setEditText(chosen_udid)
+                self.append_log(f"ℹ️ [发送端] 暂无物理真机，已自动绑定在线设备 [{plat}]: {chosen_udid}")
             else:
-                QMessageBox.warning(self, "警告", "未检测到 USB 设备，请检查数据线与开发者 USB 调试！")
+                self.append_log("❌ [发送端] 未检测到任何物理真机或模拟器连接！")
+                QMessageBox.warning(self, "未检测到真机", "未检测到任何 USB 硬件真机！\n\n请确认：\n1. iOS 设备：已信任此电脑并在后台保持连接 (tidevice/Xcode)\n2. 鸿蒙设备：已开启开发者选项与 USB 调试 (hdc list targets)\n3. Android 设备：已开启 USB 调试 (adb devices)")
         else:
             if len(real_list) >= 2:
-                self.combo_udid2.setEditText(real_list[1])
-                self.append_log(f"✅ 已直接获取 USB 连接第 2 台真机并替换接收端: {real_list[1]}")
+                chosen_udid = real_list[1]
+                item = dev_map.get(chosen_udid, {})
+                plat = item.get("platform", "移动端")
+                self.combo_udid2.setEditText(chosen_udid)
+                self.append_log(f"✅ [接收端] 成功识别并绑定第 2 台物理真机 [{plat}]: {chosen_udid}")
             elif real_list:
-                self.combo_udid2.setEditText(real_list[0])
-                self.append_log(f"ℹ️ 已检测到真机并同步替换接收端: {real_list[0]}")
+                chosen_udid = real_list[0]
+                item = dev_map.get(chosen_udid, {})
+                plat = item.get("platform", "移动端")
+                self.combo_udid2.setEditText(chosen_udid)
+                self.append_log(f"ℹ️ [接收端] 仅检测到 1 台物理真机 [{plat}]，已同步绑定接收端: {chosen_udid}")
             elif all_list:
                 target = all_list[1] if len(all_list) > 1 else all_list[0]
+                item = dev_map.get(target, {})
+                plat = item.get("platform", "移动端")
                 self.combo_udid2.setEditText(target)
-                self.append_log(f"ℹ️ 已获取在线设备并替换接收端: {target}")
+                self.append_log(f"ℹ️ [接收端] 暂无物理真机，已自动绑定在线设备 [{plat}]: {target}")
             else:
-                QMessageBox.warning(self, "警告", "未检测到 USB 设备，请检查数据线与开发者 USB 调试！")
+                self.append_log("❌ [接收端] 未检测到任何物理真机或模拟器连接！")
+                QMessageBox.warning(self, "未检测到真机", "未检测到任何 USB 硬件真机！\n\n请确认设备已通过数据线连接并开启开发者调试权限。")
 
     def _swap_devices(self):
         t = self.combo_udid1.currentText()
@@ -2789,9 +2836,9 @@ class MobilePage(QWidget):
         return True, "🟢 端口已监听 (服务就绪)"
 
     def _start_appium_service(self):
-        """启动 Appium 服务集群 (优先原生后台纯静默拉起，确保日志文件 100% 写入 logs/appium_*.log)"""
+        """启动 Appium 服务集群 (支持 Windows / macOS 跨平台原生后台纯静默拉起，确保日志 100% 写入 logs/appium_*.log)"""
         self.append_log("==================================================")
-        self.append_log("▶ [启动服务] 正在准备拉起 Appium 集群服务...")
+        self.append_log("▶ [启动服务] 正在准备拉起 Appium 集群服务 (跨平台原生模式)...")
 
         # 严格优先从安装包文件夹目录 (应用主程序目录) 与工程根目录获取
         app_dir = Path(sys.executable).parent
@@ -2804,10 +2851,21 @@ class MobilePage(QWidget):
 
         create_no_window = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
 
-        # 方案 1: 优先直接检测系统环境中的 appium 命令进行原生静默直启 (最稳定、零中转、日志绝对生成)
+        # 方案 1: 优先直接检测系统环境中的 appium 命令进行原生静默直启 (跨 Win/Mac 自动感知)
         appium_bin = shutil.which("appium.cmd") or shutil.which("appium")
+        if not appium_bin and sys.platform == "darwin":
+            mac_candidates = [
+                "/opt/homebrew/bin/appium",
+                "/usr/local/bin/appium",
+                os.path.expanduser("~/.nvm/versions/node/current/bin/appium"),
+            ]
+            for c in mac_candidates:
+                if os.path.isfile(c) and os.access(c, os.X_OK):
+                    appium_bin = c
+                    break
+
         if appium_bin:
-            mode_str = "原生直启模式 (后台纯静默无黑框)"
+            mode_str = f"原生直启模式 ({'Windows 静默' if sys.platform == 'win32' else 'macOS 后台守护'})"
             self.append_log(f"  • 执行命令: {appium_bin}")
             self.append_log(f"  • 运行模式: {mode_str}")
             self.append_log("  • 目标端口: 4723 (主设备), 4724 (从设备)")
@@ -2816,13 +2874,24 @@ class MobilePage(QWidget):
             try:
                 for port in [4723, 4724]:
                     log_file = logs_dir / f"appium_{port}.log"
-                    cmd = f'"{appium_bin}" -p {port} -a 0.0.0.0 --log "{log_file}"'
-                    subprocess.Popen(
-                        cmd,
-                        cwd=str(project_root),
-                        shell=True,
-                        creationflags=create_no_window if sys.platform == "win32" else 0
-                    )
+                    if sys.platform == "win32":
+                        cmd = f'"{appium_bin}" -p {port} -a 0.0.0.0 --log "{log_file}"'
+                        subprocess.Popen(
+                            cmd,
+                            cwd=str(project_root),
+                            shell=True,
+                            creationflags=create_no_window
+                        )
+                    else:
+                        # macOS / Linux 下采用独立会话守护进程启动，输出重定向至日志文件
+                        cmd_args = [appium_bin, "-p", str(port), "-a", "0.0.0.0", "--log", str(log_file)]
+                        subprocess.Popen(
+                            cmd_args,
+                            cwd=str(project_root),
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL,
+                            start_new_session=True
+                        )
                     self.append_log(f"  • 端口 {port}: 已启动后台服务 -> {log_file.name}")
 
                 self.append_log("✅ [启动成功] Appium 服务集群已成功拉起，运行日志已生成！")
@@ -2839,11 +2908,14 @@ class MobilePage(QWidget):
             except Exception as e:
                 self.append_log(f"⚠️ 原生启动出现异常 ({e})，正在回退尝试外部脚本启动...")
 
-        # 方案 2: 回退模式，通过外部脚本拉起
+        # 方案 2: 回退模式，通过外部脚本拉起 (兼容 Windows批处理 与 macOS shell)
         candidates = [
             app_dir / "start_appium_batch.bat",
             project_root / "start_appium_batch.bat",
             Path.cwd() / "start_appium_batch.bat",
+            app_dir / "start_appium_batch.sh",
+            project_root / "start_appium_batch.sh",
+            Path.cwd() / "start_appium_batch.sh",
             app_dir / "start_appium_silent.vbs",
             project_root / "start_appium_silent.vbs",
             Path.cwd() / "start_appium_silent.vbs"
@@ -2855,16 +2927,17 @@ class MobilePage(QWidget):
                 break
 
         if not launch_file:
-            err_msg = "未找到 Appium 运行环境及 start_appium_batch.bat 启动文件！"
+            err_msg = "未找到 Appium 运行环境及启动脚本！"
             self.append_log(f"❌ [启动失败] {err_msg}")
             self.append_log("==================================================")
+            hint = "请在 Mac 终端执行 npm i -g appium 安装，或配置 PATH 环境变量。" if sys.platform == "darwin" else "请确认系统已安装 Node.js 与 Appium (npm i -g appium)。"
             QMessageBox.warning(
                 self, "启动失败",
-                f"未找到 Appium 运行环境！\n\n请确认系统已安装 Node.js 与 Appium (npm i -g appium)，或将 start_appium_batch.bat 放置在程序根目录。"
+                f"未找到 Appium 运行环境！\n\n{hint}"
             )
             return
 
-        mode_str = "脚本托管模式 (原生无黑框)"
+        mode_str = "脚本托管模式"
         self.append_log(f"  • 启动脚本: {launch_file.name} ({launch_file.resolve()})")
         self.append_log(f"  • 运行模式: {mode_str}")
         self.append_log("  • 目标端口: 4723 (主设备), 4724 (从设备)")
@@ -2874,17 +2947,15 @@ class MobilePage(QWidget):
             work_dir = str(launch_file.parent)
             if sys.platform == "win32":
                 if launch_file.suffix.lower() == ".vbs":
-                    # 若为 VBS 文件，显式调用 Windows Script Host 解释器 wscript.exe，绝不使用 os.startfile (彻底杜绝记事本关联)
                     sys_root = os.environ.get("SystemRoot", r"C:\Windows")
                     wscript_bin = shutil.which("wscript") or os.path.join(sys_root, "System32", "wscript.exe")
                     subprocess.Popen([wscript_bin, str(launch_file)], cwd=work_dir)
                 else:
-                    # 针对批处理文件，使用 cmd.exe /c 结合 CREATE_NO_WINDOW 原生创建无窗口后台进程
                     sys_root = os.environ.get("SystemRoot", r"C:\Windows")
                     cmd_bin = shutil.which("cmd") or os.path.join(sys_root, "System32", "cmd.exe")
                     subprocess.Popen([cmd_bin, "/c", str(launch_file)], cwd=work_dir, creationflags=create_no_window)
             else:
-                subprocess.Popen(["bash", str(launch_file)], cwd=work_dir)
+                subprocess.Popen(["bash", str(launch_file)], cwd=work_dir, start_new_session=True)
 
             self.append_log(f"✅ [启动成功] Appium 服务集群已成功派发至系统后台启动！")
             self.append_log("==================================================")
@@ -2903,7 +2974,7 @@ class MobilePage(QWidget):
             QMessageBox.critical(self, "启动失败", f"启动 Appium 服务脚本时出现异常:\n\n{e}")
 
     def _stop_appium_service(self):
-        """关闭 Appium 批量服务 (精准释放 4723~4731 端口并清理后台服务)"""
+        """关闭 Appium 批量服务 (跨 Windows / macOS 双端支持，精准释放 4723~4731 端口并清理后台服务)"""
         self.append_log("==================================================")
         self.append_log("⏹ [关闭服务] 正在扫描并终止 Appium 服务进程 (端口 4723~4731)...")
         killed_pids: Set[str] = set()
@@ -2911,7 +2982,7 @@ class MobilePage(QWidget):
 
         if sys.platform == "win32":
             try:
-                # 遍历 4723 到 4731 端口，精确定位监听状态的 PID 并终止
+                # Windows 平台：通过 netstat 精确定位监听状态的 PID 并强制终止
                 for port in range(4723, 4732):
                     cmd = f"netstat -ano | findstr :{port}"
                     proc = subprocess.run(cmd, shell=True, capture_output=True, text=True)
@@ -2924,7 +2995,28 @@ class MobilePage(QWidget):
                                     killed_pids.add(pid)
                                     ports_closed.append(port)
                                     subprocess.run(f"taskkill /F /T /PID {pid}", shell=True, capture_output=True)
-                                    self.append_log(f"  - 已终止进程 PID: {pid} (占用端口: {port})")
+                                    self.append_log(f"  - 已终止 Windows 进程 PID: {pid} (占用端口: {port})")
+            except Exception as e:
+                self.append_log(f"❌ [关闭失败] 释放 Appium 端口进程出现异常: {e}")
+                self.append_log("==================================================")
+                QMessageBox.critical(self, "关闭失败", f"关闭 Appium 服务进程时发生异常:\n\n{e}")
+                return
+        else:
+            # macOS / Linux 平台：通过 lsof -ti :<port> 扫描并杀掉占用端口的进程
+            try:
+                for port in range(4723, 4732):
+                    cmd = ["lsof", "-ti", f":{port}"]
+                    proc = subprocess.run(cmd, capture_output=True, text=True)
+                    if proc.stdout:
+                        for pid_str in proc.stdout.strip().splitlines():
+                            pid = pid_str.strip()
+                            if pid.isdigit() and int(pid) > 0 and pid not in killed_pids:
+                                killed_pids.add(pid)
+                                ports_closed.append(port)
+                                subprocess.run(["kill", "-9", pid], capture_output=True)
+                                self.append_log(f"  - 已终止 macOS 进程 PID: {pid} (占用端口: {port})")
+                # 兜底清理残留的 appium node 孤儿进程
+                subprocess.run(["pkill", "-f", "appium"], capture_output=True)
             except Exception as e:
                 self.append_log(f"❌ [关闭失败] 释放 Appium 端口进程出现异常: {e}")
                 self.append_log("==================================================")
@@ -2952,13 +3044,13 @@ class MobilePage(QWidget):
 
     def _check_appium_and_devices(self):
         """
-        检测服务与设备连接状态：
+        检测服务与设备连接状态 (跨平台 + 多端 Android / HarmonyOS / iOS 统一体检)：
         1. 探测 Appium 服务监听状态 (4723 与 4724 端口)
-        2. 执行 adb kill-server、adb start-server 和 adb devices -l 深度检查移动设备连接状态
-        3. 输出结构化终端日志并在完成后弹出明确的成功/失败/警告提示框
+        2. 全面扫描移动设备连接 (Android ADB / 鸿蒙 HDC / iOS tidevice 与原生调试通道)
+        3. 刷新顶部药丸计数并输出多端设备分布报告
         """
         self.append_log("==================================================")
-        self.append_log("🔍 [检测服务] 开始进行 Appium 服务集群与移动设备综合体检...")
+        self.append_log("🔍 [检测服务] 开始进行 Appium 集群与多端设备综合体检 (iOS / 鸿蒙 / Android)...")
 
         # ---------------- 步骤 1: 探测 Appium 端口状态 ----------------
         self.append_log("  [1/2] 正在探测 Appium 核心服务端口...")
@@ -2971,157 +3063,111 @@ class MobilePage(QWidget):
         appium_all_alive = all(ok for ok, _ in appium_status.values())
         appium_any_alive = any(ok for ok, _ in appium_status.values())
 
-        # ---------------- 步骤 2: 探测移动设备 (ADB) 状态 ----------------
-        self.append_log("  [2/2] 正在极速检测 Android 移动设备 (执行 adb devices -l)...")
+        # ---------------- 步骤 2: 深度探测多端移动设备 ----------------
+        self.append_log("  [2/2] 正在深度检测移动硬件设备 (Android + 鸿蒙 + iOS)...")
         QApplication.processEvents()
-        tools = SmartPathResolver.discover_mobile_toolchain()
-        adb_path = tools.get("adb") or shutil.which("adb")
 
-        if not adb_path:
-            self.append_log("❌ [检测失败] 系统未检测到 ADB 命令行工具！")
+        details = DeviceManager.scan_connected_devices()
+        device_items = details.get("device_items", [])
+        real_devices = details.get("real_devices", [])
+        all_devices = details.get("all_devices", [])
+
+        # 分类汇总设备
+        ios_devs = [item for item in device_items if item.get("platform") == "iOS"]
+        harmony_devs = [item for item in device_items if item.get("platform") == "HarmonyOS"]
+        android_devs = [item for item in device_items if item.get("platform") == "Android"]
+
+        # 同步更新下拉选项
+        for udid in all_devices:
+            if self.combo_udid1.findText(udid) == -1:
+                self.combo_udid1.addItem(udid)
+            if self.combo_udid2.findText(udid) == -1:
+                self.combo_udid2.addItem(udid)
+
+        # 自动同步发送端和接收端
+        if real_devices:
+            self.combo_udid1.setEditText(real_devices[0])
+            if len(real_devices) > 1:
+                self.combo_udid2.setEditText(real_devices[1])
+        elif all_devices:
+            self.combo_udid1.setEditText(all_devices[0])
+            if len(all_devices) > 1:
+                self.combo_udid2.setEditText(all_devices[1])
+
+        # 更新顶部状态药丸
+        total_count = len(all_devices)
+        if hasattr(self, 'top_status_pill'):
+            self.top_status_pill.update_device_count(total_count)
+        elif hasattr(self, 'lbl_device_pill'):
+            self.lbl_device_pill.setText(f"🟢 设备: {total_count} 台在线" if total_count else "⚪ 设备: 0 台在线")
+
+        # 格式化详细日志输出
+        self.append_log(f"    - 检测到移动设备总数: {total_count} 台 (真机: {len(real_devices)} 台)")
+        if ios_devs:
+            self.append_log(f"      🍎 iOS 设备 ({len(ios_devs)} 台):")
+            for dev in ios_devs:
+                self.append_log(f"        • {dev['udid']} ({dev['desc']})")
+        if harmony_devs:
+            self.append_log(f"      🔴 鸿蒙 HarmonyOS 设备 ({len(harmony_devs)} 台):")
+            for dev in harmony_devs:
+                self.append_log(f"        • {dev['udid']} ({dev['desc']})")
+        if android_devs:
+            self.append_log(f"      🤖 Android 设备 ({len(android_devs)} 台):")
+            for dev in android_devs:
+                self.append_log(f"        • {dev['udid']} ({dev['desc']})")
+
+        QApplication.processEvents()
+
+        # ---------------- 步骤 3: 综合评估与弹窗报告 ----------------
+        appium_report_lines = [f"• 端口 {p}: {desc}" for p, (_, desc) in appium_status.items()]
+        appium_report_str = "\n".join(appium_report_lines)
+
+        dev_report_lines = []
+        if ios_devs:
+            dev_report_lines.append(f"【🍎 iOS 设备 ({len(ios_devs)} 台)】\n" + "\n".join(f"• {d['udid']} ({d['desc']})" for d in ios_devs))
+        if harmony_devs:
+            dev_report_lines.append(f"【🔴 鸿蒙设备 ({len(harmony_devs)} 台)】\n" + "\n".join(f"• {d['udid']} ({d['desc']})" for d in harmony_devs))
+        if android_devs:
+            dev_report_lines.append(f"【🤖 Android 设备 ({len(android_devs)} 台)】\n" + "\n".join(f"• {d['udid']} ({d['desc']})" for d in android_devs))
+
+        dev_report_str = "\n\n".join(dev_report_lines) if dev_report_lines else "• 暂无任何设备连接"
+
+        if appium_any_alive and all_devices:
+            self.append_log("✅ [检测成功] Appium 服务与移动设备全部就绪，随时可启动自动化测试！")
             self.append_log("==================================================")
-            QMessageBox.warning(
-                self, "ADB 未就绪",
-                "系统未检测到 ADB 命令行工具！\n\n请确保已配置 Android SDK 或已将 adb 添加至系统环境变量 PATH。"
+            QMessageBox.information(
+                self, "检测成功",
+                f"✅ 服务与多端设备检测全部正常！\n\n"
+                f"【Appium 服务状态】\n{appium_report_str}\n\n"
+                f"{dev_report_str}"
             )
-            return
-
-        connected_devices: List[str] = []
-        try:
-            create_no_window = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
-            output = ""
-
-            # 阶梯 1: 优先尝试读取完整设备属性 (超时放宽至 5 秒，覆盖 ADB 服务冷启动耗时)
-            try:
-                res = subprocess.run(
-                    [adb_path, "devices", "-l"],
-                    capture_output=True,
-                    text=True,
-                    timeout=5,
-                    creationflags=create_no_window
-                )
-                output = res.stdout.strip()
-            except subprocess.TimeoutExpired:
-                # 阶梯 2: 若详细信息探测超时，自动降级为最精简的 adb devices (避免 USB 属性阻塞)
-                self.append_log("    ⚠️ 设备详细属性响应延迟，正在极速回退精简探测...")
-                QApplication.processEvents()
-                try:
-                    res = subprocess.run(
-                        [adb_path, "devices"],
-                        capture_output=True,
-                        text=True,
-                        timeout=3,
-                        creationflags=create_no_window
-                    )
-                    output = res.stdout.strip()
-                except subprocess.TimeoutExpired:
-                    self.append_log("    ⚠️ ADB 服务响应超时 (手机可能正处于锁屏或 USB 握手繁忙状态)。")
-
-            if output:
-                lines = [line.strip() for line in output.splitlines() if line.strip()]
-                for line in lines[1:]:  # 跳过首行 "List of devices attached"
-                    if "device" in line and not any(bad in line for bad in ["offline", "unauthorized"]):
-                        parts = line.split()
-                        dev_id = parts[0]
-                        model_info = ""
-                        for p in parts[1:]:
-                            if p.startswith("model:"):
-                                model_info = p.replace("model:", "")
-                                break
-                        desc = f"{dev_id} ({model_info})" if model_info else dev_id
-                        connected_devices.append(desc)
-
-            # 极速内存同步界面药丸与设备下拉选项 (无需二次全量扫盘，0 毫秒完成)
-            if connected_devices:
-                if hasattr(self, 'top_status_pill'):
-                    self.top_status_pill.update_device_count(len(connected_devices))
-                else:
-                    self.lbl_device_pill.setText(f"🟢 设备: {len(connected_devices)} 台在线")
-                dev_ids = [d.split()[0] for d in connected_devices]
-                for dev_id in dev_ids:
-                    if self.combo_udid1.findText(dev_id) == -1:
-                        self.combo_udid1.addItem(dev_id)
-                    if self.combo_udid2.findText(dev_id) == -1:
-                        self.combo_udid2.addItem(dev_id)
-                if dev_ids:
-                    self.combo_udid1.setEditText(dev_ids[0])
-                    if len(dev_ids) > 1:
-                        self.combo_udid2.setEditText(dev_ids[1])
-            else:
-                if hasattr(self, 'top_status_pill'):
-                    self.top_status_pill.update_device_count(0)
-                else:
-                    self.lbl_device_pill.setText("⚪ 设备: 0 台在线")
-
-            # 格式化设备输出
-            self.append_log(f"    - 检测到移动设备在线数量: {len(connected_devices)} 台")
-            for idx, dev in enumerate(connected_devices, 1):
-                self.append_log(f"      • 设备 {idx}: {dev}")
-
-            QApplication.processEvents()
-
-            # ---------------- 步骤 3: 综合评估与弹窗提示 ----------------
-            appium_report_lines = [f"• 端口 {p}: {desc}" for p, (_, desc) in appium_status.items()]
-            appium_report_str = "\n".join(appium_report_lines)
-
-            if connected_devices:
-                dev_report_str = "\n".join(f"• {d}" for d in connected_devices)
-            else:
-                dev_report_str = "• 暂无任何设备连接"
-
-            if appium_any_alive and connected_devices:
-                # 状态 1: 完全成功
-                self.append_log("✅ [检测成功] Appium 服务与移动设备全部就绪，随时可启动自动化测试！")
-                self.append_log("==================================================")
-                QMessageBox.information(
-                    self, "检测成功",
-                    f"✅ 服务与设备检测全部正常！\n\n"
-                    f"【Appium 服务状态】\n{appium_report_str}\n\n"
-                    f"【移动设备连接 (共 {len(connected_devices)} 台)】\n{dev_report_str}"
-                )
-            elif not appium_any_alive and connected_devices:
-                # 状态 2: 设备在线，但 Appium 离线
-                self.append_log("⚠️ [检测提示] 移动设备已连接，但 Appium 服务未启动 (4723/4724 端口离线)。")
-                self.append_log("==================================================")
-                QMessageBox.warning(
-                    self, "服务未启动",
-                    f"⚠️ 移动设备已就绪，但 Appium 服务未启动！\n\n"
-                    f"【Appium 服务状态】\n{appium_report_str}\n\n"
-                    f"【移动设备连接 (共 {len(connected_devices)} 台)】\n{dev_report_str}\n\n"
-                    f"💡 建议: 请点击左侧【▶ 启动服务】按钮启动 Appium 集群。"
-                )
-            elif appium_any_alive and not connected_devices:
-                # 状态 3: Appium 在线，但无移动设备
-                self.append_log("⚠️ [检测提示] Appium 服务已就绪，但未检测到连接的移动设备。")
-                self.append_log("==================================================")
-                QMessageBox.warning(
-                    self, "未检测到移动设备",
-                    f"⚠️ Appium 服务正常，但当前没有检测到已连接的手机！\n\n"
-                    f"【Appium 服务状态】\n{appium_report_str}\n\n"
-                    f"【移动设备连接】\n{dev_report_str}\n\n"
-                    f"💡 建议: 请确认手机 USB 数据线已连接牢固，并开启【开发者选项】中的【USB 调试】。"
-                )
-            else:
-                # 状态 4: 两者均未就绪
-                self.append_log("❌ [检测未就绪] Appium 服务与移动设备均未就绪。")
-                self.append_log("==================================================")
-                QMessageBox.warning(
-                    self, "检测未就绪",
-                    f"❌ 当前 Appium 服务与移动设备均未就绪！\n\n"
-                    f"【Appium 服务状态】\n{appium_report_str}\n\n"
-                    f"【移动设备连接】\n{dev_report_str}\n\n"
-                    f"💡 建议: 请先点击【▶ 启动服务】，然后连接手机并开启 USB 调试。"
-                )
-
-        except Exception as e:
-            self.append_log(f"⚠️ [检测提示] 探测设备与服务未就绪: {e}")
+        elif not appium_any_alive and all_devices:
+            self.append_log("⚠️ [检测提示] 移动设备已就绪，但 Appium 服务未启动。")
             self.append_log("==================================================")
             QMessageBox.warning(
-                self, "设备服务检测提示",
-                f"⚠️ 设备与服务检测未能正常完成：\n\n{e}\n\n"
-                f"💡 建议排查方法：\n"
-                f"1. 确认 USB 数据线连接牢固，并在手机端勾选允许【始终允许这台计算机进行 USB 调试】。\n"
-                f"2. 若 ADB 守护进程卡死，可点击【关闭服务】后重新点击【启动服务】重置环境。"
+                self, "服务未启动",
+                f"⚠️ 移动设备已就绪，但 Appium 服务未启动 (4723/4724 离线)！\n\n"
+                f"【Appium 服务状态】\n{appium_report_str}\n\n"
+                f"{dev_report_str}\n\n"
+                f"💡 建议: 请点击左侧【▶ 启动服务】按钮启动 Appium 集群。"
+            )
+        elif appium_any_alive and not all_devices:
+            self.append_log("⚠️ [检测提示] Appium 服务已就绪，但未检测到连接的移动设备。")
+            self.append_log("==================================================")
+            QMessageBox.warning(
+                self, "未检测到移动设备",
+                f"⚠️ Appium 服务正常，但当前没有检测到已连接的移动设备！\n\n"
+                f"【Appium 服务状态】\n{appium_report_str}\n\n"
+                f"💡 建议: 请确认设备数据线已连接，并开启对应权限 (Android开启USB调试、鸿蒙开启开发者模式、iOS信任此电脑)。"
+            )
+        else:
+            self.append_log("❌ [检测失败] Appium 服务与移动设备均未就绪。")
+            self.append_log("==================================================")
+            QMessageBox.critical(
+                self, "服务与设备均未就绪",
+                f"❌ Appium 服务离线，且未检测到移动设备！\n\n"
+                f"【Appium 服务状态】\n{appium_report_str}\n\n"
+                f"💡 建议: 请先连接真机并点击【▶ 启动服务】启动 Appium 集群。"
             )
 
 

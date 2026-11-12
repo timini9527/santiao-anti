@@ -1,3 +1,4 @@
+from typing import TYPE_CHECKING
 from appium.webdriver.common.appiumby import AppiumBy
 from locators.common.common_locator import CommonLocator
 
@@ -208,12 +209,16 @@ class _HomeLocatorAndroid:
 
 
 # =========================================================================
-# 跨端通用定位器透明代理 (自动识别 Android / HarmonyOS NEXT)
+# 跨端通用定位器透明代理 (自动识别 Android / HarmonyOS NEXT / iOS)
 # =========================================================================
-from core.locator_manager import DynamicLocatorProxy
-from locators.home.home_locator_hos import HomeLocatorHos
+from core.locator_manager import DynamicLocatorMeta
+from locators.home.home_locator_hos import _HomeLocatorHos
+from locators.home.home_locator_ios import _HomeLocatorIos
 
-HomeLocator = DynamicLocatorProxy(
-    android_cls=_HomeLocatorAndroid,
-    harmony_cls=HomeLocatorHos
-)
+
+class HomeLocator(_HomeLocatorIos, _HomeLocatorAndroid, _HomeLocatorHos, metaclass=DynamicLocatorMeta):
+    """跨端主页与会话列表定位器（支持 IDE Ctrl + 鼠标左键直接跳转定义，运行时按设备平台动态分发）"""
+
+    _android_cls = _HomeLocatorAndroid
+    _harmony_cls = _HomeLocatorHos
+    _ios_cls = _HomeLocatorIos

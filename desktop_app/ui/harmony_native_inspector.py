@@ -1441,12 +1441,17 @@ class IosServiceActionWorker(QThread):
                     cwd=os.path.dirname(self.start_bat),
                 )
 
-            # 轮询探测服务是否已双双拉起并就绪 (最多等待 20 秒)
-            for _ in range(40):
+            # 轮询探测服务是否已双双拉起并稳定存活 (最多等待 30 秒，兼顾首次自动挂载 DeveloperDiskImage 耗时)
+            stable_ticks = 0
+            for _ in range(60):
                 time.sleep(0.5)
                 is_xcuitest, is_forward = check_ios_wda_services()
                 if is_xcuitest and is_forward:
-                    return True
+                    stable_ticks += 1
+                    if stable_ticks >= 3:
+                        return True
+                else:
+                    stable_ticks = 0
             return False
         except Exception as e:
             logger.error(f"[IosService] 执行启动脚本异常: {e}")
@@ -4938,7 +4943,7 @@ class AppiumScreenView(QWidget):
         if c_text:
             return True
 
-        # 2. 属于天然的具体内容或交互组件 (覆盖鸿蒙 ArkUI NEXT 全量原生体系)
+        # 2. 属于天然的具体内容或交互组件 (全面覆盖鸿蒙 ArkUI、iOS XCUITest 与 Android 原生体系)
         content_types = {
             # 文本展示
             "Text", "Span", "StaticText", "TextClock", "Marquee", "Badge", "Divider",
@@ -4946,15 +4951,17 @@ class AppiumScreenView(QWidget):
             "SymbolGlyph", "Image", "Icon", "QRCode", "ImageView", "Video", "Web", "XComponent", "Canvas",
             # 按钮与操作交互
             "Button", "Toggle", "Checkbox", "Radio", "Switch", "ImageButton", "Slider", "Rating", "LoadingProgress",
-            # 输入表单与编辑器
-            "TextInput", "TextArea", "Search", "SearchField", "RichEditor", "RichEditorContent", "TextField", "EditText",
+            # 输入表单与编辑器 (全面支持 iOS TextView/TextField 与各端输入框)
+            "TextInput", "TextArea", "Search", "SearchField", "RichEditor", "RichEditorContent", "TextField", "TextView", "EditText",
             # 菜单与弹窗选择器
             "Select", "MenuItem", "Menu", "DatePicker", "TimePicker", "TextPicker",
-            # iOS 对应组件
+            # iOS 原生完整类型对应组件
             "XCUIElementTypeButton", "XCUIElementTypeImage", "XCUIElementTypeStaticText",
-            "XCUIElementTypeTextField", "XCUIElementTypeSecureTextField", "XCUIElementTypeIcon"
+            "XCUIElementTypeTextField", "XCUIElementTypeSecureTextField", "XCUIElementTypeTextView",
+            "XCUIElementTypeSearchField", "XCUIElementTypeIcon", "XCUIElementTypeLink", "XCUIElementTypeCell"
         }
-        if c_type in content_types:
+        full_t = comp.get("full_type", "")
+        if c_type in content_types or full_t in content_types or c_type.endswith("Input") or c_type.endswith("Field"):
             return True
 
         # 3. 具有特定业务 ID 且不是全屏/结构布局大容器
@@ -6488,8 +6495,41 @@ class SearchElementDialog(QDialog):
         bottom_box.addWidget(btn_close)
         layout.addLayout(bottom_box)
 
+    def _get_platform_strategies(self) -> List[Tuple[str, str, str]]:
+        """
+        获取当前平台定位策略的推荐性能与优先级排行 (单例统一基线，首位即为最佳性能首选):
+        1. 原生高速索引/ID 永远排在第 1 位 (哈希索引直达，10-30ms)
+        2. 原生结构化层级与谓词 (Class Chain / Predicate / UiAutomator / Text) 排在第 2-3 位
+        3. 遍历整棵虚拟 DOM 树的慢速 XPath 放在第 4 位作为灵活兜底 (避免一律默认慢速全表扫描)
+        4. 类型/类名放在末尾作为组件批量筛选
+        """
+        if self.platform == "android":
+            return [
+                ("id", "Resource-ID", "id (resource-id 标识 - 推荐首选)"),
+                ("accessibility id", "Accessibility ID", "accessibility id (content-desc 文本/描述)"),
+                ("uiautomator", "UiAutomator", "android uiautomator (UiSelector 语法表达式)"),
+                ("xpath", "XPath", "xpath (XPath 路径表达式 - 灵活兜底)"),
+                ("class name", "Class Name", "class name (组件类名)"),
+            ]
+        elif self.platform == "ios":
+            return [
+                ("id", "Accessibility ID", "id / accessibility id (name / label 标识 - 推荐首选)"),
+                ("class chain", "Class Chain", "ios class chain (原生类链表达式 - 快速层级)"),
+                ("predicate", "Predicate String", "ios predicate string (原生谓词表达式 - 复合条件)"),
+                ("xpath", "XPath", "xpath (XPath 路径表达式 - 灵活兜底)"),
+                ("class name", "Class Name", "class name (XCUIElementType 组件类型)"),
+            ]
+        else:  # harmony
+            return [
+                ("id", "ID / Key", "id (组件 Key / ID 标识 - By.id - 推荐首选)"),
+                ("text", "Text 文本", "text (文本内容 - By.text - 原生高效)"),
+                ("description", "Description", "description (无障碍描述 - By.description)"),
+                ("xpath", "XPath", "xpath (XPath 路径表达式 - 灵活兜底)"),
+                ("type", "Type 类型", "type / class name (ArkUI 组件类型名 - By.type)"),
+            ]
+
     def _rebuild_strategies(self):
-        """根据当前运行平台重建所支持的查找定位策略胶囊与下拉项，并保持默认或记忆值"""
+        """根据当前运行平台重建所支持的查找定位策略胶囊与下拉项，严格遵循性能优先级排列"""
         self.combo_strategy.blockSignals(True)
         self.combo_strategy.clear()
 
@@ -6502,31 +6542,7 @@ class SearchElementDialog(QDialog):
                     w.deleteLater()
             self.format_pill_buttons.clear()
 
-        strategies = []
-        if self.platform == "android":
-            strategies = [
-                ("xpath", "XPath", "xpath (XPath 路径表达式)"),
-                ("id", "Resource-ID", "id (resource-id 标识)"),
-                ("accessibility id", "Accessibility ID", "accessibility id (content-desc 文本或描述)"),
-                ("class name", "Class Name", "class name (组件类名)"),
-                ("uiautomator", "UiAutomator", "android uiautomator (UiSelector 语法表达式)"),
-            ]
-        elif self.platform == "ios":
-            strategies = [
-                ("xpath", "XPath", "xpath (XPath 路径表达式)"),
-                ("predicate", "Predicate String", "ios predicate string (谓词表达式)"),
-                ("class chain", "Class Chain", "ios class chain (类链表达式)"),
-                ("id", "Accessibility ID", "id / accessibility id (name / label 标识)"),
-                ("class name", "Class Name", "class name (XCUIElementType 组件类型)"),
-            ]
-        else:
-            strategies = [
-                ("xpath", "XPath", "xpath (XPath 路径表达式)"),
-                ("id", "ID / Key", "id (组件 Key / ID 标识 - By.id)"),
-                ("text", "Text 文本", "text (文本内容 - By.text)"),
-                ("type", "Type 类型", "type / class name (ArkUI 组件类型名 - By.type)"),
-                ("description", "Description", "description (无障碍描述 - By.description)"),
-            ]
+        strategies = self._get_platform_strategies()
 
         for s_key, s_short, s_full in strategies:
             self.combo_strategy.addItem(s_full, s_key)
@@ -6542,6 +6558,7 @@ class SearchElementDialog(QDialog):
         if hasattr(self, "format_pill_layout"):
             self.format_pill_layout.addStretch()
 
+        # 默认严格选中第 0 项（即推荐排在第一位的最高效定位策略）
         self.combo_strategy.setCurrentIndex(0)
         self.combo_strategy.blockSignals(False)
         self._update_format_pills_active_state(self.combo_strategy.currentData())
@@ -6865,11 +6882,15 @@ class SearchElementDialog(QDialog):
         curr_strat = self.combo_strategy.currentData()
         target_expr = self._get_expression_for_strategy(curr_strat, comp)
         if not target_expr:
-            # 若当前策略无法为该组件生成表达式，则自动切换至通用 xpath 策略并填入
-            target_expr = comp.get("rec_xpath") or comp.get("xpath") or ""
-            xp_idx = self.combo_strategy.findData("xpath")
-            if xp_idx >= 0:
-                self.combo_strategy.setCurrentIndex(xp_idx)
+            # 若当前策略无法生成表达式（如当前策略为 ID 但该元素无 ID），按推荐优先级顺序自动探测可用最佳策略
+            for s_key, _, _ in self._get_platform_strategies():
+                candidate_expr = self._get_expression_for_strategy(s_key, comp)
+                if candidate_expr:
+                    target_expr = candidate_expr
+                    idx = self.combo_strategy.findData(s_key)
+                    if idx >= 0:
+                        self.combo_strategy.setCurrentIndex(idx)
+                    break
 
         if target_expr:
             self.edit_selector.setText(target_expr)
@@ -6917,7 +6938,7 @@ class SearchElementDialog(QDialog):
 
     def do_search(self):
         # 执行前主动校验并对齐父级主窗口的最新 XML 与组件映射树，防止跨生命周期串位
-        parent_win = self.parent()
+        parent_win = getattr(self, "inspector", None) or self.parent()
         if parent_win and hasattr(parent_win, "xml_root") and parent_win.xml_root is not None:
             self.xml_root = parent_win.xml_root
             if hasattr(parent_win, "comp_map"):
@@ -7024,8 +7045,15 @@ class SearchElementDialog(QDialog):
             elif strategy in ("class name", "type"):
                 for c in self.flat_components:
                     ctype = c.get("type", "")
-                    if ctype.lower() == val_lower or val_lower in ctype.lower():
-                        matched.append(c)
+                    if self.platform == "ios":
+                        ctype_short = ctype.lower().replace("xcuielementtype", "")
+                        val_short = val_lower.replace("xcuielementtype", "")
+                        c_full_type = str(c.get("full_type", "")).lower()
+                        if val_short == ctype_short or val_lower == c_full_type or val_short in ctype_short or val_lower in ctype.lower():
+                            matched.append(c)
+                    else:
+                        if ctype.lower() == val_lower or val_lower in ctype.lower():
+                            matched.append(c)
             elif strategy == "text":
                 for c in self.flat_components:
                     text = c.get("text", "") or c.get("raw_attributes", {}).get("text", "") or c.get("raw_attributes", {}).get("label", "")
@@ -7091,7 +7119,14 @@ class SearchElementDialog(QDialog):
                     in_match = re.search(r'^([A-Za-z_][A-Za-z0-9_\.]*)\s+IN(?:\s*\[[cd]+\])?\s*\{([^}]+)\}$', sub, re.IGNORECASE)
                     if in_match:
                         attr_key = in_match.group(1).lower()
-                        items = [s.strip(" '\"").lower() for s in in_match.group(2).split(",") if s.strip(" '\"")]
+                        items = []
+                        for raw_s in in_match.group(2).split(","):
+                            tok = raw_s.strip()
+                            if not tok:
+                                continue
+                            if (tok.startswith("'") and tok.endswith("'")) or (tok.startswith('"') and tok.endswith('"')):
+                                tok = tok[1:-1]
+                            items.append(tok.lower())
                         if attr_key == "type":
                             res = (c_type in items) or (c_type_full in items) or (c_type_short in items)
                         else:
@@ -7168,14 +7203,83 @@ class SearchElementDialog(QDialog):
                         if all(eval_atomic_predicate(atom, c) for atom in atom_list):
                             matched.append(c)
             elif strategy == "class chain":
-                clean_chain = val.replace("**/", "").replace("/*", "").strip()
-                chain_type = clean_chain.split("[")[0].strip() if "[" in clean_chain else clean_chain
-                chain_type_lower = chain_type.lower()
+                raw_chain = val.strip()
+                # 提取链条目标末端节点（处理多级斜杠 /，但忽略反引号内部的 /）
+                segs = [s.strip() for s in re.split(r'/(?![^\[]*\])', raw_chain) if s.strip() and s.strip() not in ("**", "*")]
+                last_seg = segs[-1] if segs else raw_chain.replace("**/", "").replace("/*", "").strip()
+
+                # 从末端段分离组件类名、嵌套谓词 [`predicate`] 或索引 [1]
+                pred_inner = ""
+                idx_filter = None
+                chain_type = last_seg
+
+                m_pred = re.search(r'\[`([^`]+)`\]', last_seg)
+                if m_pred:
+                    pred_inner = m_pred.group(1).strip()
+                    chain_type = last_seg[:m_pred.start()].strip()
+                else:
+                    m_idx = re.search(r'\[(-?\d+)\]', last_seg)
+                    if m_idx:
+                        idx_filter = int(m_idx.group(1))
+                        chain_type = last_seg[:m_idx.start()].strip()
+                    else:
+                        m_plain_pred = re.search(r'\[([a-zA-Z_].+)\]', last_seg)
+                        if m_plain_pred:
+                            pred_inner = m_plain_pred.group(1).strip()
+                            chain_type = last_seg[:m_plain_pred.start()].strip()
+
+                chain_type_clean = chain_type.replace("**/", "").replace("/*", "").strip()
+                chain_type_lower = chain_type_clean.lower()
+                chain_type_short = chain_type_lower.replace("xcuielementtype", "")
+
+                cand_matched = []
                 for c in self.flat_components:
                     c_type = c.get("type", "").lower()
-                    if chain_type and chain_type != "*" and chain_type_lower not in c_type:
-                        continue
-                    matched.append(c)
+                    c_type_short = c_type.replace("xcuielementtype", "")
+                    c_full_type = str(c.get("full_type", "")).lower()
+
+                    # 1. 类型判定：兼容通配符 *、XCUIElementType* 完整类名及短类名双向匹配
+                    if chain_type_clean and chain_type_clean != "*":
+                        type_matched = (
+                            chain_type_short == c_type_short
+                            or chain_type_lower == c_full_type
+                            or chain_type_short in c_type_short
+                            or chain_type_lower in c_type
+                        )
+                        if not type_matched:
+                            continue
+
+                    # 2. 嵌套谓词求值 (若存在 [`predicate`])
+                    if pred_inner:
+                        p_err, p_atoms, p_py_expr = tokenize_ios_predicate(pred_inner)
+                        if p_err or not p_atoms:
+                            p_atoms = [pred_inner]
+                            p_py_expr = "_c_0"
+                        try:
+                            p_tree = ast.parse(p_py_expr, mode='eval')
+                        except Exception:
+                            p_tree = None
+
+                        if p_tree:
+                            c_map = {f"_c_{k}": eval_atomic_predicate(atom, c) for k, atom in enumerate(p_atoms)}
+                            if not eval_ast_bool(p_tree, c_map):
+                                continue
+                        else:
+                            if not all(eval_atomic_predicate(atom, c) for atom in p_atoms):
+                                continue
+
+                    cand_matched.append(c)
+
+                # 3. 索引过滤 (Class Chain 规范为 1-based 索引)
+                if idx_filter is not None and cand_matched:
+                    if idx_filter > 0 and idx_filter <= len(cand_matched):
+                        matched = [cand_matched[idx_filter - 1]]
+                    elif idx_filter < 0 and abs(idx_filter) <= len(cand_matched):
+                        matched = [cand_matched[idx_filter]]
+                    else:
+                        matched = []
+                else:
+                    matched = cand_matched
             elif strategy == "xpath":
                 matched = self.match_xpath(val)
         except Exception as e:
@@ -7354,6 +7458,10 @@ class SearchElementDialog(QDialog):
                         return []
 
         clean_xp = raw_xp.strip().strip("()")
+        if clean_xp.startswith(".//"):
+            clean_xp = clean_xp[1:]
+        elif clean_xp.startswith("./"):
+            clean_xp = clean_xp[1:]
 
         # 支持顶层联合操作符 '|' (Union Operator) 分支求值与合并
         if "|" in clean_xp:
@@ -7490,9 +7598,23 @@ class SearchElementDialog(QDialog):
                         siblings = list(p)
                         try:
                             curr_idx = siblings.index(node)
-                            candidates = siblings[:curr_idx]
+                            candidates = list(reversed(siblings[:curr_idx]))
                         except ValueError:
                             pass
+                elif axis_name == "preceding":
+                    all_elems = list(root_elem.iter())
+                    try:
+                        curr_idx = all_elems.index(node)
+                        candidates = list(reversed(all_elems[:curr_idx]))
+                    except ValueError:
+                        pass
+                elif axis_name == "following":
+                    all_elems = list(root_elem.iter())
+                    try:
+                        curr_idx = all_elems.index(node)
+                        candidates = all_elems[curr_idx + 1:]
+                    except ValueError:
+                        pass
                 elif axis_name == "parent":
                     p = parent_map.get(node)
                     if p is not None:
@@ -8988,9 +9110,9 @@ class HarmonyAppiumInspector(QMainWindow):
             return txt
 
         self.txt_loc_id = _create_loc_row("id", "ID 定位代码: (该元素无 ID)", 0)
-        self.txt_loc_xpath = _create_loc_row("xpath", "XPath 表达式", 1)
+        self.txt_loc_class_chain = _create_loc_row("chain", "iOS Class Chain 类链表达式", 1)
         self.txt_loc_predicate = _create_loc_row("predicate", "iOS Predicate 谓词表达式", 2)
-        self.txt_loc_class_chain = _create_loc_row("chain", "iOS Class Chain 类链表达式", 3)
+        self.txt_loc_xpath = _create_loc_row("xpath", "XPath 表达式", 3)
         self.txt_loc_py = _create_loc_row("python", "Python 语句", 4)
 
         loc_layout.addLayout(grid_loc)
@@ -9883,8 +10005,13 @@ class HarmonyAppiumInspector(QMainWindow):
                 node_in_active_page = False
 
         # 特例豁免：移动端验证码/PIN密码输入框通常采用隐藏透明的 TextInput (opacity: 0) 接收软键盘物理输入
-        # 虽视觉透明，但具备完整的点击聚焦与输入能力，必须被视为有效交互与展示节点！
-        is_transparent_input = (c_type in ("TextInput", "TextArea", "SearchField") and is_visible and width >= 20 and height >= 20)
+        # 特例豁免：移动端验证码/PIN密码/聊天输入框等，具备完整的点击聚焦与输入能力，必须被视为有效交互与展示节点！
+        is_transparent_input = (
+            c_type in ("TextInput", "TextArea", "SearchField", "TextField", "TextView", "EditText")
+            or full_type in ("XCUIElementTypeTextView", "XCUIElementTypeTextField", "XCUIElementTypeSecureTextField", "XCUIElementTypeSearchField")
+            or c_type.endswith("Input")
+            or c_type.endswith("Field")
+        ) and is_visible and width >= 15 and height >= 15
         node_visible = parent_visible and is_visible and (opacity > 0.05 or is_transparent_input)
         if not node_in_active_page:
             node_visible = False
@@ -9899,7 +10026,7 @@ class HarmonyAppiumInspector(QMainWindow):
             "NavDestinationContent", "NavRouter", "Tabs", "TabContent", "SideBarContainer", "Panel",
             "root", "Component", "Page", "Window", "Stage", "Ability", "Hierarchy", "UIComponent",
             "View", "ViewGroup", "FrameLayout", "LinearLayout", "RelativeLayout",
-            "XCUIElementTypeWindow", "XCUIElementTypeOther", "XCUIElementTypeApplication"
+            "XCUIElementTypeWindow", "XCUIElementTypeOther", "XCUIElementTypeApplication", "Other"
         )
         has_child_nodes = len(node.get("children", [])) > 0
         is_transparent_container = (
@@ -9910,7 +10037,7 @@ class HarmonyAppiumInspector(QMainWindow):
             or c_type.endswith("Group")
             or (has_child_nodes and c_type not in (
                 "Text", "Button", "TextInput", "Image", "TextArea", "Toggle", "Checkbox",
-                "Radio", "Slider", "Progress", "LoadingProgress", "DatePicker", "TimePicker"
+                "Radio", "Slider", "Progress", "LoadingProgress", "DatePicker", "TimePicker", "TextView", "TextField"
             ))
         ) and has_child_nodes
 
@@ -9968,6 +10095,17 @@ class HarmonyAppiumInspector(QMainWindow):
         if c_type == "Image" and not has_content and covering_rects:
             is_node_occluded = True
 
+        # 核心免疫防护：输入框与输入表单组件 (TextView, TextField, TextInput 等) 无论是否带文字，
+        # 均属于最核心的用户交互热区，绝不允许被外层背景边框或兄弟布局图层误判为已遮挡！
+        is_interactive_form_control = (
+            c_type in ("TextView", "TextField", "TextInput", "TextArea", "SearchField", "EditText", "Button")
+            or full_type in ("XCUIElementTypeTextView", "XCUIElementTypeTextField", "XCUIElementTypeSecureTextField", "XCUIElementTypeButton", "XCUIElementTypeSearchField")
+            or c_type.endswith("Input")
+            or c_type.endswith("Field")
+        )
+        if is_interactive_form_control and width >= 15 and height >= 15 and is_visible:
+            is_node_occluded = False
+
         is_exposed = node_visible and (not is_node_occluded)
         is_node_exposed = is_exposed and node_in_active_page
 
@@ -9981,7 +10119,10 @@ class HarmonyAppiumInspector(QMainWindow):
         is_in_viewport = not (right <= 0 or left >= vw or bottom <= 0 or top >= vh)
         # 核心优化：画布交互拾取仅限真实暴露在顶层的有效组件 (is_exposed) 且排除微细占位
         is_valid_size = (width >= 10 and height >= 10) if not has_content else (width >= 4 and height >= 4)
-        is_interactive = node_in_active_page and is_exposed and is_in_viewport and is_valid_size
+        if is_interactive_form_control and width >= 15 and height >= 15:
+            is_interactive = node_in_active_page and (not is_node_occluded) and is_in_viewport
+        else:
+            is_interactive = node_in_active_page and is_exposed and is_in_viewport and is_valid_size
 
         node_xpath = f"{current_xpath}/{c_type}"
         
@@ -10424,12 +10565,11 @@ class HarmonyAppiumInspector(QMainWindow):
                 return
         elif match_word:
             try:
-                # 全词匹配：使用 \b 单词边界
+                # 全词匹配：使用 \\b 单词边界
                 pattern = r"\b" + re.escape(kw) + r"\b"
                 regex_obj = re.compile(pattern, flags)
             except re.error:
                 regex_obj = None
-
         def is_matched(node_text: str) -> bool:
             if regex_obj is not None:
                 return bool(regex_obj.search(node_text))

@@ -115,6 +115,7 @@ class _ChatLocatorAndroid:
     TOP_BACK_UNREAD_BADGE = (AppiumBy.ID, f'{PACKAGE_ID}/back_unread_badge')            # 返回按钮未读数角标
     TOP_USER_NAME_ID = f'{PACKAGE_ID}/title'
     TOP_USER_NAME = (AppiumBy.ID, TOP_USER_NAME_ID)                                     # 聊天对象昵称/群名称
+    TOP_TITLE = TOP_USER_NAME                                                           # 顶部会话标题
     TOP_USER_NAME_XPATH = (AppiumBy.XPATH, f'//*[@resource-id="{TOP_USER_NAME_ID}"]')   # 聊天对象昵称 XPath
     TOP_TV_TITLE = CommonLocator.TOP_TV_TITLE
     TOP_SHORT_NUMBER = (AppiumBy.ID, f'{PACKAGE_ID}/tv_short_no')                       # 群聊ID
@@ -233,20 +234,16 @@ class _ChatLocatorAndroid:
 
 
 # =========================================================================
-# 跨端通用定位器透明代理 (自动识别 Android / HarmonyOS NEXT)
+# 跨端通用定位器透明代理 (自动识别 Android / HarmonyOS NEXT / iOS)
 # =========================================================================
-from typing import TYPE_CHECKING
-from core.locator_manager import DynamicLocatorProxy
+from core.locator_manager import DynamicLocatorMeta
 from locators.chat.core.chat_locator_hos import ChatLocatorHos
+from locators.chat.core.chat_locator_ios import ChatLocatorIos
 
-if TYPE_CHECKING:
-    # 静态类型检查通道：赋能 IDE 悬浮文档、自动补全与 Ctrl + 鼠标左键跳转至定义行
-    class _ChatLocatorType(_ChatLocatorAndroid, ChatLocatorHos):
-        pass
-    ChatLocator = _ChatLocatorType
-else:
-    # 运行时动态路由通道：保持异构多端环境透明调度
-    ChatLocator = DynamicLocatorProxy(
-        android_cls=_ChatLocatorAndroid,
-        harmony_cls=ChatLocatorHos,
-    )
+
+class ChatLocator(ChatLocatorIos, _ChatLocatorAndroid, ChatLocatorHos, metaclass=DynamicLocatorMeta):
+    """跨端聊天核心定位器（支持 IDE Ctrl + 鼠标左键直接跳转定义，运行时按设备平台动态分发）"""
+
+    _android_cls = _ChatLocatorAndroid
+    _harmony_cls = ChatLocatorHos
+    _ios_cls = ChatLocatorIos

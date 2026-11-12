@@ -29,8 +29,9 @@ class CommonLocatorIos:
     LEFT_TOP_BUTTON_ID = (
         AppiumBy.XPATH,
         (
-            "//NavigationBar/Button"
-            " | "
+            "//XCUIElementTypeNavigationBar/XCUIElementTypeButton[1]"
+            " | //XCUIElementTypeButton[@name='ic home left drawer close']"
+            
         ),
     )
 
@@ -121,13 +122,14 @@ class CommonLocatorIos:
     # --------------------------------------------------------------------------
     # 5. 全局轻量浮层与 Toast 提示
     # --------------------------------------------------------------------------
-    # Toast 提示 (覆盖顶层 Window 内悬浮气泡文本及系统 Alert 提示)
+    # Toast 提示 (覆盖带 ic_toast_* 图标的悬浮提示框、顶层 Window 浮层及系统级 Alert 提示)
     TOAST_MSG = (
         AppiumBy.XPATH,
         (
-            "//XCUIElementTypeWindow[last()]//XCUIElementTypeStaticText"
+            "//XCUIElementTypeImage[contains(@name, 'toast')]/following-sibling::XCUIElementTypeStaticText"
+            " | //XCUIElementTypeOther[XCUIElementTypeImage[contains(@name, 'toast')]]//XCUIElementTypeStaticText"
             " | //XCUIElementTypeAlert//XCUIElementTypeStaticText"
-            " | //XCUIElementTypeOther[@name='toast_message']//XCUIElementTypeStaticText"
+            " | //XCUIElementTypeWindow[last()]//XCUIElementTypeStaticText"
         ),
     )
 

@@ -56,6 +56,7 @@ class _CommonLoactroAndroid:
         AppiumBy.XPATH,
         (
             f"//*[@resource-id='{PACKAGE_ID}/action_send'"
+            f" or @resource-id='{PACKAGE_ID}/action_btn'"
             f" or @resource-id='{PACKAGE_ID}/fb_action'"
             f" or @resource-id='{PACKAGE_ID}/edit_to'"
             f" or @resource-id='{PACKAGE_ID}/tv_save_qrcode']"
@@ -104,21 +105,17 @@ class _CommonLoactroAndroid:
     )
 
 
-from typing import TYPE_CHECKING
-from core.locator_manager import DynamicLocatorProxy
+from core.locator_manager import DynamicLocatorMeta
 from locators.common.common_locator_hos import CommonLocatorHos
 from locators.common.common_locator_ios import CommonLocatorIos
 
-if TYPE_CHECKING:
-    class _CommonLocatorType(_CommonLoactroAndroid, CommonLocatorHos, CommonLocatorIos):
-        pass
-    CommonLocator = _CommonLocatorType
-else:
-    CommonLocator = DynamicLocatorProxy(
-        android_cls=_CommonLoactroAndroid,
-        harmony_cls=CommonLocatorHos,
-        ios_cls=CommonLocatorIos,
-    )
+
+class CommonLocator(CommonLocatorIos, _CommonLoactroAndroid, CommonLocatorHos, metaclass=DynamicLocatorMeta):
+    """跨端公共定位器（支持 IDE Ctrl + 鼠标左键直接跳转定义，运行时按设备平台动态分发）"""
+
+    _android_cls = _CommonLoactroAndroid
+    _harmony_cls = CommonLocatorHos
+    _ios_cls = CommonLocatorIos
 
 
 

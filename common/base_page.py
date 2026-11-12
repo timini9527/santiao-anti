@@ -328,6 +328,9 @@ class BasePage:
             raise NoSuchElementException(f"未找到元素: {locator}")
         if self._platform_name == "harmonyos" or getattr(ele, "_is_harmony_element", False):
             ele.send_keys(text)
+        elif self._platform_name == "ios":
+            # iOS XCUITest 标准安全输入通道
+            ele.send_keys(text)
         else:
             element_id = getattr(ele, "id", None) or getattr(ele, "_id", "")
             self.driver.execute_script("mobile: replaceElementValue", {"elementId": element_id, "text": text})

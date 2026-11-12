@@ -149,6 +149,71 @@ class LocatorPlatformManager:
         cls.set_thread_platform(None)
 
 
+class DynamicLocatorMeta(type):
+    """
+    工业级跨端定位器元类 (Metaclass)：
+    1. 彻底消除 `if TYPE_CHECKING:` 与 `else: XxxLocator = DynamicLocatorProxy(...)` 的双分支定义冲突，
+       让跨端定位器直接声明为标准 Python 类（如 `class ChatLocator(ChatLocatorIos, _ChatLocatorAndroid, ChatLocatorHos, metaclass=DynamicLocatorMeta):`），
+       使 IDE 的 Ctrl + 鼠标左键 100% 原生直达对应平台定位器文件中的变量定义位置；
+    2. 运行时在 __new__ 阶段自动将代理类的物理基类重置为 (object,)，杜绝多继承静态属性遮蔽与 MRO 冲突；
+    3. 运行时通过元类 __getattr__ 拦截所有定位器属性与方法访问，根据当前设备平台实时透明路由。
+    """
+
+    def __new__(mcs, name: str, bases: tuple, namespace: dict, **kwargs):
+        if "_android_cls" in namespace:
+            return super().__new__(mcs, name, (object,), namespace)
+
+        resolved_bases = tuple(
+            b._resolve_target_cls()
+            if isinstance(b, DynamicLocatorMeta) and "_android_cls" in b.__dict__
+            else b
+            for b in bases
+        )
+        return type(name, resolved_bases, namespace)
+
+    def _resolve_target_cls(cls) -> Type:
+        android_cls = type.__getattribute__(cls, "_android_cls")
+        harmony_cls = type.__getattribute__(cls, "_harmony_cls")
+        ios_cls = type.__getattribute__(cls, "_ios_cls")
+        plat = LocatorPlatformManager.get_current_platform()
+        if plat in ("harmonyos", "openharmony", "hos"):
+            return harmony_cls or android_cls
+        elif plat in ("ios", "apple"):
+            return ios_cls or android_cls
+        return android_cls
+
+    def __getattr__(cls, name: str) -> Any:
+        target_cls = cls._resolve_target_cls()
+        android_cls = type.__getattribute__(cls, "_android_cls")
+
+        if hasattr(target_cls, name):
+            return getattr(target_cls, name)
+
+        if hasattr(android_cls, name):
+            return getattr(android_cls, name)
+
+        target_name = getattr(target_cls, "__name__", str(target_cls))
+        base_name = getattr(android_cls, "__name__", str(android_cls))
+        raise AttributeError(
+            f"跨端元素定位器代理错误: 平台 '{LocatorPlatformManager.get_current_platform()}' 对应的 "
+            f"[{target_name}] 及基础类 [{base_name}] 均未定义属性或方法: '{name}'"
+        )
+
+    def __dir__(cls):
+        target_cls = cls._resolve_target_cls()
+        android_cls = type.__getattribute__(cls, "_android_cls")
+        attrs = set(dir(target_cls)) | set(dir(android_cls))
+        return sorted(attrs)
+
+    def __repr__(cls) -> str:
+        try:
+            target_cls = cls._resolve_target_cls()
+            target_name = getattr(target_cls, "__name__", str(target_cls))
+            return f"<DynamicLocatorMeta(active_class='{target_name}')>"
+        except Exception:
+            return super().__repr__()
+
+
 class DynamicLocatorProxy:
     """
     工业级通用元素定位器透明代理类：

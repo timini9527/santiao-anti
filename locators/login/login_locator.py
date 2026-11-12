@@ -1,6 +1,5 @@
-from typing import TYPE_CHECKING
 from appium.webdriver.common.appiumby import AppiumBy
-from core.locator_manager import DynamicLocatorProxy
+from core.locator_manager import DynamicLocatorMeta
 from locators.common.common_locator import CommonLocator
 from locators.login.login_locator_hos import LoginLocatorHos
 from locators.login.login_locator_ios import LoginLocatorIos
@@ -122,18 +121,11 @@ class _LoginLocatorAndroid(CommonLocator):
 
 
 # ==============================================================================
-# 跨端通用定位器透明代理 (自动识别 Android / HarmonyOS NEXT)
+# 跨端通用定位器透明代理 (自动识别 Android / HarmonyOS NEXT / iOS)
 # ==============================================================================
-if TYPE_CHECKING:
-    # 静态类型检查通道：赋能 IDE 悬浮文档、自动补全与 Ctrl + 鼠标左键跳转至定义行
-    class _LoginLocatorType(_LoginLocatorAndroid, LoginLocatorHos, LoginLocatorIos):
-        pass
+class LoginLocator(LoginLocatorIos, _LoginLocatorAndroid, LoginLocatorHos, metaclass=DynamicLocatorMeta):
+    """跨端登录页面定位器（支持 IDE Ctrl + 鼠标左键直接跳转定义，运行时按设备平台动态分发）"""
 
-    LoginLocator = _LoginLocatorType
-else:
-    # 运行时动态路由通道：保持异构多端环境透明调度
-    LoginLocator = DynamicLocatorProxy(
-        android_cls=_LoginLocatorAndroid,
-        harmony_cls=LoginLocatorHos,
-        ios_cls=LoginLocatorIos,
-    )
+    _android_cls = _LoginLocatorAndroid
+    _harmony_cls = LoginLocatorHos
+    _ios_cls = LoginLocatorIos

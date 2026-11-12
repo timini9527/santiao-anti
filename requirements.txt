@@ -51,3 +51,8 @@ pypinyin==0.55.0
 # 9. iOS 原生硬件级实时投屏与远程服务 (CoreDevice 60FPS HEVC 视频流直通，免证书免WDA)
 pymobiledevice3>=11.48.0
 av>=19.0.0
+
+# 10. IM 底层长连接注入与协议桥接压测引擎
+frida==17.24.3
+frida-tools==14.11.0
+

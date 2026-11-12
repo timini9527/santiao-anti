@@ -1,7 +1,7 @@
 from appium.webdriver.common.appiumby import AppiumBy
 
 
-class HomeLocatorHos:
+class _HomeLocatorHos:
     """
     鸿蒙 NEXT 平台主页元素定位器 (HarmonyOS ArkUI 专享架构)
     底层原生支持 ArkUI 控件标签 (Text, Button, Image, Search, TextInput, List, ListItem, Stack, Row, Column 等)

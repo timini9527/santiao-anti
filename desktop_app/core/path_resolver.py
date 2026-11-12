@@ -17,6 +17,41 @@ import subprocess
 from typing import Dict, List, Optional
 
 
+def ensure_cross_platform_path() -> None:
+    """
+    跨平台环境变量健全性自愈补全：
+    解决 macOS / Linux 下桌面 GUI 应用由于未加载 shell profile 导致 PATH 缺失，
+    无法定位 homebrew (如 /opt/homebrew/bin)、nvm、sdk 等命令行工具链的固有顽疾。
+    """
+    if sys.platform == "darwin":
+        extra_paths = [
+            "/opt/homebrew/bin",
+            "/opt/homebrew/sbin",
+            "/usr/local/bin",
+            "/usr/local/sbin",
+            os.path.expanduser("~/bin"),
+            os.path.expanduser("~/.local/bin"),
+        ]
+        nvm_dir = os.path.expanduser("~/.nvm/versions/node")
+        if os.path.isdir(nvm_dir):
+            try:
+                for ver in sorted(os.listdir(nvm_dir), reverse=True):
+                    cand = os.path.join(nvm_dir, ver, "bin")
+                    if os.path.isdir(cand):
+                        extra_paths.append(cand)
+            except Exception:
+                pass
+        current_path = os.environ.get("PATH", "")
+        parts = current_path.split(":")
+        for p in extra_paths:
+            if os.path.isdir(p) and p not in parts:
+                parts.insert(0, p)
+        os.environ["PATH"] = ":".join(parts)
+
+
+ensure_cross_platform_path()
+
+
 class SmartPathResolver:
     """系统环境与项目路径解析器"""
 
@@ -293,16 +328,22 @@ class SmartPathResolver:
     @classmethod
     def discover_mobile_toolchain(cls, force_refresh: bool = False) -> Dict[str, Optional[str]]:
         """
-        定位移动端调试工具链 (ADB / HDC)。
+        定位移动端调试工具链 (ADB / HDC / iOS 工具链: tidevice, idevice_id, xcrun)。
         优先级策略 (傻瓜式开箱即用闭环):
         1. 优先检索程序安装目录或项目根目录下的内置 bin/ 目录 (免装 SDK、零配置开箱即用)；
-        2. 检索环境变量 (ANDROID_HOME / HDC_HOME)；
-        3. 检索系统 PATH 命令 (where adb / where hdc)；找不到返回 None。
+        2. 检索专用环境变量 (ANDROID_HOME / HDC_HOME 等)；
+        3. 检索系统 PATH 命令 (where/which 工具)；找不到返回 None。
         """
         if not force_refresh and cls._cached_mobile_toolchain:
             return cls._cached_mobile_toolchain
 
-        tools: Dict[str, Optional[str]] = {"adb": None, "hdc": None}
+        tools: Dict[str, Optional[str]] = {
+            "adb": None,
+            "hdc": None,
+            "tidevice": None,
+            "idevice_id": None,
+            "xcrun": None,
+        }
 
         # 0. 优先检测内置绿色 bin/ 工具链目录 (涵盖 _internal、sys._MEIPASS、exe_dir 与项目根目录)
         root = cls.get_project_root()
@@ -323,10 +364,16 @@ class SmartPathResolver:
                 continue
             cand_adb = os.path.join(b_dir, "adb.exe" if sys.platform == "win32" else "adb")
             cand_hdc = os.path.join(b_dir, "hdc.exe" if sys.platform == "win32" else "hdc")
+            cand_tidevice = os.path.join(b_dir, "tidevice.exe" if sys.platform == "win32" else "tidevice")
+            cand_idevice = os.path.join(b_dir, "idevice_id.exe" if sys.platform == "win32" else "idevice_id")
             if not tools["adb"] and os.path.isfile(cand_adb):
                 tools["adb"] = os.path.abspath(cand_adb)
             if not tools["hdc"] and os.path.isfile(cand_hdc):
                 tools["hdc"] = os.path.abspath(cand_hdc)
+            if not tools["tidevice"] and os.path.isfile(cand_tidevice):
+                tools["tidevice"] = os.path.abspath(cand_tidevice)
+            if not tools["idevice_id"] and os.path.isfile(cand_idevice):
+                tools["idevice_id"] = os.path.abspath(cand_idevice)
 
         # 1. ADB 降级检索: ANDROID_HOME 环境变量 -> cmd 命令 where adb
         if not tools["adb"]:
@@ -343,7 +390,7 @@ class SmartPathResolver:
         if not tools["hdc"]:
             hdc_home = os.environ.get("HDC_HOME", "").strip() or os.environ.get("OHOS_BASE_SDK_HOME", "").strip()
             if hdc_home and os.path.isdir(hdc_home):
-                for sub in ["toolchains/hdc.exe", "hdc.exe"]:
+                for sub in ["toolchains/hdc.exe" if sys.platform == "win32" else "toolchains/hdc", "hdc.exe" if sys.platform == "win32" else "hdc"]:
                     hdc_file = os.path.join(hdc_home, sub.replace("/", os.sep))
                     if os.path.isfile(hdc_file):
                         tools["hdc"] = os.path.abspath(hdc_file)
@@ -351,6 +398,16 @@ class SmartPathResolver:
 
         if not tools["hdc"]:
             tools["hdc"] = cls._find_cmd("hdc")
+
+        # 3. iOS 工具链检索: tidevice / idevice_id / xcrun
+        if not tools["tidevice"]:
+            tools["tidevice"] = cls._find_cmd("tidevice")
+
+        if not tools["idevice_id"]:
+            tools["idevice_id"] = cls._find_cmd("idevice_id")
+
+        if sys.platform == "darwin":
+            tools["xcrun"] = cls._find_cmd("xcrun")
 
         cls._cached_mobile_toolchain = tools
         return tools

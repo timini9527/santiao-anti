@@ -405,6 +405,8 @@ class ChatPage(BasePage):
         logger.info(f"{LogIcon.ACTION} 准备{'极速' if fast else '常规'}发送消息: {message}")
         self.input_text(message, fast=fast)
         self.click_send_button()
+        if self._platform_name == "ios":
+            self.hide_keyboard_robust()
         if wait_time > 0:
             time.sleep(wait_time)
 

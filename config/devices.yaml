@@ -3,8 +3,8 @@ current_env: "dev"              # 默认执行环境：dev 或 test
 # current_env: "test"
 
 # current_platform: "android"   # 默认单端平台２android / harmonyos / ios (none)&local multi-device
-current_platform: "harmonyos"
-# current_platform: "ios"
+# current_platform: "harmonyos"
+current_platform: "ios"
 
 server:
   host: "127.0.0.1"
@@ -66,8 +66,8 @@ ios_app:
   "appium:automationName": "XCUITest"
   "appium:platformName": "iOS"
   "appium:bundleId": "com.baimo.santiao"
-  "appium:webDriverAgentUrl": "http://127.0.0.1:8100"  # 核心：Win11 直连本地 WDA 转发端口
-  "appium:usePrebuiltWDA": true                      # 跳过 Xcode 编译，直接复用已安装的 WDA
+  "appium:webDriverAgentUrl": "http://127.0.0.1:8100"   # 核心：Win11 直连本地 WDA 转发端口
+  "appium:usePrebuiltWDA": true                         # 跳过 Xcode 编译，直接复用已安装的 WDA
   "appium:newCommandTimeout": 120
   "appium:noReset": true
   "appium:fullReset": false
@@ -75,6 +75,8 @@ ios_app:
   "appium:wdaConnectionTimeout": 60000
   "appium:waitForQuiescence": false
   "appium:shouldTerminateApp": false
+  "appium:connectHardwareKeyboard": true              # 核心：连接虚拟硬件键盘，全局抑制屏幕软键盘弹出
+  "appium:maxTypingFrequency": 60                     # 核心：提升击键速率至 60 字符/秒，极速打字无停顿感
 
 devices:
   dev:

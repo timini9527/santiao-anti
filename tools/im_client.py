@@ -29,11 +29,10 @@ from enum import IntEnum
 import json
 import os
 from pathlib import Path
-import random
 import subprocess
 import sys
 import time
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 import uuid
 
 import frida
@@ -45,7 +44,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from utils.file_reader.data_loader import load_csv_data
+from utils.file_reader.data_loader import load_csv_data, load_yaml_data
 
 
 # ---------------------------------------------------------------------------
@@ -285,6 +284,13 @@ class AppRuntimeBridge:
                 # 自动尝试提权为 root 模式并拉起守护进程
                 subprocess.run(f"adb -s {self.device_id} root", shell=True, capture_output=True, timeout=3.0)
                 time.sleep(0.3)
+                # 核心自愈保障：自动赋予可执行权限，避免 adb push 后默认无 +x 导致 Permission denied
+                subprocess.run(
+                    f"adb -s {self.device_id} shell chmod 755 /data/local/tmp/frida-server",
+                    shell=True,
+                    capture_output=True,
+                    timeout=2.0,
+                )
                 # 核心防卡死：彻底隔离标准输入输出管道，杜绝 Windows 控制台句柄继承死锁卡住 Terminal
                 subprocess.Popen(
                     f"adb -s {self.device_id} shell /data/local/tmp/frida-server -D",
@@ -438,82 +444,26 @@ class AppRuntimeBridge:
         return await loop.run_in_executor(self._executor, _invoke)
 
     def close(self) -> None:
-        """关闭会话释放桥接资源。"""
+        """关闭会话释放桥接资源，安全取消任务避免 Windows 后台非守护线程卡死解释器退出。"""
+        self._is_ready = False
         try:
             if self._script:
-                self._script.unload()
+                try:
+                    self._script.unload()
+                except Exception:
+                    pass
             if self._session:
-                self._session.detach()
-            self._executor.shutdown(wait=False)
+                try:
+                    self._session.detach()
+                except Exception:
+                    pass
+            self._executor.shutdown(wait=False, cancel_futures=True)
         except Exception:
             pass
-        self._is_ready = False
 
 
 # ---------------------------------------------------------------------------
-# 3. 动态会话自动发现解析器 (AutoDiscoverHelper)
-# ---------------------------------------------------------------------------
-class ConversationDiscoveryHelper:
-    """自动从目标设备运行时数据库中解析当前主页会话列表"""
-
-    @staticmethod
-    def discover_from_device(device_id: str = "emulator-5562", limit: int = 15) -> List[SessionTarget]:
-        """通过 ADB 查询 App 本地 SQLite 元数据库，动态感知主页所有活跃会话。
-        
-        Returns:
-            List[SessionTarget]: 按照界面排序（置顶在前，时间在后）的结构化会话目标。
-        """
-        try:
-            # 查找主账号对应的 OpenID 数据库路径
-            find_cmd = f"adb -s {device_id} shell \"ls -d /data/data/com.santiaotalk.im/databases/IM_Data/*/meta\""
-            out = subprocess.check_output(find_cmd, shell=True, text=True, stderr=subprocess.DEVNULL).strip()
-            db_paths = [p.strip() for p in out.splitlines() if p.strip()]
-            if not db_paths:
-                return []
-            
-            # 优先选择当前活跃的库
-            target_db = db_paths[0]
-            sql = (
-                f"SELECT conv_id, conv_type, conv_name, is_top, is_muted "
-                f"FROM conversation ORDER BY is_top DESC, last_msg_time DESC LIMIT {limit};"
-            )
-            query_cmd = f"adb -s {device_id} shell \"sqlite3 {target_db} '{sql}'\""
-            res_lines = subprocess.check_output(query_cmd, shell=True, text=True, stderr=subprocess.DEVNULL).strip().splitlines()
-            
-            targets: List[SessionTarget] = []
-            for line in res_lines:
-                parts = line.split("|")
-                if len(parts) >= 5:
-                    c_id, c_type, c_name, is_top, is_muted = parts[0], int(parts[1]), parts[2], bool(int(parts[3])), bool(int(parts[4]))
-                    # 系统通知等非聊天会话排除
-                    if c_name == "系统通知":
-                        continue
-                    
-                    if c_type == int(ChatType.GROUP):
-                        targets.append(SessionTarget(
-                            name=c_name,
-                            chat_type=ChatType.GROUP,
-                            to_cust_id="0",
-                            chat_id=c_id,
-                            is_top=is_top,
-                            is_muted=is_muted,
-                        ))
-                    else:
-                        targets.append(SessionTarget(
-                            name=c_name,
-                            chat_type=ChatType.SINGLE,
-                            to_cust_id=c_id,
-                            chat_id="0",
-                            is_top=is_top,
-                            is_muted=is_muted,
-                        ))
-            return targets
-        except Exception:
-            return []
-
-
-# ---------------------------------------------------------------------------
-# 4. 工业级多会话统一 IM 客户端核心 (IMClient)
+# 3. 工业级多会话统一 IM 客户端核心 (IMClient)
 # ---------------------------------------------------------------------------
 class IMClient:
     """工业级类微信 IM 客户端
@@ -604,6 +554,31 @@ class IMClient:
                 return inflight
             await asyncio.sleep(0.015)
         return await self.bridge.get_inflight()
+
+    async def drain_offline_sync(self, quiet_duration: float = 2.5, max_timeout: float = 15.0) -> bool:
+        """【离线消息收敛静默排空闸门】
+        在压测开始前，等待后台正在拉取的历史离线消息彻底落库收敛并确认完毕，
+        确保网络通道和本地 WCDB 数据库写锁完全空闲，杜绝前后台写锁争用碰撞与主键冲突。
+        """
+        print(f"[📱 {self.sender_name} | {self.device_id}] ⏳ 正在探测与排空后台离线同步队列...")
+        start = time.time()
+        stable_start: Optional[float] = None
+
+        while time.time() - start < max_timeout:
+            inflight = await self.bridge.get_inflight()
+            if inflight == 0:
+                if stable_start is None:
+                    stable_start = time.time()
+                elif time.time() - stable_start >= quiet_duration:
+                    print(f"[📱 {self.sender_name} | {self.device_id}] ✅ 离线同步已收敛，通道完全静止就绪 (耗时: {time.time() - start:.1f}s)")
+                    return True
+            else:
+                stable_start = None
+            await asyncio.sleep(0.5)
+
+        curr = await self.bridge.get_inflight()
+        print(f"[📱 {self.sender_name} | {self.device_id}] ⏱️ 离线排空达到超时门限 ({max_timeout:.0f}s)，当前在途: {curr}，平滑放行")
+        return False
 
     async def send_batch_to_targets(
         self, items: List[BatchItem]
@@ -713,8 +688,9 @@ class IMClient:
         max_retries: int = 4,
         retry_backoff: float = 0.2,
         max_pace: float = 1.0,
-        high_watermark: int = 80,
-        low_watermark: int = 35,
+        high_watermark: int = 25,
+        low_watermark: int = 10,
+        enforce_fifo_order: bool = True,
     ) -> Dict[str, Any]:
         """【多会话流式并发压测引擎】全面支持批量高速管道、总量轮询打散与齐步等量并发。
         
@@ -732,6 +708,8 @@ class IMClient:
             max_pace: 自适应批次间隔上限（秒），拒收时间隔翻倍、顺畅时每批加性回落 10ms 至 delay_between_msg（标准 AIMD）。
             high_watermark: 底层长连接在途消息高水位线（默认 80），达到该阈值主动收油门等待服务端 ACK。
             low_watermark: 底层长连接在途消息低水位线（默认 35），排空至该值后继续全速推进。
+            enforce_fifo_order: 是否开启单会话严格保序屏障（默认 True）。
+                开启后为每条消息固化逻辑序号并防止后序批次在网络层超车重试中消息，彻底根治乱序。
         """
         active_targets = targets or self.targets
         if not active_targets:
@@ -768,6 +746,16 @@ class IMClient:
         pace = max(0.0, delay_between_msg)
         target_success_map: Dict[str, int] = {t.name: 0 for t in active_targets}
 
+        target_seq_map: Dict[str, int] = {t.name: 0 for t in active_targets}
+
+        def format_ordered_text(tgt: SessionTarget, raw_text: str) -> str:
+            """会话严格保序编码：在消息正文附加强时序逻辑序列号 [#SEQ0001]，防止异步重传导致时序不可溯。"""
+            if not enforce_fifo_order:
+                return raw_text
+            target_seq_map[tgt.name] += 1
+            seq = target_seq_map[tgt.name]
+            return f"[#SEQ{seq:04d}] {raw_text}"
+
         start_time = time.time()
         last_report_time = start_time
         last_report_count = 0
@@ -783,12 +771,13 @@ class IMClient:
         async def emit_item(tgt: SessionTarget, text: str) -> None:
             nonlocal sent_count
             sent_count += 1
+            ordered_text = format_ordered_text(tgt, text)
             if batch_size > 1:
-                batch_buffer.append((tgt, text))
+                batch_buffer.append((tgt, ordered_text))
                 if len(batch_buffer) >= batch_size:
                     await flush_buffer()
             else:
-                await queue.put([(tgt, text)])
+                await queue.put([(tgt, ordered_text)])
 
         async def producer() -> None:
             if messages_per_target is not None:
@@ -841,10 +830,13 @@ class IMClient:
         async def worker() -> None:
             nonlocal success_count, fail_count, retry_count, pace, last_report_time, last_report_count
             current_inflight = 0
+            # 保序防超车门禁：若开启 FIFO 保序，在途超过 low_watermark 即主动排空，彻底杜绝后序批次超越前序重试中消息
+            trigger_limit = low_watermark if enforce_fifo_order else high_watermark
+
             while True:
-                # 1. 窗口主动保护：发送前若在途依然处于高水位（>=80），主动挂起等待 ACK 回流排空
-                if current_inflight >= high_watermark:
-                    current_inflight = await self.wait_for_ack_window(low_watermark=low_watermark, timeout=1.5)
+                # 1. 窗口主动保护：发送前若在途依然处于阈值之上，主动挂起等待 ACK 回流排空
+                if current_inflight >= trigger_limit:
+                    current_inflight = await self.wait_for_ack_window(low_watermark=low_watermark, timeout=3.0)
 
                 batch_items = await queue.get()
                 if batch_items is None:
@@ -860,13 +852,21 @@ class IMClient:
                             target_success_map[tgt.name] = target_success_map.get(tgt.name, 0) + 1
                         pending = rejected
                         if not rejected:
-                            # 投递顺畅：加性回落，缓慢逼近通道可持续容量
-                            pace = max(delay_between_msg, pace - 0.01)
-                            # 如果投递后在途达到高水位，立即触发窗口等待
-                            if current_inflight >= high_watermark:
-                                current_inflight = await self.wait_for_ack_window(low_watermark=low_watermark, timeout=1.5)
+                            # 2. 动态自适应弹性背压流控 (Elastic Backpressure Controller)
+                            # 根据底层在途排队情况自适应伸缩节奏，防止堆积超过 30s 触发超时失败与 WCDB 锁争用
+                            if current_inflight <= low_watermark:
+                                # 通道极速畅通无堆积：加性释放油门，逼近网络最佳吞吐
+                                pace = max(delay_between_msg, pace - 0.015)
+                            else:
+                                # 存在轻度在途堆积：主动收油门拉大呼吸间隙，给服务端分发与本地 SQLite 留出写入窗口
+                                pace = min(max_pace, max(pace * 1.3, 0.08))
+
+                            # 若在途达到保序或高水位阈值，立即触发等待排空
+                            if current_inflight >= trigger_limit:
+                                current_inflight = await self.wait_for_ack_window(low_watermark=low_watermark, timeout=3.0)
                             break
-                        pace = min(max_pace, max(pace * 2, 0.05))
+                        # 发生拒收时乘性避让并拉大间隔
+                        pace = min(max_pace, max(pace * 2.0, 0.15))
                         if attempt == max_retries:
                             fail_count += len(rejected)
                             pending = []
@@ -874,7 +874,7 @@ class IMClient:
                         # 仅重发同步拒收（未进入 Netty）的消息，指数退避等待服务端 ACK 回流释放发送窗口
                         retry_count += len(rejected)
                         await asyncio.sleep(min(max_pace, retry_backoff * (2 ** attempt)))
-                        current_inflight = await self.wait_for_ack_window(low_watermark=low_watermark, timeout=1.0)
+                        current_inflight = await self.wait_for_ack_window(low_watermark=low_watermark, timeout=1.5)
                 except Exception as e:
                     fail_count += len(pending)
                     print(f"❌ [📱 {self.sender_name} | {self.device_id}] 批次投递异常: {e}")
@@ -940,6 +940,7 @@ class IMClient:
             expected_info = f" (预期: {messages_per_target:,} 条)" if messages_per_target is not None else ""
             print(f"    - 【{t_name}】: {count:,} 条{expected_info}")
         print("==================================================")
+        print(f"✅ [📱 {self.sender_name} | {self.device_id}] 本机全部会话配额投递完毕，等待集群汇总战报...\n")
         return summary
 
     async def send_matrix(
@@ -951,7 +952,11 @@ class IMClient:
         batch_size: int = 50,
         report_interval: int = 1000,
         delay_between_msg: float = 0.0,
+        max_pace: float = 0.3,
+        high_watermark: int = 300,
+        low_watermark: int = 150,
         use_csv_data: bool = True,
+        enforce_fifo_order: bool = True,
     ) -> Dict[str, Any]:
         """【模式三：多会话齐步并行等量压测】同时对所有指定会话各自发送相同数量的消息。
         
@@ -962,7 +967,11 @@ class IMClient:
             batch_size: 批处理管道大小（单次 RPC 注入的消息数量，默认 50，提升上百倍吞吐）。
             report_interval: 统计聚合打点间隔。
             delay_between_msg: 消息间隔。
+            max_pace: 自适应批次间隔上限（秒）。
+            high_watermark: 底层长连接在途消息高水位线。
+            low_watermark: 底层长连接在途消息低水位线。
             use_csv_data: 是否使用 data_loader 从 data/chat/chat_messages.csv 提取真实业务语料。
+            enforce_fifo_order: 是否开启单会话严格保序屏障（默认 True）。
         """
         return await self.send_stream(
             messages_per_target=count_per_target,
@@ -971,7 +980,11 @@ class IMClient:
             batch_size=batch_size,
             report_interval=report_interval,
             delay_between_msg=delay_between_msg,
+            max_pace=max_pace,
+            high_watermark=high_watermark,
+            low_watermark=low_watermark,
             use_csv_data=use_csv_data,
+            enforce_fifo_order=enforce_fifo_order,
         )
 
 
@@ -986,7 +999,7 @@ class DeviceAccountConfig:
 
 
 # ---------------------------------------------------------------------------
-# 5. 多模拟器分布式集群压测协同器 (IMClientCluster)
+# 4. 多模拟器分布式集群压测协同器 (IMClientCluster)
 # ---------------------------------------------------------------------------
 class IMClientCluster:
     """多模拟器/多端分布式 IM 客户端集群协调器
@@ -1000,23 +1013,45 @@ class IMClientCluster:
         device_configs: List[DeviceAccountConfig],
         common_targets: Optional[List[SessionTarget]] = None,
         concurrency_per_device: int = 20,
+        shard_group_targets: bool = False,
     ) -> None:
+        """初始化集群。
+
+        Args:
+            device_configs: 设备与账号绑定配置列表。
+            common_targets: 公共会话目标池。
+            concurrency_per_device: 单设备并发协程数。
+            shard_group_targets: 是否按设备分片公共群聊（True 时每个群仅由 1 台设备发送，
+                消除同群多发送者的服务端 seq 锁冲突；单聊目标不分片）。默认 False，保持原有全量行为。
+        """
         self.device_configs = device_configs
         self.common_targets = common_targets or []
         self.concurrency_per_device = concurrency_per_device
+        self.shard_group_targets = shard_group_targets
         self.clients: List[IMClient] = []
 
+        # 分片模式：公共群聊按设备序号连续切块（如 50 群 / 5 台 → 每台 10 个群）
+        common_groups = [t for t in self.common_targets if t.chat_type == ChatType.GROUP]
+        chunk = -(-len(common_groups) // len(device_configs)) if device_configs else 0
+
         # 为每台设备动态装配专属的目标会话矩阵
-        for cfg in device_configs:
+        for idx, cfg in enumerate(device_configs):
             device_targets: List[SessionTarget] = []
             # 1. 挂接该设备独占的专属群聊目标
             if cfg.dedicated_group:
                 device_targets.append(cfg.dedicated_group)
 
-            # 2. 挂接公共单聊目标（智能过滤自己发给自己的单聊情况）
-            for t in self.common_targets:
-                if t.to_cust_id != cfg.sender_cust_id:
-                    device_targets.append(t)
+            # 2. 挂接公共目标（智能过滤自己发给自己的单聊情况）
+            if shard_group_targets:
+                device_targets.extend(common_groups[idx * chunk:(idx + 1) * chunk])
+                device_targets.extend(
+                    t for t in self.common_targets
+                    if t.chat_type != ChatType.GROUP and t.to_cust_id != cfg.sender_cust_id
+                )
+            else:
+                for t in self.common_targets:
+                    if t.to_cust_id != cfg.sender_cust_id:
+                        device_targets.append(t)
 
             self.clients.append(
                 IMClient(
@@ -1051,6 +1086,21 @@ class IMClientCluster:
         print(f"📊 集群通道就绪结果: {len(ready_clients)}/{len(self.clients)} 台设备挂接成功\n")
         return len(ready_clients) > 0
 
+    async def drain_all_offline_sync(self, quiet_duration: float = 2.5, max_timeout: float = 15.0) -> None:
+        """【全集群离线消息收敛排空闸门】
+        为所有就绪设备并发执行离线消息排空收敛预热，确保开火前历史离线同步全部确认落库，
+        彻底杜绝压测刚启动时前后台并发抢夺 WCDB 数据库写锁导致的 UNIQUE constraint 崩溃。
+        """
+        active_clients = [c for c in self.clients if c._is_started and c.bridge._is_ready]
+        if not active_clients:
+            return
+        print("==================================================")
+        print(f"🛡️ [离线消息排空预热闸门] 正在为 {len(active_clients)} 台设备排空历史同步队列...")
+        print(f"   ⏳ 目标: 等待通道在途归零且持续静止 {quiet_duration}s (上限: {max_timeout:.0f}s)")
+        print("==================================================")
+        await asyncio.gather(*(c.drain_offline_sync(quiet_duration, max_timeout) for c in active_clients))
+        print("🚀 全集群离线排空预热完毕，网络与数据库写锁已处于空闲最佳状态！\n")
+
     async def send_matrix(
         self,
         count_per_target: int = 100,
@@ -1058,6 +1108,7 @@ class IMClientCluster:
         report_interval: int = 1000,
         delay_between_batches: float = 0.02,
         use_csv_data: bool = True,
+        enforce_fifo_order: bool = True,
     ) -> List[Dict[str, Any]]:
         """【多设备集群齐步等量并行压测】
         
@@ -1067,6 +1118,7 @@ class IMClientCluster:
         - 总计投递量由实际在线的设备装配会话相加计算。
         - 开启 batch_size 极速管道 + delay_between_batches 批次微延时，彻底规避原生 socket 冲垮。
         - 默认通过 data_loader 加载 data/chat/chat_messages.csv 真实业务语料。
+        - enforce_fifo_order: 开启会话严格保序屏障，杜绝跨批次超车导致消息乱序。
         """
         active_clients = [c for c in self.clients if c._is_started and c.bridge._is_ready]
         if not active_clients:
@@ -1078,6 +1130,7 @@ class IMClientCluster:
         print(f"   🎯 调度模式: 设备专属群聊对齐 + 公共单聊并发 (已自动隔离离线设备)")
         print(f"   📂 消息内容数据源: {'data/chat/chat_messages.csv (data_loader 工具加载)' if use_csv_data else '内置测试标头'}")
         print(f"   🚀 批处理管道: 开启 (Batch={batch_size} 条/RPC, 批次间防爆微延时: {delay_between_batches*1000:.0f}ms)")
+        print(f"   🛡️ 会话保序屏障: {'开启 (单会话逻辑序号锚定 + 在途排空防超车)' if enforce_fifo_order else '关闭'}")
         print(f"   📦 单机单会话配额: {count_per_target:,} 条")
         print(f"   🌊 全集群总消息投放量: {total_cluster_msgs:,} 条真实消息")
         print("--------------------------------------------------")
@@ -1091,6 +1144,7 @@ class IMClientCluster:
                 report_interval=report_interval,
                 delay_between_msg=delay_between_batches,
                 use_csv_data=use_csv_data,
+                enforce_fifo_order=enforce_fifo_order,
             )
             for c in active_clients
         ]
@@ -1128,107 +1182,262 @@ class IMClientCluster:
 
 
 # ---------------------------------------------------------------------------
+# 5. 会话目标统一管理中心 (SessionTargetManager)
+# ---------------------------------------------------------------------------
+class SessionTargetManager:
+    """压测会话策略与目标配置智能管理器 (基于框架统一 data_loader 驱动与 SQLite 动态自发现)."""
+
+    CONFIG_FILE_NAME: str = "im_targets.yaml"
+
+    @classmethod
+    def discover_groups_from_sqlite(
+        cls,
+        device_id: str = "emulator-5562",
+        pattern_prefix: str = "离线群",
+        max_groups: int = 50,
+    ) -> List[SessionTarget]:
+        """直连设备底层 SQLite 的 conversation 表，秒级动态拉取匹配前缀的最新群聊 ID (Zero Config)."""
+        try:
+            find_cmd = (
+                f"adb -s {device_id} shell \"ls -dt /data/data/com.santiaotalk.im/databases/IM_Data/*/meta-wal "
+                f"/data/data/com.santiaotalk.im/databases/IM_Data/*/meta 2>/dev/null\""
+            )
+            res = subprocess.run(find_cmd, shell=True, capture_output=True, timeout=3.0)
+            lines = res.stdout.decode("utf-8", errors="replace").splitlines()
+            db_path = ""
+            for line in lines:
+                p = line.strip()
+                if p:
+                    db_path = p[:-4] if p.endswith("-wal") else p
+                    break
+            if not db_path:
+                return []
+
+            if pattern_prefix == "群":
+                sql_filter = "conv_name LIKE '%群' OR conv_name LIKE '群%'"
+            else:
+                sql_filter = f"conv_name LIKE '{pattern_prefix}%'"
+
+            sql = (
+                f"SELECT conv_id, conv_name, is_top FROM conversation "
+                f"WHERE conv_type=2 AND ({sql_filter}) "
+                f"ORDER BY conv_name ASC LIMIT {max_groups};"
+            )
+            query_cmd = f"adb -s {device_id} shell \"sqlite3 {db_path} \\\"{sql}\\\"\""
+            res_query = subprocess.run(query_cmd, shell=True, capture_output=True, timeout=4.0)
+            out = res_query.stdout.decode("utf-8", errors="replace").strip()
+            if not out:
+                return []
+
+            targets: List[SessionTarget] = []
+            for item in out.splitlines():
+                parts = item.strip().split("|")
+                if len(parts) >= 2 and parts[0]:
+                    conv_id, conv_name = parts[0], parts[1]
+                    is_top = bool(int(parts[2])) if len(parts) >= 3 and parts[2].isdigit() else False
+                    targets.append(
+                        SessionTarget(
+                            name=conv_name,
+                            chat_type=ChatType.GROUP,
+                            to_cust_id="0",
+                            chat_id=conv_id,
+                            is_top=is_top,
+                        )
+                    )
+            import re
+            targets.sort(key=lambda t: (int(re.search(r'\d+', t.name).group()) if re.search(r'\d+', t.name) else 0, t.name))
+            return targets
+        except Exception as e:
+            print(f"⚠️ [动态发现] 从设备 {device_id} 动态自发现会话失败: {e}")
+            return []
+
+    @classmethod
+    def discover_friends_from_sqlite(
+        cls,
+        device_id: str = "emulator-5562",
+        max_friends: int = 1000,
+    ) -> List[SessionTarget]:
+        """直连设备底层 SQLite 的 friend 表，秒级提取全部有效好友作为单聊目标 (Zero Config 自动装载千人好友)."""
+        try:
+            find_cmd = (
+                f"adb -s {device_id} shell \"ls -dt /data/data/com.santiaotalk.im/databases/IM_Data/*/meta-wal "
+                f"/data/data/com.santiaotalk.im/databases/IM_Data/*/meta 2>/dev/null\""
+            )
+            res = subprocess.run(find_cmd, shell=True, capture_output=True, timeout=3.0)
+            lines = res.stdout.decode("utf-8", errors="replace").splitlines()
+            db_path = ""
+            for line in lines:
+                p = line.strip()
+                if p:
+                    db_path = p[:-4] if p.endswith("-wal") else p
+                    break
+            if not db_path:
+                return []
+
+            sql = (
+                "SELECT cust_id, username, remark_name, mobile FROM friend "
+                "WHERE relation_status=1 AND black_status=0 AND cust_id != '10000' AND length(cust_id) > 5 "
+                f"ORDER BY cust_id ASC LIMIT {max_friends};"
+            )
+            cmd = ["adb", "-s", device_id, "shell", f"sqlite3 {db_path}"]
+            res_query = subprocess.run(cmd, input=(sql + "\n").encode("utf-8"), capture_output=True, timeout=5.0)
+            out = res_query.stdout.decode("utf-8", errors="replace").strip()
+            if not out:
+                return []
+
+            targets: List[SessionTarget] = []
+            for item in out.splitlines():
+                parts = item.strip().split("|")
+                if len(parts) >= 1 and parts[0]:
+                    cust_id = parts[0]
+                    # 优先 remark_name -> username -> mobile -> cust_id
+                    disp_name = (
+                        parts[2] if len(parts) >= 3 and parts[2] else (
+                            parts[1] if len(parts) >= 2 and parts[1] else (
+                                parts[3] if len(parts) >= 4 and parts[3] else cust_id
+                            )
+                        )
+                    )
+                    targets.append(
+                        SessionTarget(
+                            name=disp_name,
+                            chat_type=ChatType.SINGLE,
+                            to_cust_id=cust_id,
+                            chat_id="0",
+                            is_top=False,
+                        )
+                    )
+            return targets
+        except Exception as e:
+            print(f"⚠️ [动态发现] 从设备 {device_id} 动态自发现好友失败: {e}")
+            return []
+
+    @classmethod
+    def load_cluster_targets(
+        cls,
+        config_name: Optional[str] = None,
+        discovery_device_id: str = "emulator-5562",
+    ) -> Tuple[List[DeviceAccountConfig], List[SessionTarget], bool]:
+        """一站式装配集群设备与目标会话池 (复用框架统一 load_yaml_data 工具).
+
+        Returns:
+            Tuple[List[DeviceAccountConfig], List[SessionTarget], bool]:
+                - device_configs: 包含或剥离专属群绑定的 5 台设备实体列表
+                - common_targets: 待发送的目标会话池 (离线群/测试群/单聊)
+                - shard_by_device: 是否开启 5 台设备分片发送 (每群单发送者)
+        """
+        # 直接复用 utils/file_reader/data_loader.py 现成工具，自动通过 find_file 在 config 目录检索加载
+        file_name = config_name or cls.CONFIG_FILE_NAME
+        try:
+            cfg = load_yaml_data(file_name) or {}
+        except Exception as e:
+            print(f"⚠️ [配置管理器] 通过 load_yaml_data 加载配置失败 ({file_name}): {e}")
+            cfg = {}
+        active_profile_name = cfg.get("active_profile", "offline_groups")
+        profiles = cfg.get("profiles", {})
+        profile = profiles.get(active_profile_name, {})
+
+        desc = profile.get("description", active_profile_name)
+        mode = profile.get("discovery_mode", "auto")
+        pattern_prefix = profile.get("pattern_prefix", "")
+        max_groups = profile.get("max_groups", 50)
+        shard_by_device = profile.get("shard_by_device", True)
+        include_dedicated = profile.get("include_dedicated_group", False)
+
+        print("\n==================================================")
+        print(f"🎯 [会话配置中心] 当前激活场景: 【{active_profile_name}】 ({desc})")
+        print(f"   ⚙️ 模式: {mode.upper()} | 前缀: '{pattern_prefix}' | 分片发送: {shard_by_device} | 包含设备专属群: {include_dedicated}")
+        print("==================================================")
+
+        # 1. 装配 5 台基准设备基准实体
+        dedicated_map = cfg.get("device_dedicated_groups", {})
+        base_devices = [
+            ("emulator-5562", "1500692599256551424", "测试050", "19200000050"),
+            ("emulator-5564", "1500692599583707136", "测试051", "19200000051"),
+            ("emulator-5566", "1500692599990554624", "测试052", "19200000052"),
+            ("emulator-5568", "1500692600422567936", "测试053", "19200000053"),
+            ("emulator-5572", "1500692600787472384", "测试054", "19200000054"),
+        ]
+        device_configs: List[DeviceAccountConfig] = []
+        for dev_id, cust_id, name, mobile in base_devices:
+            dedicated_group = None
+            if include_dedicated and dev_id in dedicated_map:
+                d_info = dedicated_map[dev_id]
+                dedicated_group = SessionTarget(
+                    name=d_info.get("name", "专属群"),
+                    chat_type=ChatType.GROUP if d_info.get("chat_type") == "GROUP" else ChatType.SINGLE,
+                    to_cust_id=d_info.get("to_cust_id", "0"),
+                    chat_id=d_info.get("chat_id", "0"),
+                    is_top=d_info.get("is_top", True),
+                )
+            device_configs.append(
+                DeviceAccountConfig(
+                    device_id=dev_id,
+                    sender_cust_id=cust_id,
+                    sender_name=name,
+                    mobile=mobile,
+                    dedicated_group=dedicated_group,
+                )
+            )
+
+        # 2. 装配公共目标会话 (动态自发现优先，静态兜底)
+        common_targets: List[SessionTarget] = []
+        if active_profile_name == "single_chat" and mode == "auto":
+            max_friends = profile.get("max_friends", 1000)
+            discovered_friends = cls.discover_friends_from_sqlite(
+                device_id=discovery_device_id,
+                max_friends=max_friends,
+            )
+            if discovered_friends:
+                common_targets = discovered_friends
+                print(f"✨ [Zero Config 动态自发现] 成功从设备 【{discovery_device_id}】 提取 {len(common_targets)} 位真实好友作为单聊目标 (首位: {common_targets[0].name} ~ 末位: {common_targets[-1].name})")
+        elif mode == "auto" and pattern_prefix:
+            discovered = cls.discover_groups_from_sqlite(
+                device_id=discovery_device_id,
+                pattern_prefix=pattern_prefix,
+                max_groups=max_groups,
+            )
+            if discovered:
+                common_targets = discovered
+                print(f"✨ [Zero Config 动态自发现] 成功从设备 【{discovery_device_id}】 提取 {len(common_targets)} 个群聊最新真实 ID (范围: {common_targets[0].name} ~ {common_targets[-1].name})")
+
+        # 若动态拉取为空或指定为 static 模式，回退至 YAML static_targets
+        if not common_targets:
+            raw_statics = cfg.get("static_targets", [])
+            for item in raw_statics:
+                c_type_str = item.get("chat_type", "GROUP")
+                c_type = ChatType.GROUP if c_type_str == "GROUP" else ChatType.SINGLE
+                target_name = item.get("name", "")
+                # 过滤符合场景前缀或后缀的会话项 (兼顾 "离线群001" 前缀与 "1群" 后缀)
+                if pattern_prefix and c_type == ChatType.GROUP:
+                    if not (target_name.startswith(pattern_prefix) or target_name.endswith(pattern_prefix)):
+                        continue
+                if active_profile_name == "single_chat" and c_type != ChatType.SINGLE:
+                    continue
+                common_targets.append(
+                    SessionTarget(
+                        name=target_name,
+                        chat_type=c_type,
+                        to_cust_id=item.get("to_cust_id", "0"),
+                        chat_id=item.get("chat_id", "0"),
+                        is_top=item.get("is_top", False),
+                    )
+                )
+            print(f"📋 [静态配置兜底] 已从 config/im_targets.yaml 装载 {len(common_targets)} 个目标会话")
+
+        return device_configs, common_targets, shard_by_device
+
+
+# 默认集群与公共目标装配 (从 config/im_targets.yaml 读取，外部模块导入完全兼容)
+_default_devs, _default_targets, _default_shard = SessionTargetManager.load_cluster_targets()
+CLUSTER_DEVICES = _default_devs
+COMMON_SINGLE_TARGETS = _default_targets
+
+
+# ---------------------------------------------------------------------------
 # 6. 入口执行：单机压测与 5 台模拟器集群压测自由编排
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
-
-    # =======================================================================
-    # 5 台模拟器设备精准绑定清单（设备与专属群 1 对 1 严格映射）
-    # =======================================================================
-    CLUSTER_DEVICES = [
-        # 设备 1: 绑定 测试群001
-        DeviceAccountConfig(
-            device_id="emulator-5562",
-            sender_cust_id="1500692599256551424",
-            sender_name="19200000050",
-            mobile="19200000050",
-            dedicated_group=SessionTarget(
-                name="测试群001",
-                chat_type=ChatType.GROUP,
-                to_cust_id="0",
-                chat_id="1558306114846638080",
-                is_top=True,
-            ),
-        ),
-        # 设备 2: 绑定 测试群002
-        DeviceAccountConfig(
-            device_id="emulator-5564",
-            sender_cust_id="1500692599583707136",
-            sender_name="19200000051",
-            mobile="19200000051",
-            dedicated_group=SessionTarget(
-                name="测试群002",
-                chat_type=ChatType.GROUP,
-                to_cust_id="0",
-                chat_id="1553530733224574976",
-                is_top=True,
-            ),
-        ),
-        # 设备 3: 绑定 测试群003
-        DeviceAccountConfig(
-            device_id="emulator-5570",
-            sender_cust_id="1500692599990554624",
-            sender_name="19200000052",
-            mobile="19200000052",
-            dedicated_group=SessionTarget(
-                name="测试群003",
-                chat_type=ChatType.GROUP,
-                to_cust_id="0",
-                chat_id="1553531260331147264",
-                is_top=True,
-            ),
-        ),
-        # 设备 4: 绑定 测试群004
-        DeviceAccountConfig(
-            device_id="emulator-5568",
-            sender_cust_id="1500692600422567936",
-            sender_name="19200000053",
-            mobile="19200000053",
-            dedicated_group=SessionTarget(
-                name="测试群004",
-                chat_type=ChatType.GROUP,
-                to_cust_id="0",
-                chat_id="1553530999466409984",
-                is_top=True,
-            ),
-        ),
-        # 设备 5: 绑定 测试群005
-        DeviceAccountConfig(
-            device_id="emulator-5572",
-            sender_cust_id="1500692600787472384",
-            sender_name="19200000054",
-            mobile="19200000054",
-            dedicated_group=SessionTarget(
-                name="测试群005",
-                chat_type=ChatType.GROUP,
-                to_cust_id="0",
-                chat_id="1553531578875953152",
-                is_top=True,
-            ),
-        ),
-    ]
-
-    # =======================================================================
-    # 🎯 公共单聊目标池（所有设备共享，会自动滤除自己给自己发消息）
-    # =======================================================================
-    COMMON_SINGLE_TARGETS = [
-        # 1. 置顶单聊项
-        SessionTarget(name="测试130", chat_type=ChatType.SINGLE, to_cust_id="1500692627358388224", chat_id="0", is_top=True),
-        SessionTarget(name="测试131", chat_type=ChatType.SINGLE, to_cust_id="1500692627706515456", chat_id="0", is_top=True),
-        SessionTarget(name="测试132", chat_type=ChatType.SINGLE, to_cust_id="1500692628088197120", chat_id="0", is_top=True),
-        SessionTarget(name="测试133", chat_type=ChatType.SINGLE, to_cust_id="1500692628398575616", chat_id="0", is_top=True),
-        SessionTarget(name="测试134", chat_type=ChatType.SINGLE, to_cust_id="1500692628729925632", chat_id="0", is_top=True),
-        SessionTarget(name="测试135", chat_type=ChatType.SINGLE, to_cust_id="1500692629031915520", chat_id="0", is_top=True),
-        SessionTarget(name="测试136", chat_type=ChatType.SINGLE, to_cust_id="1500692629333905408", chat_id="0", is_top=True),
-        SessionTarget(name="测试137", chat_type=ChatType.SINGLE, to_cust_id="1500692629816250368", chat_id="0", is_top=True),
-        SessionTarget(name="测试138", chat_type=ChatType.SINGLE, to_cust_id="1500692630298595328", chat_id="0", is_top=True),
-        SessionTarget(name="测试139", chat_type=ChatType.SINGLE, to_cust_id="1500692630617362432", chat_id="0", is_top=True),
-        SessionTarget(name="测试140", chat_type=ChatType.SINGLE, to_cust_id="1500692630927740928", chat_id="0", is_top=True),
-        
-        
-        # 2. 普通单聊项
-        # SessionTarget(name="A0110", chat_type=ChatType.SINGLE, to_cust_id="1500692620387454976", chat_id="0", is_top=False),
-    ]
 
     async def main() -> None:
         print("==================================================")
@@ -1241,22 +1450,26 @@ if __name__ == "__main__":
         #   USE_CLUSTER = True  : 5 台模拟器设备集群协同【同时】压测
         #   USE_CLUSTER = False : 单台模拟器本地独立压测
         # -------------------------------------------------------------
-        USE_CLUSTER = True
+        # USE_CLUSTER = True
+        USE_CLUSTER = False 
 
         # 每台设备对各自会话（专属群聊+公共单聊）发送的消息数量（如设为 20 条）
-        COUNT_PER_TARGET = 200
+        COUNT_PER_TARGET = 10000
         # COUNT_PER_TARGET = 28572
 
         if USE_CLUSTER:
             # =========================================================
             # 【集群模式】：5 台模拟器同时协同，各自对应专属群聊齐步开火
             # =========================================================
-            # 工业级稳态流水线：单设备单协程顺序投递（concurrency=1）+ 适度批次（Batch=20）+ 批次微延时（20ms）
+            # 工业级稳态流水线：单设备单协程顺序投递（concurrency=1）+ 适度批次 + 批次微延时
             # 彻底杜绝多协程对 Frida GumJS 单线程事件循环的锁争抢与突发洪峰导致的底层 socket 线程 SIGSEGV 崩溃
+            cluster_devs, common_targets, shard_groups = SessionTargetManager.load_cluster_targets()
+
             cluster = IMClientCluster(
-                device_configs=CLUSTER_DEVICES,
-                common_targets=COMMON_SINGLE_TARGETS,
+                device_configs=cluster_devs,
+                common_targets=common_targets,
                 concurrency_per_device=1,
+                shard_group_targets=shard_groups,
             )
 
             started = await cluster.start()
@@ -1264,11 +1477,15 @@ if __name__ == "__main__":
                 print("❌ 集群中无就绪设备，请检查模拟器与 frida-server。")
                 return
 
+            # 🛡️ 核心闸门：压测前自动执行全集群历史离线消息排空收敛预热 (保障 WCDB 与通道空闲)
+            await cluster.drain_all_offline_sync(quiet_duration=2.5, max_timeout=15.0)
+
             await cluster.send_matrix(
                 count_per_target=COUNT_PER_TARGET,
-                batch_size=20,               # 黄金批次大小（每批打包 10 条）
-                report_interval=200,
-                delay_between_batches=0.12,  # 基础节奏 120ms，拒收时 AIMD 自适应放大（上限 1s）
+                # 分片后每群仅 1 个发送者，可放开到 10 条/批 + 100ms；全量模式保持保守节奏防服务端 500
+                batch_size=200,
+                report_interval=100,
+                delay_between_batches=0.1 if shard_groups else 0.25,
             )
             await cluster.stop()
 
@@ -1276,9 +1493,10 @@ if __name__ == "__main__":
             # =========================================================
             # 【单机模式】：单台模拟器 (emulator-5562) 独立压测
             # =========================================================
-            single_cfg = CLUSTER_DEVICES[0]
+            cluster_devs, common_targets, _ = SessionTargetManager.load_cluster_targets()
+            single_cfg = cluster_devs[0]
             single_targets = ([single_cfg.dedicated_group] if single_cfg.dedicated_group else []) + [
-                t for t in COMMON_SINGLE_TARGETS if t.to_cust_id != single_cfg.sender_cust_id
+                t for t in common_targets if t.to_cust_id != single_cfg.sender_cust_id
             ]
             client = IMClient(
                 device_id=single_cfg.device_id,
@@ -1291,12 +1509,25 @@ if __name__ == "__main__":
                 print("❌ 客户端启动失败，无法连接真机协议通道。")
                 return
 
+            # 🛡️ 核心闸门：压测前自动执行历史离线消息排空收敛预热 (保障 WCDB 与通道空闲)
+            await client.drain_offline_sync(quiet_duration=2.5, max_timeout=15.0)
+
             await client.send_matrix(
                 count_per_target=COUNT_PER_TARGET,
-                concurrency=20,
-                batch_size=50,
-                report_interval=200,
+                concurrency=1,              # 单设备单协程顺序流水线，杜绝锁争抢与 Socket 洪峰
+                batch_size=200,             # 批次大小（每批 100 条）
+                report_interval=200,        # 打点间隔
+                high_watermark=300,         # 高水位线（需大于 batch_size，避免每批都触发排空）
+                low_watermark=150,          # 低水位线（需大于 batch_size，避免每批必等待）
+                max_pace=0.3,               # 退避休眠上限降至 0.3s，避免单批固定卡死 1s
+                enforce_fifo_order=True,    # 开启单会话严格保序屏障
             )
             await client.stop()
 
-    asyncio.run(main())
+        print("\n🎉 全流程压测任务圆满结束，已安全释放连接并返回终端。")
+        os._exit(0)
+
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        os._exit(0)

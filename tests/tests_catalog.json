@@ -60,22 +60,23 @@
   },
   {
     "file": "tests/test_demo_ios.py",
-    "display_name": "验证 iOS App 启动后处于前台运行状态",
-    "classes": [],
-    "tests": [
+    "display_name": "iOS 消息发送验证测试 (XCUITest / WebDriverAgent 原生架构)",
+    "classes": [
       {
-        "name": "test_ios_app_launch_state",
-        "display_name": "验证 iOS App 启动后处于前台运行状态",
-        "params": [],
-        "priority": "P2"
-      },
-      {
-        "name": "test_ios_page_source_available",
-        "display_name": "验证 iOS 当前页面控件树可正常抓取",
-        "params": [],
-        "priority": "P2"
+        "name": "TestDemoIos",
+        "display_name": "iOS 端消息收发",
+        "priority": "P2",
+        "tests": [
+          {
+            "name": "test_ios_send_message",
+            "display_name": "iOS 发送消息验证: 选择好友 -> 进入会话 -> 发送消息",
+            "params": [],
+            "priority": "P0"
+          }
+        ]
       }
-    ]
+    ],
+    "tests": []
   },
   {
     "file": "tests/chat/core/test_chat.py",

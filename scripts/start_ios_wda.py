@@ -40,7 +40,7 @@ WDA_STATUS_URL = "http://127.0.0.1:8100/status"
 
 
 def get_connected_device() -> Optional[str]:
-    """检查当前是否连接了 iPhone 真机"""
+    """检查当前是否连接了 iPhone 真机 (优先 tidevice，兜底 pymobiledevice3 usbmux list)"""
     try:
         res = subprocess.run(
             ["tidevice", "list"],
@@ -56,7 +56,66 @@ def get_connected_device() -> Optional[str]:
                 return line
     except Exception:
         pass
+    try:
+        res = subprocess.run(
+            [sys.executable, "-u", "-m", "pymobiledevice3", "usbmux", "list"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=6,
+        )
+        if "Identifier" in res.stdout or "DeviceName" in res.stdout:
+            return "iPhone (USB Connected)"
+    except Exception:
+        pass
     return None
+
+
+def ensure_developer_disk_mounted(force: bool = False) -> bool:
+    """
+    检查并自动挂载 iOS DeveloperDiskImage (PersonalizedImage)。
+    当 iPhone 重启或重连后，iOS 会卸载开发者镜像，导致 developer dvt xcuitest 立即以
+    'ERROR Failed to start service' 退出；必须在拉起 xcuitest 前确保镜像已挂载。
+    """
+    creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+    if not force:
+        try:
+            chk = subprocess.run(
+                [sys.executable, "-u", "-m", "pymobiledevice3", "mounter", "lookup", "Personalized"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=6,
+                creationflags=creationflags,
+            )
+            combined_out = f"{chk.stdout}\n{chk.stderr}".lower()
+            if chk.returncode == 0 and "not mounted" not in combined_out and "error" not in combined_out:
+                print("    ✔ 开发者镜像 (PersonalizedImage) 已处于挂载状态")
+                return True
+        except Exception:
+            pass
+
+    print("    ➜ 检测到开发者镜像未挂载，正在自动挂载 DeveloperDiskImage (auto-mount)...")
+    try:
+        mnt = subprocess.run(
+            [sys.executable, "-u", "-m", "pymobiledevice3", "mounter", "auto-mount"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=25,
+            creationflags=creationflags,
+        )
+        combined_mnt = f"{mnt.stdout}\n{mnt.stderr}"
+        if "mounted successfully" in combined_mnt.lower() or "already mounted" in combined_mnt.lower() or mnt.returncode == 0:
+            print("    ✔ 开发者镜像 (DeveloperDiskImage) 挂载成功")
+            return True
+        print(f"    ⚠️ 自动挂载返回提示: {combined_mnt.strip()[-200:]}")
+    except Exception as e:
+        print(f"    ⚠️ 自动挂载执行异常: {e}")
+    return False
 
 
 def get_wda_bundle_id() -> str:
@@ -147,7 +206,7 @@ def main() -> None:
     signal.signal(signal.SIGTERM, _cleanup_all)
 
     # 3. 启动电脑端 8100 端口透传子进程（带自动守护重试）
-    print("[3/4] 正在开辟电脑 8100 端口透传隧道 (127.0.0.1:8100 -> iPhone:8100)...")
+    print("[3/5] 正在开辟电脑 8100 端口透传隧道 (127.0.0.1:8100 -> iPhone:8100)...")
     creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
     def _ensure_forwarder() -> None:
@@ -162,8 +221,12 @@ def main() -> None:
 
     _ensure_forwarder()
 
-    # 4. 看门狗主循环：拉起并守护真机 WDA 进程
-    print(f"[4/4] 正在拉起真机 WDA 自动化守护服务 (iOS 17+ userspace 模式)...")
+    # 4. 检查并自动挂载 DeveloperDiskImage (PersonalizedImage)，防止手机重启后 xcuitest 立即崩溃
+    print("[4/5] 正在校验并挂载真机开发者镜像 (DeveloperDiskImage / PersonalizedImage)...")
+    ensure_developer_disk_mounted(force=False)
+
+    # 5. 看门狗主循环：拉起并守护真机 WDA 进程
+    print("[5/5] 正在拉起真机 WDA 自动化守护服务 (iOS 17+ userspace 模式)...")
     print("  💡 重要提示: 请保持 iPhone 屏幕处于解锁亮屏状态 (建议设置中关闭自动锁定)")
 
     recent_logs: Deque[str] = collections.deque(maxlen=20)
@@ -264,14 +327,25 @@ def main() -> None:
 
         exit_code = wda_proc.poll()
         if exit_code not in (0, None):
-            print(f"\n⚠️  [警告] WDA 守护进程退出 (退出码: {exit_code})，可能原因：")
-            print("    1. 手机屏幕自动锁定/休眠（导致 iOS 系统杀死调试 Runner）；")
-            print("    2. USB 数据线连接出现瞬时断开或供电不足。")
-            if recent_logs:
-                print("    --- 诊断详情 (最后几行日志) ---")
-                for err_line in list(recent_logs)[-3:]:
-                    print(f"    | {err_line}")
-                print("    -----------------------------")
+            joined_recent = "\n".join(recent_logs)
+            if "Failed to start service" in joined_recent or "mounter auto-mount" in joined_recent:
+                print("\n⚠️  [自愈] 检测到真机 DeveloperDiskImage 未挂载导致服务启动失败，正在执行自动挂载修复...")
+                ensure_developer_disk_mounted(force=True)
+            elif "DTXNsError" in joined_recent or "Failed to launch process" in joined_recent:
+                print("\n❌ [签名/信任异常] iOS 拒绝启动 WebDriverAgentRunner (code 2 / Security)：")
+                print("    1. 个人免费 Apple ID 签名的 WDA 证书已满 7 天过期，请重新签名安装 WDA IPA；")
+                print("    2. 或前往 iPhone【设置 -> 通用 -> VPN 与设备管理】点击开发者证书并【信任/验证应用】；")
+                print("    3. 请确认 iPhone 屏幕处于解锁亮屏状态。")
+            else:
+                print(f"\n⚠️  [警告] WDA 守护进程退出 (退出码: {exit_code})，可能原因：")
+                print("    1. 手机屏幕自动锁定/休眠（导致 iOS 系统杀死调试 Runner）；")
+                print("    2. USB 数据线连接出现瞬时断开或供电不足。")
+                if recent_logs:
+                    print("    --- 诊断详情 (最后几行日志) ---")
+                    for err_line in list(recent_logs)[-3:]:
+                        print(f"    | {err_line}")
+                    print("    -----------------------------")
+            recent_logs.clear()
             print("  🔄 [Watchdog] 看门狗正在 2 秒后自动重新拉起 WDA 守护进程...\n")
             time.sleep(2.0)
 

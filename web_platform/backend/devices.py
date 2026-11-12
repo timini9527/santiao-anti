@@ -1,4 +1,6 @@
 import os
+import sys
+import shutil
 import subprocess
 import urllib.request
 import json
@@ -63,25 +65,26 @@ def get_configured_devices() -> tuple[str, str]:
 def detect_raw_connected_devices() -> list[tuple[str, str, bool]]:
     """
     动态探测当前系统连接的移动设备。
-    依次检测 Android (ADB) 和 鸿蒙 HarmonyOS NEXT (HDC)。
+    依次检测 Android (ADB)、鸿蒙 HarmonyOS NEXT (HDC) 和 iOS (tidevice / idevice_id / xcrun)。
+    支持 Windows 与 macOS 双端自动感知与跨平台多端识别。
     返回: [(udid, platform, is_real)] 列表，其中 is_real 为 True 表示 USB 硬件真机。
     """
     raw_devices = []
     no_window = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
     
-    # 动态感知系统或 SDK 安装目录中的 adb / hdc 工具链
+    # 动态感知系统或 SDK 安装目录中的 adb / hdc / ios 工具链
     toolchain = {}
     try:
         from desktop_app.core.path_resolver import SmartPathResolver
         toolchain = SmartPathResolver.discover_mobile_toolchain()
     except Exception:
         pass
-    adb_bin = toolchain.get("adb") or "adb"
-    hdc_bin = toolchain.get("hdc") or "hdc"
+    adb_bin = toolchain.get("adb") or shutil.which("adb") or "adb"
+    hdc_bin = toolchain.get("hdc") or shutil.which("hdc") or "hdc"
 
     # 1. 尝试使用 adb 探测安卓设备 (直接执行 adb devices，按需自启 daemon，杜绝 5 秒超时卡顿)
     try:
-        out = subprocess.check_output([adb_bin, "devices"], timeout=4, creationflags=no_window).decode('utf-8')
+        out = subprocess.check_output([adb_bin, "devices"], timeout=4, creationflags=no_window).decode('utf-8', errors='ignore')
         lines = out.strip().split('\n')
         for line in lines[1:]:
             if '\tdevice' in line:
@@ -95,14 +98,69 @@ def detect_raw_connected_devices() -> list[tuple[str, str, bool]]:
 
     # 2. 尝试使用 hdc 探测鸿蒙设备
     try:
-        out = subprocess.check_output([hdc_bin, "list", "targets"], timeout=10, creationflags=no_window).decode('utf-8')
+        out = subprocess.check_output([hdc_bin, "list", "targets"], timeout=5, creationflags=no_window).decode('utf-8', errors='ignore')
         lines = out.strip().split('\n')
         for line in lines:
             line_str = line.strip()
-            if line_str and "Empty" not in line_str and "Error" not in line_str and "not found" not in line_str:
+            if line_str and "Empty" not in line_str and "Error" not in line_str and "not found" not in line_str and "fail" not in line_str.lower():
                 raw_devices.append((line_str, "HarmonyOS", True))
     except Exception as e:
         logger.warning(f"HDC 设备探测异常: {e}")
+
+    # 3. 尝试使用 tidevice / idevice_id / xcrun 探测 iOS 设备 (跨 Windows 与 macOS)
+    tidevice_bin = toolchain.get("tidevice") or shutil.which("tidevice")
+    idevice_bin = toolchain.get("idevice_id") or shutil.which("idevice_id")
+    xcrun_bin = toolchain.get("xcrun") or shutil.which("xcrun")
+
+    ios_detected = False
+
+    # 3.1 优先通过 tidevice list 探测 (跨 Windows / macOS 均可直连识别 USB iPhone)
+    if tidevice_bin:
+        try:
+            out = subprocess.check_output([tidevice_bin, "list"], timeout=4, creationflags=no_window).decode('utf-8', errors='ignore')
+            lines = out.strip().split('\n')
+            for line in lines[1:]:
+                parts = line.split()
+                if parts:
+                    udid = parts[0].strip()
+                    if len(udid) >= 24 and all(c in "0123456789abcdefABCDEF-" for c in udid):
+                        raw_devices.append((udid, "iOS", True))
+                        ios_detected = True
+        except Exception as e:
+            logger.warning(f"tidevice iOS 设备探测异常: {e}")
+
+    # 3.2 次选通过 idevice_id -l 探测 (libimobiledevice 原生)
+    if not ios_detected and idevice_bin:
+        try:
+            out = subprocess.check_output([idevice_bin, "-l"], timeout=4, creationflags=no_window).decode('utf-8', errors='ignore')
+            for line in out.strip().splitlines():
+                udid = line.strip()
+                if len(udid) >= 24 and all(c in "0123456789abcdefABCDEF-" for c in udid):
+                    raw_devices.append((udid, "iOS", True))
+                    ios_detected = True
+        except Exception as e:
+            logger.warning(f"idevice_id iOS 设备探测异常: {e}")
+
+    # 3.3 macOS 原生特选: xcrun xctrace list devices
+    if not ios_detected and sys.platform == "darwin" and xcrun_bin:
+        try:
+            out = subprocess.check_output([xcrun_bin, "xctrace", "list", "devices"], timeout=5).decode('utf-8', errors='ignore')
+            in_devices_section = False
+            for line in out.splitlines():
+                if "== Devices ==" in line:
+                    in_devices_section = True
+                    continue
+                if "== Simulators ==" in line:
+                    break
+                if in_devices_section and "(" in line and ")" in line:
+                    import re
+                    match = re.search(r'\(([0-9a-fA-F\-]{24,})\)', line)
+                    if match:
+                        udid = match.group(1).strip()
+                        raw_devices.append((udid, "iOS", True))
+                        ios_detected = True
+        except Exception as e:
+            logger.warning(f"xcrun iOS 设备探测异常: {e}")
 
     return raw_devices
 
