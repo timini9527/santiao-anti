@@ -73,3 +73,5 @@ snapshot_display_bin
 chat_records.txt
 friends_list.txt
 chat_history.html
+# Androguard 逆向分析本地缓存数据库
+androguard.db*
