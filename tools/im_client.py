@@ -32,7 +32,7 @@ from pathlib import Path
 import subprocess
 import sys
 import time
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union
 import uuid
 
 import frida
@@ -133,9 +133,7 @@ class AppRuntimeBridge:
     _BRIDGE_JS = """
     var WebSocketMgr = null;
     var SocketClientPendingField = null;
-    var JavaThreadCls = null;
     var _skipSendDbWrite = false;
-    var _activeSendThreadId = -1;
     var _dbHooksInstalled = false;
 
     function installSkipDbHooks() {
@@ -144,27 +142,33 @@ class AppRuntimeBridge:
         }
         Java.perform(function() {
             try {
-                JavaThreadCls = Java.use('java.lang.Thread');
                 var msgCls = 'com.bm.santiaotalk.store.entity.w.Message';
+                var listCls = 'java.util.List';
                 var MessageDao = Java.use('com.bm.santiaotalk.store.dao.w.MessageDao');
                 MessageDao.insert.overload(msgCls).implementation = function(msg) {
-                    if (_skipSendDbWrite && JavaThreadCls.currentThread().getId() === _activeSendThreadId) {
-                        return;
-                    }
+                    if (_skipSendDbWrite) return;
                     return this.insert(msg);
+                };
+                MessageDao.insertAll.overload(listCls).implementation = function(list) {
+                    if (_skipSendDbWrite) return;
+                    return this.insertAll(list);
                 };
                 var ShardedMessageDao = Java.use('com.bm.santiaotalk.store.dao.w.ShardedMessageDao');
                 ShardedMessageDao.insert.overload(msgCls).implementation = function(msg) {
-                    if (_skipSendDbWrite && JavaThreadCls.currentThread().getId() === _activeSendThreadId) {
-                        return;
-                    }
+                    if (_skipSendDbWrite) return;
                     return this.insert(msg);
                 };
+                ShardedMessageDao.insertAll.overload(listCls).implementation = function(list) {
+                    if (_skipSendDbWrite) return;
+                    return this.insertAll(list);
+                };
                 ShardedMessageDao.insertToYear.overload(msgCls).implementation = function(msg) {
-                    if (_skipSendDbWrite && JavaThreadCls.currentThread().getId() === _activeSendThreadId) {
-                        return;
-                    }
+                    if (_skipSendDbWrite) return;
                     return this.insertToYear(msg);
+                };
+                ShardedMessageDao.insertAllToYear.overload(listCls).implementation = function(list) {
+                    if (_skipSendDbWrite) return;
+                    return this.insertAllToYear(list);
                 };
                 _dbHooksInstalled = true;
             } catch (e) {
@@ -265,30 +269,20 @@ class AppRuntimeBridge:
                         WebSocketMgr = Java.use('com.network.lib.socket.WebSocketManager').INSTANCE.value;
                     }
                     if (WebSocketMgr) {
-                        if (_skipSendDbWrite) {
-                            if (!JavaThreadCls) {
-                                JavaThreadCls = Java.use('java.lang.Thread');
+                        for (; i < len; i++) {
+                            var item = list[i];
+                            var ok = WebSocketMgr.sendTextMessage(
+                                item.chatId,
+                                item.chatType,
+                                item.fromCustId,
+                                item.fromCustName,
+                                item.toCustId,
+                                item.content,
+                                0, null, null, null, false, false
+                            );
+                            if (!ok) {
+                                break;
                             }
-                            _activeSendThreadId = JavaThreadCls.currentThread().getId();
-                        }
-                        try {
-                            for (; i < len; i++) {
-                                var item = list[i];
-                                var ok = WebSocketMgr.sendTextMessage(
-                                    item.chatId,
-                                    item.chatType,
-                                    item.fromCustId,
-                                    item.fromCustName,
-                                    item.toCustId,
-                                    item.content,
-                                    0, null, null, null, false, false
-                                );
-                                if (!ok) {
-                                    break;
-                                }
-                            }
-                        } finally {
-                            _activeSendThreadId = -1;
                         }
                     }
                 } catch (e) {
@@ -547,8 +541,8 @@ class IMClient:
         self,
         device_id: str = "emulator-5562",
         *,
-        sender_cust_id: str = "1500692599256551424",
-        sender_name: str = "测试130",
+        sender_cust_id: str = "1158096069641277440",
+        sender_name: str = "008628100000423",
         targets: Optional[List[SessionTarget]] = None,
         max_inflight: int = 200,
     ) -> None:
@@ -1189,8 +1183,12 @@ class IMClientCluster:
         batch_size: int = 20,
         report_interval: int = 1000,
         delay_between_batches: float = 0.02,
+        max_pace: float = 0.3,
+        high_watermark: int = 300,
+        low_watermark: int = 150,
         use_csv_data: bool = True,
         enforce_fifo_order: bool = True,
+        skip_local_db: bool = False,
     ) -> List[Dict[str, Any]]:
         """【多设备集群齐步等量并行压测】
         
@@ -1225,8 +1223,12 @@ class IMClientCluster:
                 batch_size=batch_size,
                 report_interval=report_interval,
                 delay_between_msg=delay_between_batches,
+                max_pace=max_pace,
+                high_watermark=high_watermark,
+                low_watermark=low_watermark,
                 use_csv_data=use_csv_data,
                 enforce_fifo_order=enforce_fifo_order,
+                skip_local_db=skip_local_db,
             )
             for c in active_clients
         ]
@@ -1272,6 +1274,60 @@ class SessionTargetManager:
     CONFIG_FILE_NAME: str = "im_targets.yaml"
 
     @classmethod
+    def _get_online_adb_devices(cls) -> Set[str]:
+        """获取当前在线 (device 状态) 的 ADB 设备 ID 集合，避免阻塞探测离线设备。"""
+        try:
+            res = subprocess.run(["adb", "devices"], capture_output=True, timeout=3.0)
+            out = res.stdout.decode("utf-8", errors="replace")
+            online: Set[str] = set()
+            for line in out.splitlines()[1:]:
+                parts = line.strip().split()
+                if len(parts) >= 2 and parts[1] == "device":
+                    online.add(parts[0])
+            return online
+        except Exception:
+            return set()
+
+    @classmethod
+    def _get_active_meta_db_path(cls, device_id: str) -> str:
+        """定位设备当前最新活跃账号对应的本地 SQLite meta 数据库路径。"""
+        find_cmd = (
+            f"adb -s {device_id} shell \"ls -dt /data/data/com.santiaotalk.im/databases/IM_Data/*/meta-wal "
+            f"/data/data/com.santiaotalk.im/databases/IM_Data/*/meta 2>/dev/null\""
+        )
+        res = subprocess.run(find_cmd, shell=True, capture_output=True, timeout=3.0)
+        for line in res.stdout.decode("utf-8", errors="replace").splitlines():
+            p = line.strip()
+            if p:
+                return p[:-4] if p.endswith("-wal") else p
+        return ""
+
+    @classmethod
+    def discover_current_user_from_sqlite(cls, device_id: str) -> Optional[Tuple[str, str, str]]:
+        """直连设备最新活跃账号的 meta 库 user 表，动态读取 (cust_id, name, mobile)。"""
+        try:
+            db_path = cls._get_active_meta_db_path(device_id)
+            if not db_path:
+                return None
+            sql = "SELECT cust_id, username, mobile FROM user LIMIT 1;"
+            cmd = ["adb", "-s", device_id, "shell", f"sqlite3 {db_path}"]
+            res_query = subprocess.run(cmd, input=(sql + "\n").encode("utf-8"), capture_output=True, timeout=4.0)
+            out = res_query.stdout.decode("utf-8", errors="replace").strip()
+            if not out:
+                return None
+            parts = out.splitlines()[0].strip().split("|")
+            if len(parts) >= 1 and parts[0]:
+                cust_id = parts[0]
+                username = parts[1] if len(parts) >= 2 else ""
+                mobile = parts[2] if len(parts) >= 3 else ""
+                name = username or mobile or cust_id
+                return (cust_id, name, mobile or name)
+            return None
+        except Exception as e:
+            print(f"⚠️ [账号自发现] 从设备 {device_id} 读取当前登录账号失败，将使用静态兜底: {e}")
+            return None
+
+    @classmethod
     def discover_groups_from_sqlite(
         cls,
         device_id: str = "emulator-5562",
@@ -1280,18 +1336,7 @@ class SessionTargetManager:
     ) -> List[SessionTarget]:
         """直连设备底层 SQLite 的 conversation 表，秒级动态拉取匹配前缀的最新群聊 ID (Zero Config)."""
         try:
-            find_cmd = (
-                f"adb -s {device_id} shell \"ls -dt /data/data/com.santiaotalk.im/databases/IM_Data/*/meta-wal "
-                f"/data/data/com.santiaotalk.im/databases/IM_Data/*/meta 2>/dev/null\""
-            )
-            res = subprocess.run(find_cmd, shell=True, capture_output=True, timeout=3.0)
-            lines = res.stdout.decode("utf-8", errors="replace").splitlines()
-            db_path = ""
-            for line in lines:
-                p = line.strip()
-                if p:
-                    db_path = p[:-4] if p.endswith("-wal") else p
-                    break
+            db_path = cls._get_active_meta_db_path(device_id)
             if not db_path:
                 return []
 
@@ -1302,7 +1347,7 @@ class SessionTargetManager:
 
             sql = (
                 f"SELECT conv_id, conv_name, is_top FROM conversation "
-                f"WHERE conv_type=2 AND ({sql_filter}) "
+                f"WHERE conv_type=2 AND state=1 AND ({sql_filter}) "
                 f"ORDER BY conv_name ASC LIMIT {max_groups};"
             )
             query_cmd = f"adb -s {device_id} shell \"sqlite3 {db_path} \\\"{sql}\\\"\""
@@ -1341,18 +1386,7 @@ class SessionTargetManager:
     ) -> List[SessionTarget]:
         """直连设备底层 SQLite 的 friend 表，秒级提取全部有效好友作为单聊目标 (Zero Config 自动装载千人好友)."""
         try:
-            find_cmd = (
-                f"adb -s {device_id} shell \"ls -dt /data/data/com.santiaotalk.im/databases/IM_Data/*/meta-wal "
-                f"/data/data/com.santiaotalk.im/databases/IM_Data/*/meta 2>/dev/null\""
-            )
-            res = subprocess.run(find_cmd, shell=True, capture_output=True, timeout=3.0)
-            lines = res.stdout.decode("utf-8", errors="replace").splitlines()
-            db_path = ""
-            for line in lines:
-                p = line.strip()
-                if p:
-                    db_path = p[:-4] if p.endswith("-wal") else p
-                    break
+            db_path = cls._get_active_meta_db_path(device_id)
             if not db_path:
                 return []
 
@@ -1431,17 +1465,24 @@ class SessionTargetManager:
         print(f"   ⚙️ 模式: {mode.upper()} | 前缀: '{pattern_prefix}' | 分片发送: {shard_by_device} | 包含设备专属群: {include_dedicated}")
         print("==================================================")
 
-        # 1. 装配 5 台基准设备基准实体
+        # 1. 装配 5 台基准设备实体（优先从在线设备活跃 meta 库自发现当前登录账号，失败时回退静态兜底）
         dedicated_map = cfg.get("device_dedicated_groups", {})
         base_devices = [
             ("emulator-5562", "1500692599256551424", "测试050", "19200000050"),
+            # ("emulator-5562", "1158096069641277440", "008628100000423", "008628100000423"),
             ("emulator-5564", "1500692599583707136", "测试051", "19200000051"),
             ("emulator-5566", "1500692599990554624", "测试052", "19200000052"),
             ("emulator-5568", "1500692600422567936", "测试053", "19200000053"),
             ("emulator-5572", "1500692600787472384", "测试054", "19200000054"),
         ]
+        online_devices = cls._get_online_adb_devices()
         device_configs: List[DeviceAccountConfig] = []
         for dev_id, cust_id, name, mobile in base_devices:
+            if dev_id in online_devices:
+                live_user = cls.discover_current_user_from_sqlite(dev_id)
+                if live_user is not None:
+                    cust_id, name, mobile = live_user
+                    print(f"🔄 [账号自发现] {dev_id} 已自动识别当前登录账号: {name} (CustID: {cust_id})")
             dedicated_group = None
             if include_dedicated and dev_id in dedicated_map:
                 d_info = dedicated_map[dev_id]
@@ -1532,11 +1573,11 @@ if __name__ == "__main__":
         #   USE_CLUSTER = True  : 5 台模拟器设备集群协同【同时】压测
         #   USE_CLUSTER = False : 单台模拟器本地独立压测
         # -------------------------------------------------------------
-        # USE_CLUSTER = True
-        USE_CLUSTER = False 
+        USE_CLUSTER = True
+        # USE_CLUSTER = False 
 
         # 每台设备对各自会话（专属群聊+公共单聊）发送的消息数量（如设为 20 条）
-        COUNT_PER_TARGET = 10000
+        COUNT_PER_TARGET = 500
         # COUNT_PER_TARGET = 28572
 
         if USE_CLUSTER:
@@ -1565,9 +1606,13 @@ if __name__ == "__main__":
             await cluster.send_matrix(
                 count_per_target=COUNT_PER_TARGET,
                 # 分片后每群仅 1 个发送者，可放开到 10 条/批 + 100ms；全量模式保持保守节奏防服务端 500
-                batch_size=200,
-                report_interval=100,
-                delay_between_batches=0.1 if shard_groups else 0.25,
+                batch_size=100,
+                report_interval=200,
+                delay_between_batches=0.02 if shard_groups else 0.1,
+                high_watermark=300,
+                low_watermark=150,
+                max_pace=0.3,
+                skip_local_db=True,
             )
             await cluster.stop()
 

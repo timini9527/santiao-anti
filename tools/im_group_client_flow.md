@@ -199,4 +199,48 @@ python tools/im_group_client.py --quit "1群" --device emulator-5562
 
 # 将群聊转让给指定好友
 python tools/im_group_client.py --transfer "测试群001" --to "测试051"
+
+# 批量解散匹配前缀的旧群 (例如解散 正式群 序号 1~50)
+python tools/im_group_client.py --disband-groups --prefix 正式群 --start 1 --end 50 --device emulator-5562
+
+# 在指定设备上批量新建递增群聊 (例如新建 正式群001 ~ 正式群020)
+python tools/im_group_client.py --batch 20 --prefix 正式群 --start 1 --device emulator-5562
 ```
+
+---
+
+## 🛠️ 五、常见问题排查与群聊重建标准流程 (SOP)
+
+在测试账号切换、整批重建压测群聊（如重置 `正式群001 ~ 正式群020`）时，需关注以下两类典型底层问题并执行标准化闭环流程。
+
+### 1. 高频批量建群的「改名竞态」排查与修复
+* **问题现象**：通过 `--batch` 连续极速建群时，`create_group()` 会调用 `get_latest_group_no()` 读取 `group_table` 中 `created_time DESC LIMIT 1` 获取最新 `group_id` 并触发 `rename_group()`。在短时间连续建群场景下，若相邻两次落库与服务端回包出现并发交错，可能导致个别相邻群聊（如 `002` 与 `003`）出现群名同步错位或重名。
+* **解决方法**：
+  1. 批量建群完成后，立即执行本地 SQLite `conversation` 与 `group_table` 联合核验，检查目标前缀的活跃群数量、群名唯一性与连续性。
+  2. 若发现任意群聊名称错位或重名，直接提取其 `group_id` 与 `conv_id`，调用 `IMGroupClient.rename_group(group_id=..., new_name=..., conv_id=...)` 定向纠偏。
+
+### 2. 群聊解散后 `conversation` 表残留 `state=2` 记录
+* **问题现象**：使用 `--disband-groups` 解散旧群后，该群会从 `group_table` 中清除，但在 `conversation` 表中不会物理删除，而是保留为 `state=2`（活跃群聊为 `state=1`）。若人工查询 SQLite 或下游工具未过滤 `state=1`，会把已解散的旧群与新建群混为一谈。
+* **解决方法**：核验现网活跃群聊时，需同时校验 `group_table` 存在性或在查询 `conversation` 时显式限定 `state=1`。
+
+### 3. 旧群清理 → 批量重建 → 校验修复 → 配置同步标准 SOP
+
+```mermaid
+flowchart TD
+    S1["1. 批量解散旧群<br/>(--disband-groups --prefix 正式群 --start 1 --end 50)"] --> S2["2. SQLite 核验清理结果<br/>(确认 group_table 为空且旧会话 state=2)"]
+    S2 --> S3["3. 对齐好友白名单并批量新建目标群<br/>(核对 TARGET_FRIEND_PREFIXES 后执行 --batch 20)"]
+    S3 --> S4["4. 核验新建活跃群 (state=1) 数量与名称连续性<br/>(发现重名/错名即刻调用 rename_group 修复)"]
+    S4 --> S5["5. 更新 config/im_targets.yaml 静态兜底映射<br/>(同步最新 20 个 chat_id 与 pattern_prefix)"]
+    S5 --> S6["6. 调用 SessionTargetManager.load_cluster_targets()<br/>(确认账号身份与活跃群列表 100% 一致)"]
+```
+
+#### 关键核验命令参考
+```bash
+# 1) 定位设备当前最新活跃账号库路径
+adb -s emulator-5562 shell "ls -dt /data/data/com.santiaotalk.im/databases/IM_Data/*/meta-wal /data/data/com.santiaotalk.im/databases/IM_Data/*/meta 2>/dev/null"
+
+# 2) 查询当前账号活跃群聊 (务必过滤 state=1，排除已解散残留记录)
+adb -s emulator-5562 shell "sqlite3 <meta_db_path> \"SELECT conv_id, conv_name, status, state FROM conversation WHERE conv_type=2 AND state=1 AND conv_name LIKE '正式群%' ORDER BY conv_name;\""
+```
+
+* 核验通过后，将最新生成的 `conv_id`（即 `chat_id`）同步至 [`config/im_targets.yaml`](file:///d:/projects/santiao-anti/config/im_targets.yaml) 的 `static_targets` 段落，并通过 `SessionTargetManager.load_cluster_targets()` 完成最终动态自发现联调确认。

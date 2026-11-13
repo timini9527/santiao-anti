@@ -17,11 +17,11 @@ profiles:
   # 场景 1：1-50群 齐步集群压测 (默认推荐，支持 5 台设备严格分片，每台独占 10 个群)
   offline_groups:
     description: "1-50群 齐步集群压测 (5 台设备严格平均分片发送)"
-    discovery_mode: "static"        # static: 严格读取下方 static_targets 中已配置好的 1-50 群；auto：自动分配会话
-    pattern_prefix: "正式群"            # 匹配群聊名称 (支持 "1群" ~ "50群", 前后缀匹配： 离线群)
-    max_groups: 50                  # 限制拉取最大群数
-    shard_by_device: true           # 开启 5 台设备分片发送 (每台设备仅向专属 10 个群发送，消除 seq 冲突)
-    include_dedicated_group: false  # 压测公共群时，不向各设备专属测试群(测试群001~005)发送
+    discovery_mode: "static"          # auto: 自动连接设备 SQLite 拉取当前真实有效的群聊；static: 读取下方 static_targets 兜底
+    pattern_prefix: "群"              # 匹配群聊名称 (支持 "1群" ~ "50群", 前后缀匹配： 离线群)
+    max_groups: 50                    # 限制拉取最大群数
+    shard_by_device: true             # 开启 5 台设备分片发送 (每台设备仅向专属 10 个群发送，消除 seq 冲突)
+    include_dedicated_group: true    # 压测公共群时，不向各设备专属测试群(测试群001~005)发送
 
   # 场景 2：设备专属群一对一独立压测
   dedicated_groups:
@@ -178,29 +178,39 @@ static_targets:
   - { name: "49群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578201201835556864", is_top: false }
   - { name: "50群", chat_type: "GROUP", to_cust_id: "0", chat_id: "1578201298795282432", is_top: false }
 
-  # 正式群 001 ~ 010 (emulator-5562)
-  - { name: "正式群001", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579288459233771520", is_top: false }
-  - { name: "正式群002", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579288480507281408", is_top: false }
-  - { name: "正式群003", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579288489927688192", is_top: false }
-  - { name: "正式群004", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579288500140818432", is_top: false }
-  - { name: "正式群005", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579288518700613632", is_top: false }
-  - { name: "正式群006", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579288523658280960", is_top: false }
-  - { name: "正式群007", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579288539533721600", is_top: false }
-  - { name: "正式群008", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579288546030698496", is_top: false }
-  - { name: "正式群009", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579288559695740928", is_top: false }
-  - { name: "正式群010", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579288570412187648", is_top: false }
+  # 正式群 001 ~ 020 (emulator-5562 | 账号 423 最新重建)
+  - { name: "正式群001", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579645869781729280", is_top: false }
+  - { name: "正式群002", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579645882444333056", is_top: false }
+  - { name: "正式群003", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579645895291486208", is_top: false }
+  - { name: "正式群004", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579645908545486848", is_top: false }
+  - { name: "正式群005", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579645918758617088", is_top: false }
+  - { name: "正式群006", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579645929751887872", is_top: false }
+  - { name: "正式群007", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579645946076119040", is_top: false }
+  - { name: "正式群008", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579645957228773376", is_top: false }
+  - { name: "正式群009", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579645967630647296", is_top: false }
+  - { name: "正式群010", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579645980322611200", is_top: false }
+  - { name: "正式群011", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579645991303299072", is_top: false }
+  - { name: "正式群012", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579646001361240064", is_top: false }
+  - { name: "正式群013", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579646011721170944", is_top: false }
+  - { name: "正式群014", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579646025075834880", is_top: false }
+  - { name: "正式群015", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579646037465808896", is_top: false }
+  - { name: "正式群016", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579646047678939136", is_top: false }
+  - { name: "正式群017", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579646062371586048", is_top: false }
+  - { name: "正式群018", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579646081371783168", is_top: false }
+  - { name: "正式群019", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579646093724008448", is_top: false }
+  - { name: "正式群020", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579646107921727488", is_top: false }
 
   # 2. 单聊测试账号
-  # - { name: "测试130", chat_type: "SINGLE", to_cust_id: "1500692627358388224", chat_id: "0", is_top: true }
-  # - { name: "测试131", chat_type: "SINGLE", to_cust_id: "1500692627706515456", chat_id: "0", is_top: true }
-  # - { name: "测试132", chat_type: "SINGLE", to_cust_id: "1500692628088197120", chat_id: "0", is_top: true }
-  # - { name: "测试133", chat_type: "SINGLE", to_cust_id: "1500692628398575616", chat_id: "0", is_top: true }
-  # - { name: "测试134", chat_type: "SINGLE", to_cust_id: "1500692628729925632", chat_id: "0", is_top: true }
-  # - { name: "测试135", chat_type: "SINGLE", to_cust_id: "1500692629031915520", chat_id: "0", is_top: true }
-  # - { name: "测试136", chat_type: "SINGLE", to_cust_id: "1500692629333905408", chat_id: "0", is_top: true }
-  # - { name: "测试137", chat_type: "SINGLE", to_cust_id: "1500692629816250368", chat_id: "0", is_top: true }
-  # - { name: "测试138", chat_type: "SINGLE", to_cust_id: "1500692630298595328", chat_id: "0", is_top: true }
-  # - { name: "测试139", chat_type: "SINGLE", to_cust_id: "1500692630617362432", chat_id: "0", is_top: true }
-  # - { name: "测试140", chat_type: "SINGLE", to_cust_id: "1500692630927740928", chat_id: "0", is_top: true }
-  # - { name: "A0110", chat_type: "SINGLE", to_cust_id: "1500692620387454976", chat_id: "0", is_top: false }
+  - { name: "测试130", chat_type: "SINGLE", to_cust_id: "1500692627358388224", chat_id: "0", is_top: true }
+  - { name: "测试131", chat_type: "SINGLE", to_cust_id: "1500692627706515456", chat_id: "0", is_top: true }
+  - { name: "测试132", chat_type: "SINGLE", to_cust_id: "1500692628088197120", chat_id: "0", is_top: true }
+  - { name: "测试133", chat_type: "SINGLE", to_cust_id: "1500692628398575616", chat_id: "0", is_top: true }
+  - { name: "测试134", chat_type: "SINGLE", to_cust_id: "1500692628729925632", chat_id: "0", is_top: true }
+  - { name: "测试135", chat_type: "SINGLE", to_cust_id: "1500692629031915520", chat_id: "0", is_top: true }
+  - { name: "测试136", chat_type: "SINGLE", to_cust_id: "1500692629333905408", chat_id: "0", is_top: true }
+  - { name: "测试137", chat_type: "SINGLE", to_cust_id: "1500692629816250368", chat_id: "0", is_top: true }
+  - { name: "测试138", chat_type: "SINGLE", to_cust_id: "1500692630298595328", chat_id: "0", is_top: true }
+  - { name: "测试139", chat_type: "SINGLE", to_cust_id: "1500692630617362432", chat_id: "0", is_top: true }
+  - { name: "测试140", chat_type: "SINGLE", to_cust_id: "1500692630927740928", chat_id: "0", is_top: true }
+  - { name: "A0110", chat_type: "SINGLE", to_cust_id: "1500692620387454976", chat_id: "0", is_top: false }
 

@@ -170,3 +170,36 @@ USE_CSV_DATA = True           # 是否使用真实语料库 (data/chat/chat_mess
 python tools/im_client.py
 ```
 终端将自动输出多机各节点的发送进度条与全集群综合 TPS 战报。
+
+---
+
+## 🛠️ 五、账号切换、脏数据隔离与配置同步规范 (SOP)
+
+当测试设备切换登录账号（例如 `emulator-5562` 切换为账号 `008628100000423`）或批量重建压测群聊后，需遵循以下排查与同步流程，防止身份错配与已解散群聊脏读。
+
+### 1. 多账号切换自适应识别 (`_get_active_meta_db_path` & `discover_current_user_from_sqlite`)
+* **常见问题**：设备切换账号后，沙箱目录 `/data/data/com.santiaotalk.im/databases/IM_Data/*/` 下可能同时残留多个历史账号的数据库子目录；若仍使用静态配置或固定读取旧目录，会导致发送方 `cust_id` 与当前长连接登录身份不一致。
+* **解决机制**：
+  - `SessionTargetManager._get_active_meta_db_path()` 通过 `ls -dt .../meta-wal .../meta` 按 WAL 日志最新修改时间锁定当前真实活跃账号库。
+  - `SessionTargetManager.discover_current_user_from_sqlite()` 在线探测设备上当前登录账号，直查本地 `user` 表的 `(cust_id, username, mobile)` 自动覆盖静态兜底配置。
+
+### 2. 已解散群聊软删除脏读拦截 (`state=1` 活跃态过滤)
+* **常见问题**：通过 `im_group_client.py --disband-groups` 解散旧群后，群记录会从 `group_table` 移除，但 `conversation` 表中的历史会话不会物理删除，而是转为 `state=2`（活跃会话为 `state=1`）。此前 `discover_groups_from_sqlite()` 仅按 `conv_type=2` 与群名前缀过滤，导致已解散旧群的 `conv_id` 在 `auto` 自发现时重新混入目标池。
+* **解决机制**：在 [`SessionTargetManager.discover_groups_from_sqlite`](file:///d:/projects/santiao-anti/tools/im_client.py#L1331-L1352) 中强制限定 `conv_type=2 AND state=1`，彻底隔离已解散残留群聊。
+
+### 3. 账号/群组变更后的配置同步与自检闭环
+```mermaid
+flowchart LR
+    A["1. 清理旧群并批量重建新群<br/>(im_group_client.py)"] --> B["2. 对齐 im_targets.yaml<br/>(active_profile / pattern_prefix / static_targets)"]
+    B --> C["3. 只读校验目标加载<br/>(load_cluster_targets)"]
+    C --> D{"核对账号 CustID<br/>与活跃群总数是否精确匹配?"}
+    D -- "否" --> E["排查 SQLite conversation(state=1)<br/>或修复错名群后重试"]
+    E --> C
+    D -- "是" --> F["4. 启动 im_client.py 压测"]
+```
+
+* **实操校验命令（只读验证配置加载，不触发发包）**：
+  ```bash
+  python -c "from tools.im_client import SessionTargetManager; devs, targets, shard = SessionTargetManager.load_cluster_targets(); print('DEVICES:', [(d.device_id, d.sender_cust_id, d.sender_name) for d in devs]); print('COUNT:', len(targets)); print('TARGETS:', [(t.name, t.chat_id) for t in targets]); print('SHARD:', shard)"
+  ```
+* **多机协同注意事项**：若在 [`config/im_targets.yaml`](file:///d:/projects/santiao-anti/config/im_targets.yaml) 中启用 `shard_by_device: true` 进行 5 机分片发送，需确认所有参与发包的设备账号均已在新群成员列表中；若仅单台设备测试，直接以该设备执行即可。
