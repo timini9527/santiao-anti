@@ -345,26 +345,37 @@ def build_mac(build_dmg_flag: bool = BUILD_DMG):
         "--hidden-import=imagehash",
         "--hidden-import=PIL",
         "--hidden-import=tidevice",
-        "--hidden-import=av",
-        "--hidden-import=pymobiledevice3",
-        "--hidden-import=pymobiledevice3.remote.userspace_tunnel",
-        "--hidden-import=pymobiledevice3.remote.core_device.display_service",
-        "--hidden-import=pymobiledevice3.remote.core_device.screen_stream",
-        "--hidden-import=pymobiledevice3.services.power_assertion",
-        "--hidden-import=pymobiledevice3.tunneld.api",
-        "--hidden-import=pymobiledevice3.services.dvt.instruments.dvt_provider",
-        "--hidden-import=pymobiledevice3.services.dvt.instruments.screenshot",
         "--hidden-import=uiautomator2",
         "--hidden-import=grpc",
         "--collect-all=tidevice",
-        "--collect-all=av",
-        "--collect-all=pymobiledevice3",
         "--collect-all=uiautomator2",
         "--collect-all=hmnextauto",
-        "--copy-metadata=av",
-        "--copy-metadata=pymobiledevice3",
         "--copy-metadata=tidevice",
     ]
+
+    # 动态检测当前打包环境中已安装的扩展库并注入 PyInstaller
+    import importlib.util
+    import platform
+    target_arch = platform.machine().lower()
+    if target_arch in ("x86_64", "arm64"):
+        cmd.append(f"--target-arch={target_arch}")
+
+    if importlib.util.find_spec("av") is not None:
+        cmd.extend(["--hidden-import=av", "--collect-all=av", "--copy-metadata=av"])
+
+    if importlib.util.find_spec("pymobiledevice3") is not None:
+        cmd.extend([
+            "--hidden-import=pymobiledevice3",
+            "--hidden-import=pymobiledevice3.remote.userspace_tunnel",
+            "--hidden-import=pymobiledevice3.remote.core_device.display_service",
+            "--hidden-import=pymobiledevice3.remote.core_device.screen_stream",
+            "--hidden-import=pymobiledevice3.services.power_assertion",
+            "--hidden-import=pymobiledevice3.tunneld.api",
+            "--hidden-import=pymobiledevice3.services.dvt.instruments.dvt_provider",
+            "--hidden-import=pymobiledevice3.services.dvt.instruments.screenshot",
+            "--collect-all=pymobiledevice3",
+            "--copy-metadata=pymobiledevice3",
+        ])
 
     # 附加 desktop_app/assets
     assets_dir = os.path.join(CURRENT_DIR, "assets")

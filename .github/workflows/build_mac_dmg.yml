@@ -34,17 +34,24 @@ jobs:
       - name: 检出工程代码仓库
         uses: actions/checkout@v4
 
+      - name: 启用 Rosetta 2 转译支持 (保障 Intel_x86_64 二进制在云端节点运行)
+        if: matrix.arch == 'x64'
+        run: |
+          if [ "$(uname -m)" = "arm64" ]; then
+            sudo softwareupdate --install-rosetta --agree-to-license || true
+          fi
+
       - name: 配置 Python 3.13 运行环境 (${{ matrix.arch }})
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
           architecture: ${{ matrix.arch }}
-          cache: 'pip'
 
       - name: 安装桌面端与打包核心依赖 (${{ matrix.arch }})
         run: |
           ${{ matrix.cmd_prefix }} python -m pip install --upgrade pip
-          ${{ matrix.cmd_prefix }} pip install PyQt6 PyInstaller Pillow pytest pytest-check pytest-rerunfailures allure-pytest Appium-Python-Client selenium hmnextauto lxml requests websockets PyYAML colorlog ImageHash pandas pypinyin python-dateutil psutil opencv-python-headless numpy setuptools tidevice pymobiledevice3 av uiautomator2 grpcio
+          ${{ matrix.cmd_prefix }} pip install --no-cache-dir PyQt6 PyInstaller Pillow pytest pytest-check pytest-rerunfailures allure-pytest Appium-Python-Client selenium hmnextauto lxml requests websockets PyYAML colorlog ImageHash pandas pypinyin python-dateutil psutil "opencv-python-headless<5.0" numpy setuptools tidevice uiautomator2 grpcio
+          ${{ matrix.cmd_prefix }} pip install --no-cache-dir pymobiledevice3 av || echo "提示: 扩展投屏依赖跳过，使用内嵌 tidevice 引擎"
 
       - name: 执行自动化打包生成原生 .app 与 .dmg 安装镜像 (${{ matrix.arch }})
         run: |

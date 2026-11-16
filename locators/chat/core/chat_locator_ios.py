@@ -91,17 +91,17 @@ class ChatLocatorIos:
     IMAGE_ID = "message_image"
     IMAGE_ITEM = (                                                                      # 图片/表情包
         AppiumBy.XPATH,
-        "//XCUIElementTypeCell//XCUIElementTypeImage",
+        "//XCUIElementTypeOther/XCUIElementTypeImage",
     )
     PREVIEW_IMAGE_ID = "preview_image"
     PREVIEW_IMAGE_ITEM = (                                                              # 预览图片
         AppiumBy.XPATH,
-        "//XCUIElementTypeScrollView//XCUIElementTypeImage | //XCUIElementTypeImage[contains(@name, 'preview')]",
+        "//XCUIElementTypeOther/XCUIElementTypeScrollView/XCUIElementTypeImage",
     )
     IV_DOWNLOAD_ID = "iv_download"
     IV_DOWNLOAD_ITEM = (                                                                # 下载图标
-        AppiumBy.IOS_PREDICATE,
-        "type == 'XCUIElementTypeButton' AND (name CONTAINS '下载' OR name CONTAINS '保存' OR name CONTAINS 'download')",
+        AppiumBy.ACCESSIBILITY_ID,
+        "st photo browser down",
     )
 
     # 3. 视频消息
