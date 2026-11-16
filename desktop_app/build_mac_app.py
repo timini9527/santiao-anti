@@ -98,7 +98,7 @@ def build_dmg(app_bundle_path: str, output_dmg_path: str):
         "-srcfolder", dmg_temp_dir,
         "-ov",
         "-format", "UDZO",
-        "-imagekey", "zlib-level=1",
+        "-imagekey", "zlib-level=1", 
         output_dmg_path
     ]
     try:
