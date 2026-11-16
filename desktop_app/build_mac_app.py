@@ -353,12 +353,8 @@ def build_mac(build_dmg_flag: bool = BUILD_DMG):
         "--copy-metadata=tidevice",
     ]
 
-    # 动态检测当前打包环境中已安装的扩展库并注入 PyInstaller
+    # 动态检测当前打包环境中已安装的扩展库并注入 PyInstaller (原生构建节点无需额外指定 --target-arch)
     import importlib.util
-    import platform
-    target_arch = platform.machine().lower()
-    if target_arch in ("x86_64", "arm64"):
-        cmd.append(f"--target-arch={target_arch}")
 
     if importlib.util.find_spec("av") is not None:
         cmd.extend(["--hidden-import=av", "--collect-all=av", "--copy-metadata=av"])
