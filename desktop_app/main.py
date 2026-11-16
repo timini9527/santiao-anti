@@ -36,6 +36,37 @@ if "--internal-pytest" in sys.argv:
         pass
     sys.exit(pytest.main(_pytest_args))
 
+# 内置 pymobiledevice3 命令行自举模式：供 WDA 守护与端口转发免外部 Python 调用
+if "--internal-pmd3" in sys.argv:
+    _idx = sys.argv.index("--internal-pmd3")
+    sys.argv = ["pymobiledevice3"] + sys.argv[_idx + 1:]
+    from pymobiledevice3.__main__ import main as _pmd3_main
+    sys.exit(_pmd3_main())
+
+# 内置 tidevice 命令行自举模式：供设备枚举免外部 CLI 调用
+if "--internal-tidevice" in sys.argv:
+    _idx = sys.argv.index("--internal-tidevice")
+    sys.argv = ["tidevice"] + sys.argv[_idx + 1:]
+    from tidevice.__main__ import main as _tidevice_main
+    sys.exit(_tidevice_main())
+
+# 内置 iOS WDA 守护进程自举模式：一键启动真机 WDA 与 8100 端口转发
+if "--internal-wda" in sys.argv:
+    try:
+        from desktop_app.core.path_resolver import SmartPathResolver
+        _root = SmartPathResolver.get_project_root()
+        if _root:
+            if _root not in sys.path:
+                sys.path.insert(0, _root)
+            os.chdir(_root)
+            _wda_script = os.path.join(_root, "scripts", "start_ios_wda.py")
+            import runpy
+            runpy.run_path(_wda_script, run_name="__main__")
+    except Exception as _wda_err:
+        print(f"❌ [内置 WDA 引擎启动异常]: {_wda_err}")
+        sys.exit(1)
+    sys.exit(0)
+
 
 def _prepare_qt_runtime() -> None:
     """在 PyInstaller 环境及 Windows 下注册系统目录与 Qt6 原生 DLL/插件目录，彻底避免 DLL 符号冲突。"""

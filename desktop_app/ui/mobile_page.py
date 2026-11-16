@@ -577,6 +577,33 @@ class MobilePage(QWidget):
         self.btn_install_env.clicked.connect(self._install_mobile_environment)
         svc_layout.addWidget(self.btn_install_env)
 
+        # 按钮 5: 一键启动 iOS WDA 服务 (免 Xcode/免外部 Python 拉起真机 WDA + 8100 端口转发)
+        self.btn_start_wda = QPushButton("📱 启动 WDA")
+        self.btn_start_wda.setToolTip("一键启动 iOS 真机 WebDriverAgent 守护服务并转发 8100 端口至本机")
+        self.btn_start_wda.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_start_wda.setStyleSheet("""
+            QPushButton {
+                background-color: #f5f3ff;
+                color: #6d28d9;
+                border: 1px solid #ddd6fe;
+                border-radius: 6px;
+                padding: 5px 12px;
+                font-size: 12px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background-color: #ede9fe;
+                border-color: #c4b5fd;
+                color: #5b21b6;
+            }
+            QPushButton:pressed {
+                background-color: #ddd6fe;
+                border-color: #8b5cf6;
+            }
+        """)
+        self.btn_start_wda.clicked.connect(self._start_ios_wda_service)
+        svc_layout.addWidget(self.btn_start_wda)
+
         h_layout.addWidget(svc_btn_group)
         h_layout.addStretch()
 
@@ -3420,5 +3447,105 @@ class MobilePage(QWidget):
         else:
             self.append_log(f"❌ [安装失败] {msg}")
             QMessageBox.warning(self, "环境安装提示", f"⚠️ {msg}")
+
+    def _start_ios_wda_service(self):
+        """一键启动 iOS 真机 WebDriverAgent (WDA) 守护与 8100 端口转发"""
+        import urllib.request
+
+        self.append_log("==================================================")
+        self.append_log("📱 [启动 WDA] 正在检测本地 8100 端口与 iPhone WDA 状态...")
+
+        # 1. 快速探活：若 8100 已响应，无需重复启动
+        try:
+            with urllib.request.urlopen("http://127.0.0.1:8100/status", timeout=1.2) as resp:
+                if resp.status == 200:
+                    self.append_log("✅ [WDA 在线] http://127.0.0.1:8100/status 响应正常，可直接执行 iOS 用例！")
+                    QMessageBox.information(
+                        self,
+                        "WDA 服务已在线",
+                        "✅ iOS WebDriverAgent (127.0.0.1:8100) 已处于运行状态！\n\n无需重复启动，可直接运行 iOS 自动化测试。",
+                    )
+                    return
+        except Exception:
+            pass
+
+        if getattr(self, "_wda_thread", None) and self._wda_thread.isRunning():
+            self.append_log("⏳ [WDA 启动中] WDA 守护服务正在启动，请查看上方日志输出...")
+            QMessageBox.information(self, "正在启动", "iOS WDA 服务正在启动中，请观察右侧控制台日志。")
+            return
+
+        project_root = SmartPathResolver.get_project_root()
+        wda_script = os.path.join(project_root, "scripts", "start_ios_wda.py")
+        if not os.path.isfile(wda_script):
+            self.append_log(f"❌ [WDA 失败] 未找到启动脚本: {wda_script}")
+            QMessageBox.warning(self, "未找到脚本", f"未找到 WDA 启动脚本:\n{wda_script}")
+            return
+
+        if getattr(sys, "frozen", False):
+            cmd = [sys.executable, "--internal-wda"]
+        else:
+            cmd = [sys.executable, "-u", wda_script]
+
+        self.btn_start_wda.setText("⏳ WDA 运行中")
+        self.append_log(f"▶ 正在拉起 iOS WDA 守护进程: {' '.join(cmd)}")
+        self.append_log("💡 提示: 请保持 iPhone USB 连接并处于解锁亮屏状态，看到 'WDA 就绪' 日志即可直接运行用例。")
+
+        class _WdaDaemonThread(QThread):
+            log_sig = pyqtSignal(str)
+            done_sig = pyqtSignal(int)
+
+            def __init__(self, run_cmd: List[str], cwd: str, parent: Optional[QWidget] = None):
+                super().__init__(parent)
+                self.run_cmd = run_cmd
+                self.cwd = cwd
+                self.proc: Optional[subprocess.Popen] = None
+
+            def run(self):
+                try:
+                    no_win = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+                    env = os.environ.copy()
+                    env["PYTHONUNBUFFERED"] = "1"
+                    env["PYTHONIOENCODING"] = "utf-8"
+                    for var in ("PYTHONHOME", "PYTHONPATH", "_MEIPASS2", "_MEIPASS"):
+                        env.pop(var, None)
+                    self.proc = subprocess.Popen(
+                        self.run_cmd,
+                        cwd=self.cwd,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                        encoding="utf-8",
+                        errors="replace",
+                        env=env,
+                        creationflags=no_win if sys.platform == "win32" else 0,
+                    )
+                    if self.proc.stdout:
+                        for raw_line in self.proc.stdout:
+                            line = raw_line.rstrip()
+                            if line:
+                                self.log_sig.emit(f"[WDA] {line}")
+                    ret = self.proc.wait()
+                    self.done_sig.emit(ret)
+                except Exception as ex:
+                    self.log_sig.emit(f"❌ [WDA 守护异常]: {ex}")
+                    self.done_sig.emit(-1)
+
+            def stop(self):
+                if self.proc and self.proc.poll() is None:
+                    try:
+                        self.proc.terminate()
+                    except Exception:
+                        pass
+
+        self._wda_thread = _WdaDaemonThread(cmd, project_root, parent=self)
+        self._wda_thread.log_sig.connect(self.append_log)
+        self._wda_thread.done_sig.connect(self._on_wda_daemon_stopped)
+        self._wda_thread.start()
+
+    def _on_wda_daemon_stopped(self, exit_code: int):
+        """WDA 守护进程退出回调"""
+        if hasattr(self, "btn_start_wda"):
+            self.btn_start_wda.setText("📱 启动 WDA")
+        self.append_log(f"ℹ️ [WDA 守护已退出] 退出码: {exit_code}")
 
 

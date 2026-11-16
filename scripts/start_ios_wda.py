@@ -39,11 +39,25 @@ DEFAULT_WDA_BUNDLE_ID = "com.facebook.WebDriverAgentRunner.xctrunner.VX43WKZ6A5"
 WDA_STATUS_URL = "http://127.0.0.1:8100/status"
 
 
+def _build_pmd3_cmd(*args: str) -> list[str]:
+    """构建跨态 pymobiledevice3 命令 (自动兼容打包内置自举模式与源码模式)"""
+    if getattr(sys, "frozen", False):
+        return [sys.executable, "--internal-pmd3", *args]
+    return [sys.executable, "-u", "-m", "pymobiledevice3", *args]
+
+
+def _build_tidevice_cmd(*args: str) -> list[str]:
+    """构建跨态 tidevice 命令 (自动兼容打包内置自举模式与源码模式)"""
+    if getattr(sys, "frozen", False):
+        return [sys.executable, "--internal-tidevice", *args]
+    return ["tidevice", *args]
+
+
 def get_connected_device() -> Optional[str]:
     """检查当前是否连接了 iPhone 真机 (优先 tidevice，兜底 pymobiledevice3 usbmux list)"""
     try:
         res = subprocess.run(
-            ["tidevice", "list"],
+            _build_tidevice_cmd("list"),
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -58,7 +72,7 @@ def get_connected_device() -> Optional[str]:
         pass
     try:
         res = subprocess.run(
-            [sys.executable, "-u", "-m", "pymobiledevice3", "usbmux", "list"],
+            _build_pmd3_cmd("usbmux", "list"),
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -82,7 +96,7 @@ def ensure_developer_disk_mounted(force: bool = False) -> bool:
     if not force:
         try:
             chk = subprocess.run(
-                [sys.executable, "-u", "-m", "pymobiledevice3", "mounter", "lookup", "Personalized"],
+                _build_pmd3_cmd("mounter", "lookup", "Personalized"),
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
@@ -100,7 +114,7 @@ def ensure_developer_disk_mounted(force: bool = False) -> bool:
     print("    ➜ 检测到开发者镜像未挂载，正在自动挂载 DeveloperDiskImage (auto-mount)...")
     try:
         mnt = subprocess.run(
-            [sys.executable, "-u", "-m", "pymobiledevice3", "mounter", "auto-mount"],
+            _build_pmd3_cmd("mounter", "auto-mount"),
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -122,7 +136,7 @@ def get_wda_bundle_id() -> str:
     """自动获取真机已安装的 WDA Bundle ID，获取不到时使用默认值"""
     try:
         res = subprocess.run(
-            ["tidevice", "applist"],
+            _build_tidevice_cmd("applist"),
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -213,7 +227,7 @@ def main() -> None:
         nonlocal forwarder_proc
         if forwarder_proc is None or forwarder_proc.poll() is not None:
             forwarder_proc = subprocess.Popen(
-                [sys.executable, "-u", "-m", "pymobiledevice3", "usbmux", "forward", "8100", "8100"],
+                _build_pmd3_cmd("usbmux", "forward", "8100", "8100"),
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 creationflags=creationflags,
@@ -236,17 +250,7 @@ def main() -> None:
         _ensure_forwarder()
 
         wda_proc = subprocess.Popen(
-            [
-                sys.executable,
-                "-u",
-                "-m",
-                "pymobiledevice3",
-                "developer",
-                "dvt",
-                "xcuitest",
-                "--userspace",
-                bundle_id,
-            ],
+            _build_pmd3_cmd("developer", "dvt", "xcuitest", "--userspace", bundle_id),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
