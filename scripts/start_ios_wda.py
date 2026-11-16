@@ -223,13 +223,35 @@ def main() -> None:
     print("[3/5] 正在开辟电脑 8100 端口透传隧道 (127.0.0.1:8100 -> iPhone:8100)...")
     creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
+    use_tidevice_relay = True
+
     def _ensure_forwarder() -> None:
-        nonlocal forwarder_proc
+        nonlocal forwarder_proc, use_tidevice_relay
         if forwarder_proc is None or forwarder_proc.poll() is not None:
+            if forwarder_proc is not None and forwarder_proc.poll() is not None:
+                # 转发器异常退出时输出原因并切换备用通道
+                err_out = ""
+                try:
+                    if forwarder_proc.stderr:
+                        err_out = forwarder_proc.stderr.read().strip()
+                except Exception:
+                    pass
+                print(f"    ⚠️ 8100 端口转发进程已退出 (code={forwarder_proc.returncode}) {err_out}，正在切换通道重启...")
+                use_tidevice_relay = not use_tidevice_relay
+
+            fwd_cmd = (
+                _build_tidevice_cmd("relay", "8100", "8100")
+                if use_tidevice_relay
+                else _build_pmd3_cmd("usbmux", "forward", "8100", "8100")
+            )
+            print(f"    ➜ 启动 8100 端口转发通道: {' '.join(fwd_cmd)}")
             forwarder_proc = subprocess.Popen(
-                _build_pmd3_cmd("usbmux", "forward", "8100", "8100"),
+                fwd_cmd,
                 stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
                 creationflags=creationflags,
             )
 

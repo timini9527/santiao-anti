@@ -3449,13 +3449,23 @@ class MobilePage(QWidget):
             QMessageBox.warning(self, "环境安装提示", f"⚠️ {msg}")
 
     def _start_ios_wda_service(self):
-        """一键启动 iOS 真机 WebDriverAgent (WDA) 守护与 8100 端口转发"""
+        """一键启动/停止 iOS 真机 WebDriverAgent (WDA) 守护与 8100 端口转发 (支持再次点击停止)"""
         import urllib.request
+
+        # 0. 若 WDA 守护线程正在运行，再次点击直接执行停止与端口清理
+        if getattr(self, "_wda_thread", None) and self._wda_thread.isRunning():
+            self.append_log("==================================================")
+            self.append_log("⏹ [停止 WDA] 正在停止 iOS WDA 守护进程并释放 8100 端口...")
+            self._wda_thread.stop()
+            self._kill_port_process(8100)
+            self.btn_start_wda.setText("📱 启动 WDA")
+            self.append_log("✅ [停止 WDA] iOS WDA 守护与 8100 端口已停止。")
+            return
 
         self.append_log("==================================================")
         self.append_log("📱 [启动 WDA] 正在检测本地 8100 端口与 iPhone WDA 状态...")
 
-        # 1. 快速探活：若 8100 已响应，无需重复启动
+        # 1. 快速探活：若 8100 已被外部服务占用且响应 200
         try:
             with urllib.request.urlopen("http://127.0.0.1:8100/status", timeout=1.2) as resp:
                 if resp.status == 200:
@@ -3469,11 +3479,6 @@ class MobilePage(QWidget):
         except Exception:
             pass
 
-        if getattr(self, "_wda_thread", None) and self._wda_thread.isRunning():
-            self.append_log("⏳ [WDA 启动中] WDA 守护服务正在启动，请查看上方日志输出...")
-            QMessageBox.information(self, "正在启动", "iOS WDA 服务正在启动中，请观察右侧控制台日志。")
-            return
-
         project_root = SmartPathResolver.get_project_root()
         wda_script = os.path.join(project_root, "scripts", "start_ios_wda.py")
         if not os.path.isfile(wda_script):
@@ -3486,12 +3491,13 @@ class MobilePage(QWidget):
         else:
             cmd = [sys.executable, "-u", wda_script]
 
-        self.btn_start_wda.setText("⏳ WDA 运行中")
+        self.btn_start_wda.setText("⏳ WDA 启动中 (点击停止)")
         self.append_log(f"▶ 正在拉起 iOS WDA 守护进程: {' '.join(cmd)}")
-        self.append_log("💡 提示: 请保持 iPhone USB 连接并处于解锁亮屏状态，看到 'WDA 就绪' 日志即可直接运行用例。")
+        self.append_log("💡 提示: 请保持 iPhone USB 连接并处于解锁亮屏状态，看到 '8100 就绪' 日志后即可运行用例。")
 
         class _WdaDaemonThread(QThread):
             log_sig = pyqtSignal(str)
+            ready_sig = pyqtSignal()
             done_sig = pyqtSignal(int)
 
             def __init__(self, run_cmd: List[str], cwd: str, parent: Optional[QWidget] = None):
@@ -3499,8 +3505,28 @@ class MobilePage(QWidget):
                 self.run_cmd = run_cmd
                 self.cwd = cwd
                 self.proc: Optional[subprocess.Popen] = None
+                self._stop_flag = False
+                self._notified_ready = False
 
             def run(self):
+                import threading
+                import time as _time
+                import urllib.request as _req
+
+                def _probe_loop():
+                    for _ in range(90):
+                        if self._stop_flag or self._notified_ready:
+                            return
+                        try:
+                            with _req.urlopen("http://127.0.0.1:8100/status", timeout=1.0) as r:
+                                if r.status == 200:
+                                    self._notified_ready = True
+                                    self.ready_sig.emit()
+                                    return
+                        except Exception:
+                            pass
+                        _time.sleep(1.0)
+
                 try:
                     no_win = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
                     env = os.environ.copy()
@@ -3519,11 +3545,17 @@ class MobilePage(QWidget):
                         env=env,
                         creationflags=no_win if sys.platform == "win32" else 0,
                     )
+                    threading.Thread(target=_probe_loop, daemon=True).start()
                     if self.proc.stdout:
                         for raw_line in self.proc.stdout:
+                            if self._stop_flag:
+                                break
                             line = raw_line.rstrip()
                             if line:
                                 self.log_sig.emit(f"[WDA] {line}")
+                                if not self._notified_ready and "SUCCESS" in line and "8100" in line:
+                                    self._notified_ready = True
+                                    self.ready_sig.emit()
                     ret = self.proc.wait()
                     self.done_sig.emit(ret)
                 except Exception as ex:
@@ -3531,21 +3563,51 @@ class MobilePage(QWidget):
                     self.done_sig.emit(-1)
 
             def stop(self):
+                self._stop_flag = True
                 if self.proc and self.proc.poll() is None:
                     try:
                         self.proc.terminate()
+                        self.proc.wait(timeout=2)
                     except Exception:
-                        pass
+                        try:
+                            self.proc.kill()
+                        except Exception:
+                            pass
 
         self._wda_thread = _WdaDaemonThread(cmd, project_root, parent=self)
         self._wda_thread.log_sig.connect(self.append_log)
+        self._wda_thread.ready_sig.connect(self._on_wda_ready)
         self._wda_thread.done_sig.connect(self._on_wda_daemon_stopped)
         self._wda_thread.start()
+
+    def _on_wda_ready(self):
+        """WDA 8100 端口就绪回调"""
+        if hasattr(self, "btn_start_wda"):
+            self.btn_start_wda.setText("🟢 WDA 已就绪 (点击停止)")
+        self.append_log("🎉 [WDA 就绪] http://127.0.0.1:8100/status 已成功连通，现在可以运行 iOS 用例！")
 
     def _on_wda_daemon_stopped(self, exit_code: int):
         """WDA 守护进程退出回调"""
         if hasattr(self, "btn_start_wda"):
             self.btn_start_wda.setText("📱 启动 WDA")
         self.append_log(f"ℹ️ [WDA 守护已退出] 退出码: {exit_code}")
+
+    def _kill_port_process(self, port: int):
+        """跨平台精准释放指定端口的监听进程"""
+        try:
+            if sys.platform == "win32":
+                proc = subprocess.run(f"netstat -ano | findstr :{port}", shell=True, capture_output=True, text=True)
+                for line in (proc.stdout or "").splitlines():
+                    parts = line.split()
+                    if len(parts) >= 5 and "LISTENING" in parts and parts[-1].isdigit():
+                        subprocess.run(f"taskkill /F /T /PID {parts[-1]}", shell=True, capture_output=True)
+            else:
+                proc = subprocess.run(["lsof", "-ti", f":{port}"], capture_output=True, text=True)
+                for pid_str in (proc.stdout or "").splitlines():
+                    pid = pid_str.strip()
+                    if pid.isdigit():
+                        subprocess.run(["kill", "-9", pid], capture_output=True)
+        except Exception:
+            pass
 
 
