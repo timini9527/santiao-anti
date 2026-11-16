@@ -123,22 +123,50 @@ class TestExecutionWorker(QThread):
         if self.config.get("web_receipt_data"):
             env["WEB_RECEIPT_DATA"] = self.config["web_receipt_data"]
 
-        # 智能动态定位真实的 Python 解释器（基于 SmartPathResolver 多级雷达探测）
+        # 智能动态定位真实的 Python 解释器，并校验其是否具备 pytest 运行环境
         py_info = SmartPathResolver.discover_python_runtime()
-        py_bin = py_info.get("executable") or (sys.executable if not getattr(sys, 'frozen', False) else "python")
+        py_bin = py_info.get("executable") or (sys.executable if not getattr(sys, 'frozen', False) else "python3")
 
-        # 若命中内置便携环境，确保将其 Scripts 与根目录注入 PATH 最前列
-        py_home = os.path.dirname(os.path.abspath(py_bin))
-        scripts_dir = os.path.join(py_home, "Scripts")
-        env["PATH"] = f"{py_home};{scripts_dir};{env.get('PATH', '')}"
+        use_internal_pytest = False
+        if getattr(sys, 'frozen', False):
+            # 打包运行态：探测外部 Python 是否已安装 pytest；若未安装（如全新裸机 Mac），无缝切换内置自举引擎
+            ext_has_pytest = False
+            if py_bin and os.path.isfile(py_bin):
+                try:
+                    no_win = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+                    probe = subprocess.run(
+                        [py_bin, "-c", "import pytest"],
+                        capture_output=True,
+                        timeout=3,
+                        env=env,
+                        creationflags=no_win if sys.platform == "win32" else 0,
+                    )
+                    ext_has_pytest = (probe.returncode == 0)
+                except Exception:
+                    ext_has_pytest = False
+            if not ext_has_pytest:
+                use_internal_pytest = True
 
-        # 构造 Pytest 执行命令
-        cmd = [
-            py_bin, "-m", "pytest",
-            "-v", "-s",
-            f"--alluredir={self.allure_results_dir}",
-            "--clean-alluredir"
-        ]
+        if use_internal_pytest:
+            cmd = [
+                sys.executable, "--internal-pytest",
+                "-v", "-s",
+                f"--alluredir={self.allure_results_dir}",
+                "--clean-alluredir"
+            ]
+            self.log_signal.emit("[运行环境]: 内置自举测试引擎 (免外部 Python 依赖)")
+        else:
+            # 外部 Python 环境：使用 os.pathsep 跨平台兼容注入 PATH
+            py_home = os.path.dirname(os.path.abspath(py_bin))
+            scripts_dir = os.path.join(py_home, "Scripts" if sys.platform == "win32" else "bin")
+            env["PATH"] = f"{py_home}{os.pathsep}{scripts_dir}{os.pathsep}{env.get('PATH', '')}"
+            cmd = [
+                py_bin, "-m", "pytest",
+                "-v", "-s",
+                f"--alluredir={self.allure_results_dir}",
+                "--clean-alluredir"
+            ]
+            self.log_signal.emit(f"[运行环境]: {py_bin}")
 
         nodeid = self.config.get("nodeid")
         if nodeid:
@@ -146,7 +174,6 @@ class TestExecutionWorker(QThread):
         else:
             cmd.append("tests/chat")
 
-        self.log_signal.emit(f"[运行环境]: {py_bin}")
         self.log_signal.emit(f"[执行命令]: {' '.join(cmd)}\n")
 
         # 启动子进程：在 Windows 平台显式指定 CREATE_NO_WINDOW，彻底杜绝弹出控制台命令框

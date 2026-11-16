@@ -23,7 +23,20 @@ def resolve_project_root() -> str:
         return os.path.dirname(current_dir)
 
 PROJECT_ROOT = resolve_project_root()
-CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "desktop_settings.json")
+try:
+    if sys.platform == "darwin" and os.path.abspath(PROJECT_ROOT).startswith("/Volumes/"):
+        raise PermissionError("DMG 只读卷")
+    _cfg_dir = os.path.join(PROJECT_ROOT, "config")
+    os.makedirs(_cfg_dir, exist_ok=True)
+    _probe = os.path.join(_cfg_dir, ".cfg_probe")
+    with open(_probe, "w", encoding="utf-8") as _f:
+        _f.write("ok")
+    os.remove(_probe)
+    CONFIG_FILE = os.path.join(_cfg_dir, "desktop_settings.json")
+except Exception:
+    _user_cfg_dir = os.path.join(os.path.expanduser("~"), "SantiaoAutoTest", "config")
+    os.makedirs(_user_cfg_dir, exist_ok=True)
+    CONFIG_FILE = os.path.join(_user_cfg_dir, "desktop_settings.json")
 
 DEFAULT_SETTINGS: Dict[str, Any] = {
     # 移动端测试默认状态

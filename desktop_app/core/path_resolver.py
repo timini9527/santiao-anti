@@ -32,6 +32,8 @@ def ensure_cross_platform_path() -> None:
             "/usr/local/sbin",
             os.path.expanduser("~/bin"),
             os.path.expanduser("~/.local/bin"),
+            os.path.expanduser("~/.local/node/bin"),
+            "/usr/local/node/bin",
             # Android SDK 默认目录 (adb)
             os.path.expanduser("~/Library/Android/sdk/platform-tools"),
             # 鸿蒙 DevEco Studio 内置默认 toolchains 目录 (hdc)

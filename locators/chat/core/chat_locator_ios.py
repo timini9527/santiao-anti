@@ -124,15 +124,15 @@ class ChatLocatorIos:
     )
 
     # 5. 定位消息
-    LOCATION_CARD_ID = "location_card"
+    LOCATION_CARD_XPATH = "//XCUIElementTypeCell[.//XCUIElementTypeImage[starts-with(@name, 'ic_avatar_decoration')] and count(.//XCUIElementTypeStaticText) >= 2 and not(.//XCUIElementTypeStaticText[contains(@name, '个人名片') or contains(@name, '群名片')])]"
     LOCATION_CARD_ITEM = (                                                              # 定位卡片容器
         AppiumBy.XPATH,
-        "//XCUIElementTypeCell[.//XCUIElementTypeImage[contains(@name, 'location') or contains(@name, 'map') or contains(@name, '位置')]]",
+        f"{LOCATION_CARD_XPATH}",
     )
     LOCATION_MESSAGE_TITLE_ID = "location_title"
     LOCATION_MESSAGE_TITLE = (                                                          # 定位主标题
         AppiumBy.XPATH,
-        "//XCUIElementTypeCell[.//XCUIElementTypeImage[contains(@name, 'location') or contains(@name, 'map') or contains(@name, '位置')]]//XCUIElementTypeStaticText[1]",
+        f"{LOCATION_CARD_XPATH}/",
     )
     LOCATION_MESSAGE_SUBTITLE_ID = "location_subtitle"
     LOCATION_MESSAGE_SUBTITLE = (                                                       # 定位副标题/详细地址

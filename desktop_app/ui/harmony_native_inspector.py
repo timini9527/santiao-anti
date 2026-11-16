@@ -5588,7 +5588,9 @@ def validate_xpath_syntax(xpath_str: str) -> Optional[str]:
                             f"既非有效数字索引，也非合法子元素标签或属性过滤，请检查是否拼写错误"
                         )
 
-                if "=" in p_content and not any(p_content.startswith(fn) for fn in ["contains", "starts-with", "not"]):
+                # 仅对简单单属性等值表达式做 '=' 校验，跳过复合逻辑/不等式/函数调用 (交给 lxml 权威校验)
+                is_compound_expr = any(op in p_content for op in (" and ", " or ", ">=", "<=", "!="))
+                if "=" in p_content and not is_compound_expr and not any(p_content.startswith(fn) for fn in ["contains", "starts-with", "not", "count"]):
                     eq_parts = p_content.split("=", 1)
                     left = eq_parts[0].strip()
                     right = eq_parts[1].strip()
@@ -5607,8 +5609,8 @@ def validate_xpath_syntax(xpath_str: str) -> Optional[str]:
                         if len(c_args) < 2 or not c_args[0] or not c_args[1]:
                             return "contains() 函数需要 2 个参数，格式如: contains(@text, '关键字')"
 
-                # 递归校验以 . 或 / 开头的子路径嵌套谓语，如 [.//Text[@text='...']]
-                if p_content.startswith((".", "//", "/")):
+                # 仅对纯粹的单子路径嵌套谓语做递归校验，复合布尔表达式 (and/or/比较运算) 交由下方 lxml.etree.XPath 深度校验
+                if p_content.startswith((".", "//", "/")) and not is_compound_expr:
                     sub_err = validate_xpath_syntax(p_content)
                     if sub_err:
                         return f"嵌套谓语 '[{p_content}]' 内部语法错误: {sub_err}"
@@ -8924,13 +8926,16 @@ class HarmonyAppiumInspector(QMainWindow):
         self.dom_search_bar.setVisible(False)
         mid_layout.addWidget(self.dom_search_bar)
 
-        # 树视图：开启像素级平滑滚动条，彻底关闭切换节点时的自动横向跳动
+        # 树视图：开启像素级平滑水平/垂直滚动条，禁用文本省略与自动横向跳动
         self.tree_widget = DOMTreeWidget()
         self.tree_widget.setIndentation(13)
         self.tree_widget.setHeaderLabels([""])  # 留空交由表头自定义工具条统一渲染
+        self.tree_widget.setTextElideMode(Qt.TextElideMode.ElideNone)
         self.tree_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.tree_widget.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self.tree_widget.header().setStretchLastSection(True)
+        self.tree_widget.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.tree_widget.header().setStretchLastSection(False)
+        self.tree_widget.header().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         self.tree_widget.header().setMinimumHeight(32)
 
         # 在表头栏中构建标题与【显示被遮挡元素】复选框控件 (对标截图精准右侧布局)

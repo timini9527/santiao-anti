@@ -2952,6 +2952,8 @@ class MobilePage(QWidget):
             mac_candidates = [
                 "/opt/homebrew/bin/appium",
                 "/usr/local/bin/appium",
+                os.path.expanduser("~/.local/node/bin/appium"),
+                "/usr/local/node/bin/appium",
                 os.path.expanduser("~/.nvm/versions/node/current/bin/appium"),
             ]
             for c in mac_candidates:
@@ -3294,106 +3296,55 @@ class MobilePage(QWidget):
         steps: List[Tuple[str, List[str], bool]] = []
 
         if sys.platform == "darwin":
-            brew_bin = shutil.which("brew") or (
-                "/opt/homebrew/bin/brew" if os.path.isfile("/opt/homebrew/bin/brew")
-                else ("/usr/local/bin/brew" if os.path.isfile("/usr/local/bin/brew") else None)
+            # 彻底摆脱 Homebrew 对 Intel Mac 虚拟机的封杀：采用免 sudo 纯用户态官方直装方案 (Intel + M系列通用)
+            local_node_bin = os.path.expanduser("~/.local/node/bin")
+            npm_bin = shutil.which("npm") or (
+                os.path.join(local_node_bin, "npm") if os.path.isfile(os.path.join(local_node_bin, "npm")) else None
             )
-            npm_bin = shutil.which("npm")
             adb_bin = shutil.which("adb")
-            idevice_bin = shutil.which("idevice_id")
+            appium_bin = shutil.which("appium") or (
+                os.path.join(local_node_bin, "appium") if os.path.isfile(os.path.join(local_node_bin, "appium")) else None
+            )
 
-            # 场景 A: 全新纯裸机 macOS (既无 brew 也无 npm)，安装 Homebrew 必须输入系统密码，拉起 Terminal 自动脚本执行
-            if not brew_bin and not npm_bin:
-                self.append_log("⚠️ 当前 Mac 未安装 Homebrew 与 Node.js，将通过系统终端执行全自动引导安装...")
-                reply = QMessageBox.question(
-                    self,
-                    "需要拉起系统终端完成首次安装",
-                    "检测到当前 Mac 属于全新环境（未安装 Homebrew 与 Node.js）。\n\n"
-                    "点击【Yes】将自动打开 Mac 终端并一键安装：\n"
-                    "  1. Homebrew 包管理器（需在终端输入一次 Mac 开机密码）\n"
-                    "  2. Node.js & npm\n"
-                    "  3. Appium 2.x 及三端驱动 (XCUITest / UIAutomator2 / HarmonyOS)\n"
-                    "  4. Android 调试工具 (adb) 与 iOS 调试工具 (libimobiledevice)\n\n"
-                    "是否立即打开终端开始全自动安装？",
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                    QMessageBox.StandardButton.Yes,
+            # 将 ~/.local/node/bin 提前写入当前进程 PATH 供后续命令流无缝衔接
+            os.environ["PATH"] = f"{local_node_bin}:{os.path.expanduser('~/Library/Android/sdk/platform-tools')}:{os.environ.get('PATH', '')}"
+
+            if not npm_bin:
+                install_node_cmd = (
+                    'ARCH=$(uname -m); '
+                    'if [ "$ARCH" = "arm64" ]; then NODE_ARCH="darwin-arm64"; else NODE_ARCH="darwin-x64"; fi; '
+                    'NODE_VER="v22.14.0"; '
+                    'URL_CN="https://npmmirror.com/mirrors/node/${NODE_VER}/node-${NODE_VER}-${NODE_ARCH}.tar.gz"; '
+                    'URL_OFF="https://nodejs.org/dist/${NODE_VER}/node-${NODE_VER}-${NODE_ARCH}.tar.gz"; '
+                    'mkdir -p "$HOME/.local/node"; '
+                    '(curl -fL --connect-timeout 10 "$URL_CN" -o /tmp/node_mac.tar.gz || curl -fL "$URL_OFF" -o /tmp/node_mac.tar.gz) && '
+                    'tar -xzf /tmp/node_mac.tar.gz -C "$HOME/.local/node" --strip-components=1 && '
+                    'rm -f /tmp/node_mac.tar.gz && '
+                    'echo "export PATH=\\"$HOME/.local/node/bin:\\$PATH\\"" >> "$HOME/.zshrc"'
                 )
-                if reply != QMessageBox.StandardButton.Yes:
-                    self.append_log("ℹ️ [一键装环境] 用户取消了环境安装。")
-                    return
+                steps.append(("免密码直装 Node.js v22 LTS (兼容 Intel/M芯片)", ["bash", "-c", install_node_cmd], False))
 
-                setup_script = "/tmp/santiao_mac_env_setup.sh"
-                script_content = """#!/bin/bash
-echo "=========================================================="
-echo "  三条 IM 自动化测试平台 - macOS 环境全自动一键安装程序"
-echo "=========================================================="
-export HOMEBREW_BREW_GIT_REMOTE="https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/brew.git"
-export HOMEBREW_CORE_GIT_REMOTE="https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/homebrew-core.git"
+            if not adb_bin:
+                install_adb_cmd = (
+                    'mkdir -p "$HOME/Library/Android/sdk"; '
+                    '(curl -fL --connect-timeout 10 "https://mirrors.cloud.tencent.com/AndroidSDK/platform-tools_r35.0.2-darwin.zip" -o /tmp/adb_mac.zip '
+                    '|| curl -fL "https://dl.google.com/android/repository/platform-tools-latest-darwin.zip" -o /tmp/adb_mac.zip) && '
+                    'unzip -oq /tmp/adb_mac.zip -d "$HOME/Library/Android/sdk" && '
+                    'rm -f /tmp/adb_mac.zip'
+                )
+                steps.append(("免密码直装 Android 调试工具 (adb)", ["bash", "-c", install_adb_cmd], True))
 
-if ! command -v brew >/dev/null 2>&1; then
-  echo ">>> [1/5] 正在安装 Homebrew (如提示输入密码请输入您的 Mac 开机密码)..."
-  /bin/bash -c "$(curl -fsSL https://gitee.com/cunkai/HomebrewCN/raw/master/Homebrew.sh)" || \\
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-fi
+            if not appium_bin:
+                install_appium_cmd = (
+                    'export PATH="$HOME/.local/node/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"; '
+                    'npm install -g appium --registry=https://registry.npmmirror.com'
+                )
+                steps.append(("全局安装 Appium 2.x (国内高速镜像)", ["bash", "-c", install_appium_cmd], False))
 
-if [ -x "/opt/homebrew/bin/brew" ]; then
-  eval "$(/opt/homebrew/bin/brew shellenv)"
-elif [ -x "/usr/local/bin/brew" ]; then
-  eval "$(/usr/local/bin/brew shellenv)"
-fi
-
-echo ">>> [2/5] 正在安装 Node.js 与 libimobiledevice..."
-brew install node libimobiledevice
-
-echo ">>> [3/5] 正在安装 Android 调试工具 (adb)..."
-brew install --cask android-platform-tools || true
-
-echo ">>> [4/5] 正在全局安装 Appium 2.x (启用国内高速镜像)..."
-npm install -g appium --registry=https://registry.npmmirror.com
-
-echo ">>> [5/5] 正在安装三端自动化驱动 (iOS / Android / 鸿蒙)..."
-appium driver install xcuitest || true
-appium driver install uiautomator2 || true
-appium driver install harmonyos || true
-
-echo "=========================================================="
-echo "  ✅ 所有环境安装完毕！请返回控制台点击【▶ 启动服务】即可！"
-echo "=========================================================="
-read -p "按回车键关闭本窗口..."
-"""
-                try:
-                    with open(setup_script, "w", encoding="utf-8") as f:
-                        f.write(script_content)
-                    os.chmod(setup_script, 0o755)
-                    subprocess.Popen(["open", "-a", "Terminal", setup_script])
-                    self.append_log(f"✅ 已打开 Mac 系统终端执行安装脚本: {setup_script}")
-                    self.append_log("💡 提示: 在终端完成安装后，回到本窗口直接点击【▶ 启动服务】即可！")
-                except Exception as e:
-                    self.append_log(f"❌ 拉起 Mac 终端安装脚本失败: {e}")
-                    QMessageBox.critical(self, "启动终端失败", f"拉起 Mac 终端失败:\n{e}")
-                return
-
-            # 场景 B: 已有 brew 或 npm，直接在后台线程纯静默流式安装
-            if not npm_bin and brew_bin:
-                steps.append(("安装 Node.js & npm", [brew_bin, "install", "node"], False))
-            if not adb_bin and brew_bin:
-                steps.append(("安装 Android 调试工具 (adb)", [brew_bin, "install", "--cask", "android-platform-tools"], True))
-            if not idevice_bin and brew_bin:
-                steps.append(("安装 iOS 底层工具 (libimobiledevice)", [brew_bin, "install", "libimobiledevice"], True))
-
-            npm_exec = npm_bin or (
-                "/opt/homebrew/bin/npm" if os.path.isfile("/opt/homebrew/bin/npm") else "/usr/local/bin/npm"
-            )
-            appium_exec = shutil.which("appium") or (
-                "/opt/homebrew/bin/appium" if os.path.isfile("/opt/homebrew/bin/appium") else "/usr/local/bin/appium"
-            )
-
-            if not shutil.which("appium"):
-                steps.append(("全局安装 Appium 2.x", [npm_exec, "install", "-g", "appium", "--registry=https://registry.npmmirror.com"], False))
-
-            steps.append(("安装 iOS 驱动 (xcuitest)", [appium_exec, "driver", "install", "xcuitest"], True))
-            steps.append(("安装 Android 驱动 (uiautomator2)", [appium_exec, "driver", "install", "uiautomator2"], True))
-            steps.append(("安装鸿蒙驱动 (harmonyos)", [appium_exec, "driver", "install", "harmonyos"], True))
+            driver_base = 'export PATH="$HOME/.local/node/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"; '
+            steps.append(("安装 iOS 驱动 (xcuitest)", ["bash", "-c", driver_base + "appium driver install xcuitest"], True))
+            steps.append(("安装 Android 驱动 (uiautomator2)", ["bash", "-c", driver_base + "appium driver install uiautomator2"], True))
+            steps.append(("安装鸿蒙驱动 (harmonyos)", ["bash", "-c", driver_base + "appium driver install harmonyos"], True))
 
         else:
             # Windows 端一键安装

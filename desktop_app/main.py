@@ -17,6 +17,20 @@ _QT_DLL_HANDLES = []
 # 必须在最开头调用，防止 Windows 打包时多进程/子进程递归拉起产生进程炸弹
 multiprocessing.freeze_support()
 
+# 内置独立测试执行引擎模式：供打包版免外部 Python 依赖直接拉起 pytest 子进程
+if "--internal-pytest" in sys.argv:
+    import pytest
+    _idx = sys.argv.index("--internal-pytest")
+    _pytest_args = sys.argv[_idx + 1:]
+    try:
+        from desktop_app.core.path_resolver import SmartPathResolver
+        _root = SmartPathResolver.get_project_root()
+        if _root and _root not in sys.path:
+            sys.path.insert(0, _root)
+    except Exception:
+        pass
+    sys.exit(pytest.main(_pytest_args))
+
 
 def _prepare_qt_runtime() -> None:
     """在 PyInstaller 环境及 Windows 下注册系统目录与 Qt6 原生 DLL/插件目录，彻底避免 DLL 符号冲突。"""
