@@ -11,41 +11,41 @@
 ```mermaid
 flowchart TD
     subgraph Layer1["1. 配置与数据驱动层 (DDT)"]
-        CFG["config/im_targets.yaml<br/>(会话策略/场景矩阵/静态兜底)"]
-        CSV["data/chat/chat_messages.csv<br/>(真实压测语料池)"]
+        CFG["config/im_targets.yaml (会话策略/场景矩阵/静态兜底)"]
+        CSV["data/chat/chat_messages.csv (一次加载入 _CORPUS_CACHE 内存缓存)"]
     end
 
     subgraph Layer2["2. 会话管理与集群调度中心"]
-        STM["SessionTargetManager<br/>(动态自发现 / 静态切片 / 自然数排序)"]
-        CLUSTER["IMClientCluster<br/>(5 台模拟器集群协同编排器)"]
+        STM["SessionTargetManager (动态自发现 / 静态切片 / 自然数排序)"]
+        CLUSTER["IMClientCluster (5 台模拟器集群协同编排器)"]
     end
 
     subgraph Layer3["3. 单机并发控制核心 (IMClient)"]
-        QUEUE["Asyncio 并发任务池"]
-        BP["Elastic Backpressure Controller<br/>(自适应高低水位在途流控)"]
-        FIFO["Session Sequencer Barrier<br/>(单会话严格保序屏障)"]
+        QUEUE["Asyncio 并发任务池与两阶段调度 (首条建会话 + 极速免落库)"]
+        BP["Elastic Backpressure Controller (自适应高低水位在途流控)"]
+        FIFO["Session Sequencer Barrier (在途排空保序屏障)"]
     end
 
     subgraph Layer4["4. 运行时协议桥接层 (AppRuntimeBridge)"]
         DAEMON["Frida 守护自愈与 PID 探测"]
-        RPC["Frida JS RPC Bridge<br/>(Java.perform 注入)"]
+        RPC["Frida JS RPC Bridge (sendBatchTextMessage + 全链路免落库 Hook)"]
     end
 
     subgraph Layer5["5. 真机端协议栈与服务端"]
-        NETTY["com.zkj.common.core.network.NettyTransceiver<br/>(sendTextMessage 原生直发通道)"]
-        WCDB["本地 WCDB 消息持久化"]
+        NETTY["WebSocketManager / SocketClient (Channel 256 -> Netty 直发)"]
+        WCDB["本地 WCDB / Conversation 库 (仅首条落库展示会话，其余旁路)"]
         SERVER["服务端 Netty 长连接网关"]
     end
 
     CFG --> STM
     CSV --> QUEUE
-    STM -->|分片切块 10群/机| CLUSTER
+    STM -->|分片切块| CLUSTER
     CLUSTER -->|分发设备实例| QUEUE
     QUEUE --> BP --> FIFO --> RPC
     DAEMON -.->|守护运行| RPC
-    RPC -->|微秒级直接调用| NETTY
+    RPC -->|Java 反射调用 sendTextMessage| NETTY
     NETTY -->|TCP Socket / Protobuf| SERVER
-    NETTY -->|异步写入| WCDB
+    NETTY -->|首条写入 / 后续免落库跳过| WCDB
 ```
 
 ---
@@ -90,16 +90,23 @@ sequenceDiagram
         Cluster->>Netty: 轮询并等待在途历史消息同步完成
     end
 
-    Note over Main,Netty: 【阶段四：多机集群协同矩阵压测】
-    Main->>Cluster: send_matrix(count_per_target, batch_size, ...)
+    Note over Main,Netty: 【阶段四：多机集群协同矩阵压测 (两阶段发送)】
+    Main->>Cluster: send_matrix(count_per_target, batch_size, skip_local_db=True, persist_first_message=True)
     par 5 台模拟器并行执行
-        loop 目标会话列表 (每设备 10 个群)
+        Note over Client,Bridge: Phase 1：每会话第 1 条消息正常落库并等待 ACK，确保 UI 展示对应会话
+        Client->>Bridge: set_skip_db_write(False)
+        Client->>Bridge: send_batch_text(各会话第 1 条)
+        Bridge->>Netty: sendTextMessage(..., prepareNotified=false)
+        Client->>Bridge: 等待 ACK 排空 (low_watermark=0)
+        Note over Client,Bridge: Phase 2：开启全链路免落库 Hook，剩余消息极速泄洪
+        Client->>Bridge: set_skip_db_write(True)
+        loop 目标会话剩余消息 (Batch=100)
             Client->>Client: 弹性背压检测 (在途数 >= trigger_limit 则等待)
-            Client->>Bridge: send_batch_text(targets, contents, batch_id)
-            Bridge->>Netty: Java 反射调用 sendTextMessage()
-            Netty-->>Bridge: 立即返回入队状态 (耗时 < 1ms)
-            Bridge-->>Client: 批次提交成功确认
-            Client->>Client: 动态微延时控制 (自适应平滑发送)
+            Client->>Bridge: send_batch_text(批次文本)
+            Bridge->>Netty: sendTextMessage(..., prepareNotified=true)
+            Netty-->>Bridge: 快速入队并返回 pendingMessages 在途数
+            Bridge-->>Client: 返回 rejected / unknown / inflight
+            Client->>Client: AIMD 动态微延时控制 (20ms ~ 300ms)
         end
     end
 
@@ -113,20 +120,30 @@ sequenceDiagram
 ## ⚙️ 三、核心关键机制深度剖析
 
 ### 1. 弹性自适应背压流控 (Elastic Backpressure Controller)
-* **痛点**：端侧 SQLite/WCDB 数据库写入性能有限。若以万级 TPS 无限推送，真机底层消息队列严重堆积，将导致内存泄露、WCDB 锁争用崩溃，以及触发 30s 协议超时。
+* **痛点**：端侧 `SocketClient.sendQueue` 容量为 256。若在途堆积过多，将触发发送拒收、30s 协议超时以及（未跳过落库时的）WCDB 锁争用。
 * **机制**：
-  - **动态监控**：通过 `get_inflight()` 实时读取 NettyTransceiver 中排队待发与待 ACK 的在途消息数。
-  - **双水位线控制**：
-    - `trigger_limit (高水位，默认 50 条)`：在途消息达到此阈值时，自动挂起后续批次，进入异步等待状态。
-    - `low_watermark (低水位，默认 20 条)`：等待真机网络与数据库消费回流，在途数降至低水位时平滑恢复发送。
+  - **动态监控**：通过 `get_inflight()` 实时读取 `SocketClient.pendingMessages` 的在途待 ACK 消息数（`SocketClient.onMessageSendStatusReceived` 在触发上层回调前已同步完成清理，免落库时计数依然精准）。
+  - **双水位线与 AIMD 控制**：
+    - `low_watermark`（集群默认 `150`）/ `high_watermark`（集群默认 `300`）：在途达到阈值（开启 `enforce_fifo_order=True` 时以 `low_watermark` 为准）即主动挂起并调用 `wait_for_ack_window()` 排空，顺畅时加性回落延时、发生拒收时乘性退避。
 
-### 2. 单会话严格保序屏障 (Session Sequencer Barrier)
-* **痛点**：在异步并发下，若同一会话的多条消息被多协程乱序投递，会导致服务端记录的聊天时序错乱。
-* **机制**：
-  - 对同一 `chat_id` 的批次打上严格递增的本地时序序号。
-  - 采用会话维度锁屏障，确保前一批次被 Netty 成功受理前，后续批次严禁超车，保障消息在服务端 seq 的绝对单调递增。
+### 2. 全链路免落库极速模式 (`skip_local_db`) 与两阶段建会话 (`persist_first_message`)
+* **根因与架构优化**：仅 Hook `MessageDao.insert` / `ShardedMessageDao.insert` 时，每条 `WebSocketManager.sendTextMessage(..., false, false)` 仍会因参数 `prepareNotified=false` 阻塞进入 `BuildersKt.runBlocking`，同步执行 `MessageStorage.saveOrUpdateMessage` 查表、`ConversationUpdater.updateConversationForSend` 双 `Mutex` 写会话库、敏感词评估、气泡装扮反射、ACK 回流空查与重试退避及 `NetworkLogger` 写盘，导致单机卡在 25~33 msg/s。
+* **全链路旁路方案**（`skip_local_db=True`）：
+  1. 发送调用将第 11 参 `prepareNotified` 置为 `_skipSendDbWrite`（`true`），直接跳过 `runBlocking` 准备链，并以 Hook `MessageSenderHelper.notifyMessagePrepareSend` 作为兜底。
+  2. 补齐 `MessageDao.update` / `ShardedMessageDao.update` / `MessageDao.syncFtsAsync` 旁路，以及 `STIMImpl$login$6.onMessageSendStatus`、`STIMImpl.updateMessageStatusWithRetry`、`MessageStorage.updateMessageStatus` 的 ACK 重试旁路。
+  3. 旁路 `UserDressUpProvider.inject`（直接返回原 `msg`）与 `STIMImpl$login$4.onCheckSensitiveRemind`（**注意：必须原样返回 `content` 或 `null`，切勿返回 `''`，否则 `TextMessageSender.send` 会将消息正文置空导致接收端渲染为 `[消息]`**），并临时调用 `NetworkLogger.setLogEnabled(false)` 静默调试日志（压测结束恢复原状）。
+* **两阶段首条展示机制**（`persist_first_message=True`）：
+  - 免落库开启时默认分两段：先以 `set_skip_db_write(False)` 正常发送并等待每个会话第 1 条消息落库及 ACK 完成，使发送端模拟器聊天列表出现对应会话并展示第 1 条消息；随后切换 `set_skip_db_write(True)`，剩余消息全速免落库发送。
 
-### 3. 多模拟器自然数均分分片算法 (Natural Cluster Sharding)
+### 3. 单会话保序屏障与语料加载分发规范
+* **保序屏障与正文解耦**：
+  - `enforce_fifo_order=True` 控制发送队列在途超过 `low_watermark` 时的网络排空防超车门禁；
+  - `include_seq_prefix=False`（默认关闭）将网络保序门禁与正文前缀解耦，默认不再强行前置 `[#SEQ0001]`，需要聊天窗视觉核对顺序时再显式开启。
+* **消息文件一次加载与顺序发送**：
+  - [`get_chat_message_corpus`](file:///d:/projects/santiao-anti/tools/im_client.py#L113-L160) 使用进程级字典缓存 `_CORPUS_CACHE[(file_name, include_case_id, deduplicate)]`，支持 `.csv` / `.xlsx` / `.txt` / `.yaml`，**整个进程运行期只读盘一次**，过滤空值与 `\x00` 字节；默认 `include_case_id=True` 保留 `case_id:原文` 格式。
+  - 默认 `shard_corpus=False`、`shard_targets_corpus=False`，所有设备与会话严格从消息表第 1 行起按表顺序逐条发送（如发 10 条即发送前 10 条）；需全量打散覆盖时可显式开启分片偏移。
+
+### 4. 多模拟器自然数均分分片算法 (Natural Cluster Sharding)
 * **机制**：
   - 针对 `1群` ~ `50群` 或 `离线群001` ~ `050`，系统内置自然数正则解析引擎 `re.findall(r'\d+', name)`。
   - 彻底规避字典序排序陷阱（防止排成 `1群, 10群, 11群, 2群...`）。
@@ -150,18 +167,24 @@ active_profile: "offline_groups"  # 1-50群 集群分片压测
 # active_profile: "single_chat"      # 好友单聊压测
 ```
 
-### 2. 压测参数调整（在 [`tools/im_client.py`](file:///d:/projects/santiao-anti/tools/im_client.py#L1435) 的 main 函数中）
+### 2. 压测参数调整（在 [`tools/im_client.py`](file:///d:/projects/santiao-anti/tools/im_client.py#L1796-L1907) 的 `main` 函数中）
 
 ```python
 # 核心压测参数配置：
-USE_CLUSTER = True            # True: 5 台设备集群协同; False: 单设备运行
-TARGET_DEVICE_INDEX = 0       # 单机模式下指定的设备编号 (0~4)
+CORPUS_FILE = "chat/chat_messages.csv"  # 消息文件数据源（按表从第 1 条起顺序读取）
+USE_CLUSTER = True                      # True: 多台设备集群协同; False: 单台 (cluster_devs[0]) 独立运行
+COUNT_PER_TARGET = 10                   # 每个会话发送配额（如 10 即严格发送前 10 条；压测可设为 200+）
 
-COUNT_PER_TARGET = 100        # 每个会话目标发送的消息配额 (例: 10个群各发100条 = 单机1000条)
-BATCH_SIZE = 5                # 每批次聚合发送消息条数 (推荐 1~10)
-DELAY_BETWEEN_BATCHES = 0.05  # 批次之间的缓冲微延时 (50ms，保护端侧数据库)
-ENFORCE_FIFO = True           # 是否开启会话保序屏障
-USE_CSV_DATA = True           # 是否使用真实语料库 (data/chat/chat_messages.csv)
+# 集群发送核心参数（cluster.send_matrix）：
+batch_size = 100                        # 单次 RPC 批量发送条数（单机模式默认 200）
+delay_between_batches = 0.02            # 分片模式批次微延时 20ms（全量未分片为 0.1s）
+high_watermark = 300                    # 底层在途消息高水位线
+low_watermark = 150                     # 底层在途消息低水位线（保序模式触及即排空）
+shard_corpus = False                    # 是否跨设备错开消息表起始行（False 时统一从第 1 条发）
+include_case_id = True                  # 是否保留 case_id:原文 前缀
+include_seq_prefix = False              # 是否额外附加 [#SEQ0001] 视觉序号前缀
+skip_local_db = True                    # 是否开启全链路免落库极速模式
+persist_first_message = True            # 免落库模式下先为每会话落库第 1 条以展示 UI 会话
 ```
 
 ### 3. 一键启动
@@ -185,7 +208,7 @@ python tools/im_client.py
 
 ### 2. 已解散群聊软删除脏读拦截 (`state=1` 活跃态过滤)
 * **常见问题**：通过 `im_group_client.py --disband-groups` 解散旧群后，群记录会从 `group_table` 移除，但 `conversation` 表中的历史会话不会物理删除，而是转为 `state=2`（活跃会话为 `state=1`）。此前 `discover_groups_from_sqlite()` 仅按 `conv_type=2` 与群名前缀过滤，导致已解散旧群的 `conv_id` 在 `auto` 自发现时重新混入目标池。
-* **解决机制**：在 [`SessionTargetManager.discover_groups_from_sqlite`](file:///d:/projects/santiao-anti/tools/im_client.py#L1331-L1352) 中强制限定 `conv_type=2 AND state=1`，彻底隔离已解散残留群聊。
+* **解决机制**：在 [`SessionTargetManager.discover_groups_from_sqlite`](file:///d:/projects/santiao-anti/tools/im_client.py#L1565) 中强制限定 `conv_type=2 AND state=1`，彻底隔离已解散残留群聊。
 
 ### 3. 账号/群组变更后的配置同步与自检闭环
 ```mermaid

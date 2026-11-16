@@ -24,6 +24,7 @@
 
 import asyncio
 import concurrent.futures
+import csv
 from dataclasses import dataclass
 from enum import IntEnum
 import json
@@ -44,44 +45,118 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from utils.file_reader.data_loader import load_csv_data, load_yaml_data
+from utils.file_reader.data_loader import find_file, load_csv_data, load_yaml_data
 
 
 # ---------------------------------------------------------------------------
-# 0. 数据驱动：基于 data_loader 的真实 CSV 消息样本语料池
+# 0. 数据驱动：基于 data_loader 的真实消息文件语料池（支持多文件按需缓存）
 # ---------------------------------------------------------------------------
-_CACHED_MESSAGES_POOL: Optional[List[str]] = None
+_CORPUS_CACHE: Dict[Tuple[str, bool, bool], List[str]] = {}
+_CORPUS_TEXT_KEYS: Tuple[str, ...] = ("context", "content", "message", "text", "payload")
 
 
-def get_chat_message_corpus(file_name: str = "chat/chat_messages.csv") -> List[str]:
-    """通过项目现有的 data_loader 工具加载 chat_messages.csv 真实消息语料。
-    自动解析 context 列数据，过滤空白项，并单例缓存在内存中以支撑高并发极速发送。
+def _extract_row_text(row: Any, include_case_id: bool = True) -> str:
+    """从单条数据记录中提取消息原文（默认保留 case_id 前缀），过滤空值与 NUL 字符。"""
+    if isinstance(row, str):
+        return row.replace("\x00", "").strip()
+    if not isinstance(row, dict):
+        return ""
+
+    raw_text: Any = None
+    for key in _CORPUS_TEXT_KEYS:
+        val = row.get(key)
+        if val is not None and str(val).strip() and str(val).strip().lower() != "nan":
+            raw_text = val
+            break
+    if raw_text is None:
+        return ""
+
+    clean_text = str(raw_text).replace("\x00", "").strip()
+    if not clean_text:
+        return ""
+
+    if include_case_id:
+        case_id = row.get("case_id")
+        if case_id is not None and str(case_id).strip():
+            return f"{str(case_id).strip()}:{clean_text}"
+    return clean_text
+
+
+def _load_raw_corpus_items(file_name: str) -> List[Any]:
+    """按文件后缀自适应读取消息文件原始记录，优先复用项目 data_loader。"""
+    path_obj = Path(file_name)
+    suffix = path_obj.suffix.lower()
+
+    resolved = path_obj if (path_obj.is_absolute() or path_obj.exists()) else find_file(file_name)
+    if resolved is None:
+        raise FileNotFoundError(f"未找到消息文件: {file_name}")
+
+    if suffix == ".csv":
+        if path_obj.is_absolute() or path_obj.exists():
+            with open(resolved, "r", encoding="utf-8-sig") as f:
+                return list(csv.DictReader(f))
+        return load_csv_data(file_name)
+
+    if suffix in (".xlsx", ".xls"):
+        import pandas as pd
+
+        return pd.read_excel(resolved).to_dict("records")
+
+    if suffix in (".yaml", ".yml"):
+        data = load_yaml_data(file_name)
+        return data if isinstance(data, list) else []
+
+    with open(resolved, "r", encoding="utf-8-sig") as f:
+        return f.read().splitlines()
+
+
+def get_chat_message_corpus(
+    file_name: str = "chat/chat_messages.csv",
+    *,
+    include_case_id: bool = True,
+    deduplicate: bool = False,
+) -> List[str]:
+    """加载并缓存指定消息文件中的消息内容列表。
+
+    默认提取文件中的 case_id 与正文内容（形如 case_id:context），不再叠加额外的人工序号前缀，
+    支持 .csv / .xlsx / .txt / .yaml 格式并按参数维度隔离缓存。
+
     Args:
-        file_name: 相对路径或文件名，默认 'chat/chat_messages.csv'
+        file_name: 消息文件路径（相对 data/ 或绝对路径），默认 'chat/chat_messages.csv'
+        include_case_id: 是否前置保留 case_id（默认 True，格式为 case_id:原文）
+        deduplicate: 是否去重（默认 False，保留文件原始顺序与分布）
     Returns:
-        List[str]: 解析提取出的真实业务消息内容列表。
+        List[str]: 解析提取出的消息列表。
     """
-    global _CACHED_MESSAGES_POOL
-    if _CACHED_MESSAGES_POOL is not None and len(_CACHED_MESSAGES_POOL) > 0:
-        return _CACHED_MESSAGES_POOL
+    cache_key = (file_name, include_case_id, deduplicate)
+    cached = _CORPUS_CACHE.get(cache_key)
+    if cached:
+        return cached
 
     try:
-        raw_rows = load_csv_data(file_name)
+        raw_items = _load_raw_corpus_items(file_name)
         messages: List[str] = []
-        for row in raw_rows:
-            if isinstance(row, dict):
-                mes_id = row.get("case_id")
-                text = row.get("context")
-                if text:
-                    messages.append(f"{mes_id}:{str(text).strip()}")
+        seen: Optional[Set[str]] = set() if deduplicate else None
+        for row in raw_items:
+            clean_text = _extract_row_text(row, include_case_id=include_case_id)
+            if not clean_text:
+                continue
+            if seen is not None:
+                if clean_text in seen:
+                    continue
+                seen.add(clean_text)
+            messages.append(clean_text)
+
         if messages:
-            _CACHED_MESSAGES_POOL = messages
-            return _CACHED_MESSAGES_POOL
+            _CORPUS_CACHE[cache_key] = messages
+            print(f"📚 [语料加载] 已加载消息文件 {file_name} | 有效消息: {len(messages):,} 条")
+            return messages
+        raise ValueError(f"消息文件 {file_name} 中未解析到任何有效正文内容")
     except Exception as e:
-        print(f"⚠️ [数据驱动] 通过 data_loader 加载 {file_name} 异常: {e}，将采用备用样本")
+        print(f"⚠️ [数据驱动] 加载消息文件 {file_name} 失败: {e}，将采用备用样本")
 
     fallback = ["三条 IM 自动化高并发测试消息通道连接正常"]
-    _CACHED_MESSAGES_POOL = fallback
+    _CORPUS_CACHE[cache_key] = fallback
     return fallback
 
 
@@ -135,45 +210,127 @@ class AppRuntimeBridge:
     var SocketClientPendingField = null;
     var _skipSendDbWrite = false;
     var _dbHooksInstalled = false;
+    var _origNetworkLogEnabled = null;
 
     function installSkipDbHooks() {
         if (_dbHooksInstalled) {
             return;
         }
         Java.perform(function() {
-            try {
-                var msgCls = 'com.bm.santiaotalk.store.entity.w.Message';
-                var listCls = 'java.util.List';
-                var MessageDao = Java.use('com.bm.santiaotalk.store.dao.w.MessageDao');
-                MessageDao.insert.overload(msgCls).implementation = function(msg) {
+            var msgCls = 'com.bm.santiaotalk.store.entity.w.Message';
+            var listCls = 'java.util.List';
+            var strCls = 'java.lang.String';
+            var contCls = 'kotlin.coroutines.Continuation';
+            var booleanTrue = Java.use('java.lang.Boolean').TRUE.value;
+            var kotlinUnit = Java.use('kotlin.Unit').INSTANCE.value;
+
+            function hookVoidOnSkip(clsName, methodName, argTypes) {
+                var cls = Java.use(clsName);
+                var m = cls[methodName].overload.apply(cls[methodName], argTypes);
+                m.implementation = function() {
                     if (_skipSendDbWrite) return;
-                    return this.insert(msg);
+                    return m.apply(this, arguments);
                 };
-                MessageDao.insertAll.overload(listCls).implementation = function(list) {
-                    if (_skipSendDbWrite) return;
-                    return this.insertAll(list);
-                };
-                var ShardedMessageDao = Java.use('com.bm.santiaotalk.store.dao.w.ShardedMessageDao');
-                ShardedMessageDao.insert.overload(msgCls).implementation = function(msg) {
-                    if (_skipSendDbWrite) return;
-                    return this.insert(msg);
-                };
-                ShardedMessageDao.insertAll.overload(listCls).implementation = function(list) {
-                    if (_skipSendDbWrite) return;
-                    return this.insertAll(list);
-                };
-                ShardedMessageDao.insertToYear.overload(msgCls).implementation = function(msg) {
-                    if (_skipSendDbWrite) return;
-                    return this.insertToYear(msg);
-                };
-                ShardedMessageDao.insertAllToYear.overload(listCls).implementation = function(list) {
-                    if (_skipSendDbWrite) return;
-                    return this.insertAllToYear(list);
-                };
-                _dbHooksInstalled = true;
-            } catch (e) {
-                console.log("[Bridge] 安装跳过写库 Hook 异常: " + e.toString());
             }
+
+            // 1. 消息表写库、更新与 FTS 全文索引同步旁路
+            try {
+                var msgDaoCls = 'com.bm.santiaotalk.store.dao.w.MessageDao';
+                hookVoidOnSkip(msgDaoCls, 'insert', [msgCls]);
+                hookVoidOnSkip(msgDaoCls, 'insertAll', [listCls]);
+                hookVoidOnSkip(msgDaoCls, 'update', [msgCls]);
+                hookVoidOnSkip(msgDaoCls, 'syncFtsAsync', ['kotlin.jvm.functions.Function1']);
+
+                var shardedDaoCls = 'com.bm.santiaotalk.store.dao.w.ShardedMessageDao';
+                hookVoidOnSkip(shardedDaoCls, 'insert', [msgCls]);
+                hookVoidOnSkip(shardedDaoCls, 'insertAll', [listCls]);
+                hookVoidOnSkip(shardedDaoCls, 'insertToYear', [msgCls]);
+                hookVoidOnSkip(shardedDaoCls, 'insertAllToYear', [listCls]);
+                hookVoidOnSkip(shardedDaoCls, 'update', [msgCls]);
+            } catch (e) {
+                console.log("[Bridge] 安装消息 DAO Hook 异常: " + e.toString());
+            }
+
+            // 2. 兜底跳过发送前同步阻塞准备（runBlocking + 会话表双锁读写）
+            try {
+                var helperCls = Java.use('com.network.lib.socket.sendMessage.MessageSenderHelper');
+                helperCls.notifyMessagePrepareSend.overload('com.network.lib.socket.ImBaseMessage').implementation = function(msg) {
+                    if (_skipSendDbWrite) return true;
+                    return this.notifyMessagePrepareSend(msg);
+                };
+            } catch (e) {
+                console.log("[Bridge] 安装准备发送 Hook 异常: " + e.toString());
+            }
+
+            // 3. 跳过单条发送前的气泡装扮 Protobuf 反射与敏感词评估
+            try {
+                var dressUpCls = Java.use('com.network.lib.socket.sendMessage.UserDressUpProvider');
+                dressUpCls.inject.overload('com.google.protobuf.Message').implementation = function(msg) {
+                    if (_skipSendDbWrite) return msg;
+                    return this.inject(msg);
+                };
+            } catch (e) {
+                console.log("[Bridge] 安装装扮旁路 Hook 异常: " + e.toString());
+            }
+            try {
+                var sensitiveCls = Java.use('com.santiao.stim.STIMImpl$login$4');
+                sensitiveCls.onCheckSensitiveRemind.overload(strCls, 'boolean', strCls).implementation = function(chatId, isGroup, content) {
+                    // 必须原样返回传入的 content（或 null），返回空串会导致 TextMessage.content 被置空、接收端显示为 [消息]
+                    if (_skipSendDbWrite) return content;
+                    return this.onCheckSensitiveRemind(chatId, isGroup, content);
+                };
+            } catch (e) {
+                console.log("[Bridge] 安装敏感词旁路 Hook 异常: " + e.toString());
+            }
+
+            // 4. 跳过 ACK 回流后的查表、退避重试协程与状态日志写盘（pendingMessages 已先于回调清理，不影响在途计数）
+            try {
+                var ackCls = Java.use('com.santiao.stim.STIMImpl$login$6');
+                ackCls.onMessageSendStatus.overload(
+                    'com.network.lib.socket.ImBaseMessage',
+                    'com.network.lib.socket.messagehelp.MsgTalkSendStatus',
+                    contCls
+                ).implementation = function(msg, status, cont) {
+                    if (_skipSendDbWrite) return kotlinUnit;
+                    return this.onMessageSendStatus(msg, status, cont);
+                };
+            } catch (e) {
+                console.log("[Bridge] 安装 ACK 回执旁路 Hook 异常: " + e.toString());
+            }
+            try {
+                var stimCls = Java.use('com.santiao.stim.STIMImpl');
+                stimCls.updateMessageStatusWithRetry.overload(strCls, 'int', 'long', 'int', contCls).implementation = function(msgNo, status, msgTime, maxAttempts, cont) {
+                    if (_skipSendDbWrite) return booleanTrue;
+                    return this.updateMessageStatusWithRetry(msgNo, status, msgTime, maxAttempts, cont);
+                };
+                var storageCls = Java.use('com.santiao.stim.processor.MessageStorage');
+                storageCls.updateMessageStatus.overload(strCls, 'int', 'long', contCls).implementation = function(msgNo, status, msgTime, cont) {
+                    if (_skipSendDbWrite) return booleanTrue;
+                    return this.updateMessageStatus(msgNo, status, msgTime, cont);
+                };
+            } catch (e) {
+                console.log("[Bridge] 安装状态更新旁路 Hook 异常: " + e.toString());
+            }
+
+            _dbHooksInstalled = true;
+        });
+    }
+
+    function setNetworkLogSuppressed(suppress) {
+        Java.perform(function() {
+            try {
+                var logger = Java.use('com.network.lib.util.NetworkLogger').INSTANCE.value;
+                if (!logger) return;
+                if (suppress) {
+                    if (_origNetworkLogEnabled === null) {
+                        _origNetworkLogEnabled = logger.isLogEnabled();
+                    }
+                    logger.setLogEnabled(false);
+                } else if (_origNetworkLogEnabled !== null) {
+                    logger.setLogEnabled(_origNetworkLogEnabled);
+                    _origNetworkLogEnabled = null;
+                }
+            } catch (e) {}
         });
     }
 
@@ -217,17 +374,19 @@ class AppRuntimeBridge:
         getInflightCount: function() {
             return getPendingCount();
         },
-        // 开关：压测发消息时是否跳过本地 WCDB 落库（仅当前发送线程生效，不干扰接收与 ACK 线程）
+        // 开关：压测发消息时启用全链路免落库极速模式（跳过 DB 读写、同步阻塞准备、敏感词/装扮检查、ACK 重试与调试日志）
         setSkipDbWrite: function(enabled) {
             _skipSendDbWrite = !!enabled;
             if (_skipSendDbWrite) {
                 installSkipDbHooks();
             }
+            setNetworkLogSuppressed(_skipSendDbWrite);
             return _skipSendDbWrite;
         },
         // 通用发送入口：自动适配单聊 (chatType=1) 与群聊 (chatType=2)
         sendTextMessage: function(chatId, chatType, fromCustId, fromCustName, toCustId, content) {
             var success = false;
+            var skipPrepare = _skipSendDbWrite;
             Java.perform(function() {
                 try {
                     if (!WebSocketMgr) {
@@ -241,12 +400,12 @@ class AppRuntimeBridge:
                             fromCustName,
                             toCustId,      // 单聊填对方 CustID，群聊填 "0"
                             content,
-                            0,             // quoteSeq
+                            0,             // exNoId (引用/扩展编号)
                             null,          // richContent
                             null,          // contentJson
-                            null,          // atCustIds
-                            false,         // isBurnAfterReading
-                            false          // isGroupNotify
+                            null,          // msgNo
+                            skipPrepare,   // prepareNotified: 免落库模式下直接跳过 runBlocking 准备回调
+                            false          // useTimelinePrepare
                         );
                     }
                 } catch (e) {
@@ -262,6 +421,7 @@ class AppRuntimeBridge:
             var list = JSON.parse(messagesJson);
             var len = list.length;
             var result = {rejected: [], unknown: []};
+            var skipPrepare = _skipSendDbWrite;
             Java.perform(function() {
                 var i = 0;
                 try {
@@ -278,7 +438,7 @@ class AppRuntimeBridge:
                                 item.fromCustName,
                                 item.toCustId,
                                 item.content,
-                                0, null, null, null, false, false
+                                0, null, null, null, skipPrepare, false
                             );
                             if (!ok) {
                                 break;
@@ -747,6 +907,11 @@ class IMClient:
         report_interval: int = 1000,
         delay_between_msg: float = 0.0,
         use_csv_data: bool = True,
+        corpus_file: str = "chat/chat_messages.csv",
+        corpus_offset: int = 0,
+        shard_targets_corpus: bool = False,
+        include_case_id: bool = True,
+        include_seq_prefix: bool = False,
         max_retries: int = 4,
         retry_backoff: float = 0.2,
         max_pace: float = 1.0,
@@ -754,6 +919,7 @@ class IMClient:
         low_watermark: int = 10,
         enforce_fifo_order: bool = True,
         skip_local_db: bool = False,
+        persist_first_message: bool = True,
     ) -> Dict[str, Any]:
         """【多会话流式并发压测引擎】全面支持批量高速管道、总量轮询打散与齐步等量并发。
         
@@ -765,40 +931,60 @@ class IMClient:
             batch_size: 批处理管道大小（单次 RPC 注入的消息数量，默认 50，大幅降低 IPC 开销）。
             report_interval: 统计聚合打点间隔。
             delay_between_msg: 批次间额外延时（压测通常设为 0）。
-            use_csv_data: 是否使用 data_loader 从 data/chat/chat_messages.csv 提取真实业务语料。
+            use_csv_data: 是否从消息文件加载真实业务语料。
+            corpus_file: 消息文件路径（相对 data/ 或绝对路径），默认 'chat/chat_messages.csv'。
+            corpus_offset: 语料起始游标偏移量（默认 0，严格从消息表第 1 条开始顺序发送）。
+            shard_targets_corpus: 同一设备多目标之间是否微错开语料游标（默认 False，所有会话均从头严格按表顺序发送）。
+            include_case_id: 是否在消息正文前附加 case_id（默认 True，格式为 case_id:原文）。
+            include_seq_prefix: 是否在消息正文前附加 [#SEQ0001] 序号前缀（默认 False）。
             max_retries: 同步拒收消息的最大重发次数（仅重发未进入 Netty 的消息，结果未知的消息禁止重放）。
             retry_backoff: 重发指数退避基数（秒），第 n 次重发等待 retry_backoff * 2^(n-1)，上限 max_pace。
             max_pace: 自适应批次间隔上限（秒），拒收时间隔翻倍、顺畅时每批加性回落 10ms 至 delay_between_msg（标准 AIMD）。
             high_watermark: 底层长连接在途消息高水位线（默认 80），达到该阈值主动收油门等待服务端 ACK。
             low_watermark: 底层长连接在途消息低水位线（默认 35），排空至该值后继续全速推进。
-            enforce_fifo_order: 是否开启单会话严格保序屏障（默认 True）。
-                开启后为每条消息固化逻辑序号并防止后序批次在网络层超车重试中消息，彻底根治乱序。
+            enforce_fifo_order: 是否开启单会话严格保序屏障（默认 True，通过网络排空门禁防跨批超车）。
+            skip_local_db: 是否开启免落库极速模式（默认 False）。
+            persist_first_message: 在 skip_local_db=True 时，是否先完整落库并展示每个会话的第 1 条消息以生成会话列表条目（默认 True），其余消息全速免落库。
         """
         active_targets = targets or self.targets
         if not active_targets:
             raise ValueError("未指定任何会话目标，无法启动流式压测")
 
-        corpus = get_chat_message_corpus() if use_csv_data else []
+        corpus = (
+            get_chat_message_corpus(corpus_file, include_case_id=include_case_id)
+            if use_csv_data
+            else []
+        )
         corpus_len = len(corpus) if corpus else 0
         num_targets = len(active_targets)
+        custom_messages: Optional[List[str]] = (
+            list(messages) if (messages is not None and not isinstance(messages, int)) else None
+        )
 
         # 计算预期发送总数与压测模式
         if messages_per_target is not None:
-            total_count = num_targets * messages_per_target
-            mode_desc = f"多会话齐步同频并发 (每个会话完整发送前 {messages_per_target:,} 条语料，总计 {total_count:,} 条 | 批处理管道 Batch={batch_size})"
+            per_target_quota = max(0, messages_per_target)
+            total_count = num_targets * per_target_quota
+            mode_desc = f"多会话齐步同频并发 (每个会话发送 {per_target_quota:,} 条消息文件原文，总计 {total_count:,} 条 | 批处理管道 Batch={batch_size})"
         elif isinstance(messages, int):
-            quota = max(1, messages // num_targets)
-            total_count = quota * num_targets
-            mode_desc = f"总量按会话顺序切分投递 (总计 {total_count:,} 条，每会话依次发送 {quota:,} 条 | 批处理管道 Batch={batch_size})"
-        elif hasattr(messages, "__len__"):
-            total_count = len(messages) * num_targets
-            mode_desc = f"自定义消息集按会话依次投递 (每会话发送 {len(messages):,} 条，总计 {total_count:,} 条 | 批处理管道 Batch={batch_size})"
+            per_target_quota = max(1, messages // num_targets)
+            total_count = per_target_quota * num_targets
+            mode_desc = f"总量按会话顺序切分投递 (总计 {total_count:,} 条，每会话依次发送 {per_target_quota:,} 条 | 批处理管道 Batch={batch_size})"
+        elif custom_messages is not None:
+            per_target_quota = len(custom_messages)
+            total_count = per_target_quota * num_targets
+            mode_desc = f"自定义消息集按会话依次投递 (每会话发送 {per_target_quota:,} 条，总计 {total_count:,} 条 | 批处理管道 Batch={batch_size})"
         elif use_csv_data and corpus_len > 0:
-            total_count = corpus_len * num_targets
-            mode_desc = f"CSV 语料按会话依次发送 (每会话发送 {corpus_len:,} 条，总计 {total_count:,} 条 | 批处理管道 Batch={batch_size})"
+            per_target_quota = corpus_len
+            total_count = per_target_quota * num_targets
+            mode_desc = f"消息文件全量按会话依次发送 (每会话发送 {per_target_quota:,} 条，总计 {total_count:,} 条 | 批处理管道 Batch={batch_size})"
         else:
+            per_target_quota = 0
             total_count = 100000
             mode_desc = f"流式压测 (批处理管道 Batch={batch_size})"
+
+        need_first_persist = bool(skip_local_db and persist_first_message and per_target_quota >= 1)
+        start_idx = 1 if need_first_persist else 0
 
         queue: asyncio.Queue[Optional[List[Tuple[SessionTarget, str]]]] = asyncio.Queue(maxsize=concurrency * 4)
         sent_count = 0
@@ -808,16 +994,7 @@ class IMClient:
         # AIMD 自适应节奏：拒收即乘性放大间隔让 ACK 回流排空窗口，顺畅后渐进回落到基础节奏
         pace = max(0.0, delay_between_msg)
         target_success_map: Dict[str, int] = {t.name: 0 for t in active_targets}
-
-        target_seq_map: Dict[str, int] = {t.name: 0 for t in active_targets}
-
-        def format_ordered_text(tgt: SessionTarget, raw_text: str) -> str:
-            """会话严格保序编码：在消息正文附加强时序逻辑序列号 [#SEQ0001]，防止异步重传导致时序不可溯。"""
-            if not enforce_fifo_order:
-                return raw_text
-            target_seq_map[tgt.name] += 1
-            seq = target_seq_map[tgt.name]
-            return f"[#SEQ{seq:04d}] {raw_text}"
+        target_seq_map: Dict[str, int] = {t.name: 0 for t in active_targets} if include_seq_prefix else {}
 
         start_time = time.time()
         last_report_time = start_time
@@ -831,73 +1008,118 @@ class IMClient:
                 await queue.put(list(batch_buffer))
                 batch_buffer.clear()
 
+        def format_item_text(tgt: SessionTarget, text: str) -> str:
+            """按需附加视觉序号前缀；默认直接返回消息原文，零拷贝开销。"""
+            if not include_seq_prefix:
+                return text
+            seq = target_seq_map[tgt.name] + 1
+            target_seq_map[tgt.name] = seq
+            return f"[#SEQ{seq:04d}] {text}"
+
         async def emit_item(tgt: SessionTarget, text: str) -> None:
             nonlocal sent_count
             sent_count += 1
-            ordered_text = format_ordered_text(tgt, text)
+            final_text = format_item_text(tgt, text)
             if batch_size > 1:
-                batch_buffer.append((tgt, ordered_text))
+                batch_buffer.append((tgt, final_text))
                 if len(batch_buffer) >= batch_size:
                     await flush_buffer()
             else:
-                await queue.put([(tgt, ordered_text)])
+                await queue.put([(tgt, final_text)])
+
+        def pick_raw_message(seq_idx: int, tgt_idx: int, tgt: SessionTarget) -> str:
+            """统一按索引与目标生成当条发送文本，优先采用消息文件语料。"""
+            if custom_messages is not None:
+                return custom_messages[seq_idx]
+            if use_csv_data and corpus_len > 0:
+                target_shift = tgt_idx if shard_targets_corpus else 0
+                return corpus[(corpus_offset + seq_idx + target_shift) % corpus_len]
+            if messages_per_target is not None:
+                return f"并发压测第 {seq_idx + 1}/{per_target_quota} 条 ({time.strftime('%H:%M:%S')})"
+            return f"[{tgt.name}] 消息第 {seq_idx + 1}/{per_target_quota} 条 ({time.strftime('%H:%M:%S')})"
 
         async def producer() -> None:
             if messages_per_target is not None:
-                # 【多会话齐步同频并发调度】：
-                # 所有会话在第 k 轮同时齐步发送对应第 k 条真实语料 (例如第 1 轮全会话齐步发第 1 条，第 10 轮全会话齐步发第 10 条)
-                # 既确保所有会话均各自独立完整发送第 1~N 条消息，又保持多会话齐步开火的最大并发吞吐！
-                for round_idx in range(messages_per_target):
-                    if use_csv_data and corpus_len > 0:
-                        msg_body = corpus[round_idx % corpus_len]
-                    else:
-                        msg_body = f"并发压测第 {round_idx + 1}/{messages_per_target} 条 ({time.strftime('%H:%M:%S')})"
-                    for tgt in active_targets:
-                        await emit_item(tgt, msg_body)
-
-            elif isinstance(messages, int):
-                # 【总量按会话顺序切分投递】：每个会话分 quota 条依次发送
-                quota_per_target = max(1, messages // num_targets)
-                for tgt in active_targets:
-                    for msg_idx in range(quota_per_target):
-                        if use_csv_data and corpus_len > 0:
-                            msg_body = corpus[msg_idx % corpus_len]
-                        else:
-                            msg_body = f"[{tgt.name}] 消息第 {msg_idx + 1}/{quota_per_target} 条 ({time.strftime('%H:%M:%S')})"
-                        await emit_item(tgt, msg_body)
-                    if batch_size > 1:
-                        await flush_buffer()
-            elif messages is not None:
-                # 【自定义消息序列】：每个会话按顺序发送全量消息列表
-                for tgt in active_targets:
-                    for item in messages:
-                        await emit_item(tgt, item)
-                    if batch_size > 1:
-                        await flush_buffer()
-            elif use_csv_data and corpus_len > 0:
-                # 【CSV 语料全量顺序发送】：每个会话按顺序发送全量语料
-                for tgt in active_targets:
-                    for text in corpus:
-                        await emit_item(tgt, text)
+                # 所有会话按轮次齐步推进，默认严格从消息文件顺序逐条发送；若首条已预热落库则从第 2 条开始
+                for round_idx in range(start_idx, per_target_quota):
+                    for tgt_idx, tgt in enumerate(active_targets):
+                        await emit_item(tgt, pick_raw_message(round_idx, tgt_idx, tgt))
+            elif per_target_quota > 0:
+                for tgt_idx, tgt in enumerate(active_targets):
+                    for msg_idx in range(start_idx, per_target_quota):
+                        await emit_item(tgt, pick_raw_message(msg_idx, tgt_idx, tgt))
                     if batch_size > 1:
                         await flush_buffer()
 
             if batch_size > 1:
                 await flush_buffer()
 
-
             # 放入结束标记
             for _ in range(concurrency):
                 await queue.put(None)
 
-        async def worker() -> None:
-            nonlocal success_count, fail_count, retry_count, pace, last_report_time, last_report_count
-            current_inflight = 0
-            # 保序防超车门禁：若开启 FIFO 保序，在途超过 low_watermark 即主动排空，彻底杜绝后序批次超越前序重试中消息
-            trigger_limit = low_watermark if enforce_fifo_order else high_watermark
+        trigger_limit = low_watermark if enforce_fifo_order else high_watermark
 
+        async def deliver_batch(pending: List[BatchItem], current_inflight: int, apply_pace: bool = True) -> int:
+            """执行单批消息投递、同步拒收重发与弹性背压控制。"""
+            nonlocal success_count, fail_count, retry_count, pace, last_report_time, last_report_count
+            try:
+                for attempt in range(max_retries + 1):
+                    succeeded, rejected, unknown, current_inflight = await self.send_batch_to_targets(pending)
+                    success_count += len(succeeded)
+                    fail_count += len(unknown)
+                    for tgt, _ in succeeded:
+                        target_success_map[tgt.name] = target_success_map.get(tgt.name, 0) + 1
+                    pending = rejected
+                    if not rejected:
+                        # 2. 动态自适应弹性背压流控 (Elastic Backpressure Controller)
+                        if current_inflight <= low_watermark:
+                            pace = max(delay_between_msg, pace - 0.015)
+                        else:
+                            pace = min(max_pace, max(pace * 1.3, 0.08))
+                        if current_inflight >= trigger_limit:
+                            current_inflight = await self.wait_for_ack_window(low_watermark=low_watermark, timeout=3.0)
+                        break
+                    pace = min(max_pace, max(pace * 2.0, 0.15))
+                    if attempt == max_retries:
+                        fail_count += len(rejected)
+                        pending = []
+                        break
+                    retry_count += len(rejected)
+                    await asyncio.sleep(min(max_pace, retry_backoff * (2 ** attempt)))
+                    current_inflight = await self.wait_for_ack_window(low_watermark=low_watermark, timeout=1.5)
+            except Exception as e:
+                fail_count += len(pending)
+                print(f"❌ [📱 {self.sender_name} | {self.device_id}] 批次投递异常: {e}")
+
+            if apply_pace and pace > 0:
+                await asyncio.sleep(pace)
+
+            completed = success_count + fail_count
+            if report_interval > 0 and (
+                (completed - last_report_count >= report_interval)
+                or (last_report_count == 0 and completed > 0)
+                or (completed >= total_count)
+            ):
+                now = time.time()
+                elapsed_total = max(0.001, now - start_time)
+                elapsed_interval = max(0.001, now - last_report_time)
+                interval_items = max(1, completed - last_report_count)
+                instant_tps = interval_items / elapsed_interval
+                pct = (completed / total_count * 100) if total_count > 0 else 0.0
+                total_str = f"/{total_count:,}" if total_count > 0 else ""
+                print(
+                    f"[📱 {self.sender_name} | {self.device_id}] 进度: {completed:,}{total_str} ({pct:5.1f}%) | "
+                    f"瞬时吞吐: {instant_tps:,.0f} msg/s | 在途: {current_inflight:2d} | 累计成功: {success_count:,} | "
+                    f"失败: {fail_count} | 重发: {retry_count} | 节奏: {pace * 1000:.0f}ms | 总耗时: {elapsed_total:.2f}s"
+                )
+                last_report_time = now
+                last_report_count = completed
+            return current_inflight
+
+        async def worker() -> None:
+            current_inflight = 0
             while True:
-                # 1. 窗口主动保护：发送前若在途依然处于阈值之上，主动挂起等待 ACK 回流排空
                 if current_inflight >= trigger_limit:
                     current_inflight = await self.wait_for_ack_window(low_watermark=low_watermark, timeout=3.0)
 
@@ -905,71 +1127,33 @@ class IMClient:
                 if batch_items is None:
                     queue.task_done()
                     break
-                pending: List[BatchItem] = batch_items
                 try:
-                    for attempt in range(max_retries + 1):
-                        succeeded, rejected, unknown, current_inflight = await self.send_batch_to_targets(pending)
-                        success_count += len(succeeded)
-                        fail_count += len(unknown)
-                        for tgt, _ in succeeded:
-                            target_success_map[tgt.name] = target_success_map.get(tgt.name, 0) + 1
-                        pending = rejected
-                        if not rejected:
-                            # 2. 动态自适应弹性背压流控 (Elastic Backpressure Controller)
-                            # 根据底层在途排队情况自适应伸缩节奏，防止堆积超过 30s 触发超时失败与 WCDB 锁争用
-                            if current_inflight <= low_watermark:
-                                # 通道极速畅通无堆积：加性释放油门，逼近网络最佳吞吐
-                                pace = max(delay_between_msg, pace - 0.015)
-                            else:
-                                # 存在轻度在途堆积：主动收油门拉大呼吸间隙，给服务端分发与本地 SQLite 留出写入窗口
-                                pace = min(max_pace, max(pace * 1.3, 0.08))
-
-                            # 若在途达到保序或高水位阈值，立即触发等待排空
-                            if current_inflight >= trigger_limit:
-                                current_inflight = await self.wait_for_ack_window(low_watermark=low_watermark, timeout=3.0)
-                            break
-                        # 发生拒收时乘性避让并拉大间隔
-                        pace = min(max_pace, max(pace * 2.0, 0.15))
-                        if attempt == max_retries:
-                            fail_count += len(rejected)
-                            pending = []
-                            break
-                        # 仅重发同步拒收（未进入 Netty）的消息，指数退避等待服务端 ACK 回流释放发送窗口
-                        retry_count += len(rejected)
-                        await asyncio.sleep(min(max_pace, retry_backoff * (2 ** attempt)))
-                        current_inflight = await self.wait_for_ack_window(low_watermark=low_watermark, timeout=1.5)
-                except Exception as e:
-                    fail_count += len(pending)
-                    print(f"❌ [📱 {self.sender_name} | {self.device_id}] 批次投递异常: {e}")
+                    current_inflight = await deliver_batch(batch_items, current_inflight, apply_pace=True)
                 finally:
                     queue.task_done()
-                    if pace > 0:
-                        await asyncio.sleep(pace)
-                    
-                    completed = success_count + fail_count
-                    if report_interval > 0 and (
-                        (completed - last_report_count >= report_interval)
-                        or (last_report_count == 0 and completed > 0)
-                        or (completed >= total_count)
-                    ):
-                        now = time.time()
-                        elapsed_total = max(0.001, now - start_time)
-                        elapsed_interval = max(0.001, now - last_report_time)
-                        interval_items = max(1, completed - last_report_count)
-                        instant_tps = interval_items / elapsed_interval
-                        pct = (completed / total_count * 100) if total_count > 0 else 0.0
-                        total_str = f"/{total_count:,}" if total_count > 0 else ""
-                        print(
-                            f"[📱 {self.sender_name} | {self.device_id}] 进度: {completed:,}{total_str} ({pct:5.1f}%) | "
-                            f"瞬时吞吐: {instant_tps:,.0f} msg/s | 在途: {current_inflight:2d} | 累计成功: {success_count:,} | "
-                            f"失败: {fail_count} | 重发: {retry_count} | 节奏: {pace * 1000:.0f}ms | 总耗时: {elapsed_total:.2f}s"
-                        )
-                        last_report_time = now
-                        last_report_count = completed
 
-        if skip_local_db:
+        # 第一阶段（可选）：免落库模式下先正常发送每个会话的第 1 条并等其落库完成，使模拟器列表出现对应会话
+        if need_first_persist:
+            await self.bridge.set_skip_db_write(False)
+            first_items: List[BatchItem] = []
+            for tgt_idx, tgt in enumerate(active_targets):
+                sent_count += 1
+                first_items.append((tgt, format_item_text(tgt, pick_raw_message(0, tgt_idx, tgt))))
+            step = max(1, batch_size)
+            inflight_first = 0
+            for pos in range(0, len(first_items), step):
+                inflight_first = await deliver_batch(first_items[pos:pos + step], inflight_first, apply_pace=False)
+            # 等待首条消息 ACK 返回及后台协程完成本地会话库写入后再切入极速免落库模式
+            await self.wait_for_ack_window(low_watermark=0, timeout=2.0)
+            await asyncio.sleep(0.15)
             await self.bridge.set_skip_db_write(True)
-            print(f"[📱 {self.sender_name} | {self.device_id}] ⚡ [极速压测模式] 已开启跳过发送端本地写库 Hook（仅走网络发包，不写本地 message 库）")
+            print(
+                f"[📱 {self.sender_name} | {self.device_id}] ⚡ [极速压测模式] "
+                f"已为 {len(first_items)} 个会话落库展示第 1 条消息，剩余消息已切换全链路免落库 Hook"
+            )
+        elif skip_local_db:
+            await self.bridge.set_skip_db_write(True)
+            print(f"[📱 {self.sender_name} | {self.device_id}] ⚡ [极速压测模式] 已开启全链路免落库 Hook（跳过本地 DB 读写、同步阻塞准备、敏感词/装扮检查、ACK 重试与调试日志）")
 
         producer_task = asyncio.create_task(producer())
         workers = [asyncio.create_task(worker()) for _ in range(concurrency)]
@@ -1030,8 +1214,14 @@ class IMClient:
         high_watermark: int = 300,
         low_watermark: int = 150,
         use_csv_data: bool = True,
+        corpus_file: str = "chat/chat_messages.csv",
+        corpus_offset: int = 0,
+        shard_targets_corpus: bool = False,
+        include_case_id: bool = True,
+        include_seq_prefix: bool = False,
         enforce_fifo_order: bool = True,
         skip_local_db: bool = False,
+        persist_first_message: bool = True,
     ) -> Dict[str, Any]:
         """【模式三：多会话齐步并行等量压测】同时对所有指定会话各自发送相同数量的消息。
         
@@ -1045,8 +1235,15 @@ class IMClient:
             max_pace: 自适应批次间隔上限（秒）。
             high_watermark: 底层长连接在途消息高水位线。
             low_watermark: 底层长连接在途消息低水位线。
-            use_csv_data: 是否使用 data_loader 从 data/chat/chat_messages.csv 提取真实业务语料。
+            use_csv_data: 是否从消息文件提取真实业务语料。
+            corpus_file: 消息文件路径（默认 'chat/chat_messages.csv'）。
+            corpus_offset: 语料起始游标偏移量（默认 0）。
+            shard_targets_corpus: 同设备多目标之间是否微错开语料游标（默认 False，严格按表顺序发送）。
+            include_case_id: 是否前置拼接 case_id（默认 True，格式为 case_id:原文）。
+            include_seq_prefix: 是否前置拼接 [#SEQ0001] 序号前缀（默认 False）。
             enforce_fifo_order: 是否开启单会话严格保序屏障（默认 True）。
+            skip_local_db: 是否开启免落库极速模式（默认 False）。
+            persist_first_message: 在 skip_local_db=True 时，是否先正常落库并展示每个会话的第 1 条消息以生成会话列表条目（默认 True）。
         """
         return await self.send_stream(
             messages_per_target=count_per_target,
@@ -1059,8 +1256,14 @@ class IMClient:
             high_watermark=high_watermark,
             low_watermark=low_watermark,
             use_csv_data=use_csv_data,
+            corpus_file=corpus_file,
+            corpus_offset=corpus_offset,
+            shard_targets_corpus=shard_targets_corpus,
+            include_case_id=include_case_id,
+            include_seq_prefix=include_seq_prefix,
             enforce_fifo_order=enforce_fifo_order,
             skip_local_db=skip_local_db,
+            persist_first_message=persist_first_message,
         )
 
 
@@ -1187,8 +1390,13 @@ class IMClientCluster:
         high_watermark: int = 300,
         low_watermark: int = 150,
         use_csv_data: bool = True,
+        corpus_file: str = "chat/chat_messages.csv",
+        shard_corpus: bool = False,
+        include_case_id: bool = True,
+        include_seq_prefix: bool = False,
         enforce_fifo_order: bool = True,
         skip_local_db: bool = False,
+        persist_first_message: bool = True,
     ) -> List[Dict[str, Any]]:
         """【多设备集群齐步等量并行压测】
         
@@ -1197,20 +1405,40 @@ class IMClientCluster:
         - 每台设备各自向自己的专属群与单聊目标发送 count_per_target 条；
         - 总计投递量由实际在线的设备装配会话相加计算。
         - 开启 batch_size 极速管道 + delay_between_batches 批次微延时，彻底规避原生 socket 冲垮。
-        - 默认通过 data_loader 加载 data/chat/chat_messages.csv 真实业务语料。
-        - enforce_fifo_order: 开启会话严格保序屏障，杜绝跨批次超车导致消息乱序。
+        - 默认加载 corpus_file 消息文件（保留 case_id:正文 格式，不强加 [#SEQ] 前缀），并严格按表从头顺序发送。
+        - shard_corpus=True 时才按设备索引错开语料起始游标；默认 False（例如发 10 条即发送前 10 条）。
         """
         active_clients = [c for c in self.clients if c._is_started and c.bridge._is_ready]
         if not active_clients:
             print("❌ 当前集群中没有就绪的活动客户端，请确认模拟器处于在线状态且 App 正在运行。")
             return []
 
+        corpus = (
+            get_chat_message_corpus(corpus_file, include_case_id=include_case_id)
+            if use_csv_data
+            else []
+        )
+        corpus_len = len(corpus)
+        step = max(1, corpus_len // len(active_clients)) if (shard_corpus and corpus_len > 0) else 0
+
         total_cluster_msgs = sum(len(c.targets) * count_per_target for c in active_clients)
+        content_mode = (
+            f"消息文件原文 ({corpus_file}, 共 {corpus_len:,} 条)"
+            if use_csv_data
+            else "内置测试标头"
+        )
+        prefix_tags = []
+        if include_case_id:
+            prefix_tags.append("case_id")
+        if include_seq_prefix:
+            prefix_tags.append("#SEQ")
+        prefix_desc = f"附加前缀: {'+'.join(prefix_tags)}" if prefix_tags else "纯正原文 (无人工前缀)"
+
         print(f"💥 [多机集群协同开火] {len(active_clients)} 台健康设备启动齐步矩阵压测！")
         print(f"   🎯 调度模式: 设备专属群聊对齐 + 公共单聊并发 (已自动隔离离线设备)")
-        print(f"   📂 消息内容数据源: {'data/chat/chat_messages.csv (data_loader 工具加载)' if use_csv_data else '内置测试标头'}")
+        print(f"   📂 消息内容数据源: {content_mode} | {prefix_desc} | 集群分片错峰: {'开启' if (shard_corpus and use_csv_data) else '关闭'}")
         print(f"   🚀 批处理管道: 开启 (Batch={batch_size} 条/RPC, 批次间防爆微延时: {delay_between_batches*1000:.0f}ms)")
-        print(f"   🛡️ 会话保序屏障: {'开启 (单会话逻辑序号锚定 + 在途排空防超车)' if enforce_fifo_order else '关闭'}")
+        print(f"   🛡️ 会话保序屏障: {'开启 (在途排空防超车)' if enforce_fifo_order else '关闭'}")
         print(f"   📦 单机单会话配额: {count_per_target:,} 条")
         print(f"   🌊 全集群总消息投放量: {total_cluster_msgs:,} 条真实消息")
         print("--------------------------------------------------")
@@ -1227,10 +1455,16 @@ class IMClientCluster:
                 high_watermark=high_watermark,
                 low_watermark=low_watermark,
                 use_csv_data=use_csv_data,
+                corpus_file=corpus_file,
+                corpus_offset=(idx * step) % corpus_len if (shard_corpus and corpus_len > 0) else 0,
+                shard_targets_corpus=shard_corpus,
+                include_case_id=include_case_id,
+                include_seq_prefix=include_seq_prefix,
                 enforce_fifo_order=enforce_fifo_order,
                 skip_local_db=skip_local_db,
+                persist_first_message=persist_first_message,
             )
-            for c in active_clients
+            for idx, c in enumerate(active_clients)
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         total_time = max(0.001, time.time() - start_time)
@@ -1563,9 +1797,12 @@ COMMON_SINGLE_TARGETS = _default_targets
 if __name__ == "__main__":
 
     async def main() -> None:
+        # 消息文件路径（默认加载 data/chat/chat_messages.csv，也可切换为 .xlsx / .txt / 绝对路径）
+        CORPUS_FILE = "chat/chat_messages.csv"
+
         print("==================================================")
         print("🚀 三条 IM 分布式多设备多会话高并发压测引擎")
-        print("📚 消息语料: 加载自 data/chat/chat_messages.csv (通过 data_loader 工具)")
+        print(f"📚 消息语料: {CORPUS_FILE}（保留 case_id:原文 格式，不额外附加 #SEQ 前缀）")
         print("==================================================")
 
         # -------------------------------------------------------------
@@ -1577,7 +1814,7 @@ if __name__ == "__main__":
         # USE_CLUSTER = False 
 
         # 每台设备对各自会话（专属群聊+公共单聊）发送的消息数量（如设为 20 条）
-        COUNT_PER_TARGET = 500
+        COUNT_PER_TARGET = 1000
         # COUNT_PER_TARGET = 28572
 
         if USE_CLUSTER:
@@ -1612,7 +1849,12 @@ if __name__ == "__main__":
                 high_watermark=300,
                 low_watermark=150,
                 max_pace=0.3,
+                corpus_file=CORPUS_FILE,
+                shard_corpus=False,
+                include_case_id=True,
+                include_seq_prefix=False,
                 skip_local_db=True,
+                persist_first_message=True,
             )
             await cluster.stop()
 
@@ -1647,8 +1889,12 @@ if __name__ == "__main__":
                 high_watermark=300,         # 高水位线（需大于 batch_size，避免每批都触发排空）
                 low_watermark=150,          # 低水位线（需大于 batch_size，避免每批必等待）
                 max_pace=0.3,               # 退避休眠上限降至 0.3s，避免单批固定卡死 1s
+                corpus_file=CORPUS_FILE,
+                include_case_id=True,
+                include_seq_prefix=False,
                 enforce_fifo_order=True,    # 开启单会话严格保序屏障
                 skip_local_db=True,         # 跳过发送端本地写库，彻底解决 1.7G WAL 膨胀与提速
+                persist_first_message=True, # 每个会话先正常落库展示第 1 条消息，剩余消息全部免落库极速发送
             )
             await client.stop()
 
