@@ -15,32 +15,45 @@ on:
 
 jobs:
   build-macos:
-    name: 在云端真实 macOS 虚拟机中打包 DMG
+    name: 打包 macOS DMG (${{ matrix.label }})
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            cmd_prefix: arch -x86_64
+            label: Intel_x86_64_虚拟机与Intel专用
+            artifact_name: Santiao_IM_macOS_Intel_x64_DMG_Setup
+          - arch: arm64
+            cmd_prefix: ""
+            label: AppleSilicon_M系列芯片专用
+            artifact_name: Santiao_IM_macOS_AppleSilicon_arm64_DMG_Setup
 
     steps:
       - name: 检出工程代码仓库
         uses: actions/checkout@v4
 
-      - name: 配置 Python 3.13 运行环境
+      - name: 配置 Python 3.13 运行环境 (${{ matrix.arch }})
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
+          architecture: ${{ matrix.arch }}
           cache: 'pip'
 
-      - name: 安装桌面端与打包核心依赖
+      - name: 安装桌面端与打包核心依赖 (${{ matrix.arch }})
         run: |
-          python -m pip install --upgrade pip
-          pip install PyQt6 PyInstaller Pillow pytest pytest-check pytest-rerunfailures allure-pytest Appium-Python-Client selenium hmnextauto lxml requests websockets PyYAML colorlog ImageHash pandas pypinyin python-dateutil psutil opencv-python-headless numpy setuptools tidevice pymobiledevice3 av uiautomator2 grpcio
+          ${{ matrix.cmd_prefix }} python -m pip install --upgrade pip
+          ${{ matrix.cmd_prefix }} pip install PyQt6 PyInstaller Pillow pytest pytest-check pytest-rerunfailures allure-pytest Appium-Python-Client selenium hmnextauto lxml requests websockets PyYAML colorlog ImageHash pandas pypinyin python-dateutil psutil opencv-python-headless numpy setuptools tidevice pymobiledevice3 av uiautomator2 grpcio
 
-      - name: 执行自动化打包生成原生 .app 与 .dmg 安装镜像
+      - name: 执行自动化打包生成原生 .app 与 .dmg 安装镜像 (${{ matrix.arch }})
         run: |
-          python desktop_app/build_mac_app.py
+          ${{ matrix.cmd_prefix }} python desktop_app/build_mac_app.py
 
-      - name: 上传最终生成的 macOS DMG 安装包至 GitHub 页面
+      - name: 上传最终生成的 macOS DMG 安装包至 GitHub 页面 (${{ matrix.arch }})
         uses: actions/upload-artifact@v4
         with:
-          name: Santiao_IM_macOS_DMG_Setup
+          name: ${{ matrix.artifact_name }}
           path: dist/SetupInstaller/*.dmg
           retention-days: 30
           if-no-files-found: error

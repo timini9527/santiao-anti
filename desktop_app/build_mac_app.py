@@ -118,9 +118,11 @@ def _resolve_github_actions_url() -> str:
             cwd=PROJECT_ROOT,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=5
         )
-        remote_url = res.stdout.strip()
+        remote_url = (res.stdout or "").strip()
         if remote_url:
             if remote_url.startswith("git@github.com:"):
                 repo_path = remote_url.replace("git@github.com:", "").removesuffix(".git")
@@ -164,9 +166,11 @@ def trigger_github_cloud_build():
             cwd=PROJECT_ROOT,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=5
         )
-        staged_files = [f.strip() for f in diff_res.stdout.splitlines() if f.strip()]
+        staged_files = [f.strip() for f in (diff_res.stdout or "").splitlines() if f.strip()]
         if staged_files:
             ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             commit_msg = f"chore: 自动提交并触发 macOS 云端构建打包 ({ts})"
@@ -175,12 +179,14 @@ def trigger_github_cloud_build():
                 cwd=PROJECT_ROOT,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=15
             )
             if commit_res.returncode == 0:
                 print(f" ✅ 已自动提交 {len(staged_files)} 个变更文件 -> {commit_msg}")
             else:
-                print(f" ⚠️ 自动提交提示: {(commit_res.stderr or commit_res.stdout).strip()}")
+                print(f" ⚠️ 自动提交提示: {((commit_res.stderr or '') or (commit_res.stdout or '')).strip()}")
         else:
             print(" ℹ️ 本地工作区干净，无新增未提交修改。")
     except Exception as e:
@@ -196,9 +202,11 @@ def trigger_github_cloud_build():
             cwd=PROJECT_ROOT,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=30
         )
-        push_output = (push_res.stdout + "\n" + push_res.stderr).strip()
+        push_output = f"{push_res.stdout or ''}\n{push_res.stderr or ''}".strip()
         if push_res.returncode == 0:
             if "Everything up-to-date" in push_output:
                 print(" ℹ️ 远程 build-mac 分支已是最新提交状态。")
@@ -220,13 +228,15 @@ def trigger_github_cloud_build():
                 cwd=PROJECT_ROOT,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=15
             )
             if gh_res.returncode == 0:
                 print(" ✅ 已成功通过 GitHub CLI 触发云端 macOS 打包任务！")
                 push_triggered = True
             else:
-                print(f" ⚠️ GitHub CLI 触发未成功: {(gh_res.stderr or gh_res.stdout).strip()}")
+                print(f" ⚠️ GitHub CLI 触发未成功: {((gh_res.stderr or '') or (gh_res.stdout or '')).strip()}")
         except Exception as e:
             print(f" ⚠️ GitHub CLI 调用异常: {e}")
     else:
@@ -393,7 +403,9 @@ def build_mac(build_dmg_flag: bool = BUILD_DMG):
     app_path = os.path.join(dist_dir, f"{APP_NAME}.app")
 
     if build_dmg_flag:
-        dmg_output = os.path.join(dist_dir, "SetupInstaller", f"Santiao_IM_macOS_Setup_v{VERSION}.dmg")
+        import platform
+        cpu_arch = platform.machine().lower()
+        dmg_output = os.path.join(dist_dir, "SetupInstaller", f"Santiao_IM_macOS_{cpu_arch}_Setup_v{VERSION}.dmg")
         build_dmg(app_path, dmg_output)
         if os.path.exists(dmg_output):
             print("\n==================================================")

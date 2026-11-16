@@ -34,7 +34,6 @@ import subprocess
 import sys
 import time
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union
-import uuid
 
 import frida
 import frida_tools
@@ -180,11 +179,6 @@ class SessionTarget:
     chat_id: str = "0"                    # 会话 ID（单聊填 "0"，群聊填群真实 GroupID）
     is_top: bool = False                  # 是否置顶会话
     is_muted: bool = False                # 是否免打扰
-
-    @property
-    def is_group(self) -> bool:
-        """是否为群聊。"""
-        return int(self.chat_type) == int(ChatType.GROUP)
 
 
 # 批次元素：(会话目标, 文本内容)
@@ -383,37 +377,6 @@ class AppRuntimeBridge:
             setNetworkLogSuppressed(_skipSendDbWrite);
             return _skipSendDbWrite;
         },
-        // 通用发送入口：自动适配单聊 (chatType=1) 与群聊 (chatType=2)
-        sendTextMessage: function(chatId, chatType, fromCustId, fromCustName, toCustId, content) {
-            var success = false;
-            var skipPrepare = _skipSendDbWrite;
-            Java.perform(function() {
-                try {
-                    if (!WebSocketMgr) {
-                        WebSocketMgr = Java.use('com.network.lib.socket.WebSocketManager').INSTANCE.value;
-                    }
-                    if (WebSocketMgr) {
-                        success = WebSocketMgr.sendTextMessage(
-                            chatId,        // 单聊填 "0"，群聊填群 GroupID
-                            chatType,      // 1: 单聊, 2: 群聊
-                            fromCustId,
-                            fromCustName,
-                            toCustId,      // 单聊填对方 CustID，群聊填 "0"
-                            content,
-                            0,             // exNoId (引用/扩展编号)
-                            null,          // richContent
-                            null,          // contentJson
-                            null,          // msgNo
-                            skipPrepare,   // prepareNotified: 免落库模式下直接跳过 runBlocking 准备回调
-                            false          // useTimelinePrepare
-                        );
-                    }
-                } catch (e) {
-                    console.log("[Bridge] 发送底层异常: " + e.toString());
-                }
-            });
-            return success;
-        },
         // 批量管道高速发送接口：单次 RPC 传输批次数组，App 内部执行原生循环直投 Netty
         // 返回逐条回执：rejected 为同步拒收或未执行（未进入 Netty，可安全重发）；unknown 为抛异常、结果未知（禁止重放）
         // 快速失败：通道一旦拒收立即停止本批，避免对不可写通道持续冲击并产生大量本地失败记录
@@ -580,46 +543,6 @@ class AppRuntimeBridge:
                     if not ok:
                         raise RuntimeError(f"无法建立与设备 {self.device_id} 运行时长连接的注入桥接")
 
-    async def send_text(
-        self,
-        chat_id: str,
-        chat_type: int,
-        from_cust_id: str,
-        from_cust_name: str,
-        to_cust_id: str,
-        content: str,
-    ) -> bool:
-        """通过 App 运行时活动长连接直接发送文本消息。
-        
-        Args:
-            chat_id: 会话标识（单聊默认 "0"）
-            chat_type: 聊天类型（1 为单聊，2 为群聊）
-            from_cust_id: 发送方 CustID
-            from_cust_name: 发送方昵称
-            to_cust_id: 接收方 CustID
-            content: 消息文本内容
-            
-        Returns:
-            bool: 协议栈成功提交返回 True，否则返回 False。
-        """
-        await self.ensure_connected()
-        assert self._script is not None
-
-        def _invoke() -> bool:
-            return bool(
-                self._script.exports_sync.send_text_message(
-                    chat_id,
-                    chat_type,
-                    from_cust_id,
-                    from_cust_name,
-                    to_cust_id,
-                    content,
-                )
-            )
-
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(self._executor, _invoke)
-
     async def get_inflight(self) -> int:
         """获取底层长连接当前在途未确认消息数（服务端 ACK 尚未返回的队列大小）。"""
         await self.ensure_connected()
@@ -693,8 +616,7 @@ class IMClient:
     统一聚合：
       - 单目标 / 多目标矩阵管理：同时支持单聊、群聊及混合会话目标池；
       - 真机原生底层协议桥通道（AppRuntimeBridge）：100% 真实到达且支撑百万压测；
-      - 多会话并发广播机制（send_broadcast）：一键向图中全部会话发送消息；
-      - 百万级流式调度压测引擎（send_stream）：轮询并发打散，保障各会话均衡承载。
+      - 百万级流式调度压测引擎（send_stream / send_matrix）：批处理并发打散，保障各会话均衡承载。
     """
 
     def __init__(
@@ -730,42 +652,6 @@ class IMClient:
         """关闭客户端并释放资源。"""
         self.bridge.close()
         self._is_started = False
-
-    async def send_to_target(self, target: SessionTarget, text: str) -> Dict[str, Any]:
-        """向特定目标会话（单聊或群聊）发送单条消息。"""
-        client_msg_id = uuid.uuid4().hex
-        ts = int(time.time() * 1000)
-
-        await self._sem.acquire()
-        try:
-            # 统一调用底层长连接协议栈
-            success = await self.bridge.send_text(
-                chat_id=target.chat_id,
-                chat_type=int(target.chat_type),
-                from_cust_id=self.sender_cust_id,
-                from_cust_name=self.sender_name,
-                to_cust_id=target.to_cust_id,
-                content=text,
-            )
-            return {
-                "ok": success,
-                "target_name": target.name,
-                "chat_type": "群聊" if target.is_group else "单聊",
-                "chat_id": target.chat_id,
-                "to_cust_id": target.to_cust_id,
-                "client_msg_id": client_msg_id,
-                "timestamp": ts,
-            }
-        except Exception as e:
-            return {
-                "ok": False,
-                "target_name": target.name,
-                "error": str(e),
-                "client_msg_id": client_msg_id,
-                "timestamp": ts,
-            }
-        finally:
-            self._sem.release()
 
     async def wait_for_ack_window(self, low_watermark: int = 35, timeout: float = 2.0) -> int:
         """非阻塞等待服务端 ACK 回流释放发送窗口（在途降至低水位以下）。"""
@@ -831,70 +717,6 @@ class IMClient:
         rejected_set, unknown_set = set(rejected_idx), set(unknown_idx)
         succeeded = [it for i, it in enumerate(items) if i not in rejected_set and i not in unknown_set]
         return succeeded, [items[i] for i in rejected_idx], [items[i] for i in unknown_idx], inflight
-
-    async def send_message(
-        self,
-        conversation_id: str,
-        text: str,
-        *,
-        to_cust_id: Optional[str] = None,
-        chat_type: int = 1,
-    ) -> Dict[str, Any]:
-        """单会话发送消息（标准单目标调用接口）。"""
-        target = SessionTarget(
-            name=f"conv_{conversation_id}",
-            chat_type=chat_type,
-            to_cust_id=to_cust_id or "0",
-            chat_id=conversation_id,
-        )
-        return await self.send_to_target(target, text)
-
-    async def send_batch(
-        self,
-        conversation_id: str,
-        texts: Iterable[str],
-        *,
-        to_cust_id: Optional[str] = None,
-        chat_type: int = 1,
-    ) -> List[Dict[str, Any]]:
-        """向指定单个会话并发批量发送消息。"""
-        return await asyncio.gather(*[
-            self.send_message(conversation_id, t, to_cust_id=to_cust_id, chat_type=chat_type)
-            for t in texts
-        ])
-
-    async def send_broadcast(
-        self,
-        text: str,
-        targets: Optional[List[SessionTarget]] = None,
-    ) -> List[Dict[str, Any]]:
-        """【模式一：多会话全员广播】一条消息并发投递至所有目标会话。
-        
-        Args:
-            text: 消息正文
-            targets: 指定发送的目标列表（缺省时使用实例中配置的全部 targets）
-            
-        Returns:
-            List[Dict]: 各会话发送结果列表。
-        """
-        active_targets = targets or self.targets
-        if not active_targets:
-            raise ValueError("未指定任何会话目标，无法执行广播")
-
-        print(f"\n📢 [多会话广播] 正在向图中全部 {len(active_targets)} 个会话并发投递消息...")
-        start_time = time.time()
-        tasks = [self.send_to_target(t, text) for t in active_targets]
-        results = await asyncio.gather(*tasks)
-        cost = time.time() - start_time
-
-        success_count = sum(1 for r in results if r.get("ok") is True)
-        print("--------------------------------------------------")
-        print(f"📊 多会话广播执行回执 (耗时: {cost:.2f}s, 成功: {success_count}/{len(active_targets)}):")
-        for r in results:
-            status_icon = "✅" if r.get("ok") else "❌"
-            print(f"  {status_icon} 【{r.get('target_name')}】 ({r.get('chat_type')}) -> 状态: {'成功到达' if r.get('ok') else '发送失败'}")
-        print("--------------------------------------------------")
-        return results
 
     async def send_stream(
         self,
