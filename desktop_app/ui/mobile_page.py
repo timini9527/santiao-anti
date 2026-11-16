@@ -373,9 +373,18 @@ class MobilePage(QWidget):
         top_header = self._create_top_header()
         root_layout.addWidget(top_header)
 
-        # 2. 左右核心大水平分割器 (main_h_splitter) - 极致纤细4px手柄，视觉干净无突兀粗条
+        # 2. 左右核心大水平分割器 (main_h_splitter) - 支持右侧自由调宽与贴边自动隐藏
         self.main_h_splitter = QSplitter(Qt.Orientation.Horizontal)
-        self.main_h_splitter.setHandleWidth(4)
+        self.main_h_splitter.setHandleWidth(6)
+        self.main_h_splitter.setStyleSheet("""
+            QSplitter::handle:horizontal {
+                background-color: transparent;
+                border-radius: 2px;
+            }
+            QSplitter::handle:horizontal:hover, QSplitter::handle:horizontal:pressed {
+                background-color: #3b82f6;
+            }
+        """)
 
         # 2.1 左边栏：用例搜索、用例树与参数配置
         left_sidebar = self._create_left_sidebar()
@@ -383,13 +392,15 @@ class MobilePage(QWidget):
 
         # 2.2 右边栏：垂直分割器 (上半部 Allure 报告展示区 + 下半部 终端实时执行日志)
         right_panel = self._create_right_panel()
+        right_panel.setMinimumWidth(0)
+        right_panel.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding)
         self.main_h_splitter.addWidget(right_panel)
 
-        # 设置左边栏与右边栏的初始宽度比例 (约 35% : 65%)
+        # 设置左边栏与右边栏的初始宽度比例 (约 35% : 65%)，允许右侧自由压缩与贴边折叠隐藏
         self.main_h_splitter.setStretchFactor(0, 4)
         self.main_h_splitter.setStretchFactor(1, 6)
         self.main_h_splitter.setCollapsible(0, False)
-        self.main_h_splitter.setCollapsible(1, False)
+        self.main_h_splitter.setCollapsible(1, True)
         self.main_h_splitter.splitterMoved.connect(self._on_h_splitter_moved)
 
         # 赋予水平手柄平滑左右调节光标 (↔)
@@ -911,9 +922,10 @@ class MobilePage(QWidget):
     def _create_report_section(self) -> QWidget:
         panel = QFrame()
         panel.setProperty("class", "panel-card")
-        # 允许自由压缩至 60px，彻底解除 QSplitter 向上拖动的硬性尺寸死锁
+        # 允许自由压缩至 60px 高及 0px 宽，彻底解除 QSplitter 拖动死锁
         panel.setMinimumHeight(60)
-        panel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        panel.setMinimumWidth(0)
+        panel.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(12, 10, 12, 10)
         layout.setSpacing(10)
@@ -1079,7 +1091,8 @@ class MobilePage(QWidget):
         panel = QFrame()
         panel.setProperty("class", "panel-card")
         panel.setMinimumHeight(35)
-        panel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        panel.setMinimumWidth(0)
+        panel.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(12, 8, 12, 8)
         layout.setSpacing(6)
@@ -1284,9 +1297,16 @@ class MobilePage(QWidget):
 
     # ==================== 4. 垂直与水平分割器拖拽折叠与记忆恢复 ====================
     def _on_h_splitter_moved(self, pos: int, index: int):
-        """左右主布局分割器拖拽调整时，实时持久化尺寸记忆"""
+        """左右主布局分割器拖拽调整：支持自由缩放，拖至右边距（<= 40px）时自动吸附隐藏，向左拖动恢复"""
         sizes = self.main_h_splitter.sizes()
         if len(sizes) == 2 and sum(sizes) > 0:
+            total = sum(sizes)
+            right_w = sizes[1]
+            if 0 < right_w <= 40:
+                self.main_h_splitter.blockSignals(True)
+                self.main_h_splitter.setSizes([total, 0])
+                self.main_h_splitter.blockSignals(False)
+                sizes = [total, 0]
             desktop_config.set("mobile", "splitter_h_sizes", sizes)
 
     def _on_right_splitter_moved(self, pos: int, index: int):
