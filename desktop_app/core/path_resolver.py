@@ -457,7 +457,7 @@ class SmartPathResolver:
 
         # 2. 严格限定必须同步的测试核心配置文件
         candidate_files = [
-            "pytest.ini", "conftest.py", "requirements.txt"
+            "config.py", "pytest.ini", "conftest.py", "requirements.txt"
         ]
         core_files = [
             f for f in candidate_files

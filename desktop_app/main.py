@@ -25,8 +25,13 @@ if "--internal-pytest" in sys.argv:
     try:
         from desktop_app.core.path_resolver import SmartPathResolver
         _root = SmartPathResolver.get_project_root()
-        if _root and _root not in sys.path:
-            sys.path.insert(0, _root)
+        if _root:
+            if _root not in sys.path:
+                sys.path.insert(0, _root)
+            os.chdir(_root)
+        # 清理可能误缓存的 namespace package，确保优先命中根目录 config.py
+        if "config" in sys.modules and not hasattr(sys.modules["config"], "CONFIG_DIR"):
+            sys.modules.pop("config", None)
     except Exception:
         pass
     sys.exit(pytest.main(_pytest_args))

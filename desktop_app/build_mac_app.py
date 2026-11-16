@@ -27,6 +27,12 @@ PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
 # - False : 仅生成本地运行的 .app 应用程序包 (dist/三条IM自动化测试控制台.app)，极速构建与本地调试
 BUILD_DMG = True
 
+# 控制 GitHub 云端构建的目标架构 (修改此变量后直接运行本脚本即可按需单独打包):
+# - "x64"   : 仅打包 Intel x86_64 版本 (Windows 上的 Mac 虚拟机 / Intel Mac 专用)
+# - "arm64" : 仅打包 Apple Silicon 版本 (M1/M2/M3/M4 Mac 真机专用，约 2 分钟完成)
+# - "both"  : 同时并行打包两个架构版本
+TARGET_MAC_ARCH = "x64"
+
 APP_NAME = "三条IM自动化测试控制台"
 BUNDLE_ID = "com.santiao.qa.desktop"
 VERSION = "0.9.9"
@@ -148,6 +154,12 @@ def trigger_github_cloud_build():
 
     print("\n" + "=" * 66)
     print(f" [双模分发] 当前系统为 {sys.platform}，启动【一键自动 Push + GitHub 云端打包】")
+    arch_desc = {
+        "x64": "仅构建 Intel x86_64 (Windows 虚拟机专用)",
+        "arm64": "仅构建 Apple Silicon arm64 (M系列 Mac 真机专用)",
+        "both": "双架构同时构建 (x64 + arm64)",
+    }.get(TARGET_MAC_ARCH.lower(), TARGET_MAC_ARCH)
+    print(f" 🎯 [构建目标] TARGET_MAC_ARCH = {TARGET_MAC_ARCH} ({arch_desc})")
     print("=" * 66)
 
     actions_url = _resolve_github_actions_url()

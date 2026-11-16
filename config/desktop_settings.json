@@ -2,7 +2,7 @@
   "mobile": {
     "os_type": "Win",
     "remote_appium": "198.18.0.1:4723 (服务在线)",
-    "remote_udid": "3B65BN02GU600000",
+    "remote_udid": "7632094a38390c717a815009bc22b7cbce055932",
     "remote_appium2": "198.18.0.1:4724 (服务在线)",
     "remote_udid2": "00008101-001538462600001E",
     "private_chat_name": "",
@@ -13,16 +13,16 @@
     "selected_test_file": "",
     "auto_scroll_log": true,
     "splitter_h_sizes": [
-      268,
-      993
+      461,
+      798
     ],
     "splitter_v_sizes": [
-      638,
-      275
+      202,
+      566
     ],
     "log_collapsed": false,
-    "last_log_height": 275,
-    "params_collapsed": true,
+    "last_log_height": 566,
+    "params_collapsed": false,
     "node_status_map": {
       "tests/chat/core/test_chat/TestChat::test_send_text_message": "passed",
       "tests/chat/list/test_chat_list.py::TestChatList::test_enter_chat": "passed",
@@ -262,7 +262,11 @@
       "tests/groups/create/test_group_create.py": "failed",
       "tests/groups": "failed",
       "tests/groups/create/test_group_create.py::TestGroupCreate::test_create_group_success": "failed",
-      "tests/groups/create/test_group_create.py::TestGroupCreate::test_create_group_success_x[0人]": "failed"
+      "tests/groups/create/test_group_create.py::TestGroupCreate::test_create_group_success_x[0人]": "failed",
+      "tests/test_demo_ios.py::TestDemoIos::test_ios_send_message": "broken",
+      "tests/test_demo_ios.py::TestDemoIos": "broken",
+      "tests/test_demo_ios.py": "broken",
+      "tests": "broken"
     },
     "expanded_targets": [
       "tests"
@@ -293,10 +297,10 @@
     "concurrency": 1
   },
   "window": {
-    "x": 208,
-    "y": 178,
-    "width": 1479,
+    "x": 475,
+    "y": 42,
+    "width": 1361,
     "height": 864,
-    "maximized": true
+    "maximized": false
   }
 }

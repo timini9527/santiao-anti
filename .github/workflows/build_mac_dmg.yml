@@ -5,6 +5,17 @@ name: 构建 macOS 原生桌面端与 DMG 安装包
 # 2. 网页端支持手动按需触发 (workflow_dispatch)
 on:
   workflow_dispatch:
+    inputs:
+      target_arch:
+        description: '目标打包架构 (auto 则读取 build_mac_app.py 的 TARGET_MAC_ARCH 变量)'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - x64
+          - arm64
+          - both
   push:
     branches:
       - build-mac
@@ -14,21 +25,66 @@ on:
       - '.github/workflows/build_mac_dmg.yml'
 
 jobs:
+  prepare:
+    name: 解析打包目标架构变量
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: 检出脚本读取 TARGET_MAC_ARCH
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            desktop_app/build_mac_app.py
+
+      - name: 生成动态构建矩阵
+        id: set-matrix
+        run: |
+          python3 - <<'EOF'
+          import json, os, re
+          target = "${{ github.event.inputs.target_arch }}".strip().lower()
+          if not target or target == "auto":
+              with open("desktop_app/build_mac_app.py", "r", encoding="utf-8") as f:
+                  content = f.read()
+              m = re.search(r'^TARGET_MAC_ARCH\s*=\s*["\']([^"\']+)["\']', content, re.M)
+              target = m.group(1).strip().lower() if m else "x64"
+
+          items = []
+          if target in ("x64", "both", "all"):
+              items.append({
+                  "os": "macos-15-intel",
+                  "arch": "x64",
+                  "label": "Intel_x86_64_虚拟机与Intel专用",
+                  "artifact_name": "Santiao_IM_macOS_Intel_x64_DMG_Setup",
+              })
+          if target in ("arm64", "both", "all"):
+              items.append({
+                  "os": "macos-latest",
+                  "arch": "arm64",
+                  "label": "AppleSilicon_M系列芯片专用",
+                  "artifact_name": "Santiao_IM_macOS_AppleSilicon_arm64_DMG_Setup",
+              })
+          if not items:
+              items.append({
+                  "os": "macos-15-intel",
+                  "arch": "x64",
+                  "label": "Intel_x86_64_虚拟机与Intel专用",
+                  "artifact_name": "Santiao_IM_macOS_Intel_x64_DMG_Setup",
+              })
+
+          matrix_json = json.dumps({"include": items}, ensure_ascii=False)
+          print(f"Target={target}, Matrix={matrix_json}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"matrix={matrix_json}\n")
+          EOF
+
   build-macos:
     name: 打包 macOS DMG (${{ matrix.label }})
+    needs: prepare
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - os: macos-15-intel
-            arch: x64
-            label: Intel_x86_64_虚拟机与Intel专用
-            artifact_name: Santiao_IM_macOS_Intel_x64_DMG_Setup
-          - os: macos-latest
-            arch: arm64
-            label: AppleSilicon_M系列芯片专用
-            artifact_name: Santiao_IM_macOS_AppleSilicon_arm64_DMG_Setup
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
 
     steps:
       - name: 检出工程代码仓库
