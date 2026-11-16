@@ -20,7 +20,7 @@ if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 try:
-    from web_platform.backend.paths import REPORTS_DIR
+    from desktop_app.core.paths import REPORTS_DIR
 except Exception:
     try:
         from ..config import PROJECT_ROOT

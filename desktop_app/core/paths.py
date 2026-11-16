@@ -1,20 +1,21 @@
 # -*- coding: utf-8 -*-
+"""桌面端核心运行路径解析模块。"""
 import os
 import sys
 
-BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
-WEB_PLATFORM_DIR = os.path.dirname(BACKEND_DIR)
+CORE_DIR = os.path.dirname(os.path.abspath(__file__))
+DESKTOP_APP_DIR = os.path.dirname(CORE_DIR)
 
 try:
     from desktop_app.core.path_resolver import SmartPathResolver
     PROJECT_ROOT = SmartPathResolver.get_project_root()
 except Exception:
-    if getattr(sys, 'frozen', False):
+    if getattr(sys, "frozen", False):
         exe_dir = os.path.dirname(sys.executable)
         candidates = [
             exe_dir,
             os.path.dirname(exe_dir),
-            os.getcwd()
+            os.getcwd(),
         ]
         for cand in candidates:
             if os.path.exists(os.path.join(cand, "tests")):
@@ -23,11 +24,11 @@ except Exception:
         else:
             PROJECT_ROOT = exe_dir
     else:
-        PROJECT_ROOT = os.path.dirname(WEB_PLATFORM_DIR)
+        PROJECT_ROOT = os.path.dirname(DESKTOP_APP_DIR)
 
-# 全局核心动态绝对路径定义（保证在任意工作目录运行均 100% 准确）
+
 def _resolve_writable_workspace() -> str:
-    """若当前运行目录位于只读文件系统 (如 macOS 未拖入 Applications 直接从 DMG /Volumes 运行)，自动重定向至用户可写目录"""
+    """解析可写工作区目录；当位于只读卷（如 macOS DMG）时回退至用户主目录。"""
     try:
         if sys.platform == "darwin" and os.path.abspath(PROJECT_ROOT).startswith("/Volumes/"):
             raise PermissionError("DMG 只读卷")
@@ -47,10 +48,8 @@ def _resolve_writable_workspace() -> str:
 WRITABLE_ROOT = _resolve_writable_workspace()
 REPORTS_DIR = os.path.join(WRITABLE_ROOT, "reports")
 TESTS_DIR = os.path.join(PROJECT_ROOT, "tests")
-STATIC_DIR = os.path.join(BACKEND_DIR, "static")
 ALLURE_CLI_DIR = os.path.join(PROJECT_ROOT, "allure-cli")
 TEMP_COLLECT_SCRIPT = os.path.join(WRITABLE_ROOT, "templates", "temp_collect.py")
-TASK_DEBUG_LOG = os.path.join(WRITABLE_ROOT, "task_debug.log")
 
 # 确保核心产物目录自动就绪
 try:

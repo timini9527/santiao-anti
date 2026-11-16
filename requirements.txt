@@ -10,7 +10,6 @@ pytest-rerunfailures>=14.0
 
 # 2. Allure 可视化测试报告
 allure-pytest==2.15.2
-allure_python_commons==2.15.2
 
 # 3. 移动端与 Web 端自动化驱动
 Appium_Python_Client==5.2.7
@@ -21,38 +20,32 @@ lxml==6.0.2
 
 # 4. 接口测试与流量抓包
 Requests==2.32.5
-websockets>=12.0
 mitmproxy
 
 # 5. 多模态视觉计算与 OCR 文字识别
 Pillow==12.1.1
 ImageHash==4.3.2
-paddleocr==2.10.0
+rapidocr_onnxruntime
 cnocr==2.3.2.2
 
 # 6. 原生独立桌面端控制台 (PyQt6 架构与打包)
 PyQt6>=6.8.0
-PyQt6-Qt6>=6.8.0
-PyQt6-sip>=13.8.0
 pyinstaller>=6.0.0
 
-# 7. Web 平台后端与实时推送服务
-fastapi>=0.100.0
-uvicorn>=0.20.0
-sse-starlette>=1.6.0
-
-# 8. 测试数据驱动与基础工具库
+# 7. 测试数据驱动与基础工具库
 pandas==3.0.1
 PyYAML==6.0.3
 python_dateutil==2.9.0.post0
 colorlog==6.10.1
 pypinyin==0.55.0
+psutil
+pyreadline3; sys_platform == "win32"
 
-# 9. iOS 原生硬件级实时投屏与远程服务 (CoreDevice 60FPS HEVC 视频流直通，免证书免WDA)
+# 8. iOS 原生硬件级实时投屏与远程服务 (CoreDevice 60FPS HEVC 视频流直通，免证书免WDA)
 pymobiledevice3>=11.48.0
 av>=19.0.0
 
-# 10. IM 底层长连接注入与协议桥接压测引擎
+# 9. IM 底层长连接注入与协议桥接压测引擎
 frida==17.24.3
 frida-tools==14.11.0
 

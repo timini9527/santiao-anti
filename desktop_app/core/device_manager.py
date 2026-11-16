@@ -15,7 +15,7 @@ from desktop_app.config import PROJECT_ROOT
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from web_platform.backend.devices import (
+from desktop_app.core.devices import (
     get_local_ip,
     detect_appium_status,
     detect_device_details,

@@ -439,7 +439,7 @@ class SmartPathResolver:
     def discover_project_assets(cls, source_root: str) -> Dict[str, List[str]]:
         """
         精确收敛纯测试业务模块与核心配置文件（供构建与独立运行使用）。
-        严禁将临时目录 (build_native, temp_dist_core, tmp)、无关平台代码 (web_platform, web_console_v2)、
+        严禁将临时目录 (build_native, temp_dist_core, tmp)、
         桌面端源码自身 (desktop_app) 以及根目录历史调试脚本拷贝进发布运行包。
         """
         source_root = os.path.abspath(source_root)

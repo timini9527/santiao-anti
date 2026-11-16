@@ -17,11 +17,11 @@
       798
     ],
     "splitter_v_sizes": [
-      202,
-      566
+      180,
+      733
     ],
     "log_collapsed": false,
-    "last_log_height": 566,
+    "last_log_height": 733,
     "params_collapsed": false,
     "node_status_map": {
       "tests/chat/core/test_chat/TestChat::test_send_text_message": "passed",

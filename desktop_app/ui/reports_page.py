@@ -33,7 +33,7 @@ try:
     from .allure_dashboard import AllureDashboardWidget
 except (ImportError, ValueError):
     from desktop_app.ui.allure_dashboard import AllureDashboardWidget
-from web_platform.backend.paths import REPORTS_DIR
+from desktop_app.core.paths import REPORTS_DIR
 from desktop_app.core.report_scanner import scan_available_reports, get_reports_count
 
 class ReportHistoryItem(QFrame):

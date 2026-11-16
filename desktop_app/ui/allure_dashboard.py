@@ -31,7 +31,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QRectF, QPointF
 from PyQt6.QtGui import QPainter, QPen, QColor, QBrush, QFont
 
-from web_platform.backend.paths import REPORTS_DIR
+from desktop_app.core.paths import REPORTS_DIR
 
 
 class AllureReportParser:
@@ -472,7 +472,7 @@ class TestCatalogIndex:
         try:
             cat_file = None
             try:
-                from web_platform.backend.paths import PROJECT_ROOT
+                from desktop_app.core.paths import PROJECT_ROOT
                 cand = os.path.join(PROJECT_ROOT, "tests", "tests_catalog.json")
                 if os.path.exists(cand):
                     cat_file = cand

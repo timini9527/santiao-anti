@@ -60,7 +60,6 @@ edges.png
 # desktop_app/logo_crop.png
 # desktop_app/sant_logo_raw.png
 # desktop_app/sant_logo_hd.png
-web_platform/backend/task_debug.log
 build_mac/
 qa_studio_app/
 qa_studio_next/
@@ -75,3 +74,7 @@ friends_list.txt
 chat_history.html
 # Androguard 逆向分析本地缓存数据库
 androguard.db*
+# 测试覆盖率与临时输出产物
+.coverage
+tmp/
+output/

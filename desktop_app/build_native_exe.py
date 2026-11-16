@@ -351,7 +351,7 @@ def build(build_installer: bool = BUILD_INSTALLER):
     # 0. 自动预提取最新全量用例元数据并同步刷新 tests_catalog.json 静态索引
     try:
         import json
-        from web_platform.backend.collector import collect_all_tests
+        from desktop_app.core.collector import collect_all_tests
         src_tests = os.path.join(PROJECT_ROOT, "tests")
         if os.path.exists(src_tests):
             catalog = collect_all_tests(src_tests)
@@ -421,12 +421,9 @@ def build(build_installer: bool = BUILD_INSTALLER):
         "--hidden-import=desktop_app.ui.reports_page",
         "--hidden-import=desktop_app.ui.inspector_page",
         "--hidden-import=desktop_app.ui.harmony_native_inspector",
-        "--hidden-import=web_platform",
-        "--hidden-import=web_platform.backend",
-        "--hidden-import=web_platform.backend.collector",
-        "--hidden-import=web_platform.backend.devices",
-        "--hidden-import=web_platform.backend.paths",
-        "--hidden-import=web_platform.backend.runner",
+        "--hidden-import=desktop_app.core.collector",
+        "--hidden-import=desktop_app.core.devices",
+        "--hidden-import=desktop_app.core.paths",
         "--hidden-import=PyQt6",
         "--hidden-import=PyQt6.QtCore",
         "--hidden-import=PyQt6.QtGui",

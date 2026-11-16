@@ -13,7 +13,7 @@ from desktop_app.config import PROJECT_ROOT
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from web_platform.backend.collector import collect_all_tests
+from desktop_app.core.collector import collect_all_tests
 
 import json
 

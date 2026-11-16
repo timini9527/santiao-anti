@@ -78,7 +78,7 @@ def encrypt_test_suite(src_tests_dir: str, target_tests_dir: str):
     2. 将全部 test_*.py 源码及子用例深度编译为不可逆二进制执行码，彻底销毁所有明文业务源码
     """
     import json
-    from web_platform.backend.collector import collect_all_tests
+    from desktop_app.core.collector import collect_all_tests
 
     os.makedirs(target_tests_dir, exist_ok=True)
 

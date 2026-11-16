@@ -2223,7 +2223,7 @@ class MobilePage(QWidget):
             self.append_log(f"⚠️ Appium (端口 {port}) 未响应，请确保 Appium 服务已启动。")
 
     def _trigger_start_appium(self, port: int):
-        from web_platform.backend.devices import start_appium_server
+        from desktop_app.core.devices import start_appium_server
         os_text = self.combo_os.currentText().lower()
         os_type = "windows" if "win" in os_text else ("mac" if "mac" in os_text else "linux")
         ok = start_appium_server(os_type=os_type, port=port)

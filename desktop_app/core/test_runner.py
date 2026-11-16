@@ -21,7 +21,7 @@ from desktop_app.core.path_resolver import SmartPathResolver
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from web_platform.backend.paths import (
+from desktop_app.core.paths import (
     REPORTS_DIR,
     ALLURE_CLI_DIR
 )

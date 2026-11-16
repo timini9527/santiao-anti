@@ -169,7 +169,7 @@ def trigger_github_cloud_build():
     try:
         # 仅暂存已追踪文件的修改以及项目核心目录的新文件，跳过临时数据库
         subprocess.run(["git", "add", "-u"], cwd=PROJECT_ROOT, capture_output=True, timeout=10)
-        for track_dir in ["desktop_app", "web_platform", "config", "tests", "pages", "locators", "core", "utils", "scripts", ".github"]:
+        for track_dir in ["desktop_app", "config", "tests", "pages", "locators", "core", "utils", "scripts", ".github"]:
             dir_path = os.path.join(PROJECT_ROOT, track_dir)
             if os.path.exists(dir_path):
                 subprocess.run(["git", "add", track_dir], cwd=PROJECT_ROOT, capture_output=True, timeout=10)
@@ -281,7 +281,7 @@ def build_mac(build_dmg_flag: bool = BUILD_DMG):
         import json
         if PROJECT_ROOT not in sys.path:
             sys.path.insert(0, PROJECT_ROOT)
-        from web_platform.backend.collector import collect_all_tests
+        from desktop_app.core.collector import collect_all_tests
         src_tests = os.path.join(PROJECT_ROOT, "tests")
         if os.path.exists(src_tests):
             catalog = collect_all_tests(src_tests)
@@ -329,12 +329,9 @@ def build_mac(build_dmg_flag: bool = BUILD_DMG):
         "--hidden-import=desktop_app.ui.harmony_native_inspector",
         "--hidden-import=desktop_app.core.file_watcher",
         "--hidden-import=desktop_app.core.report_scanner",
-        "--hidden-import=web_platform",
-        "--hidden-import=web_platform.backend",
-        "--hidden-import=web_platform.backend.devices",
-        "--hidden-import=web_platform.backend.collector",
-        "--hidden-import=web_platform.backend.paths",
-        "--hidden-import=web_platform.backend.runner",
+        "--hidden-import=desktop_app.core.devices",
+        "--hidden-import=desktop_app.core.collector",
+        "--hidden-import=desktop_app.core.paths",
         "--hidden-import=PyQt6",
         "--hidden-import=PyQt6.QtCore",
         "--hidden-import=PyQt6.QtGui",
@@ -352,7 +349,6 @@ def build_mac(build_dmg_flag: bool = BUILD_DMG):
         "--hidden-import=selenium",
         "--hidden-import=hmnextauto",
         "--hidden-import=lxml",
-        "--hidden-import=websockets",
         "--hidden-import=pandas",
         "--hidden-import=pypinyin",
         "--hidden-import=dateutil",
