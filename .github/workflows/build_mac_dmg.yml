@@ -19,9 +19,6 @@ on:
   push:
     branches:
       - build-mac
-    paths:
-      - 'desktop_app/**'
-      - '.github/workflows/build_mac_dmg.yml'
 
 jobs:
   prepare:
@@ -90,21 +87,31 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 配置 Python 3.13 运行环境 (${{ matrix.arch }})
+        id: setup-py
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
           architecture: ${{ matrix.arch }}
-          cache: 'pip'
+
+      - name: 极速恢复虚拟环境缓存 (${{ matrix.arch }})
+        id: cache-venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: mac-venv-v3-${{ matrix.arch }}-${{ steps.setup-py.outputs.python-version }}-${{ hashFiles('.github/workflows/build_mac_dmg.yml') }}
 
       - name: 安装桌面端与打包核心依赖 (${{ matrix.arch }})
+        if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
-          python -m pip install --upgrade pip
-          pip install PyQt6 PyInstaller Pillow pytest pytest-check pytest-rerunfailures allure-pytest Appium-Python-Client selenium hmnextauto lxml requests PyYAML colorlog ImageHash pandas pypinyin python-dateutil psutil "opencv-python-headless<5.0" numpy setuptools tidevice uiautomator2 grpcio
-          pip install pymobiledevice3 av || echo "提示: 扩展投屏依赖跳过，使用内嵌 tidevice 引擎"
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip uv
+          .venv/bin/uv pip install --python .venv/bin/python --only-binary=cryptography "cryptography==43.0.3"
+          .venv/bin/uv pip install --python .venv/bin/python PyQt6 PyInstaller Pillow pytest pytest-check pytest-rerunfailures allure-pytest Appium-Python-Client selenium hmnextauto lxml requests PyYAML colorlog ImageHash pandas pypinyin python-dateutil psutil "opencv-python-headless<5.0" numpy setuptools tidevice uiautomator2 grpcio
+          .venv/bin/uv pip install --python .venv/bin/python --only-binary=cryptography "cryptography==43.0.3" pymobiledevice3 av || echo "提示: 扩展投屏依赖跳过，使用内嵌 tidevice 引擎"
 
       - name: 执行自动化打包生成原生 .app 与 .dmg 安装镜像 (${{ matrix.arch }})
         run: |
-          python desktop_app/build_mac_app.py
+          .venv/bin/python desktop_app/build_mac_app.py
 
       - name: 上传最终生成的 macOS DMG 安装包至 GitHub 页面 (${{ matrix.arch }})
         uses: actions/upload-artifact@v4

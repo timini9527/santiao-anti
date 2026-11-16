@@ -97,14 +97,13 @@ def build_dmg(app_bundle_path: str, output_dmg_path: str):
         os.remove(output_dmg_path)
     os.makedirs(os.path.dirname(output_dmg_path), exist_ok=True)
 
-    # 4. 调用 hdiutil 执行极速兼容镜像创建 (zlib-level=1 提速 4~5 倍且 100% 兼容虚拟机)
+    # 4. 调用 hdiutil 执行零压缩极速 DMG 封装 (UDRO 秒级生成，避免重复压缩直接交由 GitHub Artifact 并行压缩下载)
     cmd = [
         "hdiutil", "create",
         "-volname", APP_NAME,
         "-srcfolder", dmg_temp_dir,
         "-ov",
-        "-format", "UDZO",
-        "-imagekey", "zlib-level=1", 
+        "-format", "UDRO",
         output_dmg_path
     ]
     try:
@@ -366,7 +365,7 @@ def build_mac(build_dmg_flag: bool = BUILD_DMG):
         "--collect-all=allure_pytest",
         "--collect-all=pytest_check",
         "--collect-all=appium",
-        "--collect-all=selenium",
+        "--collect-submodules=selenium",
         "--collect-all=tidevice",
         "--collect-all=uiautomator2",
         "--collect-all=hmnextauto",
@@ -376,6 +375,13 @@ def build_mac(build_dmg_flag: bool = BUILD_DMG):
         "--copy-metadata=pytest-check",
         "--copy-metadata=pytest-rerunfailures",
         "--copy-metadata=tidevice",
+        "--exclude-module=IPython",
+        "--exclude-module=jedi",
+        "--exclude-module=parso",
+        "--exclude-module=tkinter",
+        "--exclude-module=matplotlib",
+        "--exclude-module=scipy",
+        "--exclude-module=PyQt6.QtWebEngineCore",
     ]
 
     # 动态检测当前打包环境中已安装的扩展库并注入 PyInstaller (原生构建节点无需额外指定 --target-arch)
@@ -388,13 +394,20 @@ def build_mac(build_dmg_flag: bool = BUILD_DMG):
         cmd.extend([
             "--hidden-import=pymobiledevice3",
             "--hidden-import=pymobiledevice3.remote.userspace_tunnel",
+            "--hidden-import=pymobiledevice3.remote.native_tunnel",
             "--hidden-import=pymobiledevice3.remote.core_device.display_service",
             "--hidden-import=pymobiledevice3.remote.core_device.screen_stream",
             "--hidden-import=pymobiledevice3.services.power_assertion",
             "--hidden-import=pymobiledevice3.tunneld.api",
             "--hidden-import=pymobiledevice3.services.dvt.instruments.dvt_provider",
             "--hidden-import=pymobiledevice3.services.dvt.instruments.screenshot",
+            "--hidden-import=pmd_pytcp",
+            "--hidden-import=pmd_net_addr",
+            "--hidden-import=qh3",
+            "--hidden-import=cryptography",
             "--collect-all=pymobiledevice3",
+            "--collect-all=pmd_pytcp",
+            "--collect-all=pmd_net_addr",
             "--copy-metadata=pymobiledevice3",
         ])
 

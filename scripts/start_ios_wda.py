@@ -271,8 +271,14 @@ def main() -> None:
     while not is_terminating:
         _ensure_forwarder()
 
+        # macOS 不强锁 --userspace，允许 pymobiledevice3 自动在 userspace 与 native_tunnel (免 root) 间容灾切换
+        xcuitest_cmd = (
+            _build_pmd3_cmd("developer", "dvt", "xcuitest", "--userspace", bundle_id)
+            if sys.platform == "win32"
+            else _build_pmd3_cmd("developer", "dvt", "xcuitest", bundle_id)
+        )
         wda_proc = subprocess.Popen(
-            _build_pmd3_cmd("developer", "dvt", "xcuitest", "--userspace", bundle_id),
+            xcuitest_cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
