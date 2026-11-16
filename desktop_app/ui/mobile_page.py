@@ -3449,51 +3449,60 @@ class MobilePage(QWidget):
             QMessageBox.warning(self, "环境安装提示", f"⚠️ {msg}")
 
     def _start_ios_wda_service(self):
-        """一键启动/停止 iOS 真机 WebDriverAgent (WDA) 守护与 8100 端口转发 (支持再次点击停止)"""
+        """一键启动/停止 iOS 8100 端口转发服务 (自动探测运行路径，直接执行 tidevice relay 8100 8100)"""
         import urllib.request
 
-        # 0. 若 WDA 守护线程正在运行，再次点击直接执行停止与端口清理
+        # 0. 若 WDA 转发线程正在运行，再次点击直接执行停止与端口清理
         if getattr(self, "_wda_thread", None) and self._wda_thread.isRunning():
             self.append_log("==================================================")
-            self.append_log("⏹ [停止 WDA] 正在停止 iOS WDA 守护进程并释放 8100 端口...")
+            self.append_log("⏹ [停止 WDA] 正在停止 8100 端口转发并释放资源...")
             self._wda_thread.stop()
             self._kill_port_process(8100)
             self.btn_start_wda.setText("📱 启动 WDA")
-            self.append_log("✅ [停止 WDA] iOS WDA 守护与 8100 端口已停止。")
+            self.append_log("✅ [停止 WDA] 8100 端口转发服务已停止。")
             return
 
-        self.append_log("==================================================")
-        self.append_log("📱 [启动 WDA] 正在检测本地 8100 端口与 iPhone WDA 状态...")
-
-        # 1. 快速探活：若 8100 已被外部服务占用且响应 200
+        # 1. 快速探活：若 8100 已被外部或历史进程占用并就绪，提示并支持一键停止
         try:
-            with urllib.request.urlopen("http://127.0.0.1:8100/status", timeout=1.2) as resp:
+            with urllib.request.urlopen("http://127.0.0.1:8100/status", timeout=1.0) as resp:
                 if resp.status == 200:
-                    self.append_log("✅ [WDA 在线] http://127.0.0.1:8100/status 响应正常，可直接执行 iOS 用例！")
-                    QMessageBox.information(
+                    reply = QMessageBox.question(
                         self,
                         "WDA 服务已在线",
-                        "✅ iOS WebDriverAgent (127.0.0.1:8100) 已处于运行状态！\n\n无需重复启动，可直接运行 iOS 自动化测试。",
+                        "✅ 检测到 127.0.0.1:8100 已处于在线响应状态！\n\n点击【Yes】可停止并释放现有 8100 端口，点击【No】保持运行。",
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                        QMessageBox.StandardButton.No,
                     )
+                    if reply == QMessageBox.StandardButton.Yes:
+                        self._kill_port_process(8100)
+                        self.btn_start_wda.setText("📱 启动 WDA")
+                        self.append_log("⏹ [停止 WDA] 已终止现有 8100 端口占用进程。")
+                    else:
+                        self.btn_start_wda.setText("🟢 WDA 已就绪 (点击停止)")
+                        self.append_log("✅ [WDA 在线] http://127.0.0.1:8100/status 响应正常，可直接运行 iOS 用例！")
                     return
         except Exception:
             pass
 
-        project_root = SmartPathResolver.get_project_root()
-        wda_script = os.path.join(project_root, "scripts", "start_ios_wda.py")
-        if not os.path.isfile(wda_script):
-            self.append_log(f"❌ [WDA 失败] 未找到启动脚本: {wda_script}")
-            QMessageBox.warning(self, "未找到脚本", f"未找到 WDA 启动脚本:\n{wda_script}")
-            return
+        self.append_log("==================================================")
+        self.append_log("📱 [启动 WDA] 正在自动探测环境并拉起 8100 端口转发...")
 
+        # 2. 动态自动探测可执行路径 (不写死安装目录，适配任意移动/安装路径与跨平台)
+        project_root = SmartPathResolver.get_project_root()
         if getattr(sys, "frozen", False):
-            cmd = [sys.executable, "--internal-wda"]
+            # 打包运行态：sys.executable 自动指向当前 .app / .exe 真实可执行路径
+            cmd = [sys.executable, "--internal-tidevice", "relay", "8100", "8100"]
         else:
-            cmd = [sys.executable, "-u", wda_script]
+            tools = SmartPathResolver.discover_mobile_toolchain()
+            tidevice_bin = tools.get("tidevice") or shutil.which("tidevice")
+            if tidevice_bin:
+                cmd = [tidevice_bin, "relay", "8100", "8100"]
+            else:
+                py_bin = SmartPathResolver.discover_python_runtime().get("executable") or sys.executable
+                cmd = [py_bin, "-u", "-m", "tidevice", "relay", "8100", "8100"]
 
         self.btn_start_wda.setText("⏳ WDA 启动中 (点击停止)")
-        self.append_log(f"▶ 正在拉起 iOS WDA 守护进程: {' '.join(cmd)}")
-        self.append_log("💡 提示: 请保持 iPhone USB 连接并处于解锁亮屏状态，看到 '8100 就绪' 日志后即可运行用例。")
+        self.append_log(f"▶ 执行命令: {' '.join(cmd)}")
 
         class _WdaDaemonThread(QThread):
             log_sig = pyqtSignal(str)
@@ -3514,8 +3523,11 @@ class MobilePage(QWidget):
                 import urllib.request as _req
 
                 def _probe_loop():
-                    for _ in range(90):
+                    warned_waiting = False
+                    for idx in range(120):
                         if self._stop_flag or self._notified_ready:
+                            return
+                        if self.proc and self.proc.poll() is not None:
                             return
                         try:
                             with _req.urlopen("http://127.0.0.1:8100/status", timeout=1.0) as r:
@@ -3525,6 +3537,9 @@ class MobilePage(QWidget):
                                     return
                         except Exception:
                             pass
+                        if idx == 3 and not warned_waiting:
+                            warned_waiting = True
+                            self.log_sig.emit("ℹ️ [WDA 转发] 8100 端口转发隧道已建立，请确认手机桌面已运行 WDA（检测到连通将自动切为绿标）。")
                         _time.sleep(1.0)
 
                 try:
@@ -3553,13 +3568,10 @@ class MobilePage(QWidget):
                             line = raw_line.rstrip()
                             if line:
                                 self.log_sig.emit(f"[WDA] {line}")
-                                if not self._notified_ready and "SUCCESS" in line and "8100" in line:
-                                    self._notified_ready = True
-                                    self.ready_sig.emit()
                     ret = self.proc.wait()
                     self.done_sig.emit(ret)
                 except Exception as ex:
-                    self.log_sig.emit(f"❌ [WDA 守护异常]: {ex}")
+                    self.log_sig.emit(f"❌ [WDA 转发异常]: {ex}")
                     self.done_sig.emit(-1)
 
             def stop(self):
