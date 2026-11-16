@@ -46,7 +46,7 @@ def check_and_kill_running_mac_instance():
         except Exception:
             pass
 
- 
+
 def generate_icns_if_needed():
     """检查并自动生成 macOS 专用高清 .icns 视网膜图标"""
     icns_path = os.path.join(CURRENT_DIR, "resources", "app_icon.icns")
