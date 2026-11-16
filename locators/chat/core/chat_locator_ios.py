@@ -104,7 +104,7 @@ class ChatLocatorIos:
         "st photo browser down",
     )
 
-    # 3. 视频消息
+    # 3. 视频消息 TODO：IOS没有播放按钮元素
     VIDEO_PLAY_BUTTON_ID = "video_cover"
     VIDEO_PLAY_BUTTON_ITEM = (                                                          # 视频播放按钮 / 封面
         AppiumBy.XPATH,
@@ -113,14 +113,14 @@ class ChatLocatorIos:
     VIDEO_DURATION_ID = "duration"
     VIDEO_DURATION_ITEM = (                                                             # 视频时长
         AppiumBy.XPATH,
-        "//XCUIElementTypeCell//XCUIElementTypeStaticText[contains(@name, ':')]",
+        "//XCUIElementTypeCell/XCUIElementTypeStaticText[contains(@name, ':')]",
     )
 
     # 4. 语音消息
     AUDIO_BUBBLE_ID = "audio_bubble"
-    AUDIO_BUBBLE = (                                                                    # 语音气泡
+    AUDIO_BUBBLE = (                                                                    # 语音气泡 (匹配含秒数双引号 " 或秒的语音时长文本)
         AppiumBy.XPATH,
-        "//XCUIElementTypeCell//XCUIElementTypeButton[contains(@name, 'voice') or contains(@name, '语音')] | //XCUIElementTypeCell//XCUIElementTypeStaticText[contains(@name, '\"') or contains(@name, 's') or contains(@name, '秒')]",
+        '//XCUIElementTypeCell/XCUIElementTypeStaticText[contains(@name, \'"\')]',
     )
 
     # 5. 定位消息

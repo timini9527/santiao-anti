@@ -29,7 +29,7 @@ from PyQt6.QtWidgets import (
     QPlainTextEdit, QMessageBox, QFrame, QScrollArea, QApplication,
     QHeaderView, QSizePolicy, QDialog, QTextBrowser, QProgressBar, QTextEdit
 )
-from PyQt6.QtCore import Qt, QTimer, QEvent
+from PyQt6.QtCore import Qt, QTimer, QEvent, QThread, pyqtSignal
 from PyQt6.QtGui import QTextCursor, QFont, QTextDocument, QTextCharFormat, QColor, QKeySequence, QShortcut
 
 # 工业级运行时环境自愈：自适应注入项目根路径，同时完美兼容主程序模块化导入与独立脚本运行调试
@@ -69,6 +69,69 @@ def _detect_local_lan_ip() -> str:
         return ip
     except Exception:
         return "127.0.0.1"
+
+
+class EnvInstallerThread(QThread):
+    """跨平台移动端自动化环境一键静默安装工作线程"""
+
+    log_signal = pyqtSignal(str)
+    finished_signal = pyqtSignal(bool, str)
+
+    def __init__(self, steps: List[Tuple[str, List[str], bool]], parent: Optional[QWidget] = None):
+        """
+        参数:
+            steps: [(步骤名称, 命令参数列表, 是否允许失败跳过), ...]
+        """
+        super().__init__(parent)
+        self.steps = steps
+
+    def run(self):
+        try:
+            create_no_window = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+            for idx, (step_name, cmd_args, allow_fail) in enumerate(self.steps, 1):
+                self.log_signal.emit(f"▶ [{idx}/{len(self.steps)}] {step_name} ...")
+                self.log_signal.emit(f"  $ {' '.join(cmd_args)}")
+                try:
+                    proc = subprocess.Popen(
+                        cmd_args,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                        encoding="utf-8",
+                        errors="replace",
+                        creationflags=create_no_window if sys.platform == "win32" else 0,
+                    )
+                    if proc.stdout:
+                        for raw_line in proc.stdout:
+                            line = raw_line.rstrip()
+                            if line:
+                                self.log_signal.emit(f"    {line}")
+                    ret = proc.wait()
+                    if ret == 0:
+                        self.log_signal.emit(f"✅ [{step_name}] 安装完成！")
+                    else:
+                        if allow_fail:
+                            self.log_signal.emit(f"⚠️ [{step_name}] 跳过或已存在 (退出码: {ret})")
+                        else:
+                            self.finished_signal.emit(False, f"步骤【{step_name}】执行失败 (退出码 {ret})，请查看日志。")
+                            return
+                except Exception as e:
+                    if allow_fail:
+                        self.log_signal.emit(f"⚠️ [{step_name}] 执行跳过: {e}")
+                    else:
+                        self.finished_signal.emit(False, f"步骤【{step_name}】异常: {e}")
+                        return
+
+            try:
+                from desktop_app.core import path_resolver as _pr
+                if hasattr(_pr, "ensure_cross_platform_path"):
+                    _pr.ensure_cross_platform_path()
+            except Exception:
+                pass
+            SmartPathResolver.discover_mobile_toolchain(force_refresh=True)
+            self.finished_signal.emit(True, "所有移动端自动化运行环境及三端驱动安装完毕！")
+        except Exception as e:
+            self.finished_signal.emit(False, f"环境安装异常: {e}")
 
 
 class MarkdownDocDialog(QDialog):
@@ -470,6 +533,38 @@ class MobilePage(QWidget):
         """)
         btn_check_svc.clicked.connect(self._check_appium_and_devices)
         svc_layout.addWidget(btn_check_svc)
+
+        # 按钮 4: 一键装环境 (自动安装 Node.js / Appium / 三端驱动 / ADB / libimobiledevice)
+        self.btn_install_env = QPushButton("⚙️ 一键装环境")
+        self.btn_install_env.setToolTip("自动检测并一键安装 Node.js、Appium 2.x、三端驱动 (XCUITest/UIAutomator2/HarmonyOS) 及调试工具链")
+        self.btn_install_env.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_install_env.setStyleSheet("""
+            QPushButton {
+                background-color: #fffbeb;
+                color: #b45309;
+                border: 1px solid #fde68a;
+                border-radius: 6px;
+                padding: 5px 12px;
+                font-size: 12px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background-color: #fef3c7;
+                border-color: #fcd34d;
+                color: #92400e;
+            }
+            QPushButton:pressed {
+                background-color: #fde68a;
+                border-color: #f59e0b;
+            }
+            QPushButton:disabled {
+                background-color: #f8fafc;
+                color: #94a3b8;
+                border-color: #e2e8f0;
+            }
+        """)
+        self.btn_install_env.clicked.connect(self._install_mobile_environment)
+        svc_layout.addWidget(self.btn_install_env)
 
         h_layout.addWidget(svc_btn_group)
         h_layout.addStretch()
@@ -2930,11 +3025,16 @@ class MobilePage(QWidget):
             err_msg = "未找到 Appium 运行环境及启动脚本！"
             self.append_log(f"❌ [启动失败] {err_msg}")
             self.append_log("==================================================")
-            hint = "请在 Mac 终端执行 npm i -g appium 安装，或配置 PATH 环境变量。" if sys.platform == "darwin" else "请确认系统已安装 Node.js 与 Appium (npm i -g appium)。"
-            QMessageBox.warning(
-                self, "启动失败",
-                f"未找到 Appium 运行环境！\n\n{hint}"
+            reply = QMessageBox.question(
+                self,
+                "未找到 Appium 运行环境",
+                "当前系统未检测到 Appium 服务运行环境！\n\n"
+                "是否立即启动【⚙️ 一键装环境】，自动为您安装 Node.js、Appium 2.x 及三端驱动 (XCUITest / UIAutomator2 / HarmonyOS) 与调试工具？",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.Yes,
             )
+            if reply == QMessageBox.StandardButton.Yes:
+                self._install_mobile_environment()
             return
 
         mode_str = "脚本托管模式"
@@ -3169,5 +3269,185 @@ class MobilePage(QWidget):
                 f"【Appium 服务状态】\n{appium_report_str}\n\n"
                 f"💡 建议: 请先连接真机并点击【▶ 启动服务】启动 Appium 集群。"
             )
+
+    def _install_mobile_environment(self):
+        """
+        跨平台一键安装移动端自动化全套运行环境：
+        - macOS: 自动检测 Homebrew / Node.js / Appium / 三端驱动 / ADB / libimobiledevice；
+                 若为纯裸机 (无 brew 且无 npm)，自动生成安装脚本并拉起 Mac 终端引导安装；
+                 若已有 brew 或 npm，直接在后台线程静默安装并实时打印进度到控制台日志。
+        - Windows: 自动通过 npm / winget 安装 Appium 与三端驱动。
+        """
+        if getattr(self, "_env_installer_thread", None) and self._env_installer_thread.isRunning():
+            QMessageBox.information(self, "正在安装", "环境安装任务正在后台运行中，请查看右侧控制台日志。")
+            return
+
+        try:
+            from desktop_app.core import path_resolver as _pr
+            if hasattr(_pr, "ensure_cross_platform_path"):
+                _pr.ensure_cross_platform_path()
+        except Exception:
+            pass
+        self.append_log("==================================================")
+        self.append_log("⚙️ [一键装环境] 正在扫描当前系统缺少的移动端自动化依赖...")
+
+        steps: List[Tuple[str, List[str], bool]] = []
+
+        if sys.platform == "darwin":
+            brew_bin = shutil.which("brew") or (
+                "/opt/homebrew/bin/brew" if os.path.isfile("/opt/homebrew/bin/brew")
+                else ("/usr/local/bin/brew" if os.path.isfile("/usr/local/bin/brew") else None)
+            )
+            npm_bin = shutil.which("npm")
+            adb_bin = shutil.which("adb")
+            idevice_bin = shutil.which("idevice_id")
+
+            # 场景 A: 全新纯裸机 macOS (既无 brew 也无 npm)，安装 Homebrew 必须输入系统密码，拉起 Terminal 自动脚本执行
+            if not brew_bin and not npm_bin:
+                self.append_log("⚠️ 当前 Mac 未安装 Homebrew 与 Node.js，将通过系统终端执行全自动引导安装...")
+                reply = QMessageBox.question(
+                    self,
+                    "需要拉起系统终端完成首次安装",
+                    "检测到当前 Mac 属于全新环境（未安装 Homebrew 与 Node.js）。\n\n"
+                    "点击【Yes】将自动打开 Mac 终端并一键安装：\n"
+                    "  1. Homebrew 包管理器（需在终端输入一次 Mac 开机密码）\n"
+                    "  2. Node.js & npm\n"
+                    "  3. Appium 2.x 及三端驱动 (XCUITest / UIAutomator2 / HarmonyOS)\n"
+                    "  4. Android 调试工具 (adb) 与 iOS 调试工具 (libimobiledevice)\n\n"
+                    "是否立即打开终端开始全自动安装？",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.Yes,
+                )
+                if reply != QMessageBox.StandardButton.Yes:
+                    self.append_log("ℹ️ [一键装环境] 用户取消了环境安装。")
+                    return
+
+                setup_script = "/tmp/santiao_mac_env_setup.sh"
+                script_content = """#!/bin/bash
+echo "=========================================================="
+echo "  三条 IM 自动化测试平台 - macOS 环境全自动一键安装程序"
+echo "=========================================================="
+export HOMEBREW_BREW_GIT_REMOTE="https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/brew.git"
+export HOMEBREW_CORE_GIT_REMOTE="https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/homebrew-core.git"
+
+if ! command -v brew >/dev/null 2>&1; then
+  echo ">>> [1/5] 正在安装 Homebrew (如提示输入密码请输入您的 Mac 开机密码)..."
+  /bin/bash -c "$(curl -fsSL https://gitee.com/cunkai/HomebrewCN/raw/master/Homebrew.sh)" || \\
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+fi
+
+if [ -x "/opt/homebrew/bin/brew" ]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+elif [ -x "/usr/local/bin/brew" ]; then
+  eval "$(/usr/local/bin/brew shellenv)"
+fi
+
+echo ">>> [2/5] 正在安装 Node.js 与 libimobiledevice..."
+brew install node libimobiledevice
+
+echo ">>> [3/5] 正在安装 Android 调试工具 (adb)..."
+brew install --cask android-platform-tools || true
+
+echo ">>> [4/5] 正在全局安装 Appium 2.x (启用国内高速镜像)..."
+npm install -g appium --registry=https://registry.npmmirror.com
+
+echo ">>> [5/5] 正在安装三端自动化驱动 (iOS / Android / 鸿蒙)..."
+appium driver install xcuitest || true
+appium driver install uiautomator2 || true
+appium driver install harmonyos || true
+
+echo "=========================================================="
+echo "  ✅ 所有环境安装完毕！请返回控制台点击【▶ 启动服务】即可！"
+echo "=========================================================="
+read -p "按回车键关闭本窗口..."
+"""
+                try:
+                    with open(setup_script, "w", encoding="utf-8") as f:
+                        f.write(script_content)
+                    os.chmod(setup_script, 0o755)
+                    subprocess.Popen(["open", "-a", "Terminal", setup_script])
+                    self.append_log(f"✅ 已打开 Mac 系统终端执行安装脚本: {setup_script}")
+                    self.append_log("💡 提示: 在终端完成安装后，回到本窗口直接点击【▶ 启动服务】即可！")
+                except Exception as e:
+                    self.append_log(f"❌ 拉起 Mac 终端安装脚本失败: {e}")
+                    QMessageBox.critical(self, "启动终端失败", f"拉起 Mac 终端失败:\n{e}")
+                return
+
+            # 场景 B: 已有 brew 或 npm，直接在后台线程纯静默流式安装
+            if not npm_bin and brew_bin:
+                steps.append(("安装 Node.js & npm", [brew_bin, "install", "node"], False))
+            if not adb_bin and brew_bin:
+                steps.append(("安装 Android 调试工具 (adb)", [brew_bin, "install", "--cask", "android-platform-tools"], True))
+            if not idevice_bin and brew_bin:
+                steps.append(("安装 iOS 底层工具 (libimobiledevice)", [brew_bin, "install", "libimobiledevice"], True))
+
+            npm_exec = npm_bin or (
+                "/opt/homebrew/bin/npm" if os.path.isfile("/opt/homebrew/bin/npm") else "/usr/local/bin/npm"
+            )
+            appium_exec = shutil.which("appium") or (
+                "/opt/homebrew/bin/appium" if os.path.isfile("/opt/homebrew/bin/appium") else "/usr/local/bin/appium"
+            )
+
+            if not shutil.which("appium"):
+                steps.append(("全局安装 Appium 2.x", [npm_exec, "install", "-g", "appium", "--registry=https://registry.npmmirror.com"], False))
+
+            steps.append(("安装 iOS 驱动 (xcuitest)", [appium_exec, "driver", "install", "xcuitest"], True))
+            steps.append(("安装 Android 驱动 (uiautomator2)", [appium_exec, "driver", "install", "uiautomator2"], True))
+            steps.append(("安装鸿蒙驱动 (harmonyos)", [appium_exec, "driver", "install", "harmonyos"], True))
+
+        else:
+            # Windows 端一键安装
+            npm_bin = shutil.which("npm.cmd") or shutil.which("npm")
+            if not npm_bin:
+                winget_bin = shutil.which("winget")
+                if winget_bin:
+                    steps.append(("通过 Winget 安装 Node.js LTS", [winget_bin, "install", "OpenJS.NodeJS.LTS", "--silent", "--accept-package-agreements", "--accept-source-agreements"], False))
+                else:
+                    QMessageBox.warning(self, "缺少 Node.js", "当前 Windows 未检测到 Node.js (npm) 且无 winget，请先安装 Node.js LTS 后再试。")
+                    return
+
+            npm_exec = npm_bin or "npm.cmd"
+            appium_exec = shutil.which("appium.cmd") or shutil.which("appium") or "appium.cmd"
+            if not (shutil.which("appium.cmd") or shutil.which("appium")):
+                steps.append(("全局安装 Appium 2.x", [npm_exec, "install", "-g", "appium", "--registry=https://registry.npmmirror.com"], False))
+            steps.append(("安装 Android 驱动 (uiautomator2)", [appium_exec, "driver", "install", "uiautomator2"], True))
+            steps.append(("安装 iOS 驱动 (xcuitest)", [appium_exec, "driver", "install", "xcuitest"], True))
+            steps.append(("安装鸿蒙驱动 (harmonyos)", [appium_exec, "driver", "install", "harmonyos"], True))
+
+        reply = QMessageBox.question(
+            self,
+            "确认一键安装环境",
+            "即将在后台自动安装/补全以下移动端自动化组件：\n\n"
+            + "\n".join(f"  • {name}" for name, _, _ in steps)
+            + "\n\n安装过程可在右侧控制台日志实时查看，是否立即开始？",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            self.append_log("ℹ️ [一键装环境] 用户取消了环境安装。")
+            return
+
+        self.btn_install_env.setEnabled(False)
+        self.btn_install_env.setText("⏳ 正在安装...")
+        self._env_installer_thread = EnvInstallerThread(steps, parent=self)
+        self._env_installer_thread.log_signal.connect(self.append_log)
+        self._env_installer_thread.finished_signal.connect(self._on_env_install_finished)
+        self._env_installer_thread.start()
+
+    def _on_env_install_finished(self, ok: bool, msg: str):
+        """环境安装完成回调"""
+        self.btn_install_env.setEnabled(True)
+        self.btn_install_env.setText("⚙️ 一键装环境")
+        self.append_log("==================================================")
+        if ok:
+            self.append_log(f"🎉 [安装成功] {msg}")
+            QMessageBox.information(
+                self,
+                "环境安装成功",
+                f"✅ {msg}\n\n现在可以直接点击顶部【▶ 启动服务】与【🔍 检测服务】开始测试！",
+            )
+        else:
+            self.append_log(f"❌ [安装失败] {msg}")
+            QMessageBox.warning(self, "环境安装提示", f"⚠️ {msg}")
 
 
