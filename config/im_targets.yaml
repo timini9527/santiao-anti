@@ -21,7 +21,7 @@ profiles:
     pattern_prefix: "群"              # 匹配群聊名称 (支持 "1群" ~ "50群", 前后缀匹配： 离线群)
     max_groups: 50                    # 限制拉取最大群数
     shard_by_device: true             # 开启 5 台设备分片发送 (每台设备仅向专属 10 个群发送，消除 seq 冲突)
-    include_dedicated_group: false    # 压测公共群时，不向各设备专属测试群(测试群001~005)发送
+    include_dedicated_group: true    # 压测公共群时，不向各设备专属测试群(测试群001~005)发送
 
   # 场景 2：设备专属群一对一独立压测
   dedicated_groups:
@@ -201,16 +201,16 @@ static_targets:
   - { name: "正式群020", chat_type: "GROUP", to_cust_id: "0", chat_id: "1579646107921727488", is_top: false }
 
   # 2. 单聊测试账号
-  # - { name: "测试130", chat_type: "SINGLE", to_cust_id: "1500692627358388224", chat_id: "0", is_top: true }
-  # - { name: "测试131", chat_type: "SINGLE", to_cust_id: "1500692627706515456", chat_id: "0", is_top: true }
-  # - { name: "测试132", chat_type: "SINGLE", to_cust_id: "1500692628088197120", chat_id: "0", is_top: true }
-  # - { name: "测试133", chat_type: "SINGLE", to_cust_id: "1500692628398575616", chat_id: "0", is_top: true }
-  # - { name: "测试134", chat_type: "SINGLE", to_cust_id: "1500692628729925632", chat_id: "0", is_top: true }
-  # - { name: "测试135", chat_type: "SINGLE", to_cust_id: "1500692629031915520", chat_id: "0", is_top: true }
-  # - { name: "测试136", chat_type: "SINGLE", to_cust_id: "1500692629333905408", chat_id: "0", is_top: true }
-  # - { name: "测试137", chat_type: "SINGLE", to_cust_id: "1500692629816250368", chat_id: "0", is_top: true }
-  # - { name: "测试138", chat_type: "SINGLE", to_cust_id: "1500692630298595328", chat_id: "0", is_top: true }
-  # - { name: "测试139", chat_type: "SINGLE", to_cust_id: "1500692630617362432", chat_id: "0", is_top: true }
-  # - { name: "测试140", chat_type: "SINGLE", to_cust_id: "1500692630927740928", chat_id: "0", is_top: true }
-  # - { name: "A0110", chat_type: "SINGLE", to_cust_id: "1500692620387454976", chat_id: "0", is_top: false }
+  - { name: "测试130", chat_type: "SINGLE", to_cust_id: "1500692627358388224", chat_id: "0", is_top: true }
+  - { name: "测试131", chat_type: "SINGLE", to_cust_id: "1500692627706515456", chat_id: "0", is_top: true }
+  - { name: "测试132", chat_type: "SINGLE", to_cust_id: "1500692628088197120", chat_id: "0", is_top: true }
+  - { name: "测试133", chat_type: "SINGLE", to_cust_id: "1500692628398575616", chat_id: "0", is_top: true }
+  - { name: "测试134", chat_type: "SINGLE", to_cust_id: "1500692628729925632", chat_id: "0", is_top: true }
+  - { name: "测试135", chat_type: "SINGLE", to_cust_id: "1500692629031915520", chat_id: "0", is_top: true }
+  - { name: "测试136", chat_type: "SINGLE", to_cust_id: "1500692629333905408", chat_id: "0", is_top: true }
+  - { name: "测试137", chat_type: "SINGLE", to_cust_id: "1500692629816250368", chat_id: "0", is_top: true }
+  - { name: "测试138", chat_type: "SINGLE", to_cust_id: "1500692630298595328", chat_id: "0", is_top: true }
+  - { name: "测试139", chat_type: "SINGLE", to_cust_id: "1500692630617362432", chat_id: "0", is_top: true }
+  - { name: "测试140", chat_type: "SINGLE", to_cust_id: "1500692630927740928", chat_id: "0", is_top: true }
+  - { name: "A0110", chat_type: "SINGLE", to_cust_id: "1500692620387454976", chat_id: "0", is_top: false }
 

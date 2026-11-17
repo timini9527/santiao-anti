@@ -31,7 +31,7 @@ BUILD_DMG = True
 # - "x64"   : 仅打包 Intel x86_64 版本 (Windows 上的 Mac 虚拟机 / Intel Mac 专用)
 # - "arm64" : 仅打包 Apple Silicon 版本 (M1/M2/M3/M4 Mac 真机专用，约 2 分钟完成)
 # - "both"  : 同时并行打包两个架构版本         
-TARGET_MAC_ARCH = "x64"       
+TARGET_MAC_ARCH = "both"       
 
 APP_NAME = "三条IM自动化测试控制台"
 BUNDLE_ID = "com.santiao.qa.desktop"

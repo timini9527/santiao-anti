@@ -1417,11 +1417,10 @@ class MobilePage(QWidget):
             self.btn_toggle_autoscroll.setToolTip("当前状态: 已关闭向下自动滚屏 (可随意向上翻阅排查历史日志)")
 
     def _scroll_to_bottom(self):
-        """向下滚动日志终端至最底部"""
-        self.console.moveCursor(QTextCursor.MoveOperation.End)
-        scrollbar = self.console.verticalScrollBar()
-        if scrollbar:
-            scrollbar.setValue(scrollbar.maximum())
+        """仅向下滚动日志终端垂直滚动条至最底部，严禁改变水平横向位置"""
+        v_bar = self.console.verticalScrollBar()
+        if v_bar:
+            v_bar.setValue(v_bar.maximum())
 
     def _toggle_autoscroll(self):
         """切换自动向下滚屏状态，并持久化写入配置 (启动为 True，未启动为 False)"""
@@ -2829,9 +2828,13 @@ class MobilePage(QWidget):
 
     def append_log(self, text: str):
         cleaned = clean_ansi_log(text)
+        h_bar = self.console.horizontalScrollBar()
+        h_val = h_bar.value() if h_bar else 0
         self.console.appendPlainText(cleaned)
         if getattr(self, "_auto_scroll", True):
             self._scroll_to_bottom()
+        if h_bar:
+            h_bar.setValue(h_val)
         # 若当前搜索框有内容，延迟重新搜一次以更新计数
         if hasattr(self, "edit_log_search") and self.edit_log_search.text().strip():
             if not getattr(self, "_search_timer_pending", False):
@@ -3489,68 +3492,129 @@ class MobilePage(QWidget):
 
         # 2. 动态自动探测可执行路径 (不写死安装目录，适配任意移动/安装路径与跨平台)
         project_root = SmartPathResolver.get_project_root()
-        if getattr(sys, "frozen", False):
+        is_frozen = getattr(sys, "frozen", False)
+        py_bin = SmartPathResolver.discover_python_runtime().get("executable") or sys.executable
+
+        if is_frozen:
             # 打包运行态：sys.executable 自动指向当前 .app / .exe 真实可执行路径
-            cmd = [sys.executable, "--internal-tidevice", "relay", "8100", "8100"]
+            relay_cmd = [sys.executable, "--internal-tidevice", "relay", "8100", "8100"]
+            applist_cmd = [sys.executable, "--internal-tidevice", "applist"]
+            mount_cmd = [sys.executable, "--internal-pmd3", "mounter", "auto-mount"]
+            pmd3_prefix = [sys.executable, "--internal-pmd3"]
         else:
             tools = SmartPathResolver.discover_mobile_toolchain()
             tidevice_bin = tools.get("tidevice") or shutil.which("tidevice")
-            if tidevice_bin:
-                cmd = [tidevice_bin, "relay", "8100", "8100"]
-            else:
-                py_bin = SmartPathResolver.discover_python_runtime().get("executable") or sys.executable
-                cmd = [py_bin, "-u", "-m", "tidevice", "relay", "8100", "8100"]
+            relay_cmd = [tidevice_bin, "relay", "8100", "8100"] if tidevice_bin else [py_bin, "-u", "-m", "tidevice", "relay", "8100", "8100"]
+            applist_cmd = [tidevice_bin, "applist"] if tidevice_bin else [py_bin, "-u", "-m", "tidevice", "applist"]
+            mount_cmd = [py_bin, "-u", "-m", "pymobiledevice3", "mounter", "auto-mount"]
+            pmd3_prefix = [py_bin, "-u", "-m", "pymobiledevice3"]
 
         self.btn_start_wda.setText("⏳ WDA 启动中 (点击停止)")
-        self.append_log(f"▶ 执行命令: {' '.join(cmd)}")
+        self.append_log(f"▶ 执行转发命令: {' '.join(relay_cmd)}")
 
         class _WdaDaemonThread(QThread):
             log_sig = pyqtSignal(str)
             ready_sig = pyqtSignal()
             done_sig = pyqtSignal(int)
 
-            def __init__(self, run_cmd: List[str], cwd: str, parent: Optional[QWidget] = None):
+            def __init__(
+                self,
+                r_cmd: List[str],
+                app_cmd: List[str],
+                mnt_cmd: List[str],
+                pmd3_base: List[str],
+                cwd: str,
+                parent: Optional[QWidget] = None,
+            ):
                 super().__init__(parent)
-                self.run_cmd = run_cmd
+                self.r_cmd = r_cmd
+                self.app_cmd = app_cmd
+                self.mnt_cmd = mnt_cmd
+                self.pmd3_base = pmd3_base
                 self.cwd = cwd
                 self.proc: Optional[subprocess.Popen] = None
+                self.runner_proc: Optional[subprocess.Popen] = None
                 self._stop_flag = False
                 self._notified_ready = False
 
-            def run(self):
-                import threading
-                import time as _time
+            def _build_clean_env(self) -> Dict[str, str]:
+                env = os.environ.copy()
+                env["PYTHONUNBUFFERED"] = "1"
+                env["PYTHONIOENCODING"] = "utf-8"
+                for var in ("PYTHONHOME", "PYTHONPATH", "_MEIPASS2", "_MEIPASS"):
+                    env.pop(var, None)
+                return env
+
+            def _probe_wda_once(self) -> bool:
                 import urllib.request as _req
-
-                def _probe_loop():
-                    warned_waiting = False
-                    for idx in range(120):
-                        if self._stop_flag or self._notified_ready:
-                            return
-                        if self.proc and self.proc.poll() is not None:
-                            return
-                        try:
-                            with _req.urlopen("http://127.0.0.1:8100/status", timeout=1.0) as r:
-                                if r.status == 200:
-                                    self._notified_ready = True
-                                    self.ready_sig.emit()
-                                    return
-                        except Exception:
-                            pass
-                        if idx == 3 and not warned_waiting:
-                            warned_waiting = True
-                            self.log_sig.emit("ℹ️ [WDA 转发] 8100 端口转发隧道已建立，请确认手机桌面已运行 WDA（检测到连通将自动切为绿标）。")
-                        _time.sleep(1.0)
-
                 try:
-                    no_win = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
-                    env = os.environ.copy()
-                    env["PYTHONUNBUFFERED"] = "1"
-                    env["PYTHONIOENCODING"] = "utf-8"
-                    for var in ("PYTHONHOME", "PYTHONPATH", "_MEIPASS2", "_MEIPASS"):
-                        env.pop(var, None)
-                    self.proc = subprocess.Popen(
-                        self.run_cmd,
+                    with _req.urlopen("http://127.0.0.1:8100/status", timeout=1.0) as r:
+                        return r.status == 200
+                except Exception:
+                    return False
+
+            def _wakeup_phone_wda(self, env: Dict[str, str], no_win: int) -> None:
+                """当手机端 WDA 未启动时，自动挂载开发者镜像并唤醒真机 WDA Runner"""
+                import threading as _th
+                self.log_sig.emit("ℹ️ [自动唤醒] 手机 8100 端口暂未响应，正在自动唤醒真机 WDA Runner...")
+
+                # 1. 自动发现手机已安装的 WDA Bundle ID
+                bundle_id = "com.facebook.WebDriverAgentRunner.xctrunner.VX43WKZ6A5"
+                try:
+                    app_res = subprocess.run(
+                        self.app_cmd,
+                        cwd=self.cwd,
+                        capture_output=True,
+                        text=True,
+                        encoding="utf-8",
+                        errors="replace",
+                        timeout=6,
+                        env=env,
+                        creationflags=no_win if sys.platform == "win32" else 0,
+                    )
+                    for line in (app_res.stdout or "").splitlines():
+                        if "WebDriverAgentRunner.xctrunner" in line:
+                            parts = line.strip().split()
+                            if parts:
+                                bundle_id = parts[0]
+                                break
+                except Exception:
+                    pass
+                self.log_sig.emit(f"  • 目标 WDA Bundle ID: {bundle_id}")
+
+                if self._stop_flag:
+                    return
+
+                # 2. 自动挂载开发者镜像 (已挂载会自动跳过)
+                try:
+                    self.log_sig.emit("  • 校验真机开发者镜像 (DeveloperDiskImage)...")
+                    subprocess.run(
+                        self.mnt_cmd,
+                        cwd=self.cwd,
+                        capture_output=True,
+                        text=True,
+                        encoding="utf-8",
+                        errors="replace",
+                        timeout=20,
+                        env=env,
+                        creationflags=no_win if sys.platform == "win32" else 0,
+                    )
+                except Exception:
+                    pass
+
+                if self._stop_flag:
+                    return
+
+                # 3. 拉起真机 WDA Runner (macOS 不强锁 --userspace，支持 userspace 与 native_tunnel 自动容灾)
+                xcuitest_cmd = (
+                    [*self.pmd3_base, "developer", "dvt", "xcuitest", "--userspace", bundle_id]
+                    if sys.platform == "win32"
+                    else [*self.pmd3_base, "developer", "dvt", "xcuitest", bundle_id]
+                )
+                self.log_sig.emit(f"  • 拉起真机 WDA: {' '.join(xcuitest_cmd)}")
+                try:
+                    self.runner_proc = subprocess.Popen(
+                        xcuitest_cmd,
                         cwd=self.cwd,
                         stdout=subprocess.PIPE,
                         stderr=subprocess.STDOUT,
@@ -3560,14 +3624,81 @@ class MobilePage(QWidget):
                         env=env,
                         creationflags=no_win if sys.platform == "win32" else 0,
                     )
-                    threading.Thread(target=_probe_loop, daemon=True).start()
+
+                    def _read_runner_logs():
+                        if not self.runner_proc or not self.runner_proc.stdout:
+                            return
+                        for raw_l in self.runner_proc.stdout:
+                            if self._stop_flag:
+                                break
+                            msg = raw_l.rstrip()
+                            if not msg:
+                                continue
+                            if "No channel registered for code -1" in msg or "requesting test configuration" in msg:
+                                continue
+                            if any(k in msg for k in ("ERROR", "Exception", "failed", "didBegin", "testRunner", "Listening")):
+                                self.log_sig.emit(f"[WDA-Runner] {msg}")
+
+                    _th.Thread(target=_read_runner_logs, daemon=True).start()
+                except Exception as ex:
+                    self.log_sig.emit(f"⚠️ [自动唤醒失败]: {ex}")
+
+            def run(self):
+                import threading
+                import time as _time
+
+                no_win = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+                env = self._build_clean_env()
+
+                def _probe_and_wakeup_loop():
+                    # 先等 1.2 秒让 relay 端口监听稳定
+                    _time.sleep(1.2)
+                    if self._stop_flag:
+                        return
+                    if self._probe_wda_once():
+                        self._notified_ready = True
+                        self.ready_sig.emit()
+                        return
+
+                    # 手机 WDA 未开启时，自动执行唤醒流程
+                    self._wakeup_phone_wda(env, no_win)
+
+                    # 唤醒后持续探活 8100 直到就绪
+                    for _ in range(45):
+                        if self._stop_flag or self._notified_ready:
+                            return
+                        if self.proc and self.proc.poll() is not None:
+                            return
+                        if self._probe_wda_once():
+                            self._notified_ready = True
+                            self.ready_sig.emit()
+                            return
+                        _time.sleep(2.0)
+
+                try:
+                    self.proc = subprocess.Popen(
+                        self.r_cmd,
+                        cwd=self.cwd,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                        encoding="utf-8",
+                        errors="replace",
+                        env=env,
+                        creationflags=no_win if sys.platform == "win32" else 0,
+                    )
+                    threading.Thread(target=_probe_and_wakeup_loop, daemon=True).start()
                     if self.proc.stdout:
                         for raw_line in self.proc.stdout:
                             if self._stop_flag:
                                 break
                             line = raw_line.rstrip()
-                            if line:
-                                self.log_sig.emit(f"[WDA] {line}")
+                            if not line:
+                                continue
+                            # 过滤探活期正常的 ConnectionRefused 刷屏杂音
+                            if "handle stream from:" in line or "UsbmuxReplyCode.ConnectionRefused" in line:
+                                continue
+                            self.log_sig.emit(f"[WDA] {line}")
                     ret = self.proc.wait()
                     self.done_sig.emit(ret)
                 except Exception as ex:
@@ -3576,17 +3707,18 @@ class MobilePage(QWidget):
 
             def stop(self):
                 self._stop_flag = True
-                if self.proc and self.proc.poll() is None:
-                    try:
-                        self.proc.terminate()
-                        self.proc.wait(timeout=2)
-                    except Exception:
+                for p in (self.runner_proc, self.proc):
+                    if p and p.poll() is None:
                         try:
-                            self.proc.kill()
+                            p.terminate()
+                            p.wait(timeout=2)
                         except Exception:
-                            pass
+                            try:
+                                p.kill()
+                            except Exception:
+                                pass
 
-        self._wda_thread = _WdaDaemonThread(cmd, project_root, parent=self)
+        self._wda_thread = _WdaDaemonThread(relay_cmd, applist_cmd, mount_cmd, pmd3_prefix, project_root, parent=self)
         self._wda_thread.log_sig.connect(self.append_log)
         self._wda_thread.ready_sig.connect(self._on_wda_ready)
         self._wda_thread.done_sig.connect(self._on_wda_daemon_stopped)
