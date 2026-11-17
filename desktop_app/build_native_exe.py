@@ -475,6 +475,25 @@ def build(build_installer: bool = BUILD_INSTALLER):
         main_entry
     ]
 
+    # 动态收集 pymobiledevice3 传递依赖元数据，避免 Windows 打包版触发 PackageNotFoundError
+    import importlib.metadata as _ilm
+    for _dep_pkg in (
+        "apple_compress",
+        "apple-compress",
+        "pyimg4",
+        "ipsw_parser",
+        "ipsw-parser",
+        "developer_disk_image",
+        "developer-disk-image",
+        "bpylist2",
+        "pykdebugparser",
+    ):
+        try:
+            _ilm.distribution(_dep_pkg)
+            cmd.insert(-1, f"--copy-metadata={_dep_pkg}")
+        except _ilm.PackageNotFoundError:
+            pass
+
     print("执行命令: " + " ".join(cmd))
     subprocess.run(cmd, cwd=PROJECT_ROOT, env=build_env, check=True)
 

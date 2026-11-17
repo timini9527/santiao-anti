@@ -402,6 +402,7 @@ def build_mac(build_dmg_flag: bool = BUILD_DMG):
         cmd.extend(["--hidden-import=av", "--collect-all=av", "--copy-metadata=av"])
 
     if importlib.util.find_spec("pymobiledevice3") is not None:
+        import importlib.metadata as _ilm
         cmd.extend([
             "--hidden-import=pymobiledevice3",
             "--hidden-import=pymobiledevice3.remote.userspace_tunnel",
@@ -421,6 +422,23 @@ def build_mac(build_dmg_flag: bool = BUILD_DMG):
             "--collect-all=pmd_net_addr",
             "--copy-metadata=pymobiledevice3",
         ])
+        # 动态收集 pymobiledevice3 传递依赖包元数据，防止子进程执行时触发 PackageNotFoundError
+        for _dep_pkg in (
+            "apple_compress",
+            "apple-compress",
+            "pyimg4",
+            "ipsw_parser",
+            "ipsw-parser",
+            "developer_disk_image",
+            "developer-disk-image",
+            "bpylist2",
+            "pykdebugparser",
+        ):
+            try:
+                _ilm.distribution(_dep_pkg)
+                cmd.append(f"--copy-metadata={_dep_pkg}")
+            except _ilm.PackageNotFoundError:
+                pass
 
     # 附加 desktop_app/assets
     assets_dir = os.path.join(CURRENT_DIR, "assets")

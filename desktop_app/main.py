@@ -17,6 +17,24 @@ _QT_DLL_HANDLES = []
 # 必须在最开头调用，防止 Windows 打包时多进程/子进程递归拉起产生进程炸弹
 multiprocessing.freeze_support()
 
+# 冻结打包环境元数据兜底补丁：防止 pymobiledevice3 及其传递依赖（如 apple_compress / pyimg4）
+# 在 PyInstaller 环境下因未完整携带 .dist-info 抛出 PackageNotFoundError 导致子进程崩溃
+if getattr(sys, "frozen", False):
+    try:
+        import importlib.metadata as _ilm
+        _orig_ilm_version = _ilm.version
+
+        def _safe_ilm_version(distribution_name: str) -> str:
+            """安全读取包版本号，冻结环境下缺失元数据时返回默认占位版本"""
+            try:
+                return _orig_ilm_version(distribution_name)
+            except _ilm.PackageNotFoundError:
+                return "0.0.0"
+
+        _ilm.version = _safe_ilm_version
+    except Exception:
+        pass
+
 # 内置独立测试执行引擎模式：供打包版免外部 Python 依赖直接拉起 pytest 子进程
 if "--internal-pytest" in sys.argv:
     import pytest
