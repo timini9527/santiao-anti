@@ -7,10 +7,10 @@ iOS 平台聊天会话核心页面元素定位器 (XCUITest / WebDriverAgent 原
 """
 from typing import Tuple
 from appium.webdriver.common.appiumby import AppiumBy
-from locators.common.common_locator_ios import CommonLocatorIos
+from locators.common.common_locator_ios import _CommonLocatorIos
 
 
-class ChatLocatorIos:
+class _ChatLocatorIos:
     """
     iOS 平台聊天会话核心页面元素定位器 (XCUITest / WebDriverAgent 原生架构)
 
@@ -25,7 +25,7 @@ class ChatLocatorIos:
     """
 
     # iOS 应用 Bundle ID
-    PACKAGE_ID = CommonLocatorIos.PACKAGE_ID
+    PACKAGE_ID = _CommonLocatorIos.PACKAGE_ID
 
     # 静态文本类控件类型集合
     _TEXT_TYPES = "{'XCUIElementTypeStaticText', 'XCUIElementTypeTextView'}"
@@ -238,9 +238,9 @@ class ChatLocatorIos:
         AppiumBy.XPATH,
         "//XCUIElementTypeNavigationBar/XCUIElementTypeButton[1]",
     )
-    TOP_IV_BACK_BTN = CommonLocatorIos.TOP_IV_BACK_BTN
-    TOP_BACK_BUTTON = CommonLocatorIos.TOP_IV_BACK_BTN                                  # 返回按钮
-    TOP_BACK_BNT = CommonLocatorIos.TOP_IV_BACK_BTN                                     # 返回按钮
+    TOP_IV_BACK_BTN = _CommonLocatorIos.TOP_IV_BACK_BTN
+    TOP_BACK_BUTTON = _CommonLocatorIos.TOP_IV_BACK_BTN                                  # 返回按钮
+    TOP_BACK_BNT = _CommonLocatorIos.TOP_IV_BACK_BTN                                     # 返回按钮
     TOP_BACK_UNREAD_BADGE = (                                                           # 返回按钮未读数角标
         AppiumBy.XPATH,
         "//XCUIElementTypeNavigationBar/XCUIElementTypeButton[1]//XCUIElementTypeStaticText",
@@ -255,7 +255,7 @@ class ChatLocatorIos:
         AppiumBy.XPATH,
         "//XCUIElementTypeNavigationBar//XCUIElementTypeStaticText[1]",
     )
-    TOP_TV_TITLE = CommonLocatorIos.TOP_TV_TITLE
+    TOP_TV_TITLE = _CommonLocatorIos.TOP_TV_TITLE
     TOP_SHORT_NUMBER = (                                                                # 群聊ID
         AppiumBy.XPATH,
         "//XCUIElementTypeNavigationBar//XCUIElementTypeStaticText[contains(@name, 'ID') or contains(@name, '群号')]",
@@ -368,8 +368,8 @@ class ChatLocatorIos:
         AppiumBy.IOS_PREDICATE,
         "type == 'XCUIElementTypeButton' AND name CONTAINS '合并转发'",
     )
-    TV_CONFIRM = CommonLocatorIos.DIALOG_CONFIRM_BTN                                    # 确定按钮
-    TV_CANCEL = CommonLocatorIos.DIALOG_CANCEL_BTN                                      # 取消按钮
+    TV_CONFIRM = _CommonLocatorIos.DIALOG_CONFIRM_BTN                                    # 确定按钮
+    TV_CANCEL = _CommonLocatorIos.DIALOG_CANCEL_BTN                                      # 取消按钮
 
     # ==================================================================================================================
     # 聊天页面【聊天记录（合并转发）详情页】内部元素定位
@@ -449,15 +449,15 @@ class ChatLocatorIos:
     )
 
     # 删除操作二次确认和取消
-    TWO_CONFIRM = CommonLocatorIos.DIALOG_CONFIRM_BTN
-    TWO_CANCEL = CommonLocatorIos.DIALOG_CANCEL_BTN
+    TWO_CONFIRM = _CommonLocatorIos.DIALOG_CONFIRM_BTN
+    TWO_CANCEL = _CommonLocatorIos.DIALOG_CANCEL_BTN
 
     ALERT_TITLE = (
         AppiumBy.XPATH,
         "//XCUIElementTypeAlert//XCUIElementTypeStaticText[1]",
     )
-    BUTTON2 = CommonLocatorIos.DIALOG_CANCEL_BTN
-    BUTTON1 = CommonLocatorIos.DIALOG_CONFIRM_BTN
+    BUTTON2 = _CommonLocatorIos.DIALOG_CANCEL_BTN
+    BUTTON1 = _CommonLocatorIos.DIALOG_CONFIRM_BTN
 
     # 横幅通知消息定位器
     TV_NAME = (                                                                         # 横幅通知发送者名称

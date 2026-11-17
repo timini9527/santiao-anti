@@ -482,10 +482,12 @@ class ModernMessageBox(QDialog):
         text: str = "",
         icon_type: int = IconInformation,
         buttons: list[str] = None,
-        parent=None
+        parent=None,
+        center_align: bool = False,
     ):
         super().__init__(parent)
         self.icon_type = icon_type
+        self.center_align = center_align
         self.clicked_button = ""
         self._drag_pos = None
 
@@ -592,9 +594,10 @@ class ModernMessageBox(QDialog):
         content_widget = QWidget(self.card)
         content_widget.setAutoFillBackground(True)
         content_widget.setStyleSheet("background-color: #ffffff; border: none;")
-        content_layout = QHBoxLayout(content_widget)
-        content_layout.setContentsMargins(20, 18, 20, 16)
-        content_layout.setSpacing(16)
+
+        lines = text.strip().split("\n", 1)
+        headline = lines[0]
+        detail = lines[1].strip() if len(lines) > 1 else ""
 
         badge = QLabel()
         badge.setFixedSize(46, 46)
@@ -611,45 +614,86 @@ class ModernMessageBox(QDialog):
         else:
             badge.setText("ℹ")
             badge.setStyleSheet("background-color: #e0f2fe; color: #0284c7; font-size: 20px; font-weight: 900; border-radius: 23px; border: 1px solid #bae6fd;")
-        content_layout.addWidget(badge, 0, Qt.AlignmentFlag.AlignTop)
 
-        # 右侧文本排版
-        right_layout = QVBoxLayout()
-        right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.setSpacing(8)
+        if self.center_align:
+            # 顶部「左图标 + 右标题」横向布局 + 中间全宽紧凑详情框，无多余空白
+            content_layout = QVBoxLayout(content_widget)
+            content_layout.setContentsMargins(20, 16, 20, 16)
+            content_layout.setSpacing(12)
 
-        lines = text.strip().split("\n", 1)
-        headline = lines[0]
-        detail = lines[1] if len(lines) > 1 else ""
+            badge.setFixedSize(38, 38)
+            badge.setStyleSheet(badge.styleSheet().replace("border-radius: 23px", "border-radius: 19px").replace("font-size: 22px", "font-size: 18px").replace("font-size: 20px", "font-size: 17px"))
 
-        lbl_head = QLabel(headline)
-        lbl_head.setWordWrap(True)
-        lbl_head.setStyleSheet("color: #0f172a; font-size: 14px; font-weight: 600; line-height: 1.4; background-color: #ffffff;")
-        lbl_head.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        right_layout.addWidget(lbl_head)
-        lbl_head.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        right_layout.addWidget(lbl_head)
+            header_row = QHBoxLayout()
+            header_row.setContentsMargins(0, 0, 0, 0)
+            header_row.setSpacing(12)
+            header_row.addWidget(badge, 0, Qt.AlignmentFlag.AlignVCenter)
 
-        if detail:
-            txt_detail = QPlainTextEdit()
-            txt_detail.setReadOnly(True)
-            txt_detail.setPlainText(detail)
-            txt_detail.setStyleSheet("""
-                QPlainTextEdit {
-                    background-color: #f8fafc;
-                    border: 1px solid #e2e8f0;
-                    border-radius: 6px;
-                    color: #334155;
-                    font-size: 12px;
-                    font-family: Consolas, 'Courier New', monospace;
-                    padding: 8px;
-                }
-            """)
-            txt_detail.setMaximumHeight(160)
-            txt_detail.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-            right_layout.addWidget(txt_detail)
+            lbl_head = QLabel(headline)
+            lbl_head.setWordWrap(True)
+            lbl_head.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+            lbl_head.setStyleSheet("color: #0f172a; font-size: 14px; font-weight: 600; line-height: 1.45; background-color: #ffffff;")
+            lbl_head.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            header_row.addWidget(lbl_head, 1)
+            content_layout.addLayout(header_row)
 
-        content_layout.addLayout(right_layout, 1)
+            if detail:
+                lbl_detail = QLabel(detail)
+                lbl_detail.setWordWrap(True)
+                lbl_detail.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+                lbl_detail.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+                lbl_detail.setStyleSheet("""
+                    QLabel {
+                        background-color: #f8fafc;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 8px;
+                        color: #334155;
+                        font-size: 12.5px;
+                        font-family: 'Microsoft YaHei UI', Consolas, sans-serif;
+                        line-height: 1.65;
+                        padding: 12px 14px;
+                    }
+                """)
+                lbl_detail.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+                content_layout.addWidget(lbl_detail)
+        else:
+            content_layout = QHBoxLayout(content_widget)
+            content_layout.setContentsMargins(20, 18, 20, 16)
+            content_layout.setSpacing(16)
+            content_layout.addWidget(badge, 0, Qt.AlignmentFlag.AlignTop)
+
+            # 右侧文本排版
+            right_layout = QVBoxLayout()
+            right_layout.setContentsMargins(0, 0, 0, 0)
+            right_layout.setSpacing(8)
+
+            lbl_head = QLabel(headline)
+            lbl_head.setWordWrap(True)
+            lbl_head.setStyleSheet("color: #0f172a; font-size: 14px; font-weight: 600; line-height: 1.4; background-color: #ffffff;")
+            lbl_head.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            right_layout.addWidget(lbl_head)
+
+            if detail:
+                txt_detail = QPlainTextEdit()
+                txt_detail.setReadOnly(True)
+                txt_detail.setPlainText(detail)
+                txt_detail.setStyleSheet("""
+                    QPlainTextEdit {
+                        background-color: #f8fafc;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 6px;
+                        color: #334155;
+                        font-size: 12px;
+                        font-family: Consolas, 'Courier New', monospace;
+                        padding: 8px;
+                    }
+                """)
+                txt_detail.setMaximumHeight(160)
+                txt_detail.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+                right_layout.addWidget(txt_detail)
+
+            content_layout.addLayout(right_layout, 1)
+
         card_layout.addWidget(content_widget, 1)
 
         # 3. 底部按钮栏
@@ -672,7 +716,7 @@ class ModernMessageBox(QDialog):
             btn = QPushButton(btn_text)
             btn.setFixedHeight(32)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            is_primary = (btn_text in ("确定", "OK", "是", "Yes", "保存"))
+            is_primary = (btn_text in ("确定", "OK", "是", "Yes", "保存", "立即安装"))
             if is_primary:
                 btn.setStyleSheet("""
                     QPushButton {
@@ -703,6 +747,9 @@ class ModernMessageBox(QDialog):
             btn.clicked.connect(lambda checked=False, val=btn_text: self._on_btn_clicked(val))
             btn_layout.addWidget(btn)
 
+        if self.center_align:
+            btn_layout.addStretch()
+
         card_layout.addWidget(btn_bar)
         root_layout.addWidget(self.card)
 
@@ -712,7 +759,7 @@ class ModernMessageBox(QDialog):
 
     def _on_btn_clicked(self, val: str):
         self.clicked_button = val
-        if val in ("确定", "OK", "是", "Yes", "保存"):
+        if val in ("确定", "OK", "是", "Yes", "保存", "立即安装"):
             self.accept()
         else:
             self.reject()
@@ -732,6 +779,7 @@ class ModernMessageBox(QDialog):
 
     def showEvent(self, event):
         super().showEvent(event)
+        self.adjustSize()
         # 智能居中于当前前台活跃窗口或屏幕视口中心，彻底消除被【元素定位与查找器】等浮窗遮挡的问题
         target_rect = None
         active_w = QApplication.activeWindow()

@@ -15,6 +15,7 @@
 import os
 import sys
 import re
+import time
 import json
 import shutil
 import socket
@@ -85,9 +86,52 @@ class EnvInstallerThread(QThread):
         super().__init__(parent)
         self.steps = steps
 
+    @staticmethod
+    def _clean_ansi(text: str) -> str:
+        """移除终端 ANSI 转义控制符，保证日志台整洁可读"""
+        return re.sub(r"\x1b\[[0-9;?]*[A-Za-z]", "", text)
+
+    def _stream_process_output(self, proc: subprocess.Popen) -> None:
+        """实时流式读取子进程输出（兼容 \\n 与 curl/npm 的 \\r 进度刷新），同步推送至日志台"""
+        if not proc.stdout:
+            return
+        buf = ""
+        last_cr_emit = 0.0
+        while True:
+            chunk = proc.stdout.read(256)
+            if not chunk:
+                break
+            buf += chunk
+            # 优先按标准换行符切分输出完整行
+            while "\n" in buf:
+                line, buf = buf.split("\n", 1)
+                # 若单行内包含多段 \r 进度覆盖，仅保留最后有效段
+                if "\r" in line:
+                    line = line.rsplit("\r", 1)[-1]
+                cleaned = self._clean_ansi(line).strip()
+                if cleaned:
+                    self.log_signal.emit(f"    {cleaned}")
+            # 对仅含 \r 的下载进度条进行 0.6s 节流输出，避免高频刷屏同时确保进度可见
+            if "\r" in buf:
+                parts = buf.split("\r")
+                latest = self._clean_ansi(parts[-2]).strip()
+                buf = parts[-1]
+                now = time.monotonic()
+                if latest and (now - last_cr_emit >= 0.6):
+                    last_cr_emit = now
+                    self.log_signal.emit(f"    {latest}")
+        if buf:
+            cleaned = self._clean_ansi(buf).strip()
+            if cleaned:
+                self.log_signal.emit(f"    {cleaned}")
+
     def run(self):
         try:
             create_no_window = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+            env = os.environ.copy()
+            env["PYTHONUNBUFFERED"] = "1"
+            env["NO_COLOR"] = "1"
+            env["FORCE_COLOR"] = "0"
             for idx, (step_name, cmd_args, allow_fail) in enumerate(self.steps, 1):
                 self.log_signal.emit(f"▶ [{idx}/{len(self.steps)}] {step_name} ...")
                 self.log_signal.emit(f"  $ {' '.join(cmd_args)}")
@@ -99,13 +143,11 @@ class EnvInstallerThread(QThread):
                         text=True,
                         encoding="utf-8",
                         errors="replace",
+                        bufsize=1,
+                        env=env,
                         creationflags=create_no_window if sys.platform == "win32" else 0,
                     )
-                    if proc.stdout:
-                        for raw_line in proc.stdout:
-                            line = raw_line.rstrip()
-                            if line:
-                                self.log_signal.emit(f"    {line}")
+                    self._stream_process_output(proc)
                     ret = proc.wait()
                     if ret == 0:
                         self.log_signal.emit(f"✅ [{step_name}] 安装完成！")
@@ -129,7 +171,7 @@ class EnvInstallerThread(QThread):
             except Exception:
                 pass
             SmartPathResolver.discover_mobile_toolchain(force_refresh=True)
-            self.finished_signal.emit(True, "所有移动端自动化运行环境及三端驱动安装完毕！")
+            self.finished_signal.emit(True, "所有缺失的移动端自动化运行环境及驱动安装完毕！")
         except Exception as e:
             self.finished_signal.emit(False, f"环境安装异常: {e}")
 
@@ -3043,13 +3085,14 @@ class MobilePage(QWidget):
 
                 self.append_log("✅ [启动成功] Appium 服务集群已成功拉起，运行日志已生成！")
                 self.append_log("==================================================")
-                QMessageBox.information(
-                    self, "启动成功",
-                    f"✅ Appium 服务集群已成功启动！\n\n"
+                self._show_styled_msg(
+                    "info",
+                    "启动成功",
+                    f"Appium 服务集群已成功启动！\n"
                     f"• 运行模式: {mode_str}\n"
                     f"• 监听端口: 4723 (主设备), 4724 (从设备)\n"
-                    f"• 运行日志:\n  • {logs_dir / 'appium_4723.log'}\n  • {logs_dir / 'appium_4724.log'}\n\n"
-                    f"💡 提示: 服务初始化通常需 2~3 秒，随后可点击【🔍 检测服务】验证服务端口连通性。"
+                    f"• 日志目录: {logs_dir.name}/appium_4723.log, appium_4724.log\n"
+                    f"• 提示: 初始化约需 2~3 秒，随后可点击【检测服务】验证端口。",
                 )
                 return
             except Exception as e:
@@ -3077,15 +3120,13 @@ class MobilePage(QWidget):
             err_msg = "未找到 Appium 运行环境及启动脚本！"
             self.append_log(f"❌ [启动失败] {err_msg}")
             self.append_log("==================================================")
-            reply = QMessageBox.question(
-                self,
+            if self._show_styled_msg(
+                "question",
                 "未找到 Appium 运行环境",
-                "当前系统未检测到 Appium 服务运行环境！\n\n"
-                "是否立即启动【⚙️ 一键装环境】，自动为您安装 Node.js、Appium 2.x 及三端驱动 (XCUITest / UIAutomator2 / HarmonyOS) 与调试工具？",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.Yes,
-            )
-            if reply == QMessageBox.StandardButton.Yes:
+                "当前系统未检测到 Appium 服务运行环境，是否立即安装？\n"
+                "将自动检测并安装 Node.js、Appium 及三端驱动 (XCUITest / UIAutomator2 / HarmonyOS)。",
+                buttons=["立即安装", "取消"],
+            ):
                 self._install_mobile_environment()
             return
 
@@ -3111,19 +3152,19 @@ class MobilePage(QWidget):
 
             self.append_log(f"✅ [启动成功] Appium 服务集群已成功派发至系统后台启动！")
             self.append_log("==================================================")
-            QMessageBox.information(
-                self, "启动成功",
-                f"✅ Appium 服务集群已成功启动！\n\n"
+            self._show_styled_msg(
+                "info",
+                "启动成功",
+                f"Appium 服务集群已成功启动！\n"
                 f"• 脚本文件: {launch_file.name}\n"
                 f"• 运行模式: {mode_str}\n"
                 f"• 目标端口: 4723 (主设备), 4724 (从设备)\n"
-                f"• 运行日志: logs/appium_*.log\n\n"
-                f"💡 提示: 服务初始化通常需 2~3 秒，随后可点击【🔍 检测服务】验证服务端口连通性。"
+                f"• 提示: 初始化约需 2~3 秒，随后可点击【检测服务】验证端口。",
             )
         except Exception as e:
             self.append_log(f"❌ [启动失败] 启动 Appium 服务脚本异常: {e}")
             self.append_log("==================================================")
-            QMessageBox.critical(self, "启动失败", f"启动 Appium 服务脚本时出现异常:\n\n{e}")
+            self._show_styled_msg("critical", "启动失败", f"启动 Appium 服务脚本时出现异常：\n{e}")
 
     def _stop_appium_service(self):
         """关闭 Appium 批量服务 (跨 Windows / macOS 双端支持，精准释放 4723~4731 端口并清理后台服务)"""
@@ -3151,7 +3192,7 @@ class MobilePage(QWidget):
             except Exception as e:
                 self.append_log(f"❌ [关闭失败] 释放 Appium 端口进程出现异常: {e}")
                 self.append_log("==================================================")
-                QMessageBox.critical(self, "关闭失败", f"关闭 Appium 服务进程时发生异常:\n\n{e}")
+                self._show_styled_msg("critical", "关闭失败", f"关闭 Appium 服务进程时发生异常：\n{e}")
                 return
         else:
             # macOS / Linux 平台：通过 lsof -ti :<port> 扫描并杀掉占用端口的进程
@@ -3172,7 +3213,7 @@ class MobilePage(QWidget):
             except Exception as e:
                 self.append_log(f"❌ [关闭失败] 释放 Appium 端口进程出现异常: {e}")
                 self.append_log("==================================================")
-                QMessageBox.critical(self, "关闭失败", f"关闭 Appium 服务进程时发生异常:\n\n{e}")
+                self._show_styled_msg("critical", "关闭失败", f"关闭 Appium 服务进程时发生异常：\n{e}")
                 return
 
         if killed_pids:
@@ -3180,18 +3221,20 @@ class MobilePage(QWidget):
             pids_str = ", ".join(sorted(killed_pids))
             self.append_log(f"✅ [关闭成功] 已成功终止 {len(killed_pids)} 个后台服务进程 (PID: {pids_str})，释放端口: {ports_str}")
             self.append_log("==================================================")
-            QMessageBox.information(
-                self, "关闭成功",
-                f"✅ Appium 服务已成功关闭并释放资源！\n\n"
+            self._show_styled_msg(
+                "info",
+                "关闭成功",
+                f"Appium 服务已成功关闭并释放资源！\n"
                 f"• 终止服务进程: {len(killed_pids)} 个 (PID: {pids_str})\n"
-                f"• 释放监听端口: {ports_str}"
+                f"• 释放监听端口: {ports_str}",
             )
         else:
             self.append_log("ℹ [关闭完成] 4723~4731 端口均处于空闲状态，未检测到活跃的 Appium 服务进程。")
             self.append_log("==================================================")
-            QMessageBox.information(
-                self, "服务已是关闭状态",
-                "✅ 4723~4731 端口当前均处于空闲状态！\n\n未检测到正在运行的 Appium 服务进程，无需重复关闭。"
+            self._show_styled_msg(
+                "info",
+                "服务已是关闭状态",
+                "4723~4731 端口当前均处于空闲状态，无需重复关闭。\n未检测到正在运行的 Appium 服务进程。",
             )
 
     def _check_appium_and_devices(self):
@@ -3287,48 +3330,175 @@ class MobilePage(QWidget):
         if appium_any_alive and all_devices:
             self.append_log("✅ [检测成功] Appium 服务与移动设备全部就绪，随时可启动自动化测试！")
             self.append_log("==================================================")
-            QMessageBox.information(
-                self, "检测成功",
-                f"✅ 服务与多端设备检测全部正常！\n\n"
+            self._show_styled_msg(
+                "info",
+                "检测成功",
+                f"服务与多端设备检测全部正常！\n"
                 f"【Appium 服务状态】\n{appium_report_str}\n\n"
-                f"{dev_report_str}"
+                f"{dev_report_str}",
             )
         elif not appium_any_alive and all_devices:
             self.append_log("⚠️ [检测提示] 移动设备已就绪，但 Appium 服务未启动。")
             self.append_log("==================================================")
-            QMessageBox.warning(
-                self, "服务未启动",
-                f"⚠️ 移动设备已就绪，但 Appium 服务未启动 (4723/4724 离线)！\n\n"
+            self._show_styled_msg(
+                "warning",
+                "服务未启动",
+                f"移动设备已就绪，但 Appium 服务未启动 (4723/4724 离线)！\n"
                 f"【Appium 服务状态】\n{appium_report_str}\n\n"
                 f"{dev_report_str}\n\n"
-                f"💡 建议: 请点击左侧【▶ 启动服务】按钮启动 Appium 集群。"
+                f"💡 建议: 请点击【▶ 启动服务】按钮启动 Appium 集群。",
             )
         elif appium_any_alive and not all_devices:
             self.append_log("⚠️ [检测提示] Appium 服务已就绪，但未检测到连接的移动设备。")
             self.append_log("==================================================")
-            QMessageBox.warning(
-                self, "未检测到移动设备",
-                f"⚠️ Appium 服务正常，但当前没有检测到已连接的移动设备！\n\n"
+            self._show_styled_msg(
+                "warning",
+                "未检测到移动设备",
+                f"Appium 服务正常，但当前没有检测到已连接的移动设备！\n"
                 f"【Appium 服务状态】\n{appium_report_str}\n\n"
-                f"💡 建议: 请确认设备数据线已连接，并开启对应权限 (Android开启USB调试、鸿蒙开启开发者模式、iOS信任此电脑)。"
+                f"💡 建议: 请确认设备数据线已连接，并开启对应调试权限。",
             )
         else:
             self.append_log("❌ [检测失败] Appium 服务与移动设备均未就绪。")
             self.append_log("==================================================")
-            QMessageBox.critical(
-                self, "服务与设备均未就绪",
-                f"❌ Appium 服务离线，且未检测到移动设备！\n\n"
+            self._show_styled_msg(
+                "critical",
+                "服务与设备均未就绪",
+                f"Appium 服务离线，且未检测到移动设备！\n"
                 f"【Appium 服务状态】\n{appium_report_str}\n\n"
-                f"💡 建议: 请先连接真机并点击【▶ 启动服务】启动 Appium 集群。"
+                f"💡 建议: 请先连接真机并点击【▶ 启动服务】启动 Appium 集群。",
             )
+
+    def _show_styled_msg(
+        self,
+        kind: str,
+        title: str,
+        text: str,
+        buttons: Optional[List[str]] = None,
+    ) -> bool:
+        """
+        统一风格弹窗封装：优先使用与当前 UI 一致的圆角卡片弹窗 ModernMessageBox，
+        导入异常时自动回退标准 QMessageBox。
+        """
+        try:
+            from desktop_app.ui.harmony_native_inspector import ModernMessageBox
+            icon_map = {
+                "info": ModernMessageBox.IconInformation,
+                "warning": ModernMessageBox.IconWarning,
+                "critical": ModernMessageBox.IconCritical,
+                "question": ModernMessageBox.IconQuestion,
+            }
+            if kind == "question":
+                btn_list = buttons or ["立即安装", "取消"]
+                dlg = ModernMessageBox(
+                    title=title,
+                    text=text,
+                    icon_type=ModernMessageBox.IconQuestion,
+                    buttons=btn_list,
+                    parent=self,
+                    center_align=True,
+                )
+                res = dlg.exec()
+                return res == QDialog.DialogCode.Accepted or dlg.clicked_button == btn_list[0]
+            dlg = ModernMessageBox(
+                title=title,
+                text=text,
+                icon_type=icon_map.get(kind, ModernMessageBox.IconInformation),
+                buttons=buttons or ["确定"],
+                parent=self,
+                center_align=True,
+            )
+            dlg.exec()
+            return True
+        except Exception:
+            if kind == "question":
+                return (
+                    QMessageBox.question(
+                        self,
+                        title,
+                        text,
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                        QMessageBox.StandardButton.Yes,
+                    )
+                    == QMessageBox.StandardButton.Yes
+                )
+            if kind == "warning":
+                QMessageBox.warning(self, title, text)
+            elif kind == "critical":
+                QMessageBox.critical(self, title, text)
+            else:
+                QMessageBox.information(self, title, text)
+            return True
+
+    @staticmethod
+    def _probe_installed_appium_drivers(appium_bin: str) -> Tuple[str, set]:
+        """探测本机 Appium 版本及已安装驱动集合（xcuitest / uiautomator2 / harmonyos）"""
+        appium_ver = ""
+        installed_drivers: set = set()
+        create_no_window = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+        kw = {"creationflags": create_no_window} if sys.platform == "win32" else {}
+        try:
+            ver_res = subprocess.run(
+                [appium_bin, "-v"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=8,
+                **kw,
+            )
+            appium_ver = (ver_res.stdout or "").strip().splitlines()[0].strip() if ver_res.stdout else ""
+        except Exception:
+            pass
+
+        try:
+            drv_res = subprocess.run(
+                [appium_bin, "driver", "list", "--installed", "--json"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=12,
+                **kw,
+            )
+            raw = (drv_res.stdout or "").strip()
+            if raw.startswith("{"):
+                data = json.loads(raw)
+                for drv_name, drv_info in data.items():
+                    if isinstance(drv_info, dict) and drv_info.get("installed"):
+                        installed_drivers.add(drv_name.lower())
+                    elif isinstance(drv_info, dict) and "installed" not in drv_info:
+                        installed_drivers.add(drv_name.lower())
+                return appium_ver, installed_drivers
+        except Exception:
+            pass
+
+        # --json 解析失败时回退文本输出解析
+        try:
+            txt_res = subprocess.run(
+                [appium_bin, "driver", "list", "--installed"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=12,
+                **kw,
+            )
+            combined = f"{txt_res.stdout or ''}\n{txt_res.stderr or ''}".lower()
+            for name in ("xcuitest", "uiautomator2", "harmonyos"):
+                if f"- {name}" in combined or f"{name}@" in combined:
+                    installed_drivers.add(name)
+        except Exception:
+            pass
+        return appium_ver, installed_drivers
 
     def _install_mobile_environment(self):
         """
         跨平台一键安装移动端自动化全套运行环境：
-        - macOS: 自动检测 Homebrew / Node.js / Appium / 三端驱动 / ADB / libimobiledevice；
-                 若为纯裸机 (无 brew 且无 npm)，自动生成安装脚本并拉起 Mac 终端引导安装；
-                 若已有 brew 或 npm，直接在后台线程静默安装并实时打印进度到控制台日志。
-        - Windows: 自动通过 npm / winget 安装 Appium 与三端驱动。
+        1. 先精准检测 Node.js / adb / Appium / 三端驱动是否已安装；
+        2. 全部就绪时弹出与当前 UI 一致的提示窗，不再重复下载；
+        3. 仅缺失部分环境时，弹窗明确列出缺失项并按需安装，适配 Appium 2.x/3.x 版本，
+           并将实时下载/安装信息输出至控制台日志。
         """
         if getattr(self, "_env_installer_thread", None) and self._env_installer_thread.isRunning():
             QMessageBox.information(self, "正在安装", "环境安装任务正在后台运行中，请查看右侧控制台日志。")
@@ -3340,91 +3510,228 @@ class MobilePage(QWidget):
                 _pr.ensure_cross_platform_path()
         except Exception:
             pass
+
         self.append_log("==================================================")
         self.append_log("⚙️ [一键装环境] 正在扫描当前系统缺少的移动端自动化依赖...")
+        QApplication.processEvents()
 
+        ready_items: List[str] = []
+        missing_items: List[str] = []
         steps: List[Tuple[str, List[str], bool]] = []
 
         if sys.platform == "darwin":
-            # 彻底摆脱 Homebrew 对 Intel Mac 虚拟机的封杀：采用免 sudo 纯用户态官方直装方案 (Intel + M系列通用)
             local_node_bin = os.path.expanduser("~/.local/node/bin")
+            local_adb_bin = os.path.expanduser("~/Library/Android/sdk/platform-tools")
+            os.environ["PATH"] = f"{local_node_bin}:{local_adb_bin}:{os.environ.get('PATH', '')}"
+
             npm_bin = shutil.which("npm") or (
                 os.path.join(local_node_bin, "npm") if os.path.isfile(os.path.join(local_node_bin, "npm")) else None
             )
-            adb_bin = shutil.which("adb")
+            adb_bin = shutil.which("adb") or (
+                os.path.join(local_adb_bin, "adb") if os.path.isfile(os.path.join(local_adb_bin, "adb")) else None
+            )
             appium_bin = shutil.which("appium") or (
                 os.path.join(local_node_bin, "appium") if os.path.isfile(os.path.join(local_node_bin, "appium")) else None
             )
 
-            # 将 ~/.local/node/bin 提前写入当前进程 PATH 供后续命令流无缝衔接
-            os.environ["PATH"] = f"{local_node_bin}:{os.path.expanduser('~/Library/Android/sdk/platform-tools')}:{os.environ.get('PATH', '')}"
-
-            if not npm_bin:
+            # 1. 检测 Node.js (npm) — 支持淘宝 / 腾讯 / 清华 / 官方 多镜像自动切换下载
+            if npm_bin:
+                ready_items.append("Node.js / npm (已安装)")
+            else:
+                missing_items.append("Node.js v22 LTS (npm)")
                 install_node_cmd = (
                     'ARCH=$(uname -m); '
                     'if [ "$ARCH" = "arm64" ]; then NODE_ARCH="darwin-arm64"; else NODE_ARCH="darwin-x64"; fi; '
                     'NODE_VER="v22.14.0"; '
-                    'URL_CN="https://npmmirror.com/mirrors/node/${NODE_VER}/node-${NODE_VER}-${NODE_ARCH}.tar.gz"; '
-                    'URL_OFF="https://nodejs.org/dist/${NODE_VER}/node-${NODE_VER}-${NODE_ARCH}.tar.gz"; '
                     'mkdir -p "$HOME/.local/node"; '
-                    '(curl -fL --connect-timeout 10 "$URL_CN" -o /tmp/node_mac.tar.gz || curl -fL "$URL_OFF" -o /tmp/node_mac.tar.gz) && '
+                    'URLS=('
+                    '"https://npmmirror.com/mirrors/node/${NODE_VER}/node-${NODE_VER}-${NODE_ARCH}.tar.gz" '
+                    '"https://mirrors.cloud.tencent.com/nodejs-release/${NODE_VER}/node-${NODE_VER}-${NODE_ARCH}.tar.gz" '
+                    '"https://mirrors.tuna.tsinghua.edu.cn/nodejs-release/${NODE_VER}/node-${NODE_VER}-${NODE_ARCH}.tar.gz" '
+                    '"https://nodejs.org/dist/${NODE_VER}/node-${NODE_VER}-${NODE_ARCH}.tar.gz"'
+                    '); '
+                    'DL_OK=0; '
+                    'for U in "${URLS[@]}"; do '
+                    'echo "尝试下载 Node.js: $U"; '
+                    'if curl -fL --progress-bar --connect-timeout 10 "$U" -o /tmp/node_mac.tar.gz; then DL_OK=1; break; fi; '
+                    'echo "当前源不可用，自动切换下一个镜像源..."; '
+                    'done; '
+                    'test "$DL_OK" = "1" && '
                     'tar -xzf /tmp/node_mac.tar.gz -C "$HOME/.local/node" --strip-components=1 && '
                     'rm -f /tmp/node_mac.tar.gz && '
                     'echo "export PATH=\\"$HOME/.local/node/bin:\\$PATH\\"" >> "$HOME/.zshrc"'
                 )
-                steps.append(("免密码直装 Node.js v22 LTS (兼容 Intel/M芯片)", ["bash", "-c", install_node_cmd], False))
+                steps.append(("下载并安装 Node.js v22 LTS (多镜像容灾)", ["bash", "-c", install_node_cmd], False))
 
-            if not adb_bin:
+            # 2. 检测 Android 调试工具 (adb) — 支持腾讯云镜像 / Google 官方源自动切换
+            if adb_bin:
+                ready_items.append("Android 调试工具 adb (已安装)")
+            else:
+                missing_items.append("Android 调试工具 (adb)")
                 install_adb_cmd = (
                     'mkdir -p "$HOME/Library/Android/sdk"; '
-                    '(curl -fL --connect-timeout 10 "https://mirrors.cloud.tencent.com/AndroidSDK/platform-tools_r35.0.2-darwin.zip" -o /tmp/adb_mac.zip '
-                    '|| curl -fL "https://dl.google.com/android/repository/platform-tools-latest-darwin.zip" -o /tmp/adb_mac.zip) && '
+                    'echo "尝试从腾讯云镜像下载 Android Platform-Tools (adb)..."; '
+                    '(curl -fL --progress-bar --connect-timeout 10 "https://mirrors.cloud.tencent.com/AndroidSDK/platform-tools_r35.0.2-darwin.zip" -o /tmp/adb_mac.zip '
+                    '|| (echo "镜像下载失败，回退至 Google 官方源..." && curl -fL --progress-bar "https://dl.google.com/android/repository/platform-tools-latest-darwin.zip" -o /tmp/adb_mac.zip)) && '
                     'unzip -oq /tmp/adb_mac.zip -d "$HOME/Library/Android/sdk" && '
                     'rm -f /tmp/adb_mac.zip'
                 )
-                steps.append(("免密码直装 Android 调试工具 (adb)", ["bash", "-c", install_adb_cmd], True))
+                steps.append(("下载并安装 Android 调试工具 (adb)", ["bash", "-c", install_adb_cmd], True))
 
-            if not appium_bin:
+            # 3. 检测 Appium 及三端驱动（npm/driver 支持淘宝镜像 -> 腾讯镜像 -> 官方源自动切换）
+            appium_ver = ""
+            installed_drivers: set = set()
+            if appium_bin:
+                appium_ver, installed_drivers = self._probe_installed_appium_drivers(appium_bin)
+                ver_tag = f"v{appium_ver}" if appium_ver else "已安装"
+                ready_items.append(f"Appium Server ({ver_tag})")
+            else:
+                missing_items.append("Appium Server (全局服务)")
                 install_appium_cmd = (
                     'export PATH="$HOME/.local/node/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"; '
-                    'npm install -g appium --registry=https://registry.npmmirror.com'
+                    'for REG in "https://registry.npmmirror.com" "https://mirrors.cloud.tencent.com/npm/" "https://registry.npmjs.org"; do '
+                    'echo "尝试通过镜像源安装 Appium: $REG"; '
+                    'if npm install -g appium --registry="$REG" --loglevel=http; then exit 0; fi; '
+                    'echo "当前镜像源安装失败，切换下一源重试..."; '
+                    'done; exit 1'
                 )
-                steps.append(("全局安装 Appium 2.x (国内高速镜像)", ["bash", "-c", install_appium_cmd], False))
+                steps.append(("下载并安装 Appium Server (多镜像容灾)", ["bash", "-c", install_appium_cmd], False))
 
             driver_base = 'export PATH="$HOME/.local/node/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"; '
-            steps.append(("安装 iOS 驱动 (xcuitest)", ["bash", "-c", driver_base + "appium driver install xcuitest"], True))
-            steps.append(("安装 Android 驱动 (uiautomator2)", ["bash", "-c", driver_base + "appium driver install uiautomator2"], True))
-            steps.append(("安装鸿蒙驱动 (harmonyos)", ["bash", "-c", driver_base + "appium driver install harmonyos"], True))
+
+            def _mac_driver_cmd(install_expr: str) -> str:
+                return (
+                    driver_base
+                    + 'for REG in "https://registry.npmmirror.com" "https://mirrors.cloud.tencent.com/npm/" "https://registry.npmjs.org"; do '
+                    + 'export NPM_CONFIG_REGISTRY="$REG"; '
+                    + 'echo "尝试使用镜像源拉取驱动: $REG"; '
+                    + f'if ( {install_expr} ); then exit 0; fi; '
+                    + 'echo "当前镜像源拉取失败，切换下一源重试..."; '
+                    + 'done; exit 1'
+                )
+
+            if "xcuitest" in installed_drivers:
+                ready_items.append("iOS 驱动 (xcuitest)")
+            else:
+                missing_items.append("iOS 驱动 (xcuitest)")
+                xcuitest_expr = (
+                    'APPIUM_VER=$(appium -v 2>/dev/null || echo ""); '
+                    'echo "当前 Appium 版本: ${APPIUM_VER:-未知}，匹配兼容 xcuitest..."; '
+                    'case "$APPIUM_VER" in '
+                    '3.*) appium driver install xcuitest@11 || appium driver install xcuitest@10 ;; '
+                    '2.*) appium driver install xcuitest@7 || appium driver install xcuitest ;; '
+                    '*) appium driver install xcuitest || appium driver install xcuitest@11 || appium driver install xcuitest@10 ;; '
+                    'esac'
+                )
+                steps.append(("下载并安装 iOS 驱动 (xcuitest 兼容版)", ["bash", "-c", _mac_driver_cmd(xcuitest_expr)], True))
+
+            # 3.2 Android UiAutomator2 驱动
+            if "uiautomator2" in installed_drivers:
+                ready_items.append("Android 驱动 (uiautomator2)")
+            else:
+                missing_items.append("Android 驱动 (uiautomator2)")
+                steps.append(
+                    ("下载并安装 Android 驱动 (uiautomator2)", ["bash", "-c", _mac_driver_cmd("appium driver install uiautomator2")], True)
+                )
+
+            # 3.3 鸿蒙 HarmonyOS 驱动
+            if "harmonyos" in installed_drivers:
+                ready_items.append("鸿蒙驱动 (harmonyos)")
+            else:
+                missing_items.append("鸿蒙驱动 (harmonyos)")
+                steps.append(
+                    ("下载并安装 鸿蒙驱动 (harmonyos)", ["bash", "-c", _mac_driver_cmd("appium driver install harmonyos")], True)
+                )
 
         else:
-            # Windows 端一键安装
+            # Windows 端按需检测 + 多镜像容灾
             npm_bin = shutil.which("npm.cmd") or shutil.which("npm")
-            if not npm_bin:
+            adb_bin = shutil.which("adb.exe") or shutil.which("adb")
+            appium_bin = shutil.which("appium.cmd") or shutil.which("appium")
+
+            if npm_bin:
+                ready_items.append("Node.js / npm (已安装)")
+            else:
                 winget_bin = shutil.which("winget")
-                if winget_bin:
-                    steps.append(("通过 Winget 安装 Node.js LTS", [winget_bin, "install", "OpenJS.NodeJS.LTS", "--silent", "--accept-package-agreements", "--accept-source-agreements"], False))
-                else:
-                    QMessageBox.warning(self, "缺少 Node.js", "当前 Windows 未检测到 Node.js (npm) 且无 winget，请先安装 Node.js LTS 后再试。")
+                if not winget_bin:
+                    self._show_styled_msg(
+                        "warning",
+                        "缺失 Node.js 环境",
+                        "检测到当前 Windows 缺失 Node.js (npm) 且无 winget 工具。\n\n请先前往 https://nodejs.org 或国内镜像站安装 Node.js LTS 后再试。",
+                    )
                     return
+                missing_items.append("Node.js LTS (npm)")
+                steps.append(
+                    ("下载并安装 Node.js LTS", [winget_bin, "install", "OpenJS.NodeJS.LTS", "--silent", "--accept-package-agreements", "--accept-source-agreements"], False)
+                )
 
+            if adb_bin:
+                ready_items.append("Android 调试工具 adb (已安装)")
+
+            appium_ver = ""
+            installed_drivers = set()
             npm_exec = npm_bin or "npm.cmd"
-            appium_exec = shutil.which("appium.cmd") or shutil.which("appium") or "appium.cmd"
-            if not (shutil.which("appium.cmd") or shutil.which("appium")):
-                steps.append(("全局安装 Appium 2.x", [npm_exec, "install", "-g", "appium", "--registry=https://registry.npmmirror.com"], False))
-            steps.append(("安装 Android 驱动 (uiautomator2)", [appium_exec, "driver", "install", "uiautomator2"], True))
-            steps.append(("安装 iOS 驱动 (xcuitest)", [appium_exec, "driver", "install", "xcuitest"], True))
-            steps.append(("安装鸿蒙驱动 (harmonyos)", [appium_exec, "driver", "install", "harmonyos"], True))
+            appium_exec = appium_bin or "appium.cmd"
+            if appium_bin:
+                appium_ver, installed_drivers = self._probe_installed_appium_drivers(appium_bin)
+                ver_tag = f"v{appium_ver}" if appium_ver else "已安装"
+                ready_items.append(f"Appium Server ({ver_tag})")
+            else:
+                missing_items.append("Appium Server (全局服务)")
+                win_appium_cmd = (
+                    f'"{npm_exec}" install -g appium --registry=https://registry.npmmirror.com --loglevel=http '
+                    f'|| "{npm_exec}" install -g appium --registry=https://mirrors.cloud.tencent.com/npm/ --loglevel=http '
+                    f'|| "{npm_exec}" install -g appium --registry=https://registry.npmjs.org --loglevel=http'
+                )
+                steps.append(("下载并安装 Appium Server (多镜像容灾)", ["cmd", "/c", win_appium_cmd], False))
 
-        reply = QMessageBox.question(
-            self,
-            "确认一键安装环境",
-            "即将在后台自动安装/补全以下移动端自动化组件：\n\n"
-            + "\n".join(f"  • {name}" for name, _, _ in steps)
-            + "\n\n安装过程可在右侧控制台日志实时查看，是否立即开始？",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.Yes,
+            def _win_driver_cmd(drv_name: str) -> List[str]:
+                cmd_str = (
+                    f'(set NPM_CONFIG_REGISTRY=https://registry.npmmirror.com&& "{appium_exec}" driver install {drv_name}) '
+                    f'|| (set NPM_CONFIG_REGISTRY=https://mirrors.cloud.tencent.com/npm/&& "{appium_exec}" driver install {drv_name}) '
+                    f'|| (set NPM_CONFIG_REGISTRY=https://registry.npmjs.org&& "{appium_exec}" driver install {drv_name})'
+                )
+                return ["cmd", "/c", cmd_str]
+
+            if "uiautomator2" in installed_drivers:
+                ready_items.append("Android 驱动 (uiautomator2)")
+            else:
+                missing_items.append("Android 驱动 (uiautomator2)")
+                steps.append(("下载并安装 Android 驱动 (uiautomator2)", _win_driver_cmd("uiautomator2"), True))
+
+            if "harmonyos" in installed_drivers:
+                ready_items.append("鸿蒙驱动 (harmonyos)")
+            else:
+                missing_items.append("鸿蒙驱动 (harmonyos)")
+                steps.append(("下载并安装 鸿蒙驱动 (harmonyos)", _win_driver_cmd("harmonyos"), True))
+
+        # 日志输出环境检测摘要
+        for ok_item in ready_items:
+            self.append_log(f"  ✅ 已就绪: {ok_item}")
+        for miss_item in missing_items:
+            self.append_log(f"  ⚠️ 缺失项: {miss_item}")
+
+        # 全部环境已就绪：直接弹窗告知并终止，不重复执行下载
+        if not missing_items:
+            self.append_log("🎉 [一键装环境] 当前电脑所有移动端自动化环境均已安装就绪，无需重复下载！")
+            ready_detail = "\n".join(f"✅ {item}" for item in ready_items)
+            self._show_styled_msg(
+                "info",
+                "环境已全部就绪",
+                f"当前电脑已安装所有移动端自动化运行环境，无需重复下载！\n{ready_detail}",
+            )
+            return
+
+        # 缺失部分环境：弹窗明确提示缺失项，确认后在后台下载安装并实时回显日志
+        missing_detail = "\n".join(f"• {item}" for item in missing_items)
+        confirmed = self._show_styled_msg(
+            "question",
+            "检测到缺失运行环境",
+            f"检测到当前电脑缺失以下环境组件，是否立即下载安装？\n{missing_detail}\n\n"
+            "注：支持国内镜像自动切换，下载进度将实时输出至右侧日志台。",
+            buttons=["立即安装", "取消"],
         )
-        if reply != QMessageBox.StandardButton.Yes:
+        if not confirmed:
             self.append_log("ℹ️ [一键装环境] 用户取消了环境安装。")
             return
 
@@ -3442,19 +3749,18 @@ class MobilePage(QWidget):
         self.append_log("==================================================")
         if ok:
             self.append_log(f"🎉 [安装成功] {msg}")
-            QMessageBox.information(
-                self,
+            self._show_styled_msg(
+                "info",
                 "环境安装成功",
                 f"✅ {msg}\n\n现在可以直接点击顶部【▶ 启动服务】与【🔍 检测服务】开始测试！",
             )
         else:
             self.append_log(f"❌ [安装失败] {msg}")
-            QMessageBox.warning(self, "环境安装提示", f"⚠️ {msg}")
+            self._show_styled_msg("warning", "环境安装提示", f"⚠️ {msg}")
 
     def _start_ios_wda_service(self):
         """一键启动/停止 iOS 8100 端口转发服务 (自动探测运行路径，直接执行 tidevice relay 8100 8100)"""
         import urllib.request
-
         # 0. 若 WDA 转发线程正在运行，再次点击直接执行停止与端口清理
         if getattr(self, "_wda_thread", None) and self._wda_thread.isRunning():
             self.append_log("==================================================")
@@ -3469,14 +3775,13 @@ class MobilePage(QWidget):
         try:
             with urllib.request.urlopen("http://127.0.0.1:8100/status", timeout=1.0) as resp:
                 if resp.status == 200:
-                    reply = QMessageBox.question(
-                        self,
+                    if self._show_styled_msg(
+                        "question",
                         "WDA 服务已在线",
-                        "✅ 检测到 127.0.0.1:8100 已处于在线响应状态！\n\n点击【Yes】可停止并释放现有 8100 端口，点击【No】保持运行。",
-                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                        QMessageBox.StandardButton.No,
-                    )
-                    if reply == QMessageBox.StandardButton.Yes:
+                        "检测到 127.0.0.1:8100 已处于在线响应状态！\n"
+                        "点击【停止并释放】可终止现有 8100 端口转发，点击【保持运行】继续使用。",
+                        buttons=["停止并释放", "保持运行"],
+                    ):
                         self._kill_port_process(8100)
                         self.btn_start_wda.setText("📱 启动 WDA")
                         self.append_log("⏹ [停止 WDA] 已终止现有 8100 端口占用进程。")
@@ -3486,6 +3791,9 @@ class MobilePage(QWidget):
                     return
         except Exception:
             pass
+
+        # 清理可能死占 8100 端口但未响应 /status 的残留转发进程，避免 WinError 10048 端口冲突
+        self._kill_port_process(8100)
 
         self.append_log("==================================================")
         self.append_log("📱 [启动 WDA] 正在自动探测环境并拉起 8100 端口转发...")
@@ -3636,8 +3944,7 @@ class MobilePage(QWidget):
                                 continue
                             if "No channel registered for code -1" in msg or "requesting test configuration" in msg:
                                 continue
-                            if any(k in msg for k in ("ERROR", "Exception", "failed", "didBegin", "testRunner", "Listening")):
-                                self.log_sig.emit(f"[WDA-Runner] {msg}")
+                            self.log_sig.emit(f"[WDA-Runner] {msg}")
 
                     _th.Thread(target=_read_runner_logs, daemon=True).start()
                 except Exception as ex:
@@ -3663,8 +3970,8 @@ class MobilePage(QWidget):
                     # 手机 WDA 未开启时，自动执行唤醒流程
                     self._wakeup_phone_wda(env, no_win)
 
-                    # 唤醒后持续探活 8100 直到就绪
-                    for _ in range(45):
+                    # 唤醒后持续探活 8100 直到就绪（最多等待 40 秒，每 2 秒探测一次）
+                    for attempt in range(1, 21):
                         if self._stop_flag or self._notified_ready:
                             return
                         if self.proc and self.proc.poll() is not None:
@@ -3673,7 +3980,18 @@ class MobilePage(QWidget):
                             self._notified_ready = True
                             self.ready_sig.emit()
                             return
+                        if self.runner_proc and self.runner_proc.poll() is not None:
+                            rc = self.runner_proc.returncode
+                            self.log_sig.emit(f"⚠️ [WDA-Runner 已退出] 退出码: {rc}，8100 端口未能就绪，请检查上方日志、手机是否解锁或重插数据线。")
+                            self.stop()
+                            return
+                        if attempt % 5 == 0:
+                            self.log_sig.emit(f"⏳ [等待 WDA] 正在等待手机端 WDA 响应 (已等待 {attempt * 2}s)...")
                         _time.sleep(2.0)
+
+                    if not self._stop_flag and not self._notified_ready:
+                        self.log_sig.emit("⚠️ [WDA 超时] 40 秒内未能连通 http://127.0.0.1:8100/status，已自动停止等待，请检查手机端 WDA 状态后重试。")
+                        self.stop()
 
                 try:
                     self.proc = subprocess.Popen(

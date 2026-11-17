@@ -37,8 +37,8 @@ PROJECT_ROOT = SmartPathResolver.get_project_root()
 # 控制是否编译生成 Inno Setup 单文件安装包 (SetupInstaller/Santiao_IM_Native_Setup_v0.9.9.exe)
 # - True  : 完整全量流水线 (PyInstaller 打包 -> 核心资产加密脱敏 -> Inno Setup 编译生成单文件安装包)
 # - False : 仅执行 PyInstaller 打包 (输出 dist/三条IM自动化测试控制台 绿色运行目录，跳过加密与安装包制作，极速秒级构建)
-# BUILD_INSTALLER = False
-BUILD_INSTALLER = True
+BUILD_INSTALLER = False
+# BUILD_INSTALLER = True
 
 
 def sanitize_build_environment() -> dict:
@@ -477,6 +477,11 @@ def build(build_installer: bool = BUILD_INSTALLER):
 
     # 动态收集 pymobiledevice3 传递依赖元数据，避免 Windows 打包版触发 PackageNotFoundError
     import importlib.metadata as _ilm
+    import importlib.util as _ilu
+    if _ilu.find_spec("pytun_pmd3") is not None:
+        cmd.insert(-1, "--hidden-import=pytun_pmd3")
+        cmd.insert(-1, "--collect-all=pytun_pmd3")
+        cmd.insert(-1, "--copy-metadata=pytun_pmd3")
     for _dep_pkg in (
         "apple_compress",
         "apple-compress",
@@ -493,6 +498,10 @@ def build(build_installer: bool = BUILD_INSTALLER):
             cmd.insert(-1, f"--copy-metadata={_dep_pkg}")
         except _ilm.PackageNotFoundError:
             pass
+    # 收集 pymobiledevice3 传递依赖的包数据文件（如 pykdebugparser/trace.codes、pyimg4 等）
+    for _mod_pkg in ("pykdebugparser", "pyimg4", "ipsw_parser", "developer_disk_image", "apple_compress"):
+        if _ilu.find_spec(_mod_pkg) is not None:
+            cmd.insert(-1, f"--collect-all={_mod_pkg}")
 
     print("执行命令: " + " ".join(cmd))
     subprocess.run(cmd, cwd=PROJECT_ROOT, env=build_env, check=True)

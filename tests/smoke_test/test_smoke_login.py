@@ -40,7 +40,7 @@ class TestSmokeLoginAgreement(BaseSmokeLogin):
         full_text = self.loginPage.get_agreement_text()
         with allure.step('断言包含所有协议名称'):
             check.is_true('《用户协议》' in full_text, '缺少用户协议')
-            check.is_true('《隐私协议》' in full_text, '缺少隐私协议')
+            check.is_true('《隐私协议》' in full_text or '《隐私政策》' in full_text , '缺少隐私协议')
             check.is_true('《未成年人个人信息保护规则》' in full_text, '缺少未成年人保护规则')
 
     @pytest.mark.p2

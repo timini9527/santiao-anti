@@ -237,13 +237,13 @@ class _ChatLocatorAndroid:
 # 跨端通用定位器透明代理 (自动识别 Android / HarmonyOS NEXT / iOS)
 # =========================================================================
 from core.locator_manager import DynamicLocatorMeta
-from locators.chat.core.chat_locator_hos import ChatLocatorHos
-from locators.chat.core.chat_locator_ios import ChatLocatorIos
+from locators.chat.core.chat_locator_hos import _ChatLocatorHos
+from locators.chat.core.chat_locator_ios import _ChatLocatorIos
 
 
-class ChatLocator(ChatLocatorIos, _ChatLocatorAndroid, ChatLocatorHos, metaclass=DynamicLocatorMeta):
+class ChatLocator(_ChatLocatorHos, _ChatLocatorAndroid, _ChatLocatorIos, metaclass=DynamicLocatorMeta):
     """跨端聊天核心定位器（支持 IDE Ctrl + 鼠标左键直接跳转定义，运行时按设备平台动态分发）"""
 
     _android_cls = _ChatLocatorAndroid
-    _harmony_cls = ChatLocatorHos
-    _ios_cls = ChatLocatorIos
+    _harmony_cls = _ChatLocatorHos
+    _ios_cls = _ChatLocatorIos

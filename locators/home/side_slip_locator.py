@@ -79,11 +79,11 @@ class _SideSlipLocatorAndroid(CommonLocator):
 # 跨端通用定位器透明代理 (自动识别 Android / HarmonyOS NEXT)
 # =========================================================================
 from core.locator_manager import DynamicLocatorProxy
-from locators.home.side_slip_locator_hos import SideSlipLocatorHos
+from locators.home.side_slip_locator_hos import _SideSlipLocatorHos
 
 SideSlipLocator = DynamicLocatorProxy(
     android_cls=_SideSlipLocatorAndroid,
-    harmony_cls=SideSlipLocatorHos
+    harmony_cls=_SideSlipLocatorHos
 )
 
 

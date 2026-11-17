@@ -1,9 +1,9 @@
 from typing import Tuple
 from appium.webdriver.common.appiumby import AppiumBy
-from locators.common.common_locator_hos import CommonLocatorHos
+from locators.common.common_locator_hos import _CommonLocatorHos
 
 
-class ContactSelectLocatorHos(CommonLocatorHos):
+class _ContactSelectLocatorHos(_CommonLocatorHos):
     """
     鸿蒙 NEXT 平台通用好友/群聊选择组件定位器 (HarmonyOS ArkUI 专享架构)
     底层深度原生对齐 ArkUI 控件树标签 (NavDestination, List, ListItem, Search, TextInput, Checkbox, Toggle, Image, Text, Dialog 等)
@@ -11,9 +11,9 @@ class ContactSelectLocatorHos(CommonLocatorHos):
     """
 
     # 顶部导航栏
-    IV_BACK_BTN = CommonLocatorHos.TOP_IV_BACK_BTN          # 返回按钮
-    TV_TITLE = CommonLocatorHos.TOP_TV_TITLE                # 标题
-    TV_FB_ACTION = CommonLocatorHos.TOP_IV_CONFIRM_BTN      # 确定按钮
+    IV_BACK_BTN = _CommonLocatorHos.TOP_IV_BACK_BTN          # 返回按钮
+    TV_TITLE = _CommonLocatorHos.TOP_TV_TITLE                # 标题
+    TV_FB_ACTION = _CommonLocatorHos.TOP_IV_CONFIRM_BTN      # 确定按钮
 
     # 创建新的会话按钮
     CREATE_NEW_CONVERSATION = (AppiumBy.XPATH, "//NavDestinationContent/Stack/Column/Column/Row/Text | //Text[@text='创建新的会话']")

@@ -106,16 +106,16 @@ class _CommonLoactroAndroid:
 
 
 from core.locator_manager import DynamicLocatorMeta
-from locators.common.common_locator_hos import CommonLocatorHos
-from locators.common.common_locator_ios import CommonLocatorIos
+from locators.common.common_locator_hos import _CommonLocatorHos
+from locators.common.common_locator_ios import _CommonLocatorIos
 
 
-class CommonLocator(CommonLocatorIos, _CommonLoactroAndroid, CommonLocatorHos, metaclass=DynamicLocatorMeta):
+class CommonLocator(_CommonLocatorHos, _CommonLoactroAndroid, _CommonLocatorIos, metaclass=DynamicLocatorMeta):
     """跨端公共定位器（支持 IDE Ctrl + 鼠标左键直接跳转定义，运行时按设备平台动态分发）"""
 
     _android_cls = _CommonLoactroAndroid
-    _harmony_cls = CommonLocatorHos
-    _ios_cls = CommonLocatorIos
+    _harmony_cls = _CommonLocatorHos
+    _ios_cls = _CommonLocatorIos
 
 
 

@@ -1,7 +1,7 @@
 from appium.webdriver.common.appiumby import AppiumBy
 
 
-class SideSlipLocatorHos:
+class _SideSlipLocatorHos:
     """
     鸿蒙 NEXT 平台侧滑体系元素定位器 (HarmonyOS ArkUI 专享架构)
     深度对齐 HarmonyOS NEXT 真机 Hierarchy 实际组件树结构：

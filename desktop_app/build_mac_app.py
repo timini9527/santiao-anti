@@ -437,8 +437,12 @@ def build_mac(build_dmg_flag: bool = BUILD_DMG):
             try:
                 _ilm.distribution(_dep_pkg)
                 cmd.append(f"--copy-metadata={_dep_pkg}")
-            except _ilm.PackageNotFoundError: 
+            except _ilm.PackageNotFoundError:
                 pass
+        # 收集传递依赖内部数据文件（如 pykdebugparser/trace.codes 等），防止冻结运行期 FileNotFoundError
+        for _mod_pkg in ("pykdebugparser", "pyimg4", "ipsw_parser", "developer_disk_image", "apple_compress"):
+            if importlib.util.find_spec(_mod_pkg) is not None:
+                cmd.append(f"--collect-all={_mod_pkg}")
 
     # 附加 desktop_app/assets
     assets_dir = os.path.join(CURRENT_DIR, "assets")

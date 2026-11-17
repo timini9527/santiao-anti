@@ -1,15 +1,15 @@
 from appium.webdriver.common.appiumby import AppiumBy
-from locators.common.common_locator_hos import CommonLocatorHos
+from locators.common.common_locator_hos import _CommonLocatorHos
 
 
-class LoginLocatorHos(CommonLocatorHos):
+class _LoginLocatorHos(_CommonLocatorHos):
     """
     鸿蒙 NEXT 平台登录页面元素定位器 (HarmonyOS ArkUI 专享架构)
     底层原生对齐 ArkUI 控件树标签 (Button, Text, TextInput, Checkbox, Image, Dialog 等)
     全面覆盖手机号登录、验证码登录、密码登录、协议勾选及系统密码弹窗。
     """
 
-    PACKAGE_ID = CommonLocatorHos.PACKAGE_ID
+    PACKAGE_ID = _CommonLocatorHos.PACKAGE_ID
 
     APPLICATION_LOGO = (AppiumBy.XPATH, "//NavDestinationContent/Stack/Column/Image")
 

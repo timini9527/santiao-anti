@@ -58,15 +58,29 @@ if "--internal-pytest" in sys.argv:
 if "--internal-pmd3" in sys.argv:
     _idx = sys.argv.index("--internal-pmd3")
     sys.argv = ["pymobiledevice3"] + sys.argv[_idx + 1:]
-    from pymobiledevice3.__main__ import main as _pmd3_main
-    sys.exit(_pmd3_main())
+    try:
+        from pymobiledevice3.__main__ import main as _pmd3_main
+        sys.exit(_pmd3_main())
+    except SystemExit:
+        raise
+    except BaseException:
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 # 内置 tidevice 命令行自举模式：供设备枚举免外部 CLI 调用
 if "--internal-tidevice" in sys.argv:
     _idx = sys.argv.index("--internal-tidevice")
     sys.argv = ["tidevice"] + sys.argv[_idx + 1:]
-    from tidevice.__main__ import main as _tidevice_main
-    sys.exit(_tidevice_main())
+    try:
+        from tidevice.__main__ import main as _tidevice_main
+        sys.exit(_tidevice_main())
+    except SystemExit:
+        raise
+    except BaseException:
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 # 内置 iOS WDA 守护进程自举模式：一键启动真机 WDA 与 8100 端口转发
 if "--internal-wda" in sys.argv:

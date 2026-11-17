@@ -78,3 +78,5 @@ androguard.db*
 .coverage
 tmp/
 output/
+node_modules/
+.venv/

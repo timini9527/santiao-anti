@@ -2,7 +2,7 @@
   "mobile": {
     "os_type": "Win",
     "remote_appium": "198.18.0.1:4723 (服务在线)",
-    "remote_udid": "7632094a38390c717a815009bc22b7cbce055932",
+    "remote_udid": "3YZ9K25104007630",
     "remote_appium2": "198.18.0.1:4724 (服务在线)",
     "remote_udid2": "00008101-001538462600001E",
     "private_chat_name": "",
@@ -13,16 +13,16 @@
     "selected_test_file": "",
     "auto_scroll_log": true,
     "splitter_h_sizes": [
-      666,
-      1152
+      594,
+      1224
     ],
     "splitter_v_sizes": [
-      180,
-      733
+      492,
+      421
     ],
     "log_collapsed": false,
-    "last_log_height": 733,
-    "params_collapsed": false,
+    "last_log_height": 421,
+    "params_collapsed": true,
     "node_status_map": {
       "tests/chat/core/test_chat/TestChat::test_send_text_message": "passed",
       "tests/chat/list/test_chat_list.py::TestChatList::test_enter_chat": "passed",
@@ -298,8 +298,8 @@
   },
   "window": {
     "x": 337,
-    "y": 79,
-    "width": 1361,
+    "y": 327,
+    "width": 1205,
     "height": 864,
     "maximized": true
   }

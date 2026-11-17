@@ -1,7 +1,7 @@
 from appium.webdriver.common.appiumby import AppiumBy
 
 
-class ChatLocatorHos:
+class _ChatLocatorHos:
     """
     鸿蒙 NEXT 平台聊天会话核心页面定位器 (HarmonyOS ArkUI 专享架构)
     底层原生支持 ArkUI 控件标签 (Text, Button, Image, List, ListItem, TextInput, TextArea, Row, Column, Stack, Flex, NavDestination 等)

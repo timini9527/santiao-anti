@@ -4,10 +4,10 @@ iOS 平台登录页面元素定位器 (XCUITest / WebDriverAgent 原生架构)
 全面规范化为 Apple 官方 XCUIElementType* 元素类型与高效定位策略 (Predicate / Class Chain / Accessibility ID)
 """
 from appium.webdriver.common.appiumby import AppiumBy
-from locators.common.common_locator_ios import CommonLocatorIos
+from locators.common.common_locator_ios import _CommonLocatorIos
 
 
-class LoginLocatorIos:
+class _LoginLocatorIos:
     """
     iOS 平台登录页面元素定位器 (XCUITest / WebDriverAgent 原生架构)
 
@@ -22,7 +22,7 @@ class LoginLocatorIos:
     """
 
     # iOS 应用 Bundle ID (与 config/devices.yaml 中 appium:bundleId 保持一致)
-    PACKAGE_ID = CommonLocatorIos.PACKAGE_ID
+    PACKAGE_ID = _CommonLocatorIos.PACKAGE_ID
 
     
     # --------------------------------------------------------------------------

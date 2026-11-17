@@ -7,7 +7,7 @@ iOS 平台主页与会话列表元素定位器 (XCUITest / WebDriverAgent 原生
 """
 from typing import Tuple
 from appium.webdriver.common.appiumby import AppiumBy
-from locators.common.common_locator_ios import CommonLocatorIos
+from locators.common.common_locator_ios import _CommonLocatorIos
 
 
 class _HomeLocatorIos:
@@ -25,7 +25,7 @@ class _HomeLocatorIos:
     """
 
     # iOS 应用 Bundle ID (与 config/devices.yaml 中 appium:bundleId 保持一致)
-    PACKAGE_ID = CommonLocatorIos.PACKAGE_ID
+    PACKAGE_ID = _CommonLocatorIos.PACKAGE_ID
 
     # 静态文本类控件类型集合
     _TEXT_TYPES = "{'XCUIElementTypeStaticText', 'XCUIElementTypeTextView'}"
@@ -71,8 +71,8 @@ class _HomeLocatorIos:
         "//XCUIElementTypeStaticText[@name='扫一扫']",
     )
 
-    # 顶部统一标题 (与 CommonLocatorIos 对齐)
-    TOP_TV_TITLE = CommonLocatorIos.TOP_TV_TITLE
+    # 顶部统一标题 (与 _CommonLocatorIos 对齐)
+    TOP_TV_TITLE = _CommonLocatorIos.TOP_TV_TITLE
 
     # --------------------------------------------------------------------------
     # 2. 全局搜索交互体系 (Search Bar & Overlay)

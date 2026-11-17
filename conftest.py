@@ -7,6 +7,7 @@ except Exception:
     pass
 
 import os
+import sys
 import pytest
 import time
 import yaml
@@ -72,6 +73,15 @@ def pytest_configure(config):
         def_plat = _get_default_platform()
         os.environ.setdefault("PLATFORM", def_plat.strip().lower())
         logger.info(f"{LogIcon.SETUP} 全局目标测试平台已初始化为: {os.environ['PLATFORM']}")
+
+    # 源码运行模式下，顺便同步跨端 Locator 的 IDE 静态跳转目标平台
+    if not getattr(sys, "frozen", False):
+        try:
+            from scripts.sync_ide_platform import sync_ide_platform
+
+            sync_ide_platform(target_platform=os.environ.get("PLATFORM"))
+        except Exception:
+            pass
 
 
 

@@ -7,7 +7,7 @@ from typing import Tuple
 from appium.webdriver.common.appiumby import AppiumBy
 
 
-class CommonLocatorIos:
+class _CommonLocatorIos:
     """
     iOS 平台通用公共元素定位器 (XCUITest / WebDriverAgent 原生架构)
     底层原生支持 Apple XCUITest 自动化定位体系，全面覆盖 iOS 原生 NavigationBar、

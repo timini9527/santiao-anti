@@ -245,7 +245,8 @@ class LoginPage(BasePage):
     # 登录页 - 获取协议文本
     def get_agreement_text(self) -> str:
         """ 获取登录页面底部的协议文本 """
-        text = self.get_attribute(LoginLocator.AGREE_AND_LOGIN_TEXT, "text")
+        attr = "label" if self._platform_name == "ios" else "text"
+        text = self.get_attribute(LoginLocator.AGREE_AND_LOGIN_TEXT, attr) or ""
         logger.info(f"{LogIcon.FIND} 🧐 [Action - Login] 获取到登录页面底部的协议文本: {text}")
         return text
 

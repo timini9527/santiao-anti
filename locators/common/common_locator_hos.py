@@ -3,7 +3,7 @@ from typing import Tuple
 from appium.webdriver.common.appiumby import AppiumBy
 
 
-class CommonLocatorHos:
+class _CommonLocatorHos:
     """
     鸿蒙 NEXT 平台通用公共元素定位器 (HarmonyOS ArkUI 专享架构)
     底层深度原生对齐 ArkUI 组件树标签 (Navigation, NavDestination, Stack, Column, Row, Text, Button, Image, Dialog 等)

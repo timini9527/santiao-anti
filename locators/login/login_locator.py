@@ -1,8 +1,8 @@
 from appium.webdriver.common.appiumby import AppiumBy
 from core.locator_manager import DynamicLocatorMeta
 from locators.common.common_locator import CommonLocator
-from locators.login.login_locator_hos import LoginLocatorHos
-from locators.login.login_locator_ios import LoginLocatorIos
+from locators.login.login_locator_hos import _LoginLocatorHos
+from locators.login.login_locator_ios import _LoginLocatorIos
 
 
 class _LoginLocatorAndroid(CommonLocator):
@@ -123,9 +123,9 @@ class _LoginLocatorAndroid(CommonLocator):
 # ==============================================================================
 # 跨端通用定位器透明代理 (自动识别 Android / HarmonyOS NEXT / iOS)
 # ==============================================================================
-class LoginLocator(LoginLocatorIos, _LoginLocatorAndroid, LoginLocatorHos, metaclass=DynamicLocatorMeta):
+class LoginLocator(_LoginLocatorHos, _LoginLocatorAndroid, _LoginLocatorIos, metaclass=DynamicLocatorMeta):
     """跨端登录页面定位器（支持 IDE Ctrl + 鼠标左键直接跳转定义，运行时按设备平台动态分发）"""
 
     _android_cls = _LoginLocatorAndroid
-    _harmony_cls = LoginLocatorHos
-    _ios_cls = LoginLocatorIos
+    _harmony_cls = _LoginLocatorHos
+    _ios_cls = _LoginLocatorIos

@@ -3,8 +3,8 @@ current_env: "dev"              # 默认执行环境：dev 或 test
 # current_env: "test"
 
 # current_platform: "android"   # 默认单端平台２android / harmonyos / ios (none)&local multi-device
-# current_platform: "harmonyos"
-current_platform: "ios"
+current_platform: "harmonyos"
+# current_platform: "ios"
 
 server:
   host: "127.0.0.1"
@@ -84,7 +84,7 @@ devices:
     harmony_sender:
       platformName: "HarmonyOS"
       automationName: "harmonyos"
-      udid: "4UQ9K25530068061"
+      udid: "3YZ9K25104007630"
       # udid: "3YZ9K25104007630"
       deviceName: "HarmonyPhone"
       bundleName: "com.santiaohms.im"
