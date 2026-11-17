@@ -13,8 +13,8 @@
     "selected_test_file": "",
     "auto_scroll_log": true,
     "splitter_h_sizes": [
-      461,
-      798
+      666,
+      1152
     ],
     "splitter_v_sizes": [
       180,
@@ -297,10 +297,10 @@
     "concurrency": 1
   },
   "window": {
-    "x": 475,
-    "y": 42,
+    "x": 337,
+    "y": 79,
     "width": 1361,
     "height": 864,
-    "maximized": false
+    "maximized": true
   }
 }

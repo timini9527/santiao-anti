@@ -437,7 +437,7 @@ def build_mac(build_dmg_flag: bool = BUILD_DMG):
             try:
                 _ilm.distribution(_dep_pkg)
                 cmd.append(f"--copy-metadata={_dep_pkg}")
-            except _ilm.PackageNotFoundError:
+            except _ilm.PackageNotFoundError: 
                 pass
 
     # 附加 desktop_app/assets
