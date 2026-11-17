@@ -97,20 +97,31 @@ def build_dmg(app_bundle_path: str, output_dmg_path: str):
         os.remove(output_dmg_path)
     os.makedirs(os.path.dirname(output_dmg_path), exist_ok=True)
 
-    # 4. 调用 hdiutil 执行零压缩极速 DMG 封装 (UDRO 秒级生成，避免重复压缩直接交由 GitHub Artifact 并行压缩下载)
+    # 4. 调用 hdiutil 执行极速兼容 DMG 封装 (UDZO zlib-level=1 兼顾极速与 100% 全版本兼容)
     cmd = [
         "hdiutil", "create",
         "-volname", APP_NAME,
         "-srcfolder", dmg_temp_dir,
         "-ov",
-        "-format", "UDRO",
+        "-format", "UDZO",
+        "-imagekey", "zlib-level=1",
         output_dmg_path
     ]
     try:
         subprocess.run(cmd, check=True)
         print(f" [DMG 成功] macOS 标准拖拽式安装镜像已生成: {output_dmg_path}")
     except Exception as e:
-        print(f" [DMG 异常] 封装 DMG 镜像失败: {e}")
+        print(f" [DMG 异常] 极速封装失败 ({e})，正在尝试标准格式兜底重试...")
+        fallback_cmd = [
+            "hdiutil", "create",
+            "-volname", APP_NAME,
+            "-srcfolder", dmg_temp_dir,
+            "-ov",
+            "-format", "UDZO",
+            output_dmg_path
+        ]
+        subprocess.run(fallback_cmd, check=True)
+        print(f" [DMG 成功] 标准格式安装镜像已生成: {output_dmg_path}")
     finally:
         shutil.rmtree(dmg_temp_dir, ignore_errors=True)
 
