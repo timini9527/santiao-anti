@@ -106,5 +106,3 @@
 | **业务测试用例全景总览手册** | [test_docs/README.md](../test_docs/README.md) | 面向产研测全员的零代码业务用例库导航，汇总 `00_综合 ~ 09_个人与举报` 共 9 大板块业务文档 |
 | **接口高性能压测说明** | [performance/README.md](../performance/README.md) | 阐述 `performance/` 目录下基于 Locust + `FastHttpUser` 的 IM 接口高并发压测方案 |
 | **Windows iOS USB 驱动说明** | [tools/drivers/ios/README.md](../tools/drivers/ios/README.md) | 说明 Apple 官方 64 位 USB 通信驱动组件（`AppleMobileDeviceSupport64.msi`）的作用与端口监听机制 |
-| **Web 控制台 V2 说明** | [web_console_v2/README.md](../web_console_v2/README.md) | 介绍面向非开发人员的自动化测试 Web 控制台重构版目录与运行方式 |
-| **Web 平台前端工程说明** | [web_platform/frontend/README.md](../web_platform/frontend/README.md) | `web_platform/frontend` Vue 3 + Vite 前端工程基础模板说明 |
