@@ -110,7 +110,7 @@ from locators.common.common_locator_hos import _CommonLocatorHos
 from locators.common.common_locator_ios import _CommonLocatorIos
 
 
-class CommonLocator(_CommonLocatorHos, _CommonLoactroAndroid, _CommonLocatorIos, metaclass=DynamicLocatorMeta):
+class CommonLocator(_CommonLocatorIos, _CommonLoactroAndroid, _CommonLocatorHos, metaclass=DynamicLocatorMeta):
     """跨端公共定位器（支持 IDE Ctrl + 鼠标左键直接跳转定义，运行时按设备平台动态分发）"""
 
     _android_cls = _CommonLoactroAndroid

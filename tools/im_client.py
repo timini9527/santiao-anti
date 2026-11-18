@@ -1633,52 +1633,95 @@ if __name__ == "__main__":
         #   USE_CLUSTER = False : 单台模拟器本地独立压测
         # -------------------------------------------------------------
         USE_CLUSTER = True
-        # USE_CLUSTER = False 
+        # USE_CLUSTER = False
 
-        # 每台设备对各自会话（专属群聊+公共单聊）发送的消息数量（如设为 20 条）
-        COUNT_PER_TARGET = 1000
+        # -------------------------------------------------------------
+        # 循环发送控制开关（通宵/长稳压测专用）：
+        #   LOOP_SEND = True  : 持续循环发送（一晚上不断轮次投递，按 Ctrl+C 停止）
+        #   LOOP_SEND = False : 仅发送 1 轮后自动结束
+        # -------------------------------------------------------------
+        LOOP_SEND = False
+        LOOP_INTERVAL_SECONDS = 5.0  # 每轮结束后的缓冲休眠时间（秒）
+
+        # 每台设备对各自会话（专属群聊+公共单聊）单轮发送的消息数量（如设为 20 条）
+        COUNT_PER_TARGET = 10
         # COUNT_PER_TARGET = 28572
+
+        async def _run_with_loop(create_fn, start_fn, send_fn, stop_fn) -> None:
+            """通用轮次执行器：支持单轮与通宵无限循环压测，异常断连时自动重建通道。"""
+            instance = create_fn()
+            try:
+                if not await start_fn(instance):
+                    return
+                round_idx = 1
+                while True:
+                    if LOOP_SEND:
+                        print(f"\n🔄 [通宵循环压测 · 第 {round_idx} 轮] 启动本轮发送 ({time.strftime('%Y-%m-%d %H:%M:%S')})")
+                    try:
+                        await send_fn(instance, round_idx)
+                    except Exception as e:
+                        print(f"⚠️ [第 {round_idx} 轮异常] {e}")
+                        if not LOOP_SEND:
+                            raise
+                        await stop_fn(instance)
+                        await asyncio.sleep(max(LOOP_INTERVAL_SECONDS, 5.0))
+                        instance = create_fn()
+                        await start_fn(instance)
+                        round_idx += 1
+                        continue
+
+                    if not LOOP_SEND:
+                        break
+                    print(f"💤 [第 {round_idx} 轮结束] 休眠 {LOOP_INTERVAL_SECONDS:.1f}s 后进入第 {round_idx + 1} 轮...")
+                    round_idx += 1
+                    await asyncio.sleep(LOOP_INTERVAL_SECONDS)
+            finally:
+                await stop_fn(instance)
 
         if USE_CLUSTER:
             # =========================================================
             # 【集群模式】：5 台模拟器同时协同，各自对应专属群聊齐步开火
             # =========================================================
-            # 工业级稳态流水线：单设备单协程顺序投递（concurrency=1）+ 适度批次 + 批次微延时
-            # 彻底杜绝多协程对 Frida GumJS 单线程事件循环的锁争抢与突发洪峰导致的底层 socket 线程 SIGSEGV 崩溃
             cluster_devs, common_targets, shard_groups = SessionTargetManager.load_cluster_targets()
 
-            cluster = IMClientCluster(
-                device_configs=cluster_devs,
-                common_targets=common_targets,
-                concurrency_per_device=1,
-                shard_group_targets=shard_groups,
-            )
+            def _create_cluster() -> IMClientCluster:
+                return IMClientCluster(
+                    device_configs=cluster_devs,
+                    common_targets=common_targets,
+                    concurrency_per_device=1,
+                    shard_group_targets=shard_groups,
+                )
 
-            started = await cluster.start()
-            if not started:
-                print("❌ 集群中无就绪设备，请检查模拟器与 frida-server。")
-                return
+            async def _start_cluster(cluster: IMClientCluster) -> bool:
+                if not await cluster.start():
+                    print("❌ 集群中无就绪设备，请检查模拟器与 frida-server。")
+                    return False
+                # 🛡️ 核心闸门：压测前自动执行全集群历史离线消息排空收敛预热 (保障 WCDB 与通道空闲)
+                await cluster.drain_all_offline_sync(quiet_duration=2.5, max_timeout=15.0)
+                return True
 
-            # 🛡️ 核心闸门：压测前自动执行全集群历史离线消息排空收敛预热 (保障 WCDB 与通道空闲)
-            await cluster.drain_all_offline_sync(quiet_duration=2.5, max_timeout=15.0)
+            async def _send_cluster(cluster: IMClientCluster, round_idx: int) -> None:
+                results = await cluster.send_matrix(
+                    count_per_target=COUNT_PER_TARGET,
+                    # 分片后每群仅 1 个发送者，可放开到 10 条/批 + 100ms；全量模式保持保守节奏防服务端 500
+                    batch_size=100,
+                    report_interval=200,
+                    delay_between_batches=0.02 if shard_groups else 0.1,
+                    high_watermark=300,
+                    low_watermark=150,
+                    max_pace=0.3,
+                    corpus_file=CORPUS_FILE,
+                    shard_corpus=False,
+                    include_case_id=True,
+                    include_seq_prefix=False,
+                    skip_local_db=True,
+                    # 仅第 1 轮先正常落库展示会话，后续轮次全量走免落库通道避免本地 DB 膨胀
+                    persist_first_message=(round_idx == 1),
+                )
+                if LOOP_SEND and not results:
+                    raise RuntimeError("本轮无可用就绪设备，准备重建集群连接")
 
-            await cluster.send_matrix(
-                count_per_target=COUNT_PER_TARGET,
-                # 分片后每群仅 1 个发送者，可放开到 10 条/批 + 100ms；全量模式保持保守节奏防服务端 500
-                batch_size=100,
-                report_interval=200,
-                delay_between_batches=0.02 if shard_groups else 0.1,
-                high_watermark=300,
-                low_watermark=150,
-                max_pace=0.3,
-                corpus_file=CORPUS_FILE,
-                shard_corpus=False,
-                include_case_id=True,
-                include_seq_prefix=False,
-                skip_local_db=True,
-                persist_first_message=True,
-            )
-            await cluster.stop()
+            await _run_with_loop(_create_cluster, _start_cluster, _send_cluster, lambda c: c.stop())
 
         else:
             # =========================================================
@@ -1689,36 +1732,41 @@ if __name__ == "__main__":
             single_targets = ([single_cfg.dedicated_group] if single_cfg.dedicated_group else []) + [
                 t for t in common_targets if t.to_cust_id != single_cfg.sender_cust_id
             ]
-            client = IMClient(
-                device_id=single_cfg.device_id,
-                sender_cust_id=single_cfg.sender_cust_id,
-                sender_name=single_cfg.sender_name,
-                targets=single_targets,
-            )
-            started = await client.start()
-            if not started:
-                print("❌ 客户端启动失败，无法连接真机协议通道。")
-                return
 
-            # 🛡️ 核心闸门：压测前自动执行历史离线消息排空收敛预热 (保障 WCDB 与通道空闲)
-            await client.drain_offline_sync(quiet_duration=2.5, max_timeout=15.0)
+            def _create_single() -> IMClient:
+                return IMClient(
+                    device_id=single_cfg.device_id,
+                    sender_cust_id=single_cfg.sender_cust_id,
+                    sender_name=single_cfg.sender_name,
+                    targets=single_targets,
+                )
 
-            await client.send_matrix(
-                count_per_target=COUNT_PER_TARGET,
-                concurrency=1,              # 单设备单协程顺序流水线，杜绝锁争抢与 Socket 洪峰
-                batch_size=200,             # 批次大小（每批 200 条）
-                report_interval=200,        # 打点间隔
-                high_watermark=300,         # 高水位线（需大于 batch_size，避免每批都触发排空）
-                low_watermark=150,          # 低水位线（需大于 batch_size，避免每批必等待）
-                max_pace=0.3,               # 退避休眠上限降至 0.3s，避免单批固定卡死 1s
-                corpus_file=CORPUS_FILE,
-                include_case_id=True,
-                include_seq_prefix=False,
-                enforce_fifo_order=True,    # 开启单会话严格保序屏障
-                skip_local_db=True,         # 跳过发送端本地写库，彻底解决 1.7G WAL 膨胀与提速
-                persist_first_message=True, # 每个会话先正常落库展示第 1 条消息，剩余消息全部免落库极速发送
-            )
-            await client.stop()
+            async def _start_single(client: IMClient) -> bool:
+                if not await client.start():
+                    print("❌ 客户端启动失败，无法连接真机协议通道。")
+                    return False
+                # 🛡️ 核心闸门：压测前自动执行历史离线消息排空收敛预热 (保障 WCDB 与通道空闲)
+                await client.drain_offline_sync(quiet_duration=2.5, max_timeout=15.0)
+                return True
+
+            async def _send_single(client: IMClient, round_idx: int) -> None:
+                await client.send_matrix(
+                    count_per_target=COUNT_PER_TARGET,
+                    concurrency=1,              # 单设备单协程顺序流水线，杜绝锁争抢与 Socket 洪峰
+                    batch_size=200,             # 批次大小（每批 200 条）
+                    report_interval=200,        # 打点间隔
+                    high_watermark=300,         # 高水位线（需大于 batch_size，避免每批都触发排空）
+                    low_watermark=150,          # 低水位线（需大于 batch_size，避免每批必等待）
+                    max_pace=0.3,               # 退避休眠上限降至 0.3s，避免单批固定卡死 1s
+                    corpus_file=CORPUS_FILE,
+                    include_case_id=True,
+                    include_seq_prefix=False,
+                    enforce_fifo_order=True,    # 开启单会话严格保序屏障
+                    skip_local_db=True,         # 跳过发送端本地写库，彻底解决 1.7G WAL 膨胀与提速
+                    persist_first_message=(round_idx == 1),
+                )
+
+            await _run_with_loop(_create_single, _start_single, _send_single, lambda c: c.stop())
 
         print("\n🎉 全流程压测任务圆满结束，已安全释放连接并返回终端。")
         os._exit(0)

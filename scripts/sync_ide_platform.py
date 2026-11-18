@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """根据当前测试平台自动同步跨端 Locator 代理类的继承顺序，使 IDE Ctrl+左键跳转到对应平台定义文件。"""
 import argparse
-import os
 import re
 import sys
 from pathlib import Path
@@ -126,6 +125,11 @@ def sync_ide_platform(
 
 
 if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
     parser = argparse.ArgumentParser(description="同步跨端 Locator 的 IDE 静态跳转目标平台")
     parser.add_argument(
         "--platform",

@@ -224,21 +224,52 @@ def main() -> None:
     creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
     use_tidevice_relay = True
+    forwarder_start_time = 0.0
+    fwd_err_lines: Deque[str] = collections.deque(maxlen=15)
+
+    def _drain_forwarder_stderr(proc_obj: subprocess.Popen) -> None:
+        """持续排空端口转发子进程 stderr，彻底杜绝 4KB 管道写满导致 tidevice relay 死锁"""
+        if proc_obj.stderr is None:
+            return
+        try:
+            for raw_l in proc_obj.stderr:
+                cleaned_l = raw_l.strip()
+                if cleaned_l:
+                    fwd_err_lines.append(cleaned_l)
+        except Exception:
+            pass
+
+    def _is_port_8100_accepting() -> bool:
+        """极速检测 127.0.0.1:8100 是否能瞬间完成 TCP 握手 (防僵尸进程假监听)"""
+        import socket as _sock
+        try:
+            with _sock.create_connection(("127.0.0.1", 8100), timeout=0.6):
+                return True
+        except Exception:
+            return False
 
     def _ensure_forwarder() -> None:
-        nonlocal forwarder_proc, use_tidevice_relay
+        nonlocal forwarder_proc, use_tidevice_relay, forwarder_start_time
+        need_restart = False
         if forwarder_proc is None or forwarder_proc.poll() is not None:
+            need_restart = True
+        elif (time.time() - forwarder_start_time) > 5.0 and not _is_port_8100_accepting():
+            print("    ⚠️ 检测到 8100 端口转发通道假死阻塞，正在自动强制重启转发...")
+            try:
+                forwarder_proc.kill()
+                forwarder_proc.wait(timeout=2)
+            except Exception:
+                pass
+            need_restart = True
+
+        if need_restart:
             if forwarder_proc is not None and forwarder_proc.poll() is not None:
                 # 转发器异常退出时输出原因并切换备用通道
-                err_out = ""
-                try:
-                    if forwarder_proc.stderr:
-                        err_out = forwarder_proc.stderr.read().strip()
-                except Exception:
-                    pass
+                err_out = " | ".join(list(fwd_err_lines)[-3:])
                 print(f"    ⚠️ 8100 端口转发进程已退出 (code={forwarder_proc.returncode}) {err_out}，正在切换通道重启...")
                 use_tidevice_relay = not use_tidevice_relay
 
+            fwd_err_lines.clear()
             fwd_cmd = (
                 _build_tidevice_cmd("relay", "8100", "8100")
                 if use_tidevice_relay
@@ -254,6 +285,8 @@ def main() -> None:
                 errors="replace",
                 creationflags=creationflags,
             )
+            forwarder_start_time = time.time()
+            threading.Thread(target=_drain_forwarder_stderr, args=(forwarder_proc,), daemon=True).start()
 
     _ensure_forwarder()
 

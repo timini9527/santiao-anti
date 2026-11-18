@@ -13,16 +13,16 @@ class _LoginLocatorHos(_CommonLocatorHos):
 
     APPLICATION_LOGO = (AppiumBy.XPATH, "//NavDestinationContent/Stack/Column/Image")
 
-    # 手机号登录入口
+    # 手机号登录入口 (试点：采用 HypiumBy 原生组合直查，绕过整棵树转 XML 与 XPath 扫描)
     LOGIN_ENTRANCE = (
-        AppiumBy.XPATH,
-        "//Button[contains(@text, '手机号登录')] | //*[contains(@text, '手机号登录')]",
+        "HypiumBy",
+        'BY.type("Button").text("手机号登录")',
     )
 
     # 有SIM卡时，显示一键登录按钮与入口
     ONE_KEY_LOGIN_ENTRANCE = (
         AppiumBy.XPATH,
-        "//*[@id='loginBtn'] | //Button[@text='一键登录'] | //Text[@text='一键登录']",
+        "//Text[@text='一键登录']",
     )
 
     # 国家区域手机号开头

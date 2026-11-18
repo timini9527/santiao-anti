@@ -44,6 +44,35 @@ class LoginPage(BasePage):
 
         logger.warning(f"{LogIcon.FAIL} [Action - Login] 未能检测到应用 Logo 及登录主入口，当前不处于登录主页面")
         return False
+
+    # 登录页 - 自动返回直到检测到登录主页面
+    def back_to_login_main_page(self, max_retries: int = 3, timeout: int = 1) -> bool:
+        """
+        自动返回直到检测到登录主页面 (通过 APPLICATION_LOGO 进行精准核验)
+        
+        如果当前不在登录主页面，则尝试点击左上角返回按钮 (或系统返回键)，
+        直到检测到 APPLICATION_LOGO 为止，具备防死循环最大重试限制。
+        
+        :param max_retries: 最大返回尝试次数 (默认 3 次)
+        :param timeout: 单次检测 Logo 超时时间 (默认 1s)
+        :return: True(已成功处于登录主页面) / False(未能回到登录主页面)
+        """
+        logger.info(f"{LogIcon.WAIT} 检查并尝试返回登录主页面 (最大重试: {max_retries} 次)")
+        for attempt in range(max_retries + 1):
+            if self.is_on_login_main_page(timeout=timeout):
+                logger.info(f"{LogIcon.SUCCESS} [Action - Login] 确认已处于登录主页面")
+                return True
+            if attempt < max_retries:
+                logger.info(f"{LogIcon.ACTION} 当前不在登录主页面，第 {attempt + 1}/{max_retries} 次尝试点击返回...")
+                back_btn = self.find_element(LoginLocator.TOP_IV_BACK_BTN, timeout=1, expect_missing=True)
+                if back_btn and back_btn.is_displayed():
+                    back_btn.click()
+                else:
+                    self.press_back()
+                time.sleep(0.5)
+
+        logger.warning(f"{LogIcon.FAIL} 达到最大重试次数 ({max_retries} 次)，仍未能回到登录主页面")
+        return False
     
 
 
@@ -70,7 +99,19 @@ class LoginPage(BasePage):
     def click_phone_login_button(self) -> None:
         """ 如果在启动页，点击进入‘手机号登录’界面的按钮 """
         logger.info(f"{LogIcon.SETUP} 点击进入手机号登录主界面")
-        self.click(LoginLocator.LOGIN_ENTRANCE)
+        # 1. 短路优化：若已处于手机号表单界面，直接跳过无需重复点击
+        phone_edit = self.find_element(LoginLocator.PWD_AND_CODE, timeout=0.8, expect_missing=True)
+        if phone_edit and phone_edit.is_displayed():
+            logger.info(f"{LogIcon.SUCCESS} 当前已处于手机号输入界面，无需重复点击‘手机号登录’")
+            return
+
+        # 2. 状态自愈：若当前不在登录主页面，自动返回直到回到登录主页面
+        if not self.is_on_login_main_page(timeout=1):
+            logger.info(f"{LogIcon.ACTION} 当前不在登录主页面，执行自动返回自愈")
+            self.back_to_login_main_page()
+
+        # 3. 执行快速点击进入手机号登录
+        self.click(LoginLocator.LOGIN_ENTRANCE, timeout=3)
     
     # 登录页 - 点击一键登录按钮
     def click_one_click_login_button(self) -> None:

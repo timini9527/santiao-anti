@@ -18,10 +18,10 @@ profiles:
   offline_groups:
     description: "1-50群 齐步集群压测 (5 台设备严格平均分片发送)"
     discovery_mode: "static"          # auto: 自动连接设备 SQLite 拉取当前真实有效的群聊；static: 读取下方 static_targets 兜底
-    pattern_prefix: "群"              # 匹配群聊名称 (支持 "1群" ~ "50群", 前后缀匹配： 离线群)
+    pattern_prefix: "离线群"              # 匹配群聊名称 (支持 "1群" ~ "50群", 前后缀匹配： 离线群)
     max_groups: 50                    # 限制拉取最大群数
     shard_by_device: true             # 开启 5 台设备分片发送 (每台设备仅向专属 10 个群发送，消除 seq 冲突)
-    include_dedicated_group: true    # 压测公共群时，不向各设备专属测试群(测试群001~005)发送
+    include_dedicated_group: false    # 压测公共群时，不向各设备专属测试群(测试群001~005)发送
 
   # 场景 2：设备专属群一对一独立压测
   dedicated_groups:

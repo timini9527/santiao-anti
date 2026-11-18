@@ -58,7 +58,7 @@ except (ImportError, ModuleNotFoundError):
     _HAS_QTSVG = False
 from PyQt6.QtWidgets import (
     QAbstractItemView, QApplication, QCheckBox, QComboBox, QDialog, QFileDialog, QFrame, QGraphicsDropShadowEffect, QGridLayout,
-    QHBoxLayout, QHeaderView, QInputDialog, QLabel, QLineEdit, QListWidget, QListWidgetItem,
+    QHBoxLayout, QHeaderView, QInputDialog, QLabel, QLayout, QLineEdit, QListWidget, QListWidgetItem,
     QMainWindow, QMenu, QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QSplitter, QStyle,
     QStyledItemDelegate, QStyleOptionViewItem, QTableWidget, QTableWidgetItem, QTextEdit, QTreeWidget,
     QTreeWidgetItem, QVBoxLayout, QWidget
@@ -462,6 +462,144 @@ class ButtonSpinner:
 # 2. 绝对层级置顶强化 (Qt WindowStaysOnTopHint + Win32 SetWindowPos HWND_TOPMOST)
 #    彻底解决弹窗被【元素定位与查找器】等浮窗遮挡的问题
 # ==============================================================================
+
+class FlowLayout(QLayout):
+    """自适应流式换行布局：窗口宽时单行排布，窗口缩小时自动平滑折行，杜绝按钮重叠与截断"""
+
+    def __init__(self, parent=None, margin: int = 0, h_spacing: int = 8, v_spacing: int = 6):
+        super().__init__(parent)
+        self._items: list = []
+        self._h_space = h_spacing
+        self._v_space = v_spacing
+        self.setContentsMargins(margin, margin, margin, margin)
+
+    def __del__(self):
+        item = self.takeAt(0)
+        while item:
+            item = self.takeAt(0)
+
+    def addItem(self, item):
+        self._items.append(item)
+
+    def addWidgetRight(self, widget: QWidget):
+        """添加标记为靠右对齐的控件（单行排布时自动推至行尾最右侧，折行后正常顺排）"""
+        widget.setProperty("_flow_align_right", True)
+        self.addWidget(widget)
+
+    def count(self) -> int:
+        return len(self._items)
+
+    def itemAt(self, index: int):
+        if 0 <= index < len(self._items):
+            return self._items[index]
+        return None
+
+    def takeAt(self, index: int):
+        if 0 <= index < len(self._items):
+            return self._items.pop(index)
+        return None
+
+    def expandingDirections(self):
+        return Qt.Orientation(0)
+
+    def hasHeightForWidth(self) -> bool:
+        return True
+
+    def heightForWidth(self, width: int) -> int:
+        return self._do_layout(QRect(0, 0, width, 0), test_only=True)
+
+    def setGeometry(self, rect: QRect):
+        super().setGeometry(rect)
+        self._do_layout(rect, test_only=False)
+
+    def sizeHint(self) -> QSize:
+        total_w = 0
+        max_h = 0
+        visible_count = 0
+        for item in self._items:
+            wid = item.widget()
+            if wid is not None and wid.isHidden():
+                continue
+            hint = item.sizeHint()
+            total_w += hint.width()
+            max_h = max(max_h, hint.height())
+            visible_count += 1
+        if visible_count > 1:
+            total_w += self._h_space * (visible_count - 1)
+        m = self.contentsMargins()
+        return QSize(total_w + m.left() + m.right(), max_h + m.top() + m.bottom())
+
+    def minimumSize(self) -> QSize:
+        size = QSize()
+        for item in self._items:
+            wid = item.widget()
+            if wid is not None and wid.isHidden():
+                continue
+            size = size.expandedTo(item.minimumSize())
+        m = self.contentsMargins()
+        size += QSize(m.left() + m.right(), m.top() + m.bottom())
+        return size
+
+    def _do_layout(self, rect: QRect, test_only: bool) -> int:
+        m = self.contentsMargins()
+        effective = rect.adjusted(m.left(), m.top(), -m.right(), -m.bottom())
+        x = effective.x()
+        y = effective.y()
+        line_height = 0
+        row_items: list = []
+
+        def _flush_row(items_in_row: list, row_y: int, row_h: int):
+            if test_only or not items_in_row:
+                return
+            # 检查本行末尾控件是否标记为右对齐；若是，将其整体推至行尾最右侧以还原标准左右分区布局
+            right_indices = [
+                i for i, (it, _, _) in enumerate(items_in_row)
+                if it.widget() is not None and bool(it.widget().property("_flow_align_right"))
+            ]
+            if right_indices and right_indices[0] > 0:
+                split_idx = right_indices[0]
+                right_chunk = items_in_row[split_idx:]
+                right_total_w = sum(h.width() for _, _, h in right_chunk) + self._h_space * (len(right_chunk) - 1)
+                prev_it, prev_x, prev_h = items_in_row[split_idx - 1]
+                left_end = prev_x + prev_h.width() + self._h_space
+                target_start = effective.right() + 1 - right_total_w
+                if target_start > left_end:
+                    cur_rx = target_start
+                    for i in range(split_idx, len(items_in_row)):
+                        it, _, h = items_in_row[i]
+                        items_in_row[i] = (it, cur_rx, h)
+                        cur_rx += h.width() + self._h_space
+
+            for r_item, r_x, r_hint in items_in_row:
+                offset_y = max(0, (row_h - r_hint.height()) // 2)
+                r_item.setGeometry(QRect(QPoint(r_x, row_y + offset_y), r_hint))
+
+        for item in self._items:
+            wid = item.widget()
+            if wid is not None and wid.isHidden():
+                continue
+            hint = item.sizeHint()
+            next_x = x + hint.width() + self._h_space
+            if next_x - self._h_space > effective.right() + 1 and line_height > 0:
+                _flush_row(row_items, y, line_height)
+                row_items = []
+                x = effective.x()
+                y = y + line_height + self._v_space
+                next_x = x + hint.width() + self._h_space
+                line_height = 0
+
+            row_items.append((item, x, hint))
+            x = next_x
+            line_height = max(line_height, hint.height())
+
+        _flush_row(row_items, y, line_height)
+        total_h = y + line_height - rect.y() + m.bottom() + 2
+        if not test_only:
+            p = self.parentWidget()
+            if p is not None and p.objectName() == "topBar" and p.minimumHeight() != total_h:
+                p.setMinimumHeight(total_h)
+        return total_h
+
 
 class ModernMessageBox(QDialog):
     """
@@ -1323,10 +1461,18 @@ class IosWdaManager:
 def check_ios_wda_services() -> Tuple[bool, bool]:
     """
     检查 iOS WDA 8100 两个核心服务是否处于运行状态：
-    1. python -m pymobiledevice3 developer dvt xcuitest ... (或带 WebDriverAgentRunner)
-    2. python -m pymobiledevice3 usbmux forward 8100 8100
+    1. 真机 WDA Runner (developer dvt xcuitest / WebDriverAgentRunner / tidevice wdaproxy)
+    2. 8100 端口转发 (usbmux forward 8100 / tidevice relay 8100 / iproxy 8100)
+    若 127.0.0.1:8100/status 已实际连通响应，直接判定双服务均就绪。
     返回: (is_xcuitest_running, is_forward_running)
     """
+    # 优先极速探活本地 8100 WDA 接口 (前置 40ms TCP 探活，未启动时不阻塞)
+    try:
+        if IosWdaManager.test_wda_status("http://127.0.0.1:8100", timeout=0.35):
+            return True, True
+    except Exception:
+        pass
+
     is_xcuitest = False
     is_forward = False
 
@@ -1338,15 +1484,27 @@ def check_ios_wda_services() -> Tuple[bool, bool]:
                     continue
                 cmdline_str = " ".join(cmdline).lower()
 
-                # 检查服务 1: developer dvt xcuitest / WebDriverAgentRunner
-                if ("dvt" in cmdline_str and "xcuitest" in cmdline_str) or (
-                    "webdriveragentrunner" in cmdline_str and "pymobiledevice3" in cmdline_str
+                # 检查服务 1: developer dvt xcuitest / WebDriverAgentRunner / tidevice wdaproxy
+                if (
+                    ("dvt" in cmdline_str and "xcuitest" in cmdline_str)
+                    or ("webdriveragentrunner" in cmdline_str and "pymobiledevice3" in cmdline_str)
+                    or ("tidevice" in cmdline_str and "wdaproxy" in cmdline_str)
                 ):
                     is_xcuitest = True
 
-                # 检查服务 2: usbmux forward 8100
-                if "usbmux" in cmdline_str and "forward" in cmdline_str and "8100" in cmdline_str:
-                    is_forward = True
+                # 检查服务 2: usbmux forward 8100 / tidevice relay 8100 / tidevice wdaproxy / iproxy 8100
+                if "8100" in cmdline_str and (
+                    ("usbmux" in cmdline_str and "forward" in cmdline_str)
+                    or ("tidevice" in cmdline_str and ("relay" in cmdline_str or "wdaproxy" in cmdline_str))
+                    or "iproxy" in cmdline_str
+                ):
+                    # 校验 8100 转发进程是否真正能 TCP 握手，若已被管道死锁卡死则标记为异常触发【重启服务】
+                    import socket as _sock
+                    try:
+                        with _sock.create_connection(("127.0.0.1", 8100), timeout=0.35):
+                            is_forward = True
+                    except Exception:
+                        is_forward = False
 
                 if is_xcuitest and is_forward:
                     break
@@ -3540,7 +3698,40 @@ class ScreenCastWorker(QThread):
                 if not self._is_running or rsd is None:
                     return True
 
-                # 3. 实例化 pymobiledevice3 原生 ScreenStreamServer (--no-audio 对齐配置)
+                # 3. 优先使用 Apple DVT 开发者通道 (DvtProvider + Screenshot) 进行实时投屏：
+                #    不开启系统媒体录屏流，不点亮状态栏紫色投屏图标，彻底绕过 App 的 UIScreen.isCaptured 防录屏白屏/遮罩限制
+                try:
+                    from pymobiledevice3.services.dvt.instruments.dvt_provider import DvtProvider
+                    from pymobiledevice3.services.dvt.instruments.screenshot import Screenshot
+
+                    logging.info("[iOS投屏] 正在建立 DVT 开发者免录屏检测直连通道...")
+                    async with DvtProvider(rsd) as dvt, Screenshot(dvt) as sc:
+                        if not self._is_running:
+                            return True
+                        last_emit_t = 0.0
+                        while self._is_running and not stop_event.is_set():
+                            raw_bytes = await sc.get_screenshot()
+                            if raw_bytes and self._is_running:
+                                now = time.time()
+                                if self.ui_ready or (now - last_emit_t >= 0.03):
+                                    last_emit_t = now
+                                    self.ui_ready = False
+                                    qimg = QImage.fromData(raw_bytes, "PNG")
+                                    if qimg and not qimg.isNull():
+                                        ScreenCastWorker.latest_image = qimg
+                                        ScreenCastWorker.latest_frame_time = now
+                                        ScreenCastWorker.latest_udid = self.udid
+                                        ScreenCastWorker.latest_frame_bytes = raw_bytes
+                                        if not emitted_any_frame:
+                                            emitted_any_frame = True
+                                            self.state_changed.emit(True, "投屏已连接 (DVT免录屏屏蔽通道)")
+                                        self.frame_ready.emit(qimg, b"")
+                            await asyncio.sleep(0.01)
+                        return emitted_any_frame or (not self._is_running)
+                except Exception as dvt_err:
+                    logging.info(f"[iOS投屏] DVT 免录屏通道暂不可用，降级尝试媒体流通道: {dvt_err}")
+
+                # 4. 兜底回退 ScreenStreamServer (若 DVT 开发者镜像未挂载或不可用)
                 server = ScreenStreamServer(
                     rsd=rsd,
                     audio_default_on=False,
@@ -4305,8 +4496,14 @@ class CaptureWorker(QThread):
             except Exception:
                 pass
 
-        # 通道 1：优先探测本地活跃 Appium Server 会话，直接复用 Appium Inspector / 自动化测试已有 Session
+        # 通道 1：优先探测本地活跃 Appium Server 会话（前置 50ms TCP 快探，跳过未监听端口）
+        import socket as _sock
         for port in (4724, 4723, 4725, 4726, 4728):
+            try:
+                with _sock.create_connection(("127.0.0.1", port), timeout=0.05):
+                    pass
+            except Exception:
+                continue
             for prefix in ("", "/wd/hub"):
                 base_url = f"http://127.0.0.1:{port}{prefix}"
                 try:
@@ -4339,37 +4536,22 @@ class CaptureWorker(QThread):
         if not wda_url:
             wda_url = "http://127.0.0.1:8100"
 
-        if IosWdaManager.test_wda_status(wda_url, timeout=0.5):
+        if IosWdaManager.test_wda_status(wda_url, timeout=1.5):
             sid = None
             try:
                 st_req = urllib.request.Request(f"{wda_url}/status")
-                with urllib.request.urlopen(st_req, timeout=1.2) as st_resp:
+                with urllib.request.urlopen(st_req, timeout=2.0) as st_resp:
                     st_data = json.loads(st_resp.read().decode("utf-8", errors="ignore"))
                 sid = st_data.get("sessionId") or st_data.get("value", {}).get("sessionId")
             except Exception:
                 pass
 
-            # 若当前尚无活跃会话，毫秒级快速向 WDA 创建通用轻量会话 (用于挂载前台活跃 App)
-            if not sid:
-                try:
-                    init_data = json.dumps({"capabilities": {}}).encode("utf-8")
-                    init_req = urllib.request.Request(
-                        f"{wda_url}/session",
-                        data=init_data,
-                        headers={"Content-Type": "application/json"}
-                    )
-                    with urllib.request.urlopen(init_req, timeout=4.0) as init_resp:
-                        init_res = json.loads(init_resp.read().decode("utf-8", errors="ignore"))
-                        sid = init_res.get("sessionId") or init_res.get("value", {}).get("sessionId")
-                except Exception as e:
-                    logging.debug(f"[iOS DOM抓取] WDA 自动激活会话跳过: {e}")
-
-            # 优先通过 session 获取应用结构 (耗时仅 2~4 秒)
+            # 2.1 若已有活跃 sessionId，直接获取页面树
             if sid:
                 try:
                     src_url = f"{wda_url}/session/{sid}/source?format=xml"
                     src_req = urllib.request.Request(src_url)
-                    with urllib.request.urlopen(src_req, timeout=10.0) as src_resp:
+                    with urllib.request.urlopen(src_req, timeout=12.0) as src_resp:
                         raw_bytes = src_resp.read()
                     if raw_bytes and len(raw_bytes) > 100:
                         with open(norm_layout, "wb") as f_out:
@@ -4379,19 +4561,42 @@ class CaptureWorker(QThread):
                 except Exception as e:
                     logging.debug(f"[iOS DOM抓取] WDA session/source 尝试降级: {e}")
 
-            # 通道 3：兜底直接请求根路径 /source
+            # 2.2 优先尝试免创建会话直接请求根路径 /source (对 WDA 原生直连最快，耗时 0.5~3s)
             for fmt in ("xml", "json"):
                 try:
                     req = urllib.request.Request(f"{wda_url}/source?format={fmt}")
-                    with urllib.request.urlopen(req, timeout=8.0) as resp:
+                    with urllib.request.urlopen(req, timeout=10.0) as resp:
                         raw_bytes = resp.read()
-                    if raw_bytes and len(raw_bytes) > 100:
+                    if raw_bytes and len(raw_bytes) > 100 and (b"<XCUIElementType" in raw_bytes or b"\"children\"" in raw_bytes or b"\"type\"" in raw_bytes):
                         with open(norm_layout, "wb") as f_out:
                             f_out.write(raw_bytes)
-                        logging.info(f"[iOS DOM抓取] 成功通过 WDA 根 /source 提取组件树")
+                        logging.info(f"[iOS DOM抓取] 成功通过 WDA 根 /source ({fmt}) 提取组件树")
                         return True
                 except Exception:
                     pass
+
+            # 2.3 若根路径需绑定会话，按 W3C 标准创建一个轻量会话后再读取 /session/{sid}/source
+            try:
+                init_data = json.dumps({"capabilities": {"alwaysMatch": {}, "firstMatch": [{}]}}).encode("utf-8")
+                init_req = urllib.request.Request(
+                    f"{wda_url}/session",
+                    data=init_data,
+                    headers={"Content-Type": "application/json"},
+                )
+                with urllib.request.urlopen(init_req, timeout=6.0) as init_resp:
+                    init_res = json.loads(init_resp.read().decode("utf-8", errors="ignore"))
+                    new_sid = init_res.get("sessionId") or init_res.get("value", {}).get("sessionId")
+                if new_sid:
+                    src_req = urllib.request.Request(f"{wda_url}/session/{new_sid}/source?format=xml")
+                    with urllib.request.urlopen(src_req, timeout=12.0) as src_resp:
+                        raw_bytes = src_resp.read()
+                    if raw_bytes and len(raw_bytes) > 100:
+                        with open(norm_layout, "wb") as f_out:
+                            f_out.write(raw_bytes)
+                        logging.info(f"[iOS DOM抓取] 成功通过新建 WDA 会话 {new_sid[:8]} 提取组件树")
+                        return True
+            except Exception as e:
+                logging.debug(f"[iOS DOM抓取] WDA 新建会话抓取异常: {e}")
 
         return False
 
@@ -4651,16 +4856,16 @@ class CaptureWorker(QThread):
                 shot_ok = False
                 layout_ok = False
 
-                # 1. 纯 DOM 刷新模式：直接调用高可靠多通道引擎，毫秒级提取并返回
+                # 1. 纯 DOM 刷新模式：直接调用高可靠多通道引擎，失败时明确提示原因，避免覆盖为空树
                 if self.mode == "dom_only":
                     if self._dump_ios_hierarchy(self.udid, layout_file):
                         self.dom_finished.emit(layout_file, "ios")
                     else:
-                        # 若未开启 WDA，生成基础画布根节点，绝不打断实时投屏
-                        minimal_root = {"attributes": {"type": "Screen", "bounds": "[0,0][1170,2532]"}, "children": []}
-                        with open(layout_file, "w", encoding="utf-8") as f:
-                            json.dump(minimal_root, f)
-                        self.dom_finished.emit(layout_file, "ios")
+                        wda_ok = IosWdaManager.test_wda_status("http://127.0.0.1:8100", timeout=0.6)
+                        if not wda_ok:
+                            self.failed.emit("8100 端口 WDA 服务未连通，请先点击顶部【启动服务】直至显示绿色【正在运行】。")
+                        else:
+                            self.failed.emit("WDA 已在线但未能返回页面 DOM 树，请解锁手机并确保前台应用处于活跃状态后重试。")
                     return
 
                 # 2. 优先零拷贝复用 pymobiledevice3 实时投屏内存帧
@@ -8182,6 +8387,7 @@ class DOMTreeWidget(QTreeWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAutoScroll(False)
+        self.setTextElideMode(Qt.TextElideMode.ElideNone)
         self.setIndentation(13)  # 精致紧凑层级缩进 (对标专业 IDE 规范，彻底消除过宽留白)
         self.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
@@ -8390,19 +8596,18 @@ class HarmonyAppiumInspector(QMainWindow):
                 font-size: 12px;
             }
 
-            /* 顶部纯白科技操作栏 */
+            /* 顶部纯白科技操作栏 (允许折行时自适应撑开高度，禁止 max-height 裁切) */
             QFrame#topBar {
                 background-color: #ffffff;
                 border-bottom: 1px solid #e2e8f0;
-                min-height: 52px;
-                max-height: 52px;
+                min-height: 46px;
             }
             QLabel#topBrand {
-                font-weight: 800; color: #0f172a; font-size: 15px; margin-right: 6px;
+                font-weight: 800; color: #0f172a; font-size: 14px; margin-right: 4px;
             }
             QLabel#platformBadge {
                 background-color: #e0f2fe; color: #0284c7; font-weight: 700;
-                font-size: 11.5px; padding: 3px 9px; border-radius: 4px; border: 1px solid #bae6fd;
+                font-size: 11px; padding: 2px 8px; border-radius: 4px; border: 1px solid #bae6fd;
             }
 
             /* 统一设备选择下拉框 (强制 combobox-popup: 0，禁止创建 Windows Native 浮动窗口，彻底根除透明幽灵框) */
@@ -8412,10 +8617,11 @@ class HarmonyAppiumInspector(QMainWindow):
                 color: #0f172a;
                 border: 1px solid #cbd5e1;
                 border-radius: 6px;
-                padding: 2px 28px 2px 10px;
+                padding: 1px 24px 1px 8px;
                 font-weight: 500;
-                font-size: 13px;
-                min-height: 32px;
+                font-size: 12px;
+                min-height: 26px;
+                max-height: 30px;
             }
             QComboBox:hover { border-color: #0284c7; }
             QComboBox:focus { border: 1px solid #0284c7; }
@@ -8435,10 +8641,10 @@ class HarmonyAppiumInspector(QMainWindow):
                 outline: none;
             }
 
-            /* 统一模式切换分段按钮 (34px 高度，字号 13.5px 加粗，图标文本严格垂直对齐) */
+            /* 统一模式切换分段按钮 (30px 精致高度，字号 12.5px 加粗，完整不截断) */
             QPushButton.mode-btn {
                 background-color: #ffffff; color: #475569; border: 1px solid #cbd5e1;
-                border-radius: 6px; padding: 0 14px; font-weight: 600; font-size: 13.5px; min-height: 34px; max-height: 34px;
+                border-radius: 6px; padding: 0 8px; font-weight: 600; font-size: 12.5px; min-height: 30px; max-height: 30px;
                 text-align: center;
             }
             QPushButton.mode-btn:hover {
@@ -8448,10 +8654,10 @@ class HarmonyAppiumInspector(QMainWindow):
                 background-color: #0284c7; color: #ffffff; border: 1px solid #0284c7; font-weight: 700;
             }
 
-            /* 顶部功能操作按钮 (统一 34px 规格，字号 13.5px 加粗，图标文本严格对齐) */
+            /* 顶部功能操作按钮 (统一 30px 精致规格，字号 12.5px 加粗) */
             QPushButton.action-btn {
                 background-color: #ffffff; color: #334155; border: 1px solid #cbd5e1;
-                border-radius: 6px; padding: 0 14px; font-weight: 600; font-size: 13.5px; min-height: 34px; max-height: 34px;
+                border-radius: 6px; padding: 0 8px; font-weight: 600; font-size: 12.5px; min-height: 30px; max-height: 30px;
                 text-align: center;
             }
             QPushButton.action-btn:hover {
@@ -8461,10 +8667,10 @@ class HarmonyAppiumInspector(QMainWindow):
                 background-color: #f1f5f9;
             }
 
-            /* 次级功能操作按钮 (统一 30px 高度，字号 12.5px 加粗，圆角 6px，精致科技风) */
+            /* 次级功能操作按钮 (统一 28px 精致高度，字号 11.5px 加粗，圆角 6px) */
             QPushButton.sub-action-btn {
                 background-color: #ffffff; color: #334155; border: 1px solid #cbd5e1;
-                border-radius: 6px; padding: 0 12px; font-weight: 600; font-size: 12.5px; min-height: 30px; max-height: 30px;
+                border-radius: 6px; padding: 0 8px; font-weight: 600; font-size: 11.5px; min-height: 28px; max-height: 28px;
                 text-align: center;
             }
             QPushButton.sub-action-btn:hover {
@@ -8567,22 +8773,25 @@ class HarmonyAppiumInspector(QMainWindow):
         main_layout.setSpacing(0)
 
         # ----------------------------------------------------------------------
-        # 1. 顶部操作栏 (30px 精致高质感统一设计，全功能清晰分区)
+        # 1. 顶部操作栏 (自适应流式布局：窗口缩小时自动平滑折行，绝不重叠错乱)
         # ----------------------------------------------------------------------
         top_bar = QFrame()
         top_bar.setObjectName("topBar")
-        top_layout = QHBoxLayout(top_bar)
-        top_layout.setContentsMargins(14, 8, 14, 8)
-        top_layout.setSpacing(8)
+        top_bar.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
+        top_layout = FlowLayout(top_bar, margin=0, h_spacing=6, v_spacing=6)
+        top_layout.setContentsMargins(12, 9, 12, 11)
 
-        # 品牌区：Retina 应用图标 + 品牌名 + 动态系统徽章
+        # 品牌区：Retina 应用图标 + 品牌名 + 动态系统徽章 (保留上下 2px 呼吸余量防裁切)
         brand_widget = QWidget()
+        brand_widget.setMinimumHeight(32)
+        brand_widget.setStyleSheet("background: transparent;")
+        brand_widget.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         brand_layout = QHBoxLayout(brand_widget)
-        brand_layout.setContentsMargins(0, 0, 0, 0)
+        brand_layout.setContentsMargins(0, 1, 2, 1)
         brand_layout.setSpacing(6)
 
         lbl_logo = QLabel()
-        lbl_logo.setPixmap(create_modern_app_icon().pixmap(28, 28))
+        lbl_logo.setPixmap(create_modern_app_icon().pixmap(22, 22))
         lbl_logo.setAlignment(Qt.AlignmentFlag.AlignVCenter)
         brand_layout.addWidget(lbl_logo)
 
@@ -8598,40 +8807,46 @@ class HarmonyAppiumInspector(QMainWindow):
         brand_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
         top_layout.addWidget(brand_widget)
 
-        top_layout.addSpacing(6)
+        # 设备选择组（保留上下 2px 呼吸余量，防止高 DPI 下下拉框边框被下方容器遮挡）
+        dev_group = QWidget()
+        dev_group.setMinimumHeight(32)
+        dev_group.setStyleSheet("background: transparent;")
+        dev_group.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        dev_layout = QHBoxLayout(dev_group)
+        dev_layout.setContentsMargins(0, 1, 2, 1)
+        dev_layout.setSpacing(6)
+        dev_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
 
-        # 设备选择器
         lbl_dev = QLabel("设备:")
-        lbl_dev.setStyleSheet("color: #64748b; font-weight: 600; font-size: 13px;")
-        top_layout.addWidget(lbl_dev)
+        lbl_dev.setStyleSheet("color: #64748b; font-weight: 600; font-size: 12.5px;")
+        dev_layout.addWidget(lbl_dev)
 
         self.combo_devices = DeviceComboBox()
-        self.combo_devices.setFixedHeight(34)
-        self.combo_devices.setFixedWidth(380)  # 固定 380px 黄金规整宽度，杜绝随文本内容无限撑大
+        self.combo_devices.setFixedHeight(30)
+        self.combo_devices.setFixedWidth(270)
         self.combo_devices.setCursor(Qt.CursorShape.PointingHandCursor)
         self.combo_devices.currentIndexChanged.connect(self.on_device_changed)
-        top_layout.addWidget(self.combo_devices)
+        dev_layout.addWidget(self.combo_devices)
 
         self.btn_refresh_devices = QPushButton()
         self.btn_refresh_devices.setIcon(get_tech_icon("refresh", "#0284c7"))
-        self.btn_refresh_devices.setIconSize(QSize(18, 18))
+        self.btn_refresh_devices.setIconSize(QSize(16, 16))
         self.btn_refresh_devices.setToolTip("点击获取并刷新当前已连接的设备列表")
         self.btn_refresh_devices.setProperty("class", "action-btn")
-        self.btn_refresh_devices.setFixedSize(34, 34)
+        self.btn_refresh_devices.setFixedSize(30, 30)
         self.btn_refresh_devices.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_refresh_devices.clicked.connect(self.refresh_devices_action)
-        top_layout.addWidget(self.btn_refresh_devices)
+        dev_layout.addWidget(self.btn_refresh_devices)
+        top_layout.addWidget(dev_group)
 
-        top_layout.addSpacing(6)
+        # 统一精致操作按键规格 (96px × 30px，字号 12.5px 加粗，图标 14x14，文字完整不截断)
+        BTN_W = 96
+        BTN_H = 30
 
-        # 统一主要操作按键规格 (112px × 34px，字号 13.5px 加粗，图标 16x16 极客饱满)
-        BTN_W = 112
-        BTN_H = 34
-
-        # 模式切换分段按钮 (112x34 统一规格，矢量图标)
+        # 模式切换分段按钮
         self.btn_mode_select = QPushButton("元素审查")
         self.btn_mode_select.setIcon(get_tech_icon("target", "#ffffff"))
-        self.btn_mode_select.setIconSize(QSize(16, 16))
+        self.btn_mode_select.setIconSize(QSize(14, 14))
         self.btn_mode_select.setProperty("class", "mode-btn")
         self.btn_mode_select.setFixedSize(BTN_W, BTN_H)
         self.btn_mode_select.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -8642,7 +8857,7 @@ class HarmonyAppiumInspector(QMainWindow):
 
         self.btn_mode_tap = QPushButton("坐标点击")
         self.btn_mode_tap.setIcon(get_tech_icon("tap", "#475569"))
-        self.btn_mode_tap.setIconSize(QSize(16, 16))
+        self.btn_mode_tap.setIconSize(QSize(14, 14))
         self.btn_mode_tap.setProperty("class", "mode-btn")
         self.btn_mode_tap.setFixedSize(BTN_W, BTN_H)
         self.btn_mode_tap.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -8650,11 +8865,9 @@ class HarmonyAppiumInspector(QMainWindow):
         self.btn_mode_tap.clicked.connect(lambda: self.switch_mode(InspectorMode.TAP))
         top_layout.addWidget(self.btn_mode_tap)
 
-        top_layout.addSpacing(6)
-
         btn_search_modal = QPushButton("查找元素")
         btn_search_modal.setIcon(get_tech_icon("search", "#0284c7"))
-        btn_search_modal.setIconSize(QSize(16, 16))
+        btn_search_modal.setIconSize(QSize(14, 14))
         btn_search_modal.setProperty("class", "action-btn")
         btn_search_modal.setObjectName("btnSearch")
         btn_search_modal.setFixedSize(BTN_W, BTN_H)
@@ -8663,14 +8876,12 @@ class HarmonyAppiumInspector(QMainWindow):
         btn_search_modal.clicked.connect(self.open_search_dialog)
         top_layout.addWidget(btn_search_modal)
 
-        top_layout.addSpacing(6)
-
         # iOS WDA 服务控制按钮 (仅选择 iOS 设备时显示)
         self.btn_ios_service = QPushButton("启动服务")
         self.btn_ios_service.setObjectName("btnIosService")
         self.btn_ios_service.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # 严格隔离焦点：被 disabled 禁用或切换时绝不向外部或设备下拉框转移焦点
         self.btn_ios_service.setIcon(get_tech_icon("play", "#475569"))
-        self.btn_ios_service.setIconSize(QSize(16, 16))
+        self.btn_ios_service.setIconSize(QSize(14, 14))
         self.btn_ios_service.setFixedSize(BTN_W, BTN_H)
         self.btn_ios_service.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_ios_service.clicked.connect(self.on_ios_service_btn_clicked)
@@ -8679,25 +8890,33 @@ class HarmonyAppiumInspector(QMainWindow):
 
         self.spinner_ios_service = ButtonSpinner(self.btn_ios_service, "refresh", "#0284c7")
 
-        top_layout.addStretch()
+        right_actions = QWidget()
+        right_actions.setMinimumHeight(BTN_H + 2)
+        right_actions.setStyleSheet("background: transparent;")
+        right_actions_layout = QHBoxLayout(right_actions)
+        right_actions_layout.setContentsMargins(0, 1, 0, 1)
+        right_actions_layout.setSpacing(6)
+        right_actions_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
 
         btn_copy_xml = QPushButton("复制源码")
         btn_copy_xml.setIcon(get_tech_icon("copy", "#475569"))
-        btn_copy_xml.setIconSize(QSize(16, 16))
+        btn_copy_xml.setIconSize(QSize(14, 14))
         btn_copy_xml.setProperty("class", "action-btn")
         btn_copy_xml.setFixedSize(BTN_W, BTN_H)
         btn_copy_xml.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_copy_xml.clicked.connect(self.copy_xml_source)
-        top_layout.addWidget(btn_copy_xml)
+        right_actions_layout.addWidget(btn_copy_xml)
 
         btn_save_shot = QPushButton("保存截图")
         btn_save_shot.setIcon(get_tech_icon("save", "#475569"))
-        btn_save_shot.setIconSize(QSize(16, 16))
+        btn_save_shot.setIconSize(QSize(14, 14))
         btn_save_shot.setProperty("class", "action-btn")
         btn_save_shot.setFixedSize(BTN_W, BTN_H)
         btn_save_shot.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_save_shot.clicked.connect(self.save_screenshot)
-        top_layout.addWidget(btn_save_shot)
+        right_actions_layout.addWidget(btn_save_shot)
+
+        top_layout.addWidgetRight(right_actions)
 
         main_layout.addWidget(top_bar)
 
@@ -8716,44 +8935,42 @@ class HarmonyAppiumInspector(QMainWindow):
         left_layout.setContentsMargins(14, 14, 14, 14)
         left_layout.setSpacing(10)
 
-        left_header = QHBoxLayout()
-        left_header.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+        left_header = FlowLayout(margin=0, h_spacing=6, v_spacing=6)
         lbl_left_title = QLabel("真机实时视窗")
-        lbl_left_title.setStyleSheet("color: #334155; font-weight: 700; font-size: 13.5px;")
+        lbl_left_title.setFixedHeight(28)
+        lbl_left_title.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+        lbl_left_title.setStyleSheet("color: #334155; font-weight: 700; font-size: 13px; padding-right: 4px;")
         left_header.addWidget(lbl_left_title)
-        left_header.addSpacing(8)
 
-        # 统一副操作按键规格 (100px × 30px，字号 12.5px 加粗，图标 15x15 垂直微调居中)
-        SUB_BTN_W = 100
+        # 统一精致副操作按键规格 (88px × 28px，字号 11.5px 加粗，图标 13x13)
+        SUB_BTN_W = 88
 
         # 实时投屏控制按钮
         self.btn_screencast = QPushButton("实时投屏")
         self.btn_screencast.setIcon(get_tech_icon("cast", "#0284c7"))
-        self.btn_screencast.setIconSize(QSize(15, 15))
-        self.btn_screencast.setFixedSize(SUB_BTN_W, 30)
+        self.btn_screencast.setIconSize(QSize(13, 13))
+        self.btn_screencast.setFixedSize(SUB_BTN_W, 28)
         self.btn_screencast.setToolTip("切换真机低延迟实时投屏 (0 截屏广播，完全不触发软件内部截屏通知)")
         self.btn_screencast.setProperty("class", "sub-action-btn")
         self.btn_screencast.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_screencast.clicked.connect(self.toggle_screencast)
         left_header.addWidget(self.btn_screencast)
-        left_header.addSpacing(6)
 
         self.btn_sync_screen = QPushButton("同步画面")
         self.btn_sync_screen.setIcon(get_tech_icon("sync", "#0284c7"))
-        self.btn_sync_screen.setIconSize(QSize(15, 15))
-        self.btn_sync_screen.setFixedSize(SUB_BTN_W, 30)
+        self.btn_sync_screen.setIconSize(QSize(13, 13))
+        self.btn_sync_screen.setFixedSize(SUB_BTN_W, 28)
         self.btn_sync_screen.setToolTip("仅极速拉取真机最新画面 (0.05s)，与投屏即刻保持一致")
         self.btn_sync_screen.setProperty("class", "sub-action-btn")
         self.btn_sync_screen.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_sync_screen.clicked.connect(self.refresh_screen_only)
         left_header.addWidget(self.btn_sync_screen)
-        left_header.addSpacing(6)
 
         # 刷新界面按钮
         self.btn_refresh = QPushButton("刷新界面")
         self.btn_refresh.setIcon(get_tech_icon("refresh", "#0284c7"))
-        self.btn_refresh.setIconSize(QSize(15, 15))
-        self.btn_refresh.setFixedSize(SUB_BTN_W, 30)
+        self.btn_refresh.setIconSize(QSize(13, 13))
+        self.btn_refresh.setFixedSize(SUB_BTN_W, 28)
         self.btn_refresh.setToolTip("仅刷新 DOM 控件树，保留当前画面底图")
         self.btn_refresh.setProperty("class", "sub-action-btn")
         self.btn_refresh.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -8766,7 +8983,6 @@ class HarmonyAppiumInspector(QMainWindow):
         self.spinner_sync = ButtonSpinner(self.btn_sync_screen, "sync", "#0284c7")
         self.spinner_refresh = ButtonSpinner(self.btn_refresh, "refresh", "#0284c7")
 
-        left_header.addStretch()
         left_layout.addLayout(left_header)
 
         self.canvas = AppiumScreenView()
@@ -9179,11 +9395,15 @@ class HarmonyAppiumInspector(QMainWindow):
         self.table_attrs = QTableWidget()
         self.table_attrs.setColumnCount(2)
         self.table_attrs.setHorizontalHeaderLabels(["属性名称 (Attribute)", "属性值 (Value)"])
+        self.table_attrs.setWordWrap(True)
+        self.table_attrs.setTextElideMode(Qt.TextElideMode.ElideNone)
         self.table_attrs.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         self.table_attrs.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.table_attrs.verticalHeader().setDefaultSectionSize(34)
+        self.table_attrs.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        self.table_attrs.verticalHeader().setMinimumSectionSize(32)
         self.table_attrs.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         right_layout.addWidget(self.table_attrs, 1)
+        self.splitter.splitterMoved.connect(lambda *_: self.table_attrs.resizeRowsToContents())
 
         self.splitter.addWidget(right_container)
 
@@ -9376,7 +9596,8 @@ class HarmonyAppiumInspector(QMainWindow):
                     border: 1px solid #059669;
                     border-radius: 6px;
                     font-weight: 600;
-                    font-size: 12px;
+                    font-size: 12.5px;
+                    padding: 0 8px;
                 }
                 QPushButton#btnIosService:hover {
                     background-color: #059669;
@@ -9398,7 +9619,8 @@ class HarmonyAppiumInspector(QMainWindow):
                     border: 1px solid #d97706;
                     border-radius: 6px;
                     font-weight: 600;
-                    font-size: 12px;
+                    font-size: 12.5px;
+                    padding: 0 8px;
                 }
                 QPushButton#btnIosService:hover {
                     background-color: #d97706;
@@ -9420,7 +9642,8 @@ class HarmonyAppiumInspector(QMainWindow):
                     border: 1px solid #cbd5e1;
                     border-radius: 6px;
                     font-weight: 600;
-                    font-size: 12px;
+                    font-size: 12.5px;
+                    padding: 0 8px;
                 }
                 QPushButton#btnIosService:hover {
                     background-color: #f1f5f9;
@@ -9513,6 +9736,7 @@ class HarmonyAppiumInspector(QMainWindow):
                 except Exception:
                     pass
             else:
+                self.show_toast("⏳ 上一轮刷新仍在进行中，请稍候...", duration_ms=1200)
                 return
 
         self._worker_start_time = time.time()
@@ -9521,7 +9745,7 @@ class HarmonyAppiumInspector(QMainWindow):
             self.spinner_refresh.start(loading_text="正在刷新...")
         else:
             self.btn_refresh.setText("正在刷新...")
-        self._timer_refresh.start(12000)
+        self._timer_refresh.start(20000)
 
         project_root = SmartPathResolver.get_project_root()
         tmp_dir = os.path.normpath(os.path.abspath(os.path.join(project_root, "reports", "inspector")))
@@ -9551,7 +9775,7 @@ class HarmonyAppiumInspector(QMainWindow):
 
     def _on_sync_screen_timeout(self):
         """同步真机画面超时回调"""
-        logging.warning("[UI审查器] 同步真机画面超时 (12s)")
+        logging.warning("[UI审查器] 同步真机画面超时 (20s)")
         if self.capture_worker and self.capture_worker.isRunning():
             try:
                 self.capture_worker.terminate()
@@ -9559,11 +9783,11 @@ class HarmonyAppiumInspector(QMainWindow):
                 pass
             self.capture_worker = None
         self._reset_capture_buttons()
-        self.show_toast("⚠️ 同步真机画面超时 (12s)，已重置状态")
+        self.show_toast("⚠️ 同步真机画面超时 (20s)，已重置状态")
 
     def _on_refresh_timeout(self):
         """刷新界面超时回调"""
-        logging.warning("[UI审查器] 刷新界面超时 (12s)")
+        logging.warning("[UI审查器] 刷新界面超时 (20s)")
         if self.capture_worker and self.capture_worker.isRunning():
             try:
                 self.capture_worker.terminate()
@@ -9571,7 +9795,7 @@ class HarmonyAppiumInspector(QMainWindow):
                 pass
             self.capture_worker = None
         self._reset_capture_buttons()
-        self.show_toast("⚠️ 刷新界面超时 (12s)，已重置状态")
+        self.show_toast("⚠️ 刷新界面超时 (20s)，已重置状态")
 
     def _on_screencast_timeout(self):
         """开启实时投屏超时回调"""
@@ -9791,9 +10015,17 @@ class HarmonyAppiumInspector(QMainWindow):
             return
 
         if self.capture_worker and self.capture_worker.isRunning():
-            self.show_toast("任务正在执行中，请勿重复点击")
-            return
+            if getattr(self, "_worker_start_time", 0) and (time.time() - self._worker_start_time > 8):
+                try:
+                    self.capture_worker.terminate()
+                    self.capture_worker.wait(500)
+                except Exception:
+                    pass
+            else:
+                self.show_toast("⏳ 任务正在执行中，请勿重复点击", duration_ms=1200)
+                return
 
+        self._worker_start_time = time.time()
         project_root = SmartPathResolver.get_project_root()
         tmp_dir = os.path.normpath(os.path.abspath(os.path.join(project_root, "reports", "inspector")))
         os.makedirs(tmp_dir, exist_ok=True)
@@ -9816,7 +10048,7 @@ class HarmonyAppiumInspector(QMainWindow):
             self.spinner_sync.start(loading_text="正在同步...")
         else:
             self.btn_sync_screen.setText("正在同步...")
-        self._timer_sync_screen.start(12000)
+        self._timer_sync_screen.start(20000)
 
         # 核心：执行 full 全量抓取，同时刷新画面与 DOM 树
         self.capture_worker = CaptureWorker(self.current_udid, self.current_platform, tmp_dir, mode="full")
@@ -10320,25 +10552,20 @@ class HarmonyAppiumInspector(QMainWindow):
             ios_label = attrs.get("label") or ""
             ios_value = attrs.get("value") or ""
             if ios_value:
-                short_v = ios_value if len(ios_value) <= 20 else ios_value[:20] + "..."
-                attrs_str += f' value="{short_v}"'
+                attrs_str += f' value="{ios_value}"'
             if ios_name:
-                short_n = ios_name if len(ios_name) <= 20 else ios_name[:20] + "..."
-                attrs_str += f' name="{short_n}"'
+                attrs_str += f' name="{ios_name}"'
             if ios_label and ios_label != ios_value:
-                short_l = ios_label if len(ios_label) <= 20 else ios_label[:20] + "..."
-                attrs_str += f' label="{short_l}"'
+                attrs_str += f' label="{ios_label}"'
         else:
             if c_id:
                 attrs_str += f' id="{c_id}"'
             if c_text:
-                short_t = c_text if len(c_text) <= 22 else c_text[:22] + "..."
-                attrs_str += f' text="{short_t}"'
+                attrs_str += f' text="{c_text}"'
         attrs_str += f' bounds="{bounds_str}"'
         if is_occluded_node:
             attrs_str += ' occluded="true"'
         attrs_str += '>'
-
         item = QTreeWidgetItem([f"{type_badge}{attrs_str}"])
         item.setData(0, Qt.ItemDataRole.UserRole, node_id)
         item.setData(0, Qt.ItemDataRole.UserRole + 1, bool(is_occluded_node))
@@ -10502,7 +10729,6 @@ class HarmonyAppiumInspector(QMainWindow):
             return has_any_exposed_child
         else:
             return bool(is_node_exposed)
-
     # --------------------------------------------------------------------------
     # DOM 树内置搜索与高亮绿色显示 (Ctrl+F)
     # --------------------------------------------------------------------------
@@ -10618,7 +10844,7 @@ class HarmonyAppiumInspector(QMainWindow):
                 return
         elif match_word:
             try:
-                # 全词匹配：使用 \\b 单词边界
+                # 全词匹配：使用 \b 单词边界
                 pattern = r"\b" + re.escape(kw) + r"\b"
                 regex_obj = re.compile(pattern, flags)
             except re.error:
@@ -10736,8 +10962,6 @@ class HarmonyAppiumInspector(QMainWindow):
         self.btn_mode_select.setIcon(get_tech_icon("target", "#ffffff" if is_sel else "#475569"))
         self.btn_mode_tap.setIcon(get_tech_icon("tap", "#ffffff" if not is_sel else "#475569"))
         self.canvas.set_mode(mode)
-
-
     def copy_xml_source(self):
         if self.xml_root is not None:
             xml_str = ET.tostring(self.xml_root, encoding="utf-8").decode("utf-8")
@@ -10836,20 +11060,16 @@ class HarmonyAppiumInspector(QMainWindow):
                 ios_label = raw_attrs.get("label") or ""
                 ios_value = raw_attrs.get("value") or ""
                 if ios_value:
-                    short_v = ios_value if len(ios_value) <= 20 else ios_value[:20] + "..."
-                    attrs_str += f' value="{short_v}"'
+                    attrs_str += f' value="{ios_value}"'
                 if ios_name:
-                    short_n = ios_name if len(ios_name) <= 20 else ios_name[:20] + "..."
-                    attrs_str += f' name="{short_n}"'
+                    attrs_str += f' name="{ios_name}"'
                 if ios_label and ios_label != ios_value:
-                    short_l = ios_label if len(ios_label) <= 20 else ios_label[:20] + "..."
-                    attrs_str += f' label="{short_l}"'
+                    attrs_str += f' label="{ios_label}"'
             else:
                 if c_id:
                     attrs_str += f' id="{c_id}"'
                 if c_text:
-                    short_text = c_text if len(c_text) <= 22 else c_text[:22] + "..."
-                    attrs_str += f' text="{short_text}"'
+                    attrs_str += f' text="{c_text}"'
             attrs_str += f' bounds="{bounds_str}"'
             if is_occluded:
                 attrs_str += ' occluded="true"'
@@ -10912,7 +11132,6 @@ class HarmonyAppiumInspector(QMainWindow):
         # 树可见性更新后，若内置搜索栏正在激活，自动重新计算匹配结果并刷新
         if hasattr(self, "dom_search_bar") and self.dom_search_bar.isVisible() and hasattr(self, "edit_dom_search") and self.edit_dom_search.text().strip():
             self.on_dom_search_text_changed(self.edit_dom_search.text())
-
     def on_tree_item_clicked(self, item: QTreeWidgetItem, column: int):
         # 用户在 DOM 树中点击切换节点时，彻底锁死横向位置，底部拖动条绝不自动跳动
         h_bar = self.tree_widget.horizontalScrollBar()
@@ -11076,8 +11295,8 @@ class HarmonyAppiumInspector(QMainWindow):
                 v_item.setForeground(QColor("#0f172a"))
             self.table_attrs.setItem(row, 0, k_item)
             self.table_attrs.setItem(row, 1, v_item)
+        self.table_attrs.resizeRowsToContents()
         self.table_attrs.setUpdatesEnabled(True)
-
     # --------------------------------------------------------------------------
     # 实时输入同步 (Live Input & Device Sync)
     # --------------------------------------------------------------------------
@@ -11162,9 +11381,8 @@ class HarmonyAppiumInspector(QMainWindow):
         item = self.tree_item_map.get(node_id)
         if item:
             bounds_str = f"[{comp['left']},{comp['top']}][{comp['right']},{comp['bottom']}]"
-            short_t = text if len(text) <= 22 else text[:22] + "..."
             id_attr = f' id="{c_id}"' if c_id else ""
-            txt_attr = f' text="{short_t}"' if text else ""
+            txt_attr = f' text="{text}"' if text else ""
             is_full = self.chk_show_full_type.isChecked() if hasattr(self, "chk_show_full_type") else False
             tag_name = full_type if is_full else c_type
             item.setText(0, f"<{tag_name}{id_attr}{txt_attr} bounds=\"{bounds_str}\">")
