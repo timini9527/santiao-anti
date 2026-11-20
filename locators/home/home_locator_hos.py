@@ -1,4 +1,5 @@
 from appium.webdriver.common.appiumby import AppiumBy
+from locators.common.hos_by import HosBy
 
 
 class _HomeLocatorHos:
@@ -22,13 +23,13 @@ class _HomeLocatorHos:
     RIGHT_MENU = (AppiumBy.XPATH, "(//NavDestinationContent//Stack/__Common__//Row[2]/Column/Image)[1]")
 
     # 展开菜单 - 发起群聊
-    EXPAND_START_GROUP_CHAT = (AppiumBy.XPATH, "//Text[@text='发起群聊'] | //Dialog//Row/Text[1]")
+    EXPAND_START_GROUP_CHAT = HosBy.type_text("Text", "发起群聊")
 
     # 展开菜单 - 添加朋友
-    EXPAND_ADD_FRIEND = (AppiumBy.XPATH, "//Text[@text='加好友/群'] | //Dialog//Row/Text[2]")
+    EXPAND_ADD_FRIEND = HosBy.type_text("Text", "加好友/群")
 
     # 展开菜单 - 扫一扫
-    EXPAND_SCAN = (AppiumBy.XPATH, "//Text[@text='扫一扫'] | //Dialog//Row/Text[3]")
+    EXPAND_SCAN = HosBy.type_text("Text", "扫一扫")
 
 
 
@@ -36,8 +37,8 @@ class _HomeLocatorHos:
     # 2. 搜索交互体系 (Search Bar & Overlay)
     # --------------------------------------------------------------------------
 
-    # 主页全局搜索栏入口 (底部 Row 内左侧搜索栏 Stack/Search)
-    SEARCH = (AppiumBy.XPATH, "//Search | //Stack[Search] | //*[@id='__SearchField__'] | //Row[last()]/Stack[1]")
+    # 主页全局搜索栏入口 (原生 Search 组件直查)
+    SEARCH = HosBy.type_only("Search")
 
     # 搜索输入框 (获取焦点后的编辑组件)
     SEARCH_INPUT = (AppiumBy.XPATH, "//*[@id='__SearchField__'] | //TextInput | //Search")
@@ -46,7 +47,7 @@ class _HomeLocatorHos:
     SEARCH_CLEAR = (AppiumBy.XPATH, "//Button[@id='clear' or contains(@text, '清除')]")
 
     # 搜索取消/退出按钮 (关闭搜索覆盖层回到主会话列表)
-    SEARCH_CANCEL = (AppiumBy.XPATH, "//Text[@text='取消'] | //Button[@text='取消']")
+    SEARCH_CANCEL = HosBy.text("取消")
 
 
 
@@ -54,8 +55,8 @@ class _HomeLocatorHos:
     # 3. 底部主导航栏与分类页签 (Bottom Navigation Tabs)
     # --------------------------------------------------------------------------
 
-    # 底部主导航栏容器 (包含搜索与展开菜单的底部 Row)
-    BOTTOM = (AppiumBy.XPATH, "//Stack/Search")
+    # 底部主导航栏容器 (原生 Search 组件直查)
+    BOTTOM = HosBy.type_only("Search")
 
     # 底部展开分类菜单按钮 (未展开时跟在 Search 后的 Stack 节点)
     EXPAND_MENU = (
@@ -70,13 +71,13 @@ class _HomeLocatorHos:
     )
 
     # 分类页签 - 好友
-    FRIEND = (AppiumBy.XPATH, "//Row//Column[.//Text[@text='好友']]")
+    FRIEND = HosBy.type_text("Text", "好友")
 
     # 分类页签 - 群聊
-    GROUP = (AppiumBy.XPATH, "//Row//Column[.//Text[@text='群聊']]")
+    GROUP = HosBy.type_text("Text", "群聊")
 
     # 分类页签 - 动态
-    DYNAMIC = (AppiumBy.XPATH, "//Row//Column[.//Text[@text='动态']]")
+    DYNAMIC = HosBy.type_text("Text", "动态")
 
     # 动态未读消息红点/数量徽标
     DYNAMIC_UNREAD_MSG = (AppiumBy.XPATH, "//Row/Badge/Text")
@@ -88,10 +89,10 @@ class _HomeLocatorHos:
     # --------------------------------------------------------------------------
 
     # 会话列表外层可滚动大容器
-    CONVERSATION_LIST = (AppiumBy.XPATH, "//List")
+    CONVERSATION_LIST = HosBy.type_only("List")
 
     # 单个会话卡片条目根容器
-    CONVERSATION_ITEM = (AppiumBy.XPATH, "//ListItem")
+    CONVERSATION_ITEM = HosBy.type_only("ListItem")
 
     # 会话标题/联系人或群聊名称 (锁定 ListItem 标题区域首个 Text 节点，兼容 Flex 与直属结构)
     CONVERSATION_NAME = (AppiumBy.XPATH, "//ListItem//Row[2]//Flex/Text[1] | //ListItem//Flex/Text[1] | //ListItem//Text[1]")
@@ -163,13 +164,13 @@ class _HomeLocatorHos:
     CHAT_PASSWORD_DIALOG_CLOSE = (AppiumBy.XPATH, "//Dialog//Row/Image[@clickable='true']")
 
     # 输入聊天密码对话框标题
-    CHAT_PASSWORD_DIALOG_TITLE = (AppiumBy.XPATH, "//Text[@text='请输入密码']")
+    CHAT_PASSWORD_DIALOG_TITLE = HosBy.type_text("Text", "请输入密码")
 
     # 聊天密码弹窗提示描述
-    CHAT_PASSWORD_DIALOG_CONTENT = (AppiumBy.XPATH, "//Text[@text='聊天密码']")
+    CHAT_PASSWORD_DIALOG_CONTENT = HosBy.type_text("Text", "聊天密码")
 
     # 忘记聊天密码入口
-    CHAT_PASSWORD_TV_FORGOT_PASSWORD = (AppiumBy.XPATH, "//Dialog//Row[2]/Text | //Text[@text='忘记密码']")
+    CHAT_PASSWORD_TV_FORGOT_PASSWORD = HosBy.type_text("Text", "忘记密码")
 
     # 聊天密码通用输入框
     CHAT_PASSWORD_INPUT = (AppiumBy.XPATH, "//Dialog//Row[1]/Text")
@@ -180,8 +181,8 @@ class _HomeLocatorHos:
 
     @classmethod
     def get_conver_by_name(cls, name: str) -> tuple[str, str]:
-        """按会话或联系人名称精准定位会话标题 Text 元素 (点击可直接进入聊天会话)"""
-        return (AppiumBy.XPATH, f"//ListItem//Row[1]//Text[1][@text='{name}']")
+        """按会话或联系人名称精准定位会话标题 Text 元素 (原生 HypiumBy 直查，点击可直接进入聊天会话)"""
+        return HosBy.type_text("Text", name)
 
     @classmethod
     def get_time_by_name(cls, name: str) -> tuple[str, str]:

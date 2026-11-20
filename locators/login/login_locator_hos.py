@@ -1,5 +1,6 @@
 from appium.webdriver.common.appiumby import AppiumBy
 from locators.common.common_locator_hos import _CommonLocatorHos
+from locators.common.hos_by import HosBy
 
 
 class _LoginLocatorHos(_CommonLocatorHos):
@@ -13,17 +14,11 @@ class _LoginLocatorHos(_CommonLocatorHos):
 
     APPLICATION_LOGO = (AppiumBy.XPATH, "//NavDestinationContent/Stack/Column/Image")
 
-    # 手机号登录入口 (试点：采用 HypiumBy 原生组合直查，绕过整棵树转 XML 与 XPath 扫描)
-    LOGIN_ENTRANCE = (
-        "HypiumBy",
-        'BY.type("Button").text("手机号登录")',
-    )
+    # 手机号登录入口 (登录主页文案唯一，改用原生 text 单条件直查，减少 HypiumBy 链式 On.type RPC 往返)
+    LOGIN_ENTRANCE = HosBy.text("手机号登录")
 
     # 有SIM卡时，显示一键登录按钮与入口
-    ONE_KEY_LOGIN_ENTRANCE = (
-        AppiumBy.XPATH,
-        "//Text[@text='一键登录']",
-    )
+    ONE_KEY_LOGIN_ENTRANCE = HosBy.type_text("Text", "一键登录")
 
     # 国家区域手机号开头
     COUNTRY_CODE_PICKER = (
@@ -39,18 +34,12 @@ class _LoginLocatorHos(_CommonLocatorHos):
     # 一键清空手机号按钮
     CLEAR_PHONE_NUMBER = (
         AppiumBy.XPATH,
-        "//__Common__/Row/Image | //Row[TextInput]//Image",
+        "//__Common__/Row/Image",
     )
 
     # 密码与验证码登录模式切换按钮
-    PASSWORD_LOGIN_SWITCH = (
-        AppiumBy.XPATH,
-        "//Text[@text='密码验证登录']",
-    )
-    CODE_LOGIN_SWITCH = (
-        AppiumBy.XPATH,
-        "//Text[@text='短信验证登录']",
-    )
+    PASSWORD_LOGIN_SWITCH = HosBy.type_text("Text", "密码验证登录")
+    CODE_LOGIN_SWITCH = HosBy.type_text("Text", "短信验证登录")
     PWD_AND_CODE = (
         AppiumBy.XPATH,
         "//Row/Text[contains(@text,'密码验证登录') or contains(@text,'短信验证登录')]",
@@ -70,14 +59,11 @@ class _LoginLocatorHos(_CommonLocatorHos):
     # 验证并登录按钮 (合并密码与验证码状态)
     VERIFY_AND_LOGIN_BTN = (
         AppiumBy.XPATH,
-        "//__Common__/Text[@text='密码验证登录' or @text='短信验证登录'] | //Text[@text='密码验证登录' or @text='短信验证登录']",
+        "//__Common__/Text[@text='密码验证登录' or @text='短信验证登录']",
     )
 
     # 验证码页面组件
-    PLEASE_ENTER_VERIFICATION_CODE = (
-        AppiumBy.XPATH,
-        "//Text[@text='请填写验证码']",
-    )
+    PLEASE_ENTER_VERIFICATION_CODE = HosBy.type_text("Text", "请填写验证码")
     # 验证码已发送 title
     VERIFICATION_CODE_SENT = (AppiumBy.XPATH, "//Text[contains(@text, '验证码已发送')]")
     # 发送验证码手机号
@@ -100,14 +86,11 @@ class _LoginLocatorHos(_CommonLocatorHos):
     )
 
     # 协议同意按钮与说明
-    AGREE_AND_LOGIN_BTN = (
-        AppiumBy.XPATH,
-        "//Checkbox[@text='privacyCb'] | //Checkbox",
-    )
+    AGREE_AND_LOGIN_BTN = HosBy.type_text("Checkbox", "privacyCb")
     # 账密和一键登录协议文本
     AGREE_AND_LOGIN_TEXT = (
         AppiumBy.XPATH,
-        "//*[@id='clause_text'] | //Column/Column/Column/Row/Text",
+        "//Column/Column/Column/Row/Text",
     )
 
     # 反馈按钮
@@ -118,18 +101,9 @@ class _LoginLocatorHos(_CommonLocatorHos):
         AppiumBy.XPATH,
         "//Dialog//__Common__/RelativeContainer",
     )
-    AGREE_AND_CONTINUE_BTN = (
-        AppiumBy.XPATH,
-        "//Dialog//__Common__/RelativeContainer//Text[@text='同意并继续'] | //Text[@text='同意并继续']",
-    )
-    CLOSE_BTN = (
-        AppiumBy.XPATH,
-        "//Dialog//__Common__/RelativeContainer/Text[@text='×']",
-    )
-    USER_AGREEMENT_DESC = (
-        AppiumBy.XPATH,
-        "//Dialog//__Common__/RelativeContainer//Text[@id='prvacy_content']",
-    )
+    AGREE_AND_CONTINUE_BTN = HosBy.type_text("Text", "同意并继续")
+    CLOSE_BTN = HosBy.type_text("Text", "×")
+    USER_AGREEMENT_DESC = HosBy.id_only("prvacy_content")
 
     # 通用 Toast 提示 (用于校验错误信息)
     TOAST_MSG = (
@@ -144,15 +118,6 @@ class _LoginLocatorHos(_CommonLocatorHos):
     # ======================================================
     # 系统级弹窗 - 使用已保存的账号/使用其他账号/手动输入
     # ======================================================
-    AUTO_SAVE_PWD_TITLE = (
-        AppiumBy.XPATH,
-        "//Button[@id='AutoFillDialog_auto_fill_use_recommended_account']",
-    )
-    AUTO_SAVE_PWD_CANCEL = (
-        AppiumBy.XPATH,
-        "//Button[@id='AutoFillDialog_auto_fill_use_other_account']",
-    )
-    AUTO_SAVE_PWD_SAVE = (
-        AppiumBy.XPATH,
-        "//Button[@id='AutoFillDialog_auto_fill_self_input']",
-    )
+    AUTO_SAVE_PWD_TITLE = HosBy.id_only("AutoFillDialog_auto_fill_use_recommended_account")
+    AUTO_SAVE_PWD_CANCEL = HosBy.id_only("AutoFillDialog_auto_fill_use_other_account")
+    AUTO_SAVE_PWD_SAVE = HosBy.id_only("AutoFillDialog_auto_fill_self_input")

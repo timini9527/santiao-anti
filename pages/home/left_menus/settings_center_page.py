@@ -1,11 +1,11 @@
 import time
-from common.base_page import BasePage
 from common.toast_enums import ToastMsg
 from core.logger_utils import logger, LogIcon
 from locators.home.left_menus.settings_center_locator import SettingsCenterLocator
+from pages.common.common_page import CommonPage
 
 
-class SettingsCenterPage(BasePage):
+class SettingsCenterPage(CommonPage):
     """
     设置中心页面对象
     入口路径：首页侧边栏 -> 设置中心 (nav_item_settings)
@@ -26,7 +26,7 @@ class SettingsCenterPage(BasePage):
 
     def get_page_title(self) -> str:
         """ 获取设置中心页面顶部标题文本 """
-        title = self.get_attribute(SettingsCenterLocator.TOP_TV_TITLE, "text")
+        title = self.get_attribute(SettingsCenterLocator.TOP_TV_TITLE, "text") or ""
         logger.info(f"{LogIcon.FIND} 🧐 [Action - SettingsCenter] 获取页面标题: {title}")
         return title
 
@@ -68,7 +68,7 @@ class SettingsCenterPage(BasePage):
     # =========================================================================
     def get_version_value(self) -> str:
         """ 获取设置中心展示的版本号 (如 '11.1.20') """
-        version = self.get_attribute(SettingsCenterLocator.VERSION_VALUE, "text")
+        version = self.get_attribute(SettingsCenterLocator.VERSION_VALUE, "text") or ""
         logger.info(f"{LogIcon.FIND} 🧐 [Action - SettingsCenter] 获取当前版本号: {version}")
         return version
 
@@ -85,15 +85,19 @@ class SettingsCenterPage(BasePage):
         logger.info(f"{LogIcon.SETUP} 点击【退出登录】按钮")
         self.click(SettingsCenterLocator.LOGOUT_BTN)
 
+    def get_logout_dialog_title(self, timeout: float = 3.0) -> str:
+        """ 获取退出登录二次确认弹窗标题 """
+        return self.get_dialog_title(timeout=timeout)
+
     def click_logout_confirm_btn(self) -> None:
-        """ 点击退出登录二次确认弹窗中的【确认】按钮 """
+        """ 点击退出登录二次确认弹窗中的【确认】按钮 (复用通用弹窗容器作用域防点穿) """
         logger.info(f"{LogIcon.SETUP} 点击退出登录二次确认【确认】按钮")
-        self.click(SettingsCenterLocator.LOGOUT_CONFIRM_BTN)
+        self.confirm_dialog()
 
     def click_logout_cancel_btn(self) -> None:
-        """ 点击退出登录二次确认弹窗中的【取消】按钮 """
+        """ 点击退出登录二次确认弹窗中的【取消】按钮 (复用通用弹窗容器作用域) """
         logger.info(f"{LogIcon.SETUP} 点击退出登录二次确认【取消】按钮")
-        self.click(SettingsCenterLocator.LOGOUT_CANCEL_BTN)
+        self.cancel_dialog()
 
     def get_logout_success_msg(self, target_text: str = ToastMsg.LOGOUT_SUCCESS, timeout: int = 5) -> str:
         """
@@ -108,7 +112,7 @@ class SettingsCenterPage(BasePage):
             elem = self.find_element(SettingsCenterLocator.LOGOUT_SUCCESS_MSG, timeout=0.5, expect_missing=True)
             if elem:
                 try:
-                    last_text = elem.get_attribute("text") or ""
+                    last_text = self.read_element_attr(elem, "text")
                     if last_text:
                         logger.info(f"{LogIcon.FIND} 捕获到 Toast: {last_text}")
                     if target_text in last_text:

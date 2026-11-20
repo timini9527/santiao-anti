@@ -32,6 +32,8 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
+import threading
 import time
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union
 
@@ -202,6 +204,7 @@ class AppRuntimeBridge:
     _BRIDGE_JS = """
     var WebSocketMgr = null;
     var SocketClientPendingField = null;
+    var _MapCls = null;
     var _skipSendDbWrite = false;
     var _dbHooksInstalled = false;
     var _origNetworkLogEnabled = null;
@@ -215,8 +218,8 @@ class AppRuntimeBridge:
             var listCls = 'java.util.List';
             var strCls = 'java.lang.String';
             var contCls = 'kotlin.coroutines.Continuation';
-            var booleanTrue = Java.use('java.lang.Boolean').TRUE.value;
-            var kotlinUnit = Java.use('kotlin.Unit').INSTANCE.value;
+            var booleanCls = Java.use('java.lang.Boolean');
+            var unitCls = Java.use('kotlin.Unit');
 
             function hookVoidOnSkip(clsName, methodName, argTypes) {
                 var cls = Java.use(clsName);
@@ -285,7 +288,7 @@ class AppRuntimeBridge:
                     'com.network.lib.socket.messagehelp.MsgTalkSendStatus',
                     contCls
                 ).implementation = function(msg, status, cont) {
-                    if (_skipSendDbWrite) return kotlinUnit;
+                    if (_skipSendDbWrite) return unitCls.INSTANCE.value;
                     return this.onMessageSendStatus(msg, status, cont);
                 };
             } catch (e) {
@@ -294,12 +297,12 @@ class AppRuntimeBridge:
             try {
                 var stimCls = Java.use('com.santiao.stim.STIMImpl');
                 stimCls.updateMessageStatusWithRetry.overload(strCls, 'int', 'long', 'int', contCls).implementation = function(msgNo, status, msgTime, maxAttempts, cont) {
-                    if (_skipSendDbWrite) return booleanTrue;
+                    if (_skipSendDbWrite) return booleanCls.TRUE.value;
                     return this.updateMessageStatusWithRetry(msgNo, status, msgTime, maxAttempts, cont);
                 };
                 var storageCls = Java.use('com.santiao.stim.processor.MessageStorage');
                 storageCls.updateMessageStatus.overload(strCls, 'int', 'long', contCls).implementation = function(msgNo, status, msgTime, cont) {
-                    if (_skipSendDbWrite) return booleanTrue;
+                    if (_skipSendDbWrite) return booleanCls.TRUE.value;
                     return this.updateMessageStatus(msgNo, status, msgTime, cont);
                 };
             } catch (e) {
@@ -328,27 +331,58 @@ class AppRuntimeBridge:
         });
     }
 
+    function _ensurePendingField() {
+        if (!WebSocketMgr) {
+            var mgr = Java.use('com.network.lib.socket.WebSocketManager').INSTANCE.value;
+            if (mgr) {
+                WebSocketMgr = Java.retain(mgr);
+            }
+        }
+        if (!SocketClientPendingField) {
+            var field = Java.use('com.network.lib.socket.SocketClient').class.getDeclaredField('pendingMessages');
+            field.setAccessible(true);
+            SocketClientPendingField = Java.retain(field);
+        }
+        if (!_MapCls) {
+            _MapCls = Java.use('java.util.Map');
+        }
+    }
+
+    function _readPendingCountInPerform() {
+        try {
+            _ensurePendingField();
+            if (WebSocketMgr && WebSocketMgr.socketClient) {
+                var sc = WebSocketMgr.socketClient.value;
+                if (sc) {
+                    var map = Java.cast(SocketClientPendingField.get(sc), _MapCls);
+                    return map.size();
+                }
+            }
+        } catch (e) {}
+        return 0;
+    }
+
     function getPendingCount() {
         var count = 0;
         Java.perform(function() {
+            count = _readPendingCountInPerform();
+        });
+        return count;
+    }
+
+    function isChannelReady() {
+        var ready = false;
+        Java.perform(function() {
             try {
                 if (!WebSocketMgr) {
-                    WebSocketMgr = Java.use('com.network.lib.socket.WebSocketManager').INSTANCE.value;
+                    _ensurePendingField();
                 }
-                if (WebSocketMgr && WebSocketMgr.socketClient) {
-                    var sc = WebSocketMgr.socketClient.value;
-                    if (sc) {
-                        if (!SocketClientPendingField) {
-                            SocketClientPendingField = Java.use('com.network.lib.socket.SocketClient').class.getDeclaredField('pendingMessages');
-                            SocketClientPendingField.setAccessible(true);
-                        }
-                        var map = Java.cast(SocketClientPendingField.get(sc), Java.use('java.util.Map'));
-                        count = map.size();
-                    }
+                if (WebSocketMgr) {
+                    ready = Boolean(WebSocketMgr.isConnected() && WebSocketMgr.isAuthenticated());
                 }
             } catch (e) {}
         });
-        return count;
+        return ready;
     }
 
     rpc.exports = {
@@ -356,7 +390,7 @@ class AppRuntimeBridge:
             var ok = false;
             Java.perform(function() {
                 try {
-                    WebSocketMgr = Java.use('com.network.lib.socket.WebSocketManager').INSTANCE.value;
+                    _ensurePendingField();
                     ok = WebSocketMgr != null;
                 } catch (e) {
                     console.log("[Bridge] 初始化 WebSocketManager 异常: " + e.toString());
@@ -368,6 +402,10 @@ class AppRuntimeBridge:
         getInflightCount: function() {
             return getPendingCount();
         },
+        // 探测底层 WebSocket 长连接是否处于已连接且已完成登录鉴权的可写状态
+        isReady: function() {
+            return isChannelReady();
+        },
         // 开关：压测发消息时启用全链路免落库极速模式（跳过 DB 读写、同步阻塞准备、敏感词/装扮检查、ACK 重试与调试日志）
         setSkipDbWrite: function(enabled) {
             _skipSendDbWrite = !!enabled;
@@ -377,47 +415,59 @@ class AppRuntimeBridge:
             setNetworkLogSuppressed(_skipSendDbWrite);
             return _skipSendDbWrite;
         },
-        // 批量管道高速发送接口：单次 RPC 传输批次数组，App 内部执行原生循环直投 Netty
-        // 返回逐条回执：rejected 为同步拒收或未执行（未进入 Netty，可安全重发）；unknown 为抛异常、结果未知（禁止重放）
-        // 快速失败：通道一旦拒收立即停止本批，避免对不可写通道持续冲击并产生大量本地失败记录
+        // 批量管道高速发送接口：按 16 条分片进出 Java.perform，及时释放 JNI LocalFrame，规避 ART MarkCompact GC 崩溃
         sendBatchTextMessage: function(messagesJson) {
             var list = JSON.parse(messagesJson);
             var len = list.length;
-            var result = {rejected: [], unknown: []};
+            var result = {rejected: [], unknown: [], inflight: 0};
             var skipPrepare = _skipSendDbWrite;
-            Java.perform(function() {
-                var i = 0;
-                try {
-                    if (!WebSocketMgr) {
-                        WebSocketMgr = Java.use('com.network.lib.socket.WebSocketManager').INSTANCE.value;
-                    }
-                    if (WebSocketMgr) {
-                        for (; i < len; i++) {
-                            var item = list[i];
-                            var ok = WebSocketMgr.sendTextMessage(
-                                item.chatId,
-                                item.chatType,
-                                item.fromCustId,
-                                item.fromCustName,
-                                item.toCustId,
-                                item.content,
-                                0, null, null, null, skipPrepare, false
-                            );
-                            if (!ok) {
-                                break;
-                            }
+            var chunkSize = 16;
+            var idx = 0;
+            var stopped = false;
+
+            while (idx < len && !stopped) {
+                var end = Math.min(idx + chunkSize, len);
+                Java.perform(function() {
+                    var i = idx;
+                    try {
+                        if (!WebSocketMgr) {
+                            _ensurePendingField();
                         }
+                        if (WebSocketMgr) {
+                            for (; i < end; i++) {
+                                var item = list[i];
+                                var ok = WebSocketMgr.sendTextMessage(
+                                    item.chatId,
+                                    item.chatType,
+                                    item.fromCustId,
+                                    item.fromCustName,
+                                    item.toCustId,
+                                    item.content,
+                                    0, null, null, null, skipPrepare, false
+                                );
+                                if (!ok) {
+                                    stopped = true;
+                                    break;
+                                }
+                            }
+                        } else {
+                            stopped = true;
+                        }
+                    } catch (e) {
+                        console.log("[Bridge] 批量管道发送底层异常: " + e.toString());
+                        result.unknown.push(i);
+                        i++;
+                        stopped = true;
                     }
-                } catch (e) {
-                    console.log("[Bridge] 批量管道发送底层异常: " + e.toString());
-                    result.unknown.push(i);
-                    i++;
-                }
-                for (; i < len; i++) {
-                    result.rejected.push(i);
-                }
-            });
-            result.inflight = getPendingCount();
+                    idx = i;
+                    if (stopped || idx >= len) {
+                        result.inflight = _readPendingCountInPerform();
+                    }
+                });
+            }
+            for (var r = idx; r < len; r++) {
+                result.rejected.push(r);
+            }
             return result;
         }
     };
@@ -429,6 +479,7 @@ class AppRuntimeBridge:
         self._session: Optional[Any] = None
         self._script: Optional[Any] = None
         self._is_ready: bool = False
+        self._skip_db_write_enabled: bool = False
         self._lock: asyncio.Lock = asyncio.Lock()
         # 核心架构优化：为每台物理/虚拟设备配置独立的私有线程池，彻底杜绝全局默认线程池饥饿导致的设备排队串行！
         self._executor: concurrent.futures.ThreadPoolExecutor = concurrent.futures.ThreadPoolExecutor(
@@ -437,45 +488,151 @@ class AppRuntimeBridge:
         )
 
     def _assemble_script_source(self) -> str:
-        """读取 frida_tools 自带的 java.js 桥接核心并挂载到 globalThis.Java。"""
+        """自适应 Frida 16/17 组装桥接脚本：16 直接使用内置 Java，17 注入 frida_tools 的 java.js。"""
+        major_ver = int(str(getattr(frida, "__version__", "17")).split(".")[0])
+        if major_ver < 17:
+            return self._BRIDGE_JS
+
         bridges_dir = Path(frida_tools.__file__).parent / "bridges"
         java_js_file = bridges_dir / "java.js"
         if not java_js_file.exists():
             raise FileNotFoundError(f"未找到 Frida Java 桥接库: {java_js_file}")
         java_core = java_js_file.read_text(encoding="utf-8")
-        # 挂载为全局变量，确保 RPC 导出函数内调用 Java 顺畅无阻
-        return f"{java_core}\n;\nvar Java = bridge;\nglobalThis.Java = bridge;\n{self._BRIDGE_JS}"
+        # 通过函数参数注入局部 Java，避免覆盖只读全局属性导致 TypeError
+        return f"{java_core}\n;\n(function(Java) {{\n{self._BRIDGE_JS}\n}})(bridge);"
+
+    _frida_cache_lock: threading.Lock = threading.Lock()
+
+    def _detect_device_frida_abi(self) -> str:
+        """基于 ro.product.cpu.abi 精准识别设备真实架构，避免模拟器 uname -m 伪装导致推错二进制。"""
+        try:
+            proc = subprocess.run(
+                ["adb", "-s", self.device_id, "shell", "getprop", "ro.product.cpu.abi"],
+                capture_output=True,
+                text=True,
+                timeout=3.0,
+            )
+            abi = proc.stdout.strip().lower()
+        except Exception:
+            abi = ""
+        mapping = {
+            "x86_64": "x86_64",
+            "arm64-v8a": "arm64",
+            "x86": "x86",
+            "armeabi-v7a": "arm",
+            "armeabi": "arm",
+        }
+        return mapping.get(abi, "x86_64")
+
+    @classmethod
+    def _ensure_local_frida_cache(cls, expected_ver: str, frida_abi: str) -> Optional[Path]:
+        """确保本机临时目录存在对应版本与架构的 frida-server 二进制缓存，缺失时自动拉取解压。"""
+        cache_path = Path(tempfile.gettempdir()) / f"frida-server-{expected_ver}-{frida_abi}"
+        with cls._frida_cache_lock:
+            if cache_path.exists() and cache_path.stat().st_size > 10_000_000:
+                return cache_path
+            try:
+                import lzma
+                url = (
+                    f"https://github.com/frida/frida/releases/download/"
+                    f"{expected_ver}/frida-server-{expected_ver}-android-{frida_abi}.xz"
+                )
+                resp = requests.get(url, timeout=60, stream=True)
+                resp.raise_for_status()
+                raw_bytes = lzma.decompress(resp.content)
+                tmp_path = cache_path.with_suffix(".tmp")
+                tmp_path.write_bytes(raw_bytes)
+                tmp_path.replace(cache_path)
+                return cache_path
+            except Exception as e:
+                print(f"⚠️ [协议桥接] 自动下载 frida-server {expected_ver} ({frida_abi}) 失败: {e}")
+                return None
+
+    def _read_remote_frida_version(self, remote_path: str) -> str:
+        """安全读取设备上指定 frida-server 路径的版本号，文件不存在或损坏时返回空串。"""
+        try:
+            proc = subprocess.run(
+                ["adb", "-s", self.device_id, "shell", f"{remote_path} --version 2>/dev/null"],
+                capture_output=True,
+                text=True,
+                timeout=3.0,
+            )
+            if proc.returncode == 0:
+                return proc.stdout.strip().splitlines()[0].strip() if proc.stdout.strip() else ""
+        except Exception:
+            pass
+        return ""
 
     def _ensure_frida_server_running(self) -> None:
-        """检查并确保目标设备上的 frida-server 处于 root 守护运行状态，具备断线自愈能力。"""
+        """检查设备 frida-server 版本与运行状态：版本不一致时自动切换至本机对应版本并重启。"""
+        expected_ver = str(getattr(frida, "__version__", "")).strip()
+        major_ver = expected_ver.split(".")[0] if expected_ver else "16"
+        versioned_remote = f"/data/local/tmp/frida-server-{major_ver}"
+        active_remote = "/data/local/tmp/frida-server"
+
         try:
-            # 增加 timeout=2.0 刚性超时，杜绝 ADB 离线设备无限期阻塞
-            out = subprocess.check_output(
-                f"adb -s {self.device_id} shell ps -A",
-                shell=True, text=True, stderr=subprocess.DEVNULL, timeout=2.0
+            ps_out = subprocess.check_output(
+                ["adb", "-s", self.device_id, "shell", "ps -A"],
+                text=True,
+                stderr=subprocess.DEVNULL,
+                timeout=3.0,
             )
-            if "frida-server" not in out:
-                # 自动尝试提权为 root 模式并拉起守护进程
-                subprocess.run(f"adb -s {self.device_id} root", shell=True, capture_output=True, timeout=3.0)
-                time.sleep(0.3)
-                # 核心自愈保障：自动赋予可执行权限，避免 adb push 后默认无 +x 导致 Permission denied
+            is_running = "frida-server" in ps_out
+            current_ver = self._read_remote_frida_version(active_remote)
+
+            need_switch = bool(expected_ver and current_ver != expected_ver)
+            if is_running and not need_switch:
+                return
+
+            subprocess.run(["adb", "-s", self.device_id, "root"], capture_output=True, timeout=3.0)
+            time.sleep(0.3)
+
+            if need_switch:
+                print(
+                    f"🔄 [协议桥接] 设备 {self.device_id} frida-server 版本不一致 "
+                    f"(当前={current_ver or '未知'}, 目标={expected_ver})，正在自动切换..."
+                )
                 subprocess.run(
-                    f"adb -s {self.device_id} shell chmod 755 /data/local/tmp/frida-server",
-                    shell=True,
+                    ["adb", "-s", self.device_id, "shell", "pkill -9 frida-server 2>/dev/null || true"],
+                    capture_output=True,
+                    timeout=3.0,
+                )
+                # 优先检查设备本地是否已存有匹配版本的实体文件
+                cached_ver = self._read_remote_frida_version(versioned_remote)
+                if cached_ver != expected_ver:
+                    frida_abi = self._detect_device_frida_abi()
+                    local_bin = self._ensure_local_frida_cache(expected_ver, frida_abi)
+                    if local_bin and local_bin.exists():
+                        subprocess.run(
+                            ["adb", "-s", self.device_id, "push", str(local_bin), versioned_remote],
+                            capture_output=True,
+                            timeout=30.0,
+                        )
+                subprocess.run(
+                    [
+                        "adb", "-s", self.device_id, "shell",
+                        f"chmod 755 {versioned_remote} && ln -sf {versioned_remote} {active_remote}",
+                    ],
+                    capture_output=True,
+                    timeout=3.0,
+                )
+            else:
+                subprocess.run(
+                    ["adb", "-s", self.device_id, "shell", f"chmod 755 {active_remote}"],
                     capture_output=True,
                     timeout=2.0,
                 )
-                # 核心防卡死：彻底隔离标准输入输出管道，杜绝 Windows 控制台句柄继承死锁卡住 Terminal
-                subprocess.Popen(
-                    f"adb -s {self.device_id} shell /data/local/tmp/frida-server -D",
-                    shell=True,
-                    stdin=subprocess.DEVNULL,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-                time.sleep(0.5)
-        except Exception:
-            pass
+
+            # 彻底隔离标准输入输出管道，杜绝 Windows 控制台句柄继承导致终端卡死
+            subprocess.Popen(
+                ["adb", "-s", self.device_id, "shell", f"{active_remote} -D"],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            time.sleep(0.8)
+        except Exception as e:
+            print(f"⚠️ [协议桥接] 设备 {self.device_id} 自愈拉起 frida-server 异常: {e}")
 
     def _find_target_pid(self) -> Optional[int]:
         """优先通过 ADB 原生 pidof 精准获取目标 PID，彻底规避模拟器中进程名乱码问题；多级降级检索。"""
@@ -511,9 +668,38 @@ class AppRuntimeBridge:
 
         return None
 
+    def _on_session_detached(self, reason: str, *args: Any) -> None:
+        """Frida 会话断开回调（App 闪退、被杀或重启时触发）。"""
+        self._is_ready = False
+        self._script = None
+        print(f"⚠️ [协议桥接] 设备 {self.device_id} 会话已断开 ({reason})")
+
+    def _on_script_message(self, message: Dict[str, Any], data: Any) -> None:
+        """透传 Frida 脚本异常堆栈，便于直接定位 JS 侧加载或运行期错误。"""
+        if message.get("type") == "error":
+            desc = message.get("description") or message.get("stack") or str(message)
+            print(f"❌ [协议桥接] 设备 {self.device_id} 脚本异常: {desc}")
+
+    def _cleanup_session(self) -> None:
+        """仅清理 Frida 会话与脚本句柄，保留线程池以支持原地重连自愈。"""
+        self._is_ready = False
+        if self._script:
+            try:
+                self._script.unload()
+            except Exception:
+                pass
+            self._script = None
+        if self._session:
+            try:
+                self._session.detach()
+            except Exception:
+                pass
+            self._session = None
+
     def connect(self) -> bool:
         """连接目标设备上的三条 IM 进程并初始化注入桥（全链路超时与防死锁）。"""
         try:
+            self._cleanup_session()
             self._ensure_frida_server_running()
             target_pid = self._find_target_pid()
             if target_pid is None:
@@ -521,16 +707,52 @@ class AppRuntimeBridge:
 
             device = frida.get_device_manager().get_device(self.device_id, timeout=3)
             self._session = device.attach(target_pid)
+            self._session.on("detached", self._on_session_detached)
             full_source = self._assemble_script_source()
             self._script = self._session.create_script(full_source)
+            self._script.on("message", self._on_script_message)
             self._script.load()
             time.sleep(0.3)
 
             self._is_ready = bool(self._script.exports_sync.init())
+            if self._is_ready and self._skip_db_write_enabled:
+                self._script.exports_sync.set_skip_db_write(True)
             return self._is_ready
         except Exception as e:
             print(f"[协议桥接] 连接设备 {self.device_id} 运行时异常: {e}")
             self._is_ready = False
+            return False
+
+    async def reconnect(self, timeout: float = 20.0) -> bool:
+        """当 App 进程崩溃重启或脚本销毁后，等待新进程拉起并自动重建注入桥。"""
+        async with self._lock:
+            self._cleanup_session()
+            loop = asyncio.get_running_loop()
+            start = time.time()
+            launched = False
+            while time.time() - start < timeout:
+                pid = await loop.run_in_executor(self._executor, self._find_target_pid)
+                if pid is not None:
+                    await asyncio.sleep(1.5)  # 预留新进程初始化 WebSocketManager 的缓冲
+                    ok = await loop.run_in_executor(self._executor, self.connect)
+                    if ok:
+                        return True
+                elif not launched and time.time() - start >= 3.0:
+                    launched = True
+                    # 若系统未自动重启 App，通过 monkey 主动唤醒拉起
+                    try:
+                        await loop.run_in_executor(
+                            self._executor,
+                            lambda: subprocess.run(
+                                f"adb -s {self.device_id} shell monkey -p {self.package_name} -c android.intent.category.LAUNCHER 1",
+                                shell=True,
+                                capture_output=True,
+                                timeout=4.0,
+                            ),
+                        )
+                    except Exception:
+                        pass
+                await asyncio.sleep(1.0)
             return False
 
     async def ensure_connected(self) -> None:
@@ -554,8 +776,20 @@ class AppRuntimeBridge:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(self._executor, _invoke)
 
+    async def is_channel_ready(self) -> bool:
+        """探测底层 WebSocket 长连接是否已连接且完成鉴权。"""
+        await self.ensure_connected()
+        assert self._script is not None
+
+        def _invoke() -> bool:
+            return bool(self._script.exports_sync.is_ready())
+
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(self._executor, _invoke)
+
     async def set_skip_db_write(self, enabled: bool) -> bool:
         """设置压测发消息时是否跳过本地 WCDB 落库（仅对当前发送线程生效）。"""
+        self._skip_db_write_enabled = bool(enabled)
         await self.ensure_connected()
         assert self._script is not None
 
@@ -590,18 +824,8 @@ class AppRuntimeBridge:
 
     def close(self) -> None:
         """关闭会话释放桥接资源，安全取消任务避免 Windows 后台非守护线程卡死解释器退出。"""
-        self._is_ready = False
         try:
-            if self._script:
-                try:
-                    self._script.unload()
-                except Exception:
-                    pass
-            if self._session:
-                try:
-                    self._session.detach()
-                except Exception:
-                    pass
+            self._cleanup_session()
             self._executor.shutdown(wait=False, cancel_futures=True)
         except Exception:
             pass
@@ -660,8 +884,24 @@ class IMClient:
             inflight = await self.bridge.get_inflight()
             if inflight <= low_watermark:
                 return inflight
-            await asyncio.sleep(0.015)
+            await asyncio.sleep(0.06)
         return await self.bridge.get_inflight()
+
+    async def wait_for_channel_ready(self, timeout: float = 30.0, poll_interval: float = 0.5) -> bool:
+        """断线自愈闸门：检测到长连接断开时暂停投递并轮询等待 App 自动重连与鉴权恢复。"""
+        if await self.bridge.is_channel_ready():
+            return True
+        print(f"⏳ [📱 {self.sender_name} | {self.device_id}] 检测到长连接已断开或未鉴权，暂停发送并等待自动重连 (最长 {timeout:.0f}s)...")
+        start = time.time()
+        while time.time() - start < timeout:
+            await asyncio.sleep(poll_interval)
+            if await self.bridge.is_channel_ready():
+                # 通道重连成功后预留 0.3s 让底层状态机与离线补偿平稳切换
+                await asyncio.sleep(0.3)
+                print(f"✅ [📱 {self.sender_name} | {self.device_id}] 长连接已重连就绪 (耗时 {time.time() - start:.1f}s)，恢复发送")
+                return True
+        print(f"❌ [📱 {self.sender_name} | {self.device_id}] 等待 {timeout:.0f}s 后长连接仍未恢复，请检查网络或服务端状态")
+        return False
 
     async def drain_offline_sync(self, quiet_duration: float = 2.5, max_timeout: float = 15.0) -> bool:
         """【离线消息收敛静默排空闸门】
@@ -883,36 +1123,63 @@ class IMClient:
         trigger_limit = low_watermark if enforce_fifo_order else high_watermark
 
         async def deliver_batch(pending: List[BatchItem], current_inflight: int, apply_pace: bool = True) -> int:
-            """执行单批消息投递、同步拒收重发与弹性背压控制。"""
+            """执行单批消息投递、断线/进程崩溃自愈重连、同步拒收重发与弹性背压控制。"""
             nonlocal success_count, fail_count, retry_count, pace, last_report_time, last_report_count
-            try:
-                for attempt in range(max_retries + 1):
-                    succeeded, rejected, unknown, current_inflight = await self.send_batch_to_targets(pending)
-                    success_count += len(succeeded)
-                    fail_count += len(unknown)
-                    for tgt, _ in succeeded:
-                        target_success_map[tgt.name] = target_success_map.get(tgt.name, 0) + 1
-                    pending = rejected
-                    if not rejected:
-                        # 2. 动态自适应弹性背压流控 (Elastic Backpressure Controller)
-                        if current_inflight <= low_watermark:
-                            pace = max(delay_between_msg, pace - 0.015)
+            reconnect_left = 2
+            while pending:
+                try:
+                    for attempt in range(max_retries + 1):
+                        succeeded, rejected, unknown, current_inflight = await self.send_batch_to_targets(pending)
+                        success_count += len(succeeded)
+                        fail_count += len(unknown)
+                        for tgt, _ in succeeded:
+                            target_success_map[tgt.name] = target_success_map.get(tgt.name, 0) + 1
+                        pending = rejected
+                        if not rejected:
+                            # 2. 动态自适应弹性背压流控 (Elastic Backpressure Controller)
+                            if current_inflight <= low_watermark:
+                                pace = max(delay_between_msg, pace - 0.015)
+                            else:
+                                pace = min(max_pace, max(pace * 1.3, 0.08))
+                            if current_inflight >= trigger_limit:
+                                current_inflight = await self.wait_for_ack_window(low_watermark=low_watermark, timeout=3.0)
+                            break
+
+                        pace = min(max_pace, max(pace * 2.0, 0.15))
+                        if attempt == max_retries:
+                            fail_count += len(rejected)
+                            pending = []
+                            break
+
+                        retry_count += len(rejected)
+                        # 若底层长连接已断开，先暂停等待自动重连完成，避免在断线窗口内白白耗尽重试次数
+                        if not await self.bridge.is_channel_ready():
+                            recovered = await self.wait_for_channel_ready(timeout=30.0, poll_interval=0.5)
+                            if not recovered:
+                                fail_count += len(rejected)
+                                pending = []
+                                break
+                            pace = max(pace, 0.2)
                         else:
-                            pace = min(max_pace, max(pace * 1.3, 0.08))
-                        if current_inflight >= trigger_limit:
-                            current_inflight = await self.wait_for_ack_window(low_watermark=low_watermark, timeout=3.0)
-                        break
-                    pace = min(max_pace, max(pace * 2.0, 0.15))
-                    if attempt == max_retries:
-                        fail_count += len(rejected)
-                        pending = []
-                        break
-                    retry_count += len(rejected)
-                    await asyncio.sleep(min(max_pace, retry_backoff * (2 ** attempt)))
-                    current_inflight = await self.wait_for_ack_window(low_watermark=low_watermark, timeout=1.5)
-            except Exception as e:
-                fail_count += len(pending)
-                print(f"❌ [📱 {self.sender_name} | {self.device_id}] 批次投递异常: {e}")
+                            await asyncio.sleep(min(max_pace, retry_backoff * (2 ** attempt)))
+                            current_inflight = await self.wait_for_ack_window(low_watermark=low_watermark, timeout=1.5)
+                    break
+                except Exception as e:
+                    err_msg = str(e).lower()
+                    is_frida_crash = any(
+                        k in err_msg for k in ("destroyed", "detached", "terminated", "session", "unable to find process")
+                    )
+                    if is_frida_crash and reconnect_left > 0:
+                        reconnect_left -= 1
+                        print(f"🔄 [📱 {self.sender_name} | {self.device_id}] 检测到进程崩溃/脚本销毁 ({e})，等待 App 重启并恢复注入桥接...")
+                        if await self.bridge.reconnect(timeout=20.0) and await self.wait_for_channel_ready(timeout=25.0):
+                            current_inflight = 0
+                            pace = max(pace, 0.2)
+                            print(f"✅ [📱 {self.sender_name} | {self.device_id}] 进程注入与长连接已自愈恢复，继续发送剩余 {len(pending)} 条")
+                            continue
+                    fail_count += len(pending)
+                    print(f"❌ [📱 {self.sender_name} | {self.device_id}] 批次投递异常: {e}")
+                    break
 
             if apply_pace and pace > 0:
                 await asyncio.sleep(pace)
@@ -943,7 +1210,10 @@ class IMClient:
             current_inflight = 0
             while True:
                 if current_inflight >= trigger_limit:
-                    current_inflight = await self.wait_for_ack_window(low_watermark=low_watermark, timeout=3.0)
+                    try:
+                        current_inflight = await self.wait_for_ack_window(low_watermark=low_watermark, timeout=3.0)
+                    except Exception:
+                        current_inflight = 0
 
                 batch_items = await queue.get()
                 if batch_items is None:
@@ -1175,8 +1445,8 @@ class IMClientCluster:
 
         async def _safe_start(c: IMClient) -> bool:
             try:
-                # 8 秒刚性挂接超时：杜绝离线或异常设备无限期卡死主事件循环
-                return await asyncio.wait_for(c.start(), timeout=8.0)
+                # 20 秒挂接超时：兼顾首次版本切换推送 frida-server，同时杜绝离线设备无限期卡死主事件循环
+                return await asyncio.wait_for(c.start(), timeout=20.0)
             except Exception as e:
                 print(f"[IM 客户端] ⚠️ 设备 【{c.device_id}】 挂接超时或异常: {e}，自动隔离跳过")
                 return False
@@ -1632,8 +1902,8 @@ if __name__ == "__main__":
         #   USE_CLUSTER = True  : 5 台模拟器设备集群协同【同时】压测
         #   USE_CLUSTER = False : 单台模拟器本地独立压测
         # -------------------------------------------------------------
-        USE_CLUSTER = True
-        # USE_CLUSTER = False
+        # USE_CLUSTER = True
+        USE_CLUSTER = False
 
         # -------------------------------------------------------------
         # 循环发送控制开关（通宵/长稳压测专用）：
@@ -1644,7 +1914,7 @@ if __name__ == "__main__":
         LOOP_INTERVAL_SECONDS = 5.0  # 每轮结束后的缓冲休眠时间（秒）
 
         # 每台设备对各自会话（专属群聊+公共单聊）单轮发送的消息数量（如设为 20 条）
-        COUNT_PER_TARGET = 10
+        COUNT_PER_TARGET = 100
         # COUNT_PER_TARGET = 28572
 
         async def _run_with_loop(create_fn, start_fn, send_fn, stop_fn) -> None:
@@ -1704,7 +1974,7 @@ if __name__ == "__main__":
                 results = await cluster.send_matrix(
                     count_per_target=COUNT_PER_TARGET,
                     # 分片后每群仅 1 个发送者，可放开到 10 条/批 + 100ms；全量模式保持保守节奏防服务端 500
-                    batch_size=100,
+                    batch_size=200,
                     report_interval=200,
                     delay_between_batches=0.02 if shard_groups else 0.1,
                     high_watermark=300,
@@ -1753,11 +2023,12 @@ if __name__ == "__main__":
                 await client.send_matrix(
                     count_per_target=COUNT_PER_TARGET,
                     concurrency=1,              # 单设备单协程顺序流水线，杜绝锁争抢与 Socket 洪峰
-                    batch_size=200,             # 批次大小（每批 200 条）
+                    batch_size=200,             # 批次大小（每批 10 条，平滑投递防网关限流断连）
                     report_interval=200,        # 打点间隔
-                    high_watermark=300,         # 高水位线（需大于 batch_size，避免每批都触发排空）
-                    low_watermark=150,          # 低水位线（需大于 batch_size，避免每批必等待）
-                    max_pace=0.3,               # 退避休眠上限降至 0.3s，避免单批固定卡死 1s
+                    delay_between_msg=0.02,      # 每批发送完成后固定停顿 0.5s，避免零间隔洪峰踢断长连接
+                    high_watermark=50,          # 高水位线（与 batch_size=10 匹配，防止在途积压打爆缓冲区）
+                    low_watermark=20,           # 低水位线（超过 20 条在途即等待服务端 ACK 回落）
+                    max_pace=1.0,               # 退避休眠上限（必须 >= delay_between_msg，防止背压反向缩短间隔）
                     corpus_file=CORPUS_FILE,
                     include_case_id=True,
                     include_seq_prefix=False,

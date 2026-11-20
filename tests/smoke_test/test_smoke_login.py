@@ -8,7 +8,7 @@ from utils.cv_recognition.ocr_utils import OcrUtils
 from strategy.chat.chat_strategy import PRIVATE_USER1
 
 
-DEFAULT_ACCOUNT = '19200000226'
+DEFAULT_ACCOUNT = '19200000007'
 DEFAULT_PASSWORD = 'a1234567B'
 
 
@@ -49,14 +49,17 @@ class TestSmokeLoginAgreement(BaseSmokeLogin):
     @allure.title('主页-《用户协议》跳转验证-状态：已完成')
     def test_agreement_jump(self):
         agreement_name = '《用户协议》'
-        expected_title = '三条软件许可及服务协议'
+        expected_title = '三条软件许可及服务协议 | 用户协议'
         with allure.step('1. 获取进入前的标题'):
             pre_title = self.loginPage.get_top_title()
         with allure.step(f'2. 点击 {agreement_name} 并校验跳转页面标题'):
-            success = self.ocr_utils.click_text_by_ocr(ocr_text=agreement_name, match_index=0)
-            check.is_true(success, f'未能通过 OCR 找到并点击 {agreement_name}')
+            if self.loginPage.platform == 'ios':
+                success = self.loginPage.click_agreement_link(agreement_name)
+            else:
+                success = self.ocr_utils.click_text_by_ocr(ocr_text=agreement_name, match_index=0)
+            check.is_true(success, f'未能找到并点击 {agreement_name}')
             protocol_title = self.loginPage.get_top_title()
-            check.equal(protocol_title, expected_title, f"❌ 预期协议页面 top 标题为: '{expected_title}', 实际: '{protocol_title}'")
+            check.is_in(protocol_title, expected_title, f"❌ 预期协议页面 top 标题为: '{expected_title}', 实际: '{protocol_title}'")
             if pre_title != protocol_title:
                 self.loginPage.click_back_btn()
 

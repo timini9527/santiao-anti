@@ -57,7 +57,8 @@ class _CommonLocatorIos:
     # 子页面/通用页面顶部标题 (如 "聊天信息"、"联系人详情"、"设置中心")
     TOP_TV_TITLE = (
         AppiumBy.XPATH,
-        "//XCUIElementTypeNavigationBar//XCUIElementTypeStaticText[1]",
+        "//XCUIElementTypeNavigationBar/XCUIElementTypeStaticText[@visible='true'][1]"
+        " | //XCUIElementTypeOther/XCUIElementTypeStaticText[@visible='true']"
     )
     TOP_BAR_TITLE_TV = TOP_TV_TITLE
 
@@ -80,44 +81,74 @@ class _CommonLocatorIos:
     TOP_BAR_EDIT_TO_BTN = RIGHT_TOP_BUTTON_ID
 
     # --------------------------------------------------------------------------
-    # 4. 弹窗/对话框确认与取消按钮 (Dialogs Confirm / Cancel)
+    # 4. 弹窗/对话框确认与取消按钮 (Dialogs Confirm / Cancel - 原生 Class Chain + Predicate 极速架构)
     # --------------------------------------------------------------------------
-    # 弹窗容器 (系统级 Alert、ActionSheet 与应用级 Sheet)
-    DIALOG_ID = "//XCUIElementTypeAlert | //XCUIElementTypeActionSheet | //XCUIElementTypeSheet"
-    DIALOG_CONTAINER = (AppiumBy.XPATH, DIALOG_ID)
-
-    # 弹窗标题
-    DIALOG_CONFIRM_TITLE = (
-        AppiumBy.XPATH,
-        "//XCUIElementTypeAlert//XCUIElementTypeStaticText[1]",
+    # 消极/取消类按钮通用谓词 (限定 visible == 1，防止后台隐藏页面的“关闭/取消”按钮抢占 [-1] 锚点)
+    _DIALOG_CANCEL_PRED = (
+        "type == 'XCUIElementTypeButton' AND visible == 1 AND ("
+        "label IN {'取消', '关闭',} "
+        "OR name IN {'取消', '关闭',}"
+        ")"
+    )
+    # 确认/积极类按钮通用谓词 (用于系统单按钮弹窗等无消极按钮兜底)
+    _DIALOG_CONFIRM_PRED = (
+        "type == 'XCUIElementTypeButton' AND visible == 1 AND ("
+        "label IN {'确定', '确认', '删除', '退出登录'} "
+        "OR name IN {'确定', '确认', '删除', '退出登录'}"
+        ")"
     )
 
-    # 弹窗确认/积极按钮 (如 "确定"、"确认"、"删除"、"允许"、"好")
-    DIALOG_CONFIRM_BTN = (
+    # 最内层自定义确认弹窗容器：通过 [$...$] 子孙谓词锁定包含取消类按钮的最内层卡片 Other ([-1])
+    _CUSTOM_DIALOG_CHAIN = f"**/XCUIElementTypeOther[${_DIALOG_CANCEL_PRED}$][-1]"
+
+    DIALOG_ID = _CUSTOM_DIALOG_CHAIN
+    # 自定义业务确认弹窗根容器 (IOS_CLASS_CHAIN 原生引擎直达，免整树 XML 序列化)
+    DIALOG_CONTAINER = (AppiumBy.IOS_CLASS_CHAIN, _CUSTOM_DIALOG_CHAIN)
+    # 系统原生 Alert / ActionSheet / Sheet 容器
+    SYSTEM_DIALOG_CONTAINER = (
         AppiumBy.IOS_PREDICATE,
-        (
-            "type == 'XCUIElementTypeButton' AND ("
-            "label IN {'确定', '确认', '删除', '允许', '好', '存储', '继续', '同意'} "
-            "OR name IN {'确定', '确认', '删除', '允许', '好', '存储', '继续', '同意'}"
-            ")"
-        ),
+        "type IN {'XCUIElementTypeAlert', 'XCUIElementTypeActionSheet', 'XCUIElementTypeSheet'}",
     )
+
+    # 通用弹窗标题 (命中自定义弹窗容器下首个 TextView；若弹窗采用 StaticText 或 Alert，推荐走 CommonPage.get_dialog_title)
+    DIALOG_CONFIRM_TITLE = (
+        AppiumBy.IOS_CLASS_CHAIN,
+        f"{_CUSTOM_DIALOG_CHAIN}/XCUIElementTypeTextView[1]",
+    )
+
+    # 通用弹窗确认按钮：取同一自定义弹窗容器下最后一个 Button (无论是“确定 / 确认 / 退出登录 / 删除”均可精准命中且不点穿底层页面)
+    DIALOG_CONFIRM_BTN = (
+        AppiumBy.IOS_CLASS_CHAIN,
+        f"{_CUSTOM_DIALOG_CHAIN}/XCUIElementTypeButton[-1]",
+    )
+    # 系统弹窗 / 单按钮提示弹窗确认按钮兜底
+    SYSTEM_DIALOG_CONFIRM_BTN = (AppiumBy.IOS_PREDICATE, _DIALOG_CONFIRM_PRED)
     BTN_CONFIRM = DIALOG_CONFIRM_BTN
     TV_CONFIRM_BTN = DIALOG_CONFIRM_BTN
 
-    # 弹窗取消/消极按钮 (如 "取消"、"关闭"、"拒绝"、"不允许")
-    DIALOG_CANCEL_BTN = (
-        AppiumBy.IOS_PREDICATE,
-        (
-            "type == 'XCUIElementTypeButton' AND ("
-            "label IN {'取消', '关闭', '拒绝', '不允许', '暂不'} "
-            "OR name IN {'取消', '关闭', '拒绝', '不允许', '暂不'}"
-            ")"
-        ),
-    )
+    # 弹窗取消/消极按钮
+    DIALOG_CANCEL_BTN = (AppiumBy.IOS_PREDICATE, _DIALOG_CANCEL_PRED)
     CANCEL_BUTTON_ID = DIALOG_CANCEL_BTN
     BTN_CANCEL = DIALOG_CANCEL_BTN
     TV_CANCEL_BTN = DIALOG_CANCEL_BTN
+
+    # 容器内子元素定位器 (配合 CommonPage 先锁容器再查子元素，彻底隔离底层页面同名按钮)
+    DIALOG_CHILD_TITLE = (
+        AppiumBy.IOS_PREDICATE,
+        "type IN {'XCUIElementTypeTextView', 'XCUIElementTypeStaticText'} AND visible == 1",
+    )
+    DIALOG_CHILD_BUTTONS = (
+        AppiumBy.IOS_PREDICATE,
+        "type == 'XCUIElementTypeButton' AND visible == 1",
+    )
+
+    @classmethod
+    def get_dialog_child_button_by_text(cls, btn_text: str) -> Tuple[str, str]:
+        """构造弹窗容器内部按按钮文案匹配的 Predicate 定位器"""
+        return (
+            AppiumBy.IOS_PREDICATE,
+            f"type == 'XCUIElementTypeButton' AND visible == 1 AND (name == '{btn_text}' OR label == '{btn_text}')",
+        )
 
     # --------------------------------------------------------------------------
     # 5. 全局轻量浮层与 Toast 提示

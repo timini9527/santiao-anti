@@ -30,7 +30,7 @@ class _LoginLocatorIos:
     # --------------------------------------------------------------------------
     # 顶部导航返回按钮 (使用原生 Class Chain 精确定位导航栏首个按钮，替代原错误的 Predicate XPath 写法)
     TOP_IV_BACK_BTN = (
-        AppiumBy.IOS_CLASS_CHAIN,
+        AppiumBy.XPATH,
         "//XCUIElementTypeNavigationBar/XCUIElementTypeButton[1]",
     )
 
@@ -39,16 +39,21 @@ class _LoginLocatorIos:
     # --------------------------------------------------------------------------
     # 应用 logo (iOS 图片 name 为资源名，按 logo 关键字匹配)
     APPLICATION_LOGO = (AppiumBy.ACCESSIBILITY_ID, "launch_icon_santiao_text")
+    # 登录页面的主页标题
+    LOGIN_TITLE = (
+        AppiumBy.ACCESSIBILITY_ID, "登录后，开启极简社交"
+    )
     # 手机号登录入口按钮 (支持 Accessibility ID 与 Button 谓词)
     LOGIN_ENTRANCE = (
         AppiumBy.IOS_PREDICATE,
-        "type == 'XCUIElementTypeButton' AND name == '手机号登录'",
+        "type == 'XCUIElementTypeButton' AND (name == '手机号登录' or name == '密码验证登录')",
     )
     # 一键登录入口按钮 (有 SIM 卡时展示)
     ONE_KEY_LOGIN_ENTRANCE = (
         AppiumBy.IOS_PREDICATE,
         "type == 'XCUIElementTypeButton' AND name == '一键登录'",
     )
+    
 
     # --------------------------------------------------------------------------
     # 2. 手机号与密码输入区域

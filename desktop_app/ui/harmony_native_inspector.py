@@ -2021,8 +2021,75 @@ def parse_android_node(elem: ET.Element) -> Dict[str, Any]:
     }
 
 
+def extract_ios_logical_size(layout_file: str) -> Optional[Tuple[int, int]]:
+    """从 iOS WDA 布局文件提取应用原生逻辑点尺寸 (如 390x844)"""
+    if not layout_file or not os.path.exists(layout_file):
+        return None
+    try:
+        with open(layout_file, "r", encoding="utf-8", errors="ignore") as f_lay:
+            head_txt = f_lay.read(8192)
+        m_app = re.search(r'<XCUIElementTypeApplication[^>]*width=\\?"(\d+)\\?"[^>]*height=\\?"(\d+)\\?"', head_txt)
+        if m_app:
+            app_w, app_h = int(m_app.group(1)), int(m_app.group(2))
+            if app_w > 100 and app_h > 100:
+                return app_w, app_h
+        if len(head_txt) >= 8192:
+            with open(layout_file, "r", encoding="utf-8", errors="ignore") as f_full:
+                full_txt = f_full.read()
+        else:
+            full_txt = head_txt
+        data = json.loads(full_txt)
+        val = data.get("value", data) if isinstance(data, dict) else None
+        if isinstance(val, dict):
+            rect = val.get("rect", {})
+            app_w, app_h = int(float(rect.get("width", 0))), int(float(rect.get("height", 0)))
+            if app_w > 100 and app_h > 100:
+                return app_w, app_h
+    except Exception:
+        pass
+    return None
+
+
+def crop_ios_dvt_image(img: QImage, logical_size: Optional[Tuple[int, int]]) -> QImage:
+    """裁剪 iOS DVT/CoreDevice 帧缓冲内存对齐产生的右侧/底部纯黑填充区"""
+    if img.isNull() or not logical_size:
+        return img
+    app_w, app_h = logical_size
+    if app_w <= 100 or app_h <= 100:
+        return img
+    retina = round(min(img.width() / app_w, img.height() / app_h))
+    real_w, real_h = app_w * retina, app_h * retina
+    if retina not in (2, 3) or img.width() < real_w or img.height() < real_h:
+        return img
+    if img.width() == real_w and img.height() == real_h:
+        return img
+
+    def _is_near_black(px: int, py: int) -> bool:
+        c = img.pixelColor(px, py)
+        return c.red() <= 15 and c.green() <= 15 and c.blue() <= 15
+
+    if img.width() > real_w:
+        if not (_is_near_black(real_w, real_h // 4) and _is_near_black(real_w, real_h // 2)):
+            return img
+    if img.height() > real_h:
+        if not (_is_near_black(real_w // 4, real_h) and _is_near_black(real_w // 2, real_h)):
+            return img
+    return img.copy(0, 0, real_w, real_h)
+
+
+def normalize_ios_screenshot_file(img_path: str, layout_file: str) -> Optional[Tuple[int, int]]:
+    """标准化 iOS 静态截图底图并裁剪 DVT 对齐黑边，返回应用原生逻辑尺寸"""
+    logical_size = extract_ios_logical_size(layout_file)
+    if img_path and os.path.exists(img_path) and logical_size:
+        img = QImage(img_path)
+        cropped = crop_ios_dvt_image(img, logical_size)
+        if not cropped.isNull() and (cropped.width() != img.width() or cropped.height() != img.height()):
+            cropped.save(img_path, "PNG")
+    return logical_size
+
+
 def parse_ios_node(elem: ET.Element, scale_x: float = 1.0, scale_y: float = 1.0) -> Dict[str, Any]:
-    """将 iOS WDA XML 节点转换为通用 DOM 结构 (支持 Retina 视网膜点到物理像素坐标自适应映射)"""
+    """将 iOS WDA XML 节点转换为通用 DOM 结构 (保留元素原生坐标与尺寸)"""
     attrs = elem.attrib.copy()
     tag = elem.tag
     short_type = tag.replace("XCUIElementType", "") if tag.startswith("XCUIElementType") else tag
@@ -2431,32 +2498,10 @@ def parse_layout_file(layout_path: str, platform: str, screen_w: int = 0, screen
                 root = ET.fromstring(xml_content)
                 app_node = root.find(".//XCUIElementTypeApplication")
                 target_node = app_node if app_node is not None else root
-
-                # 动态自适应计算 Retina 缩放倍率 (例如 screen_w=1170, app_w=390 -> scale=3.0)
-                scale_x, scale_y = 1.0, 1.0
-                try:
-                    app_w = float(target_node.attrib.get("width", 0))
-                    app_h = float(target_node.attrib.get("height", 0))
-                    if app_w > 100 and screen_w > app_w * 1.2:
-                        scale_x = screen_w / app_w
-                    if app_h > 100 and screen_h > app_h * 1.2:
-                        scale_y = screen_h / app_h
-                except Exception:
-                    pass
-                return parse_ios_node(target_node, scale_x, scale_y)
+                # iOS 直接保留 WDA 原生逻辑点坐标 (x, y, width, height)，绝不受底图黑边或缩放比例污染
+                return parse_ios_node(target_node, 1.0, 1.0)
             elif json_data:
-                scale_x, scale_y = 1.0, 1.0
-                try:
-                    rect = json_data.get("rect", {})
-                    app_w = float(rect.get("width", 0))
-                    app_h = float(rect.get("height", 0))
-                    if app_w > 100 and screen_w > app_w * 1.2:
-                        scale_x = screen_w / app_w
-                    if app_h > 100 and screen_h > app_h * 1.2:
-                        scale_y = screen_h / app_h
-                except Exception:
-                    pass
-                return parse_ios_json_node(json_data, scale_x, scale_y)
+                return parse_ios_json_node(json_data, 1.0, 1.0)
         except Exception as e:
             logging.warning(f"[iOS布局解析] 异常降级: {e}")
         return {"attributes": {"type": "Screen", "bounds": root_bounds}, "children": []}
@@ -4942,6 +4987,13 @@ class CaptureWorker(QThread):
                 # 4. 抓取 DOM 树：调用工业级多通道高可靠抓取引擎
                 layout_ok = self._dump_ios_hierarchy(self.udid, layout_file)
 
+                # 4.1 源头去黑边：在落盘后立即将 DVT/CoreDevice 帧缓冲对齐黑边裁净，确保与实时投屏同尺寸
+                if shot_ok and layout_ok:
+                    try:
+                        normalize_ios_screenshot_file(local_png, layout_file)
+                    except Exception:
+                        pass
+
                 # 5. 结果输出与静默兜底 (底图与 DOM 树交付)
                 if shot_ok and layout_ok:
                     self.finished.emit(local_png, layout_file, "ios")
@@ -5085,26 +5137,29 @@ class AppiumScreenView(QWidget):
             self.selected_node_id = ""
         self.update()
 
-    def update_components_only(self, components: List[Dict[str, Any]]):
+    def update_components_only(self, components: List[Dict[str, Any]], layout_size: Optional[Tuple[int, int]] = None):
         """
         仅更新 DOM 组件层级数据 (复用当前底图与缩放比例，对齐 HoKit UIViewer 叠加层机制):
         1. 保持当前视口缩放和平移状态不被重置，审查体验丝滑连贯；
-        2. 清空悬停与过期选中历史，重新装载最新抓取的组件框。
+        2. 优先使用解析 DOM 树时所用的精确屏幕基准分辨率 (layout_size)，杜绝部分组件边界导致比例偏移。
         """
         self.flat_components = components
         self.comp_map = {c["node_id"]: c for c in components}
         self.hover_node_id = ""
         if self.selected_node_id not in self.comp_map:
             self.selected_node_id = ""
-        # 自适应从组件最大右下边界校准 layout 坐标系
-        max_r = max((c.get("right", 0) for c in components if c.get("right", 0) > 0), default=0)
-        max_b = max((c.get("bottom", 0) for c in components if c.get("bottom", 0) > 0), default=0)
-        if max_r >= 800 and max_b >= 1200:
-            self.layout_w = max_r
-            self.layout_h = max_b
+        if layout_size and layout_size[0] > 0 and layout_size[1] > 0:
+            self.layout_w, self.layout_h = int(layout_size[0]), int(layout_size[1])
+        else:
+            # 自适应从组件最大右下边界校准 layout 坐标系
+            max_r = max((c.get("right", 0) for c in components if c.get("right", 0) > 0), default=0)
+            max_b = max((c.get("bottom", 0) for c in components if c.get("bottom", 0) > 0), default=0)
+            if max_r >= 800 and max_b >= 1200:
+                self.layout_w = max_r
+                self.layout_h = max_b
         self.update()
 
-    def load_screenshot(self, img_path: str, components: List[Dict[str, Any]]):
+    def load_screenshot(self, img_path: str, components: List[Dict[str, Any]], layout_size: Optional[Tuple[int, int]] = None):
         self.screen_image = None
         self.pixmap = QPixmap(img_path)
         if not self.pixmap.isNull():
@@ -5120,15 +5175,20 @@ class AppiumScreenView(QWidget):
         if self.selected_node_id not in self.comp_map:
             self.selected_node_id = ""
 
+        # 最权威基准：直接对齐解析 DOM 时所用的精确屏幕基准尺寸，杜绝离屏/未满屏组件边界拉偏画布比例
+        if layout_size and layout_size[0] > 0 and layout_size[1] > 0:
+            self.layout_w, self.layout_h = int(layout_size[0]), int(layout_size[1])
+            self.hover_node_id = ""
+            self.update()
+            return
+
         # 权威基准对齐：真机物理截图的绝对分辨率即为唯一真理！
-        # 绝不允许被滚动列表或离屏项的 max_b > orig_h 撑大导致纵向比例严重偏小与位置错位
+        # 绝不允许被滚动列表或离屏项的 max_b != orig_h 篡改导致纵向比例严重错位
         max_r = max((c.get("right", 0) for c in components if c.get("right", 0) > 0), default=0)
         max_b = max((c.get("bottom", 0) for c in components if c.get("bottom", 0) > 0), default=0)
 
-        # 核心防毒化保护：如果底图为投屏硬件缩放帧 (如 542x1206，而组件最大边界为 1084x2412)，
-        # layout 坐标基准必须采用组件的真实物理尺寸 (max_r, max_b)，绝不能被 542 缩小覆盖，
-        # 从而保证 scale_x = draw_rect.width() / 1084，高亮框与画面 100% 绝对重合 (彻底杜绝图二错位现象)！
-        if max_r > 0 and max_b > 0 and max_r > self.orig_w:
+        # 仅当底图确属投屏硬件半分辨率缩略帧 (如 542x1206，组件边界明显大于底图 1.25 倍) 时才回退组件物理边界
+        if max_r > 0 and max_b > 0 and max_r > self.orig_w * 1.25:
             self.layout_w = max_r
             self.layout_h = max_b
         elif self.orig_w > 0 and self.orig_h > 0:
@@ -6402,11 +6462,11 @@ def validate_ios_selector_syntax(strategy: str, val: str) -> Tuple[Optional[str]
                         f"Class Chain 节点 '{seg_m.group(1)}' 后存在未包裹在方括号 '[]' 内的非法多余字符: '{seg_rest}'",
                         f"**/{seg_m.group(1)}[`name == '确定'`]"
                     )
-                for bt_m in re.finditer(r'\[\s*`([^`]*)`\s*\]', seg_rest):
+                for bt_m in re.finditer(r'\[\s*[`$]([^`$]*)[`$]\s*\]', seg_rest):
                     inner_p_err, inner_p_ex = validate_ios_selector_syntax("predicate", bt_m.group(1))
                     if inner_p_err:
                         inner_fallback = inner_p_ex if inner_p_ex else "name == '确定'"
-                        return f"Class Chain 反引号内部 Predicate 语法错误: {inner_p_err}", f"**/{seg_m.group(1)}[`{inner_fallback}`]"
+                        return f"Class Chain 嵌套 Predicate 语法错误: {inner_p_err}", f"**/{seg_m.group(1)}[`{inner_fallback}`]"
         return None, ""
 
     return None, ""
@@ -7279,6 +7339,130 @@ class SearchElementDialog(QDialog):
 
         matched = []
         val_lower = val.lower()
+
+        def eval_atomic_predicate(atom_expr: str, comp: Dict[str, Any]) -> bool:
+            sub = atom_expr.strip().strip("()")
+            if not sub:
+                return True
+            is_neg = False
+            if re.match(r'^(?:NOT\s+|!\s*)', sub, re.IGNORECASE):
+                is_neg = True
+                sub = re.sub(r'^(?:NOT\s+|!\s*)', '', sub, flags=re.IGNORECASE).strip().strip("()")
+
+            raw_attrs = comp.get("raw_attributes", {}) or comp.get("raw", {})
+            c_label = str(raw_attrs.get("label", "") or comp.get("text", "") or raw_attrs.get("value", "")).lower()
+            c_name = str(raw_attrs.get("name", "") or comp.get("id", "") or raw_attrs.get("label", "")).lower()
+            c_type = comp.get("type", "").lower()
+            c_type_full = c_type if c_type.startswith("xcuielementtype") else f"xcuielementtype{c_type}"
+            c_type_short = c_type.replace("xcuielementtype", "")
+            c_val = str(raw_attrs.get("value", "")).lower()
+
+            res = True
+            # 1. 优先支持集合判定: type IN {'XCUIElementTypeButton', ...} 或 label IN {'a', 'b'}
+            in_match = re.search(r'^([A-Za-z_][A-Za-z0-9_\.]*)\s+IN(?:\s*\[[cd]+\])?\s*\{([^}]+)\}$', sub, re.IGNORECASE)
+            if in_match:
+                attr_key = in_match.group(1).lower()
+                items = []
+                for raw_s in in_match.group(2).split(","):
+                    tok = raw_s.strip()
+                    if not tok:
+                        continue
+                    if (tok.startswith("'") and tok.endswith("'")) or (tok.startswith('"') and tok.endswith('"')):
+                        tok = tok[1:-1]
+                    items.append(tok.lower())
+                if attr_key == "type":
+                    res = (c_type in items) or (c_type_full in items) or (c_type_short in items)
+                else:
+                    target_val = c_label if attr_key == "label" else (c_name if attr_key == "name" else c_val)
+                    res = target_val in items
+            else:
+                # 2. 基础比较运算符判定 (==, =, !=, CONTAINS, BEGINSWITH, ENDSWITH, LIKE, MATCHES)
+                cmp_m = re.search(
+                    r'^([A-Za-z_][A-Za-z0-9_\.]*)\s*(==|!=|=|<>|<=|>=|<|>|\b(?:CONTAINS|BEGINSWITH|ENDSWITH|LIKE|MATCHES)\b(?:\s*\[[cd]+\])?)\s*(.+)$',
+                    sub,
+                    re.IGNORECASE,
+                )
+                if cmp_m:
+                    attr_key = cmp_m.group(1).lower()
+                    op = cmp_m.group(2).upper()
+                    rhs = cmp_m.group(3).strip()
+                    if (rhs.startswith("'") and rhs.endswith("'")) or (rhs.startswith('"') and rhs.endswith('"')):
+                        rhs = rhs[1:-1]
+                    rhs_lower = rhs.lower()
+                    if attr_key == "type":
+                        rhs_short = rhs_lower.replace("xcuielementtype", "")
+                        rhs_full = rhs_lower if rhs_lower.startswith("xcuielementtype") else f"xcuielementtype{rhs_lower}"
+                        is_type_eq = (c_type == rhs_lower or c_type == rhs_short or c_type_full == rhs_full or c_type_short == rhs_short)
+                        res = is_type_eq if op in ("==", "=") else not is_type_eq
+                    else:
+                        if attr_key in ("visible", "isvisible"):
+                            raw_vis = raw_attrs.get("visible") if "visible" in raw_attrs else comp.get("is_visible", "")
+                            lhs = str(raw_vis).lower()
+                        else:
+                            lhs = c_label if attr_key == "label" else (c_name if attr_key == "name" else (c_val if attr_key == "value" else str(raw_attrs.get(attr_key, "")).lower()))
+                        bool_true = {"true", "1", "yes"}
+                        bool_false = {"false", "0", "no"}
+                        if op in ("==", "="):
+                            if (lhs in bool_true or lhs in bool_false) and (rhs_lower in bool_true or rhs_lower in bool_false):
+                                res = (lhs in bool_true) == (rhs_lower in bool_true)
+                            else:
+                                res = (lhs == rhs_lower)
+                        elif op in ("!=", "<>"):
+                            if (lhs in bool_true or lhs in bool_false) and (rhs_lower in bool_true or rhs_lower in bool_false):
+                                res = (lhs in bool_true) != (rhs_lower in bool_true)
+                            else:
+                                res = (lhs != rhs_lower)
+                        elif op.startswith("BEGINSWITH"):
+                            res = lhs.startswith(rhs_lower)
+                        elif op.startswith("ENDSWITH"):
+                            res = lhs.endswith(rhs_lower)
+                        elif op.startswith("MATCHES"):
+                            try:
+                                res = bool(re.search(rhs, raw_attrs.get(attr_key, "") or ""))
+                            except Exception:
+                                res = False
+                        else:
+                            res = (rhs_lower in lhs)
+                else:
+                    res = False
+
+            return (not res) if is_neg else res
+
+        def eval_ast_bool(node, c_map: Dict[str, bool]) -> bool:
+            if isinstance(node, ast.Expression):
+                return eval_ast_bool(node.body, c_map)
+            elif isinstance(node, ast.BoolOp):
+                if isinstance(node.op, ast.And):
+                    return all(eval_ast_bool(v, c_map) for v in node.values)
+                elif isinstance(node.op, ast.Or):
+                    return any(eval_ast_bool(v, c_map) for v in node.values)
+            elif isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+                return not eval_ast_bool(node.operand, c_map)
+            elif isinstance(node, ast.Name):
+                return c_map.get(node.id, False)
+            elif isinstance(node, ast.Constant):
+                return bool(node.value)
+            return False
+
+        def match_ios_predicate(pred_expr: str, comps: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+            p_err, atom_list, py_expr = tokenize_ios_predicate(pred_expr)
+            if p_err or not atom_list:
+                atom_list = [pred_expr]
+                py_expr = "_c_0"
+            try:
+                eval_tree = ast.parse(py_expr, mode='eval')
+            except Exception:
+                eval_tree = None
+            out = []
+            for comp in comps:
+                if eval_tree:
+                    c_map = {f"_c_{k}": eval_atomic_predicate(atom, comp) for k, atom in enumerate(atom_list)}
+                    if eval_ast_bool(eval_tree, c_map):
+                        out.append(comp)
+                elif all(eval_atomic_predicate(atom, comp) for atom in atom_list):
+                    out.append(comp)
+            return out
+
         try:
             if strategy == "id":
                 for c in self.flat_components:
@@ -7347,131 +7531,38 @@ class SearchElementDialog(QDialog):
                     matched.append(c)
             elif strategy == "predicate":
                 # 支持 iOS 原生 Predicate 表达式 (完整覆盖 AST 级布尔树、括号嵌套、OR/AND/NOT、IN {...} 集合与 ==/CONTAINS)
-                err_msg, atom_list, py_expr = tokenize_ios_predicate(val)
-                if err_msg or not atom_list:
-                    atom_list = [val]
-                    py_expr = "_c_0"
-
-                def eval_atomic_predicate(atom_expr: str, comp: Dict[str, Any]) -> bool:
-                    sub = atom_expr.strip().strip("()")
-                    if not sub:
-                        return True
-                    is_neg = False
-                    if re.match(r'^(?:NOT\s+|!\s*)', sub, re.IGNORECASE):
-                        is_neg = True
-                        sub = re.sub(r'^(?:NOT\s+|!\s*)', '', sub, flags=re.IGNORECASE).strip().strip("()")
-
-                    raw_attrs = comp.get("raw_attributes", {}) or comp.get("raw", {})
-                    c_label = str(raw_attrs.get("label", "") or comp.get("text", "") or raw_attrs.get("value", "")).lower()
-                    c_name = str(raw_attrs.get("name", "") or comp.get("id", "") or raw_attrs.get("label", "")).lower()
-                    c_type = comp.get("type", "").lower()
-                    c_type_full = c_type if c_type.startswith("xcuielementtype") else f"xcuielementtype{c_type}"
-                    c_type_short = c_type.replace("xcuielementtype", "")
-                    c_val = str(raw_attrs.get("value", "")).lower()
-
-                    res = True
-                    # 1. 优先支持集合判定: type IN {'XCUIElementTypeButton', ...} 或 label IN {'a', 'b'}
-                    in_match = re.search(r'^([A-Za-z_][A-Za-z0-9_\.]*)\s+IN(?:\s*\[[cd]+\])?\s*\{([^}]+)\}$', sub, re.IGNORECASE)
-                    if in_match:
-                        attr_key = in_match.group(1).lower()
-                        items = []
-                        for raw_s in in_match.group(2).split(","):
-                            tok = raw_s.strip()
-                            if not tok:
-                                continue
-                            if (tok.startswith("'") and tok.endswith("'")) or (tok.startswith('"') and tok.endswith('"')):
-                                tok = tok[1:-1]
-                            items.append(tok.lower())
-                        if attr_key == "type":
-                            res = (c_type in items) or (c_type_full in items) or (c_type_short in items)
-                        else:
-                            target_val = c_label if attr_key == "label" else (c_name if attr_key == "name" else c_val)
-                            res = target_val in items
-                    else:
-                        # 2. 基础比较运算符判定 (==, =, !=, CONTAINS, BEGINSWITH, ENDSWITH, LIKE, MATCHES)
-                        cmp_m = re.search(
-                            r'^([A-Za-z_][A-Za-z0-9_\.]*)\s*(==|!=|=|<>|<=|>=|<|>|\b(?:CONTAINS|BEGINSWITH|ENDSWITH|LIKE|MATCHES)\b(?:\s*\[[cd]+\])?)\s*(.+)$',
-                            sub,
-                            re.IGNORECASE,
-                        )
-                        if cmp_m:
-                            attr_key = cmp_m.group(1).lower()
-                            op = cmp_m.group(2).upper()
-                            rhs = cmp_m.group(3).strip()
-                            if (rhs.startswith("'") and rhs.endswith("'")) or (rhs.startswith('"') and rhs.endswith('"')):
-                                rhs = rhs[1:-1]
-                            rhs_lower = rhs.lower()
-                            if attr_key == "type":
-                                rhs_short = rhs_lower.replace("xcuielementtype", "")
-                                rhs_full = rhs_lower if rhs_lower.startswith("xcuielementtype") else f"xcuielementtype{rhs_lower}"
-                                is_type_eq = (c_type == rhs_lower or c_type == rhs_short or c_type_full == rhs_full or c_type_short == rhs_short)
-                                res = is_type_eq if op in ("==", "=") else not is_type_eq
-                            else:
-                                lhs = c_label if attr_key == "label" else (c_name if attr_key == "name" else (c_val if attr_key == "value" else str(raw_attrs.get(attr_key, "")).lower()))
-                                if op in ("==", "="):
-                                    res = (lhs == rhs_lower)
-                                elif op in ("!=", "<>"):
-                                    res = (lhs != rhs_lower)
-                                elif op.startswith("BEGINSWITH"):
-                                    res = lhs.startswith(rhs_lower)
-                                elif op.startswith("ENDSWITH"):
-                                    res = lhs.endswith(rhs_lower)
-                                elif op.startswith("MATCHES"):
-                                    try:
-                                        res = bool(re.search(rhs, raw_attrs.get(attr_key, "") or ""))
-                                    except Exception:
-                                        res = False
-                                else:
-                                    res = (rhs_lower in lhs)
-                        else:
-                            res = False
-
-                    return (not res) if is_neg else res
-
-                try:
-                    eval_tree = ast.parse(py_expr, mode='eval')
-                except Exception:
-                    eval_tree = None
-
-                def eval_ast_bool(node, c_map: Dict[str, bool]) -> bool:
-                    if isinstance(node, ast.Expression):
-                        return eval_ast_bool(node.body, c_map)
-                    elif isinstance(node, ast.BoolOp):
-                        if isinstance(node.op, ast.And):
-                            return all(eval_ast_bool(v, c_map) for v in node.values)
-                        elif isinstance(node.op, ast.Or):
-                            return any(eval_ast_bool(v, c_map) for v in node.values)
-                    elif isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
-                        return not eval_ast_bool(node.operand, c_map)
-                    elif isinstance(node, ast.Name):
-                        return c_map.get(node.id, False)
-                    elif isinstance(node, ast.Constant):
-                        return bool(node.value)
-                    return False
-
-                for c in self.flat_components:
-                    if eval_tree:
-                        c_map = {f"_c_{k}": eval_atomic_predicate(atom, c) for k, atom in enumerate(atom_list)}
-                        if eval_ast_bool(eval_tree, c_map):
-                            matched.append(c)
-                    else:
-                        if all(eval_atomic_predicate(atom, c) for atom in atom_list):
-                            matched.append(c)
+                matched = match_ios_predicate(val, self.flat_components)
+            elif strategy == "class chain" and "`" not in val and "$" not in val and re.fullmatch(r"(\*\*/|/)?[\w*]+(\[-?\d+\])?(/(\*\*/)?[\w*]+(\[-?\d+\])?)*", val.strip()):
+                chain_xp = val.strip().replace("**/", "//")
+                if not chain_xp.startswith("/"):
+                    chain_xp = "/" + chain_xp
+                chain_xp = re.sub(r"(?<=/)(?!XCUIElementType|\*)([A-Za-z]\w*)", r"XCUIElementType\1", chain_xp)
+                chain_xp = re.sub(
+                    r"\[-(\d+)\]",
+                    lambda m: "[last()]" if m.group(1) == "1" else f"[last()-{int(m.group(1)) - 1}]",
+                    chain_xp,
+                )
+                matched = self.match_xpath(chain_xp)
             elif strategy == "class chain":
                 raw_chain = val.strip()
                 # 提取链条目标末端节点（处理多级斜杠 /，但忽略反引号内部的 /）
                 segs = [s.strip() for s in re.split(r'/(?![^\[]*\])', raw_chain) if s.strip() and s.strip() not in ("**", "*")]
                 last_seg = segs[-1] if segs else raw_chain.replace("**/", "").replace("/*", "").strip()
 
-                # 从末端段分离组件类名、嵌套谓词 [`predicate`] 或索引 [1]
+                # 从末端段分离组件类名、自身谓词 [`predicate`]、子孙谓词 [$predicate$] 或索引 [1]
                 pred_inner = ""
+                desc_pred_inner = ""
                 idx_filter = None
                 chain_type = last_seg
 
                 m_pred = re.search(r'\[`([^`]+)`\]', last_seg)
+                m_desc_pred = re.search(r'\[\$([^$]+)\$\]', last_seg)
                 if m_pred:
                     pred_inner = m_pred.group(1).strip()
                     chain_type = last_seg[:m_pred.start()].strip()
+                elif m_desc_pred:
+                    desc_pred_inner = m_desc_pred.group(1).strip()
+                    chain_type = last_seg[:m_desc_pred.start()].strip()
                 else:
                     m_idx = re.search(r'\[(-?\d+)\]', last_seg)
                     if m_idx:
@@ -7486,6 +7577,22 @@ class SearchElementDialog(QDialog):
                 chain_type_clean = chain_type.replace("**/", "").replace("/*", "").strip()
                 chain_type_lower = chain_type_clean.lower()
                 chain_type_short = chain_type_lower.replace("xcuielementtype", "")
+
+                # 若含 [$...$] 子孙条件，预先构建符合条件的后代 node_id 集合及 XML 节点索引
+                desc_matched_ids = set()
+                xml_node_by_id: Dict[str, Any] = {}
+                if desc_pred_inner:
+                    desc_matched_ids = {
+                        mc.get("node_id")
+                        for mc in match_ios_predicate(desc_pred_inner, list(self.comp_map.values()) or self.flat_components)
+                        if mc.get("node_id")
+                    }
+                    if self.xml_root is not None:
+                        xml_node_by_id = {
+                            el.attrib.get("node_id"): el
+                            for el in self.xml_root.iter()
+                            if el.attrib.get("node_id")
+                        }
 
                 cand_matched = []
                 for c in self.flat_components:
@@ -7504,24 +7611,23 @@ class SearchElementDialog(QDialog):
                         if not type_matched:
                             continue
 
-                    # 2. 嵌套谓词求值 (若存在 [`predicate`])
-                    if pred_inner:
-                        p_err, p_atoms, p_py_expr = tokenize_ios_predicate(pred_inner)
-                        if p_err or not p_atoms:
-                            p_atoms = [pred_inner]
-                            p_py_expr = "_c_0"
-                        try:
-                            p_tree = ast.parse(p_py_expr, mode='eval')
-                        except Exception:
-                            p_tree = None
+                    # 2. 自身谓词求值 (若存在 [`predicate`])
+                    if pred_inner and not match_ios_predicate(pred_inner, [c]):
+                        continue
 
-                        if p_tree:
-                            c_map = {f"_c_{k}": eval_atomic_predicate(atom, c) for k, atom in enumerate(p_atoms)}
-                            if not eval_ast_bool(p_tree, c_map):
+                    # 3. 子孙谓词求值 (若存在 [$predicate$])
+                    if desc_pred_inner:
+                        c_nid = c.get("node_id")
+                        xml_el = xml_node_by_id.get(c_nid)
+                        if xml_el is not None:
+                            has_desc = any(
+                                sub is not xml_el and sub.attrib.get("node_id") in desc_matched_ids
+                                for sub in xml_el.iter()
+                            )
+                            if not has_desc:
                                 continue
                         else:
-                            if not all(eval_atomic_predicate(atom, c) for atom in p_atoms):
-                                continue
+                            continue
 
                     cand_matched.append(c)
 
@@ -9805,6 +9911,21 @@ class HarmonyAppiumInspector(QMainWindow):
         self._update_screencast_btn_style(False)
         self.show_toast("⚠️ 开启实时投屏超时 (15s)，投屏通道未响应，已自动复位")
 
+    @staticmethod
+    def _resolve_layout_viewport_size(local_png: str, layout_file: str, platform: str) -> Tuple[int, int]:
+        """统一计算各平台 DOM 树与画布对齐基准尺寸 (iOS 使用原生逻辑点并裁剪 DVT 黑边)"""
+        if platform == "ios":
+            logical_size = normalize_ios_screenshot_file(local_png, layout_file)
+            if logical_size:
+                return logical_size
+            return 390, 844
+
+        phys_w, phys_h = get_layout_physical_size(layout_file, 1084, 2412)
+        pix = QPixmap(local_png) if (local_png and os.path.exists(local_png)) else QPixmap()
+        if not pix.isNull() and pix.width() >= 800 and pix.height() >= 1200:
+            return pix.width(), pix.height()
+        return phys_w, phys_h
+
     def on_dom_only_success(self, layout_file: str, platform: str):
         """对齐 HoKit UIViewer 叠加层机制：仅更新 DOM 组件树，复用当前底图与缩放比例 (零截屏/零系统广播)"""
         self._reset_capture_buttons()
@@ -9812,14 +9933,10 @@ class HarmonyAppiumInspector(QMainWindow):
 
         try:
             prev_selected_id = self.canvas.selected_node_id
-
-            # 优先从布局文件中提取真机真实物理分辨率 (彻底免疫投屏 JPEG 帧等比缩放毒化)
-            phys_w, phys_h = get_layout_physical_size(layout_file, 1084, 2412)
-            pix = QPixmap(local_png) if (local_png and os.path.exists(local_png)) else QPixmap()
-            if not pix.isNull() and pix.width() >= 800 and pix.height() >= 1200:
-                screen_w, screen_h = pix.width(), pix.height()
-            else:
-                screen_w, screen_h = phys_w, phys_h
+            screen_w, screen_h = self._resolve_layout_viewport_size(local_png, layout_file, platform)
+            # 若历史缓存底图刚被去黑边裁剪过，同步刷新画布底图以免残留旧黑边比例
+            if platform == "ios" and local_png and os.path.exists(local_png) and not self.is_screencasting:
+                self.canvas.update_screen_pixmap(QPixmap(local_png), keep_components=True)
 
             raw_tree = parse_layout_file(layout_file, platform, screen_w=screen_w, screen_h=screen_h)
 
@@ -9865,8 +9982,8 @@ class HarmonyAppiumInspector(QMainWindow):
             show_occluded = self.chk_show_occluded.isChecked() if hasattr(self, "chk_show_occluded") else False
             self.apply_occluded_visibility_to_tree(show_occluded)
 
-            # 仅刷新组件层级，保留当前画布底图与缩放视口 (对齐 HoKit 投屏 Overlay 机制)
-            self.canvas.update_components_only(self.flat_components)
+            # 仅刷新组件层级，保留当前画布底图与缩放视口，并严格锁定同一套坐标基准 (screen_w, screen_h)
+            self.canvas.update_components_only(self.flat_components, layout_size=(screen_w, screen_h))
             self.tree_widget.expandToDepth(2)
 
             # 重新应用当前的 DOM 树搜索高亮状态
@@ -9902,14 +10019,7 @@ class HarmonyAppiumInspector(QMainWindow):
 
         try:
             prev_selected_id = self.canvas.selected_node_id
-
-            # 优先从布局文件中提取真机真实物理分辨率 (彻底免疫投屏 JPEG 帧等比缩放毒化)
-            phys_w, phys_h = get_layout_physical_size(layout_file, 1084, 2412)
-            pix = QPixmap(local_png) if os.path.exists(local_png) else QPixmap()
-            if not pix.isNull() and pix.width() >= 800 and pix.height() >= 1200:
-                screen_w, screen_h = pix.width(), pix.height()
-            else:
-                screen_w, screen_h = phys_w, phys_h
+            screen_w, screen_h = self._resolve_layout_viewport_size(local_png, layout_file, platform)
 
             raw_tree = parse_layout_file(layout_file, platform, screen_w=screen_w, screen_h=screen_h)
 
@@ -9955,19 +10065,24 @@ class HarmonyAppiumInspector(QMainWindow):
             show_occluded = self.chk_show_occluded.isChecked() if hasattr(self, "chk_show_occluded") else False
             self.apply_occluded_visibility_to_tree(show_occluded)
 
-            # 工业级高保真视窗装载：装载底图与组件
+            # 工业级高保真视窗装载：装载底图与组件，并严格锁定解析 DOM 所用的坐标基准 (screen_w, screen_h)
             if is_real_shot:
-                self.canvas.load_screenshot(local_png, self.flat_components)
+                self.canvas.load_screenshot(local_png, self.flat_components, layout_size=(screen_w, screen_h))
             elif (
                 ScreenCastWorker.latest_udid == self.current_udid
                 and ScreenCastWorker.latest_image is not None
                 and not ScreenCastWorker.latest_image.isNull()
             ):
-                mem_pix = QPixmap.fromImage(ScreenCastWorker.latest_image)
+                cast_img = (
+                    crop_ios_dvt_image(ScreenCastWorker.latest_image, (screen_w, screen_h))
+                    if platform == "ios"
+                    else ScreenCastWorker.latest_image
+                )
+                mem_pix = QPixmap.fromImage(cast_img)
                 self.canvas.update_screen_pixmap(mem_pix, keep_components=False)
-                self.canvas.update_components_only(self.flat_components)
+                self.canvas.update_components_only(self.flat_components, layout_size=(screen_w, screen_h))
             elif os.path.exists(local_png):
-                self.canvas.load_screenshot(local_png, self.flat_components)
+                self.canvas.load_screenshot(local_png, self.flat_components, layout_size=(screen_w, screen_h))
 
             self.tree_widget.expandToDepth(2)
 
@@ -10158,6 +10273,10 @@ class HarmonyAppiumInspector(QMainWindow):
             elif self._timer_screencast.isActive():
                 self._timer_screencast.stop()
 
+            # iOS DVT 实时投屏若包含字节对齐黑边，渲染前按当前逻辑分辨率等比裁剪干净
+            if self.current_platform == "ios" and 250 <= self.canvas.layout_w <= 700 and 400 <= self.canvas.layout_h <= 1400:
+                image = crop_ios_dvt_image(image, (self.canvas.layout_w, self.canvas.layout_h))
+
             # 内存直通渲染 QImage，彻底免去主线程 QPixmap.fromImage(image) 额外 CPU 耗时，切屏零卡顿
             self.canvas.update_screen_image(image, keep_components=True)
 
@@ -10291,12 +10410,13 @@ class HarmonyAppiumInspector(QMainWindow):
 
         # 特例豁免：移动端验证码/PIN密码输入框通常采用隐藏透明的 TextInput (opacity: 0) 接收软键盘物理输入
         # 特例豁免：移动端验证码/PIN密码/聊天输入框等，具备完整的点击聚焦与输入能力，必须被视为有效交互与展示节点！
+        ctrl_min = 8 if self.current_platform == "ios" else 15
         is_transparent_input = (
             c_type in ("TextInput", "TextArea", "SearchField", "TextField", "TextView", "EditText")
             or full_type in ("XCUIElementTypeTextView", "XCUIElementTypeTextField", "XCUIElementTypeSecureTextField", "XCUIElementTypeSearchField")
             or c_type.endswith("Input")
             or c_type.endswith("Field")
-        ) and is_visible and width >= 15 and height >= 15
+        ) and is_visible and width >= ctrl_min and height >= ctrl_min
         node_visible = parent_visible and is_visible and (opacity > 0.05 or is_transparent_input)
         if not node_in_active_page:
             node_visible = False
@@ -10372,8 +10492,9 @@ class HarmonyAppiumInspector(QMainWindow):
         is_clickable_comp = str(attrs.get("clickable", "false")).lower() in ("true", "1") or str(attrs.get("longClickable", "false")).lower() in ("true", "1")
         has_content = bool(c_text or c_id or attrs.get("description") or attrs.get("content-desc") or is_clickable_comp)
 
-        # 极细缝隙组件 (高度或宽度 <= 8 像素的空占位容器) 判定为已遮挡/未暴露层
-        if (width <= 8 or height <= 8) and not has_content and depth > 0:
+        # 极细缝隙组件 (空占位容器) 判定为已遮挡/未暴露层
+        gap_min = 3 if self.current_platform == "ios" else 8
+        if (width <= gap_min or height <= gap_min) and not has_content and depth > 0:
             is_node_occluded = True
 
         # 针对 Image 组件：若没有文字、没有 ID、没有描述且不可点击，且其处于 Stack 内部存在实心覆盖物时，判定为已遮挡背景层
@@ -10388,7 +10509,7 @@ class HarmonyAppiumInspector(QMainWindow):
             or c_type.endswith("Input")
             or c_type.endswith("Field")
         )
-        if is_interactive_form_control and width >= 15 and height >= 15 and is_visible:
+        if is_interactive_form_control and width >= ctrl_min and height >= ctrl_min and is_visible:
             is_node_occluded = False
 
         is_exposed = node_visible and (not is_node_occluded)
@@ -10398,13 +10519,19 @@ class HarmonyAppiumInspector(QMainWindow):
         is_occluded_node = (not is_node_exposed) and depth > 0
 
         # 屏幕视口相交判定 (Viewport In-Screen Check):
-        # 排除完全滚出真机视口之外的离屏组件 (自适应校准视口边界，杜绝投屏缩略帧尺寸导致下半屏/右半屏组件被误淘汰)
-        vw = screen_w if screen_w >= 800 else 1084
-        vh = screen_h if screen_h >= 1200 else 2412
+        # 排除完全滚出真机视口之外的离屏组件 (iOS 按原生逻辑视口校准，Android/鸿蒙按物理像素视口校准)
+        if self.current_platform == "ios":
+            vw = screen_w if screen_w >= 250 else 390
+            vh = screen_h if screen_h >= 400 else 844
+            plain_min, content_min = 4, 2
+        else:
+            vw = screen_w if screen_w >= 800 else 1084
+            vh = screen_h if screen_h >= 1200 else 2412
+            plain_min, content_min = 10, 4
         is_in_viewport = not (right <= 0 or left >= vw or bottom <= 0 or top >= vh)
         # 核心优化：画布交互拾取仅限真实暴露在顶层的有效组件 (is_exposed) 且排除微细占位
-        is_valid_size = (width >= 10 and height >= 10) if not has_content else (width >= 4 and height >= 4)
-        if is_interactive_form_control and width >= 15 and height >= 15:
+        is_valid_size = (width >= plain_min and height >= plain_min) if not has_content else (width >= content_min and height >= content_min)
+        if is_interactive_form_control and width >= ctrl_min and height >= ctrl_min:
             is_interactive = node_in_active_page and (not is_node_occluded) and is_in_viewport
         else:
             is_interactive = node_in_active_page and is_exposed and is_in_viewport and is_valid_size
@@ -10461,7 +10588,6 @@ class HarmonyAppiumInspector(QMainWindow):
                 rec_py = f"driver.find_element(AppiumBy.XPATH, \"{rec_xpath}\")"
             rec_predicate = ""
             rec_class_chain = ""
-
         comp = {
             "node_id": node_id,
             "type": c_type,
@@ -11075,7 +11201,6 @@ class HarmonyAppiumInspector(QMainWindow):
                 attrs_str += ' occluded="true"'
 
             item.setText(0, f"<{disp_t}{attrs_str}>")
-
     def apply_occluded_visibility_to_tree(self, show_occluded: bool):
         """
         动态更新当前 DOM 树中所有被遮挡节点的显示/隐藏状态：

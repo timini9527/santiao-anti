@@ -76,15 +76,19 @@ class _SideSlipLocatorAndroid(CommonLocator):
 
 
 # =========================================================================
-# 跨端通用定位器透明代理 (自动识别 Android / HarmonyOS NEXT)
+# 跨端通用定位器透明代理 (自动识别 Android / HarmonyOS NEXT / iOS)
 # =========================================================================
-from core.locator_manager import DynamicLocatorProxy
+from core.locator_manager import DynamicLocatorMeta
 from locators.home.side_slip_locator_hos import _SideSlipLocatorHos
+from locators.home.side_slip_locator_ios import _SideSlipLocatorIos
 
-SideSlipLocator = DynamicLocatorProxy(
-    android_cls=_SideSlipLocatorAndroid,
-    harmony_cls=_SideSlipLocatorHos
-)
+
+class SideSlipLocator(_SideSlipLocatorIos, _SideSlipLocatorAndroid, _SideSlipLocatorHos, metaclass=DynamicLocatorMeta):
+    """跨端左侧侧滑抽屉定位器（支持 IDE Ctrl + 鼠标左键直接跳转定义，运行时按设备平台动态分发）"""
+
+    _android_cls = _SideSlipLocatorAndroid
+    _harmony_cls = _SideSlipLocatorHos
+    _ios_cls = _SideSlipLocatorIos
 
 
 

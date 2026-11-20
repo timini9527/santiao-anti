@@ -46,6 +46,6 @@ pymobiledevice3>=11.48.0
 av>=19.0.0
 
 # 9. IM 底层长连接注入与协议桥接压测引擎
-frida==17.24.3
-frida-tools==14.11.0
+frida==16.5.9
+frida-tools==13.7.1
 

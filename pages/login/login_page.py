@@ -1,7 +1,7 @@
 import time
 from typing import Optional
 from selenium.webdriver.remote.webelement import WebElement
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from common.base_page import BasePage
 from common.toast_enums import ToastMsg
 from locators.login.login_locator import LoginLocator
@@ -25,24 +25,30 @@ class LoginPage(BasePage):
     # 登录页 - 检测当前是否处于登录主页面
     def is_on_login_main_page(self, timeout: int = 2) -> bool:
         """
-        检测当前是否处于登录主页面 (通过 APPLICATION_LOGO 进行核心检测与状态断言优化)
+        检测当前是否处于登录主页面（优先命中高速入口按钮，避免鸿蒙直接触发 XPath 全树扫描）
         :param timeout: 显式等待超时时间 (默认 2s)
         :return: True(当前处于登录主页面) / False(不在登录主页面)
         """
-        logger.info(f"{LogIcon.FIND} 🧐 [Action - Login] 检测当前是否处于登录主页面 (Logo: APPLICATION_LOGO, 超时: {timeout}s)")
-        # 1. 核心特征判定：页面顶部标志性的应用主 Logo (支持 Android / HarmonyOS 跨端动态代理)
-        logo_elem = self.find_element(LoginLocator.APPLICATION_LOGO, timeout=timeout)
-        if logo_elem and logo_elem.is_displayed():
-            logger.info(f"{LogIcon.SUCCESS} [Action - Login] 成功识别到应用 Logo 元素，当前处于登录主页面")
+        logger.info(f"{LogIcon.FIND} 🧐 [Action - Login] 检测当前是否处于登录主页面 (超时: {timeout}s)")
+        # 1. 优先判定高速登录主入口（鸿蒙走 HypiumBy 原生直查，Android/iOS 走 ID，约 1s 内返回）
+        entrance = self.find_element(LoginLocator.LOGIN_ENTRANCE, timeout=timeout, expect_missing=True)
+        if entrance:
+            logger.info(f"{LogIcon.SUCCESS} [Action - Login] 识别到手机号登录主入口，当前处于登录主页面")
             return True
 
-        # 2. 状态兜底：若弱网或转场动画未完成，交叉验证登录主入口 (手机号登录/一键登录)
-        entrance = self.find_element(LoginLocator.LOGIN_ENTRANCE, timeout=1) or self.find_element(LoginLocator.ONE_KEY_LOGIN_ENTRANCE, timeout=1)
-        if entrance and entrance.is_displayed():
-            logger.info(f"{LogIcon.SUCCESS} [Action - Login] 辅助识别到登录主入口按钮，确认处于登录主页面")
+        fallback_timeout = min(1, timeout)
+        one_key = self.find_element(LoginLocator.ONE_KEY_LOGIN_ENTRANCE, timeout=fallback_timeout, expect_missing=True)
+        if one_key:
+            logger.info(f"{LogIcon.SUCCESS} [Action - Login] 识别到一键登录主入口，当前处于登录主页面")
             return True
 
-        logger.warning(f"{LogIcon.FAIL} [Action - Login] 未能检测到应用 Logo 及登录主入口，当前不处于登录主页面")
+        # 2. 兜底判定：弱网或按钮未渲染完成时，再校验顶部应用主 Logo
+        logo_elem = self.find_element(LoginLocator.APPLICATION_LOGO, timeout=fallback_timeout, expect_missing=True)
+        if logo_elem:
+            logger.info(f"{LogIcon.SUCCESS} [Action - Login] 识别到应用 Logo 元素，当前处于登录主页面")
+            return True
+
+        logger.warning(f"{LogIcon.FAIL} [Action - Login] 未能检测到登录主入口及应用 Logo，当前不处于登录主页面")
         return False
 
     # 登录页 - 自动返回直到检测到登录主页面
@@ -97,20 +103,44 @@ class LoginPage(BasePage):
     # ==========================
     # 登录页 - 点击进入手机号登录按钮
     def click_phone_login_button(self) -> None:
-        """ 如果在启动页，点击进入‘手机号登录’界面的按钮 """
+        """如果在启动页，点击进入‘手机号登录’界面的按钮（乐观直达，找不到再进入表单短路与返回自愈）。"""
         logger.info(f"{LogIcon.SETUP} 点击进入手机号登录主界面")
-        # 1. 短路优化：若已处于手机号表单界面，直接跳过无需重复点击
-        phone_edit = self.find_element(LoginLocator.PWD_AND_CODE, timeout=0.8, expect_missing=True)
-        if phone_edit and phone_edit.is_displayed():
+        # 鸿蒙端通过 HypiumBy 原生检索可视树并用坐标手势点击，跳过 is_displayed 与 Component.click 5s Idle 等待
+        is_harmony = self._platform_name == "harmonyos"
+        lookup_condition = "presence" if is_harmony else "visibility"
+
+        # 1. 乐观直达：优先直接命中并点击登录入口（正常路径仅 1 次高速直查，消除多余 XPath 串行探测）
+        entrance = self.find_element(
+            LoginLocator.LOGIN_ENTRANCE,
+            condition=lookup_condition,
+            timeout=2,
+            expect_missing=True,
+        )
+        if entrance:
+            logger.info(f"{LogIcon.ACTION} 直接命中手机号登录入口，执行点击")
+            if is_harmony:
+                self.tap_point(click_elem=entrance, duration=100)
+            else:
+                entrance.click()
+            return
+
+        # 2. 异常兜底-短路：若未找到登录入口，检查是否已处于手机号表单页（优先高速切换文案）
+        form_switch = (
+            self.find_element(LoginLocator.PASSWORD_LOGIN_SWITCH, condition=lookup_condition, timeout=0.8, expect_missing=True)
+            or self.find_element(LoginLocator.CODE_LOGIN_SWITCH, condition=lookup_condition, timeout=0.8, expect_missing=True)
+        )
+        if form_switch:
             logger.info(f"{LogIcon.SUCCESS} 当前已处于手机号输入界面，无需重复点击‘手机号登录’")
             return
 
-        # 2. 状态自愈：若当前不在登录主页面，自动返回直到回到登录主页面
-        if not self.is_on_login_main_page(timeout=1):
-            logger.info(f"{LogIcon.ACTION} 当前不在登录主页面，执行自动返回自愈")
-            self.back_to_login_main_page()
-
-        # 3. 执行快速点击进入手机号登录
+        # 3. 异常兜底-状态自愈：不在登录主页也不在表单页，自动返回直到回到登录主页面后再点击
+        logger.info(f"{LogIcon.ACTION} 当前不在登录主页面，执行自动返回自愈")
+        self.back_to_login_main_page()
+        if is_harmony:
+            entrance = self.find_element(LoginLocator.LOGIN_ENTRANCE, condition="presence", timeout=3)
+            if entrance:
+                self.tap_point(click_elem=entrance, duration=100)
+                return
         self.click(LoginLocator.LOGIN_ENTRANCE, timeout=3)
     
     # 登录页 - 点击一键登录按钮
@@ -286,16 +316,36 @@ class LoginPage(BasePage):
     # 登录页 - 获取协议文本
     def get_agreement_text(self) -> str:
         """ 获取登录页面底部的协议文本 """
-        attr = "label" if self._platform_name == "ios" else "text"
-        text = self.get_attribute(LoginLocator.AGREE_AND_LOGIN_TEXT, attr) or ""
+        text = self.get_attribute(LoginLocator.AGREE_AND_LOGIN_TEXT, "text") or ""
         logger.info(f"{LogIcon.FIND} 🧐 [Action - Login] 获取到登录页面底部的协议文本: {text}")
         return text
+
+    # 登录页 - 点击底部协议链接（仅 iOS 原生 Link 元素直点）
+    def click_agreement_link(self, agreement_name: str = "《用户协议》") -> bool:
+        """通过 iOS 原生超链接定位器直接点击指定协议链接"""
+        link_map = {
+            "《用户协议》": LoginLocator.USER_AGREEMENT_LINK,
+            "《隐私政策》": LoginLocator.PRIVACY_POLICY_LINK,
+            "《隐私协议》": LoginLocator.PRIVACY_POLICY_LINK,
+            "《未成年人个人信息保护规则》": LoginLocator.CHILD_PROTECTION_LINK,
+            "《支付协议》": LoginLocator.PAYMENT_AGREEMENT_LINK,
+        }
+        locator = link_map.get(agreement_name)
+        if not locator:
+            logger.warning(f"{LogIcon.WARN} 未找到协议 '{agreement_name}' 对应的原生定位器")
+            return False
+        logger.info(f"{LogIcon.ACTION} [iOS] 直接通过元素定位点击协议: {agreement_name}")
+        try:
+            self.click(locator, timeout=3)
+            return True
+        except NoSuchElementException:
+            return False
 
     # ==========================
     # 登录提交与校验
     # ==========================
     # 登录页 - 自动处理系统保存密码弹窗
-    def handle_save_password_popup(self, timeout: float = 10) -> bool:
+    def handle_save_password_popup(self, timeout: float = 2.0) -> bool:
         """
         自动检测并消除系统级‘自动保存账号密码’弹窗 (MIUI/HyperOS)
         """
@@ -316,7 +366,7 @@ class LoginPage(BasePage):
         logger.info(f"{LogIcon.SETUP} 点击 [验证并登录/登录] 按钮")
         self.click(LoginLocator.VERIFY_AND_LOGIN_BTN)
         if auto_dismiss_save_pwd:
-            self.handle_save_password_popup(timeout=5)
+            self.handle_save_password_popup(timeout=2)
         
     # 登录页 - 点击遇到问题反馈
     def click_feedback_btn(self) -> None:
@@ -380,7 +430,7 @@ class LoginPage(BasePage):
             return False
 
     # 登录页 - 显式等待验证是否处于登录主页面
-    def wait_for_login_page(self, timeout: int = 10) -> bool:
+    def wait_for_login_page(self, timeout: int = 2) -> bool:
         """ 显式等待验证是否处于登录主页面 (通过 APPLICATION_LOGO 进行检测优化) """
         logger.info(f"{LogIcon.WAIT} 开始等待返回登录主页面 (超时: {timeout}s)")
         elem = self.is_on_login_main_page(timeout=timeout)

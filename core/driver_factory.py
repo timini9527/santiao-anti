@@ -110,6 +110,8 @@ class DriverFactory:
             desired_caps.setdefault('appium:newCommandTimeout', 120)
             desired_caps.setdefault('appium:noReset', True)
             desired_caps.setdefault('appium:skipHilogCapture', True)
+            # 覆盖 hypium-driver 默认 4000ms 单元素隐式等待，将超时轮询权交回 Python WebDriverWait
+            desired_caps.setdefault('appium:implicitWaitTime', 500)
 
             # == 支持环境变量动态覆盖 (多设备并发支持) ==
             env_udid = os.environ.get("REMOTE_UDID")
@@ -177,6 +179,18 @@ class DriverFactory:
                 client_config=client_config,
             )
             driver.implicitly_wait(0)
+            # 预热 hypium-driver 的 initAgent() 懒加载通道（uitest 守护检查 + hdc fport），避免冷启动耗时落到首条业务定位
+            warmup_start = time.monotonic()
+            try:
+                driver.get_window_size()
+                logger.info(
+                    f"{LogIcon.SUCCESS} [DriverFactory] 鸿蒙 uitest 通道预热完成 "
+                    f"(耗时: {time.monotonic() - warmup_start:.2f}s)"
+                )
+            except Exception as warmup_err:
+                logger.warning(
+                    f"{LogIcon.WARN} [DriverFactory] 鸿蒙 uitest 通道预热异常 (不阻断建连): {warmup_err}"
+                )
             driver._factory_device_key = device_key
             driver._factory_appium_url = appium_url
             driver._factory_udid = desired_caps.get("udid")

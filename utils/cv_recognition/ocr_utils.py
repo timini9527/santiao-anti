@@ -1,17 +1,32 @@
 from rapidocr_onnxruntime import RapidOCR
 from core.logger_utils import logger, LogIcon
 from common.base_page import BasePage as BP
+import threading
 import time
 import os
+from typing import Optional
 
 
 from config import SCREENSHOT_DIR
 
 
 class OcrUtils:
+    """基于 RapidOCR 的屏幕文字识别与坐标点击工具（全局懒加载单例复用 ONNX 模型）。"""
+
+    _shared_ocr: Optional[RapidOCR] = None
+    _ocr_lock = threading.Lock()
+
     def __init__(self, driver):
         self.driver = driver
-        self.ocr = RapidOCR() # 初始化使用默认参数避开 KeyError
+
+    @property
+    def ocr(self) -> RapidOCR:
+        """首次真正调用 OCR 时再加载模型并全局复用，避免页面初始化阶段重复加载耗时。"""
+        if OcrUtils._shared_ocr is None:
+            with OcrUtils._ocr_lock:
+                if OcrUtils._shared_ocr is None:
+                    OcrUtils._shared_ocr = RapidOCR()  # 初始化使用默认参数避开 KeyError
+        return OcrUtils._shared_ocr
 
     def _get_ocr_result(self, image_name: str, sub_dir: str = "ocr", **kwargs):
         """内部通用方法：截图并执行 OCR 识别"""
