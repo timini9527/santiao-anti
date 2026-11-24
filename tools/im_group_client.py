@@ -37,6 +37,21 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from tools.im_client import ChatType, DeviceAccountConfig, SessionTarget, CLUSTER_DEVICES
+from utils.file_reader.data_loader import load_yaml_data
+
+
+DEFAULT_GROUP_CONFIG_FILE: str = "im_group_targets.yaml"
+
+
+def load_group_targets_config(config_file: str = DEFAULT_GROUP_CONFIG_FILE) -> Dict[str, Any]:
+    """加载 config/im_group_targets.yaml 建群与好友池配置。"""
+    try:
+        data = load_yaml_data(config_file)
+        if isinstance(data, dict):
+            return data
+    except Exception as e:
+        print(f"⚠️ [群配置中心] 读取 {config_file} 异常，退回内置默认配置: {e}")
+    return {}
 
 
 # ===========================================================================
@@ -128,7 +143,7 @@ class GroupRuntimeBridge:
                     var Continuation = Java.use("kotlin.coroutines.Continuation");
 
                     var MyCont = Java.registerClass({
-                        name: "com.santiao.inject.CreateGroupCont" + Date.now(),
+                        name: "com.santiao.inject.CreateGroupCont" + Date.now() + "_" + Math.floor(Math.random() * 10000),
                         implements: [Continuation],
                         methods: {
                             getContext: function() {
@@ -303,6 +318,59 @@ class GroupRuntimeBridge:
                 }
             });
             return result;
+        },
+        addGroupMembersFast: function(groupId, memberListJson) {
+            _lastCreateCallback = null;
+            var result = {success: false, message: ""};
+            Java.perform(function() {
+                try {
+                    var ItemCls = Java.use("com.santiao.init.group.services.ISTGroup$STGroupMemberRequestItem");
+                    var ParamsCls = Java.use("com.santiao.init.group.services.ISTGroup$STGroupMembersParams");
+                    var STGroup = Java.use("com.santiao.init.group.services.STGroup").INSTANCE.value;
+                    var ArrayList = Java.use("java.util.ArrayList");
+
+                    var memberList = ArrayList.$new();
+                    var membersArray = JSON.parse(memberListJson);
+                    for (var i = 0; i < membersArray.length; i++) {
+                        var m = membersArray[i];
+                        var item = ItemCls.$new(
+                            m.open_id || '',
+                            m.name || '',
+                            m.cust_id || '',
+                            ''
+                        );
+                        memberList.add(item);
+                    }
+
+                    var params = ParamsCls.$new(groupId, memberList);
+                    var EmptyCoroutineContext = Java.use("kotlin.coroutines.EmptyCoroutineContext").INSTANCE.value;
+                    var Continuation = Java.use("kotlin.coroutines.Continuation");
+
+                    var MyCont = Java.registerClass({
+                        name: "com.santiao.inject.AddMembersCont" + Date.now() + "_" + Math.floor(Math.random() * 10000),
+                        implements: [Continuation],
+                        methods: {
+                            getContext: function() {
+                                return EmptyCoroutineContext;
+                            },
+                            resumeWith: function(res) {
+                                try {
+                                    _lastCreateCallback = res ? res.toString() : "null";
+                                } catch (err) {
+                                    _lastCreateCallback = "callback_err: " + err.toString();
+                                }
+                            }
+                        }
+                    });
+
+                    STGroup.addMembers(params, MyCont.$new());
+                    result.success = true;
+                    result.message = "追加邀请群成员协议已投递";
+                } catch(e) {
+                    result.message = "底层追加邀请群成员异常: " + e.toString();
+                }
+            });
+            return result;
         }
     };
     """
@@ -364,13 +432,17 @@ class GroupRuntimeBridge:
         return None
 
     def _assemble_script_source(self) -> str:
-        """读取 frida_tools 自带的 java.js 桥接核心并挂载到 globalThis.Java。"""
+        """自适应 Frida 16/17 组装桥接脚本：16 直接使用内置 Java，17 注入 frida_tools 的 java.js。"""
+        major_ver = int(str(getattr(frida, "__version__", "16")).split(".")[0])
+        if major_ver < 17:
+            return self._BRIDGE_JS
+
         bridges_dir = Path(frida_tools.__file__).parent / "bridges"
         java_js_file = bridges_dir / "java.js"
         if not java_js_file.exists():
             raise FileNotFoundError(f"未找到 Frida Java 桥接库: {java_js_file}")
         java_core = java_js_file.read_text(encoding="utf-8")
-        return f"{java_core}\n;\nvar Java = bridge;\nglobalThis.Java = bridge;\n{self._BRIDGE_JS}"
+        return f"{java_core}\n;\n(function(Java) {{\n{self._BRIDGE_JS}\n}})(bridge);"
 
     def connect(self) -> bool:
         """挂接目标 App 运行时。"""
@@ -462,6 +534,26 @@ class GroupRuntimeBridge:
             return res
         except Exception as e:
             return {"success": False, "message": str(e)}
+
+    def add_group_members_fast(self, group_id: str, members: List[Dict[str, str]]) -> Dict[str, Any]:
+        """通过微秒 RPC 向指定群批量追加邀请好友成员。"""
+        if not self.connect() or not self._script:
+            return {"success": False, "message": "运行时协议桥未就绪"}
+        try:
+            members_json = json.dumps(members, ensure_ascii=False)
+            return self._script.exports_sync.add_group_members_fast(group_id, members_json)
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    def wait_last_callback(self, timeout: float = 8.0) -> Optional[str]:
+        """轮询等待最近一次协程回调返回（STResult 字符串）。"""
+        start = time.time()
+        while time.time() - start < timeout:
+            cb = self.get_last_create_callback()
+            if cb:
+                return cb
+            time.sleep(0.15)
+        return None
 
     def close(self) -> None:
         """平稳解绑并释放 Frida Session。"""
@@ -565,16 +657,16 @@ class IMGroupClient:
 
     def get_current_user(self) -> Optional[Dict[str, str]]:
         """直读 App 本地 SQLite user 表，获取当前登录账号的身份元数据 (作为建群创建者)."""
-        sql = "SELECT cust_id, open_id, username, mobile FROM user LIMIT 1;"
+        sql = "SELECT cust_id, open_id, nickname, username, mobile FROM user LIMIT 1;"
         lines = self._query_sqlite(sql)
         for line in lines:
             parts = line.split("|")
-            if len(parts) >= 4 and parts[0]:
+            if len(parts) >= 5 and parts[0]:
                 return {
                     "cust_id": parts[0],
                     "open_id": parts[1],
-                    "name": parts[2] or parts[3] or "我",
-                    "mobile": parts[3],
+                    "name": parts[2] or parts[4] or parts[3] or "我",
+                    "mobile": parts[4],
                 }
         return None
 
@@ -619,7 +711,7 @@ class IMGroupClient:
                 return g
         return None
 
-    def get_local_friends(self, limit: int = 200) -> List[Dict[str, str]]:
+    def get_local_friends(self, limit: int = 5000) -> List[Dict[str, str]]:
         """直读 App 本地 SQLite friend 表，获取全部有效好友的详细信息。
 
         Returns:
@@ -636,7 +728,7 @@ class IMGroupClient:
         for line in lines:
             parts = line.split("|")
             if len(parts) >= 5 and parts[0]:
-                display_name = parts[2] or parts[4] or parts[3]
+                display_name = parts[4] or parts[2] or parts[3]
                 friends.append({
                     "cust_id": parts[0],
                     "open_id": parts[1],
@@ -650,18 +742,14 @@ class IMGroupClient:
     def filter_target_friends(
         self,
         prefixes_or_names: Optional[List[str]] = None,
-        max_count: int = 30,
+        max_count: int = 100,
+        exclude_cust_id: Optional[str] = None,
     ) -> List[Dict[str, str]]:
-        """从本地好友库中筛选目标好友 (精准覆盖图四中的 A0110、测试0224、测试130~135 及图五中的 19200000136~140)。
-
-        Args:
-            prefixes_or_names: 目标名称/前缀白名单列表 (如 ["A0110", "测试", "1920000013"])。
-            max_count: 最多拉取的好友总数。
-
-        Returns:
-            List[Dict[str, str]]: 过滤匹配后的目标好友列表。
-        """
-        all_friends = self.get_local_friends()
+        """从本地好友库中按前缀或名称列表筛选目标好友。"""
+        all_friends = [
+            f for f in self.get_local_friends()
+            if not exclude_cust_id or f["cust_id"] != exclude_cust_id
+        ]
         if not all_friends:
             return []
 
@@ -675,14 +763,17 @@ class IMGroupClient:
             for f in all_friends:
                 if f["cust_id"] in seen_ids:
                     continue
-                name = f["display_name"]
+                uname = f["username"]
+                disp = f["display_name"]
                 mobile = f["mobile"]
                 remark = f["remark_name"]
                 if (
-                    name.startswith(pattern)
+                    disp.startswith(pattern)
+                    or uname.startswith(pattern)
                     or mobile.startswith(pattern)
                     or remark.startswith(pattern)
-                    or pattern in name
+                    or pattern in disp
+                    or pattern in uname
                 ):
                     matched.append(f)
                     seen_ids.add(f["cust_id"])
@@ -698,6 +789,94 @@ class IMGroupClient:
                     if len(matched) >= min(max_count, 3):
                         break
 
+        return matched
+
+    def resolve_configured_friends(
+        self,
+        profile_name: Optional[str] = None,
+        max_count: Optional[int] = None,
+        exclude_cust_id: Optional[str] = None,
+    ) -> List[Dict[str, str]]:
+        """从 config/im_group_targets.yaml 解析目标好友池，并与当前登录账号本地 SQLite 实时对齐。"""
+        cfg = load_group_targets_config()
+        profiles = cfg.get("friend_profiles") or {}
+        active_key = profile_name or cfg.get("active_profile") or ""
+        profile = profiles.get(active_key) if isinstance(profiles, dict) else None
+        if not isinstance(profile, dict):
+            return self.filter_target_friends(
+                prefixes_or_names=["测试05", "测试13", "192000000"],
+                max_count=max_count or 100,
+                exclude_cust_id=exclude_cust_id,
+            )
+
+        match_mode = str(profile.get("match_mode", "exact")).lower()
+        limit = int(max_count if max_count is not None else profile.get("max_invite_count", 100))
+
+        all_friends = [
+            f for f in self.get_local_friends()
+            if not exclude_cust_id or f["cust_id"] != exclude_cust_id
+        ]
+        if not all_friends:
+            return []
+
+        by_cust_id = {f["cust_id"]: f for f in all_friends if f["cust_id"]}
+        by_open_id = {f["open_id"]: f for f in all_friends if f["open_id"]}
+
+        matched: List[Dict[str, str]] = []
+        seen_ids: Set[str] = set()
+        skipped_names: List[str] = []
+
+        if match_mode in ("exact", "hybrid"):
+            for item in profile.get("friends") or []:
+                if not isinstance(item, dict):
+                    continue
+                cid = str(item.get("cust_id", "")).strip()
+                oid = str(item.get("open_id", "")).strip()
+                name = str(item.get("name", "")).strip()
+                remark = str(item.get("remark", "")).strip()
+
+                if exclude_cust_id and cid == exclude_cust_id:
+                    continue
+
+                hit = by_cust_id.get(cid) or by_open_id.get(oid)
+                if not hit and (name or remark):
+                    for f in all_friends:
+                        if name and name in (f["username"], f["display_name"], f["mobile"], f["remark_name"]):
+                            hit = f
+                            break
+                        if remark and remark == f["remark_name"]:
+                            hit = f
+                            break
+
+                if hit:
+                    if hit["cust_id"] not in seen_ids:
+                        matched.append(hit)
+                        seen_ids.add(hit["cust_id"])
+                        if len(matched) >= limit:
+                            return matched
+                else:
+                    skipped_names.append(name or cid or "未知项")
+
+        if match_mode in ("prefix", "hybrid") and len(matched) < limit:
+            prefixes = [str(p).strip() for p in (profile.get("prefixes") or []) if str(p).strip()]
+            if prefixes:
+                extra = self.filter_target_friends(
+                    prefixes_or_names=prefixes,
+                    max_count=limit,
+                    exclude_cust_id=exclude_cust_id,
+                )
+                for f in extra:
+                    if f["cust_id"] not in seen_ids:
+                        matched.append(f)
+                        seen_ids.add(f["cust_id"])
+                        if len(matched) >= limit:
+                            break
+
+        if skipped_names:
+            print(
+                f"[{self.device_id}] ⚠️ 当前账号好友表中未找到以下 {len(skipped_names)} 位配置好友，已安全跳过: "
+                f"{', '.join(skipped_names[:10])}{'...' if len(skipped_names) > 10 else ''}"
+            )
         return matched
 
     def rename_group(
@@ -746,33 +925,102 @@ class IMGroupClient:
         print(f"[{self.device_id}] ⚠️ 校验超时，但协议已投递，继续后续流程")
         return True
 
+    def _list_group_table_ids(self) -> Set[str]:
+        """读取 group_table 中当前已有服务端真实 group_id 集合，用于建群后精确识别新建群号。"""
+        sql = "SELECT group_id FROM group_table;"
+        return {line.strip() for line in self._query_sqlite(sql) if line.strip()}
+
+    def _get_group_member_count(self, group_id: str) -> Optional[int]:
+        """从本地 group_table 查询指定群的当前成员总数。"""
+        sql = f"SELECT member_count FROM group_table WHERE group_id = '{group_id}' LIMIT 1;"
+        lines = self._query_sqlite(sql)
+        if lines and lines[0].isdigit():
+            return int(lines[0])
+        return None
+
+    def add_members_in_batches(
+        self,
+        group_id: str,
+        members: List[Dict[str, str]],
+        batch_size: int = 30,
+        interval: float = 0.35,
+    ) -> Tuple[int, int]:
+        """自动分批追加邀请好友进群；遇服务端单次人数限制自动折半拆分重试。
+
+        Returns:
+            Tuple[int, int]: (成功入群人数, 失败人数)
+        """
+        if not members:
+            return 0, 0
+
+        bridge = self._get_bridge()
+        step = max(1, int(batch_size))
+        total_ok = 0
+        total_fail = 0
+        idx = 0
+        batch_idx = 0
+        total = len(members)
+
+        while idx < total:
+            chunk = members[idx : idx + step]
+            batch_idx += 1
+            res = bridge.add_group_members_fast(group_id=group_id, members=chunk)
+            if not res.get("success"):
+                print(f"[{self.device_id}] ❌ 第 {batch_idx} 批补邀 RPC 投递失败 ({len(chunk)} 人): {res.get('message')}")
+                total_fail += len(chunk)
+                idx += len(chunk)
+                continue
+
+            cb = bridge.wait_last_callback(timeout=8.0) or ""
+            if "success=true" in cb:
+                total_ok += len(chunk)
+                idx += len(chunk)
+                print(
+                    f"[{self.device_id}] ➕ 第 {batch_idx} 批补邀成功: +{len(chunk)} 人 "
+                    f"(累计补邀 {total_ok}/{total})"
+                )
+            elif "一次性邀请人数过多" in cb and len(chunk) > 1:
+                step = max(1, len(chunk) // 2)
+                print(
+                    f"[{self.device_id}] ⚠️ 触发后端单批人数限制 ({len(chunk)} 人过多)，"
+                    f"自动折半调整单批上限为 {step} 人重试..."
+                )
+                continue
+            else:
+                print(
+                    f"[{self.device_id}] ⚠️ 第 {batch_idx} 批补邀异常 ({len(chunk)} 人): "
+                    f"{cb or '未收到协程回调'}"
+                )
+                total_fail += len(chunk)
+                idx += len(chunk)
+
+            if idx < total and interval > 0:
+                time.sleep(interval)
+
+        return total_ok, total_fail
+
     def create_group(
         self,
         group_name: str = "测试群001",
         target_friend_prefixes: Optional[List[str]] = None,
-        max_select_count: int = 30,
-        timeout: float = 10.0,
+        max_select_count: Optional[int] = None,
+        timeout: float = 20.0,
+        friend_profile: Optional[str] = None,
+        invite_batch_size: Optional[int] = None,
     ) -> Optional[GroupMetadata]:
-        """在当前设备上极速创建群聊 (免 UI 交互，0.1 秒纯协议建群，一次性精准命名).
-
-        彻底解决：
-          - 根因 1 (创建者缺失校验)：自动从本地 SQLite user 表提取当前账号，压入 orgin=1 确保服务端校验通过；
-          - 根因 2 (参数类类型匹配)：严谨构造 STCreateGroupMemberItem 与 STCreateGroupParams；
-          - 根因 3 (协程单例网络直调)：直调 STGroup.INSTANCE 纯底层网络协议，不依赖 UI 或 ViewModel 生命周期；
-          - 根因 4 (改名与群编号绑定)：通过 group_table.group_id 真实群号触发 updateGroup，百分百精准对齐群名；
-          - 痛点 5 (好友智能秒选)：直接从底层 friend 数据库筛选图四与图五全部好友，无需滚动与定位复选框；
-          - 痛点 6 (防御编码异常)：全链路 UTF-8 管道注入，彻底杜绝 Windows GBK 解码异常与 UIAutomator 锁死冲突。
+        """在当前设备上极速创建群聊：超单次上限时自动「首批建群 + 分批补邀入群」。
 
         Args:
             group_name: 期望的群聊名称 (如 "测试群001").
-            target_friend_prefixes: 目标好友名称前缀白名单 (涵盖 A0110、测试*、1920000013*).
-            max_select_count: 最大拉取好友数 (默认 15 位，完整囊括目标名单).
+            target_friend_prefixes: 可选前缀覆盖列表；为 None 时默认读取 config/im_group_targets.yaml。
+            max_select_count: 最大拉取好友数；为 None 时采用配置文件中的 max_invite_count。
             timeout: 等待服务端响应与落库的超时时间 (秒).
+            friend_profile: 指定使用的好友池预设名；为 None 时采用配置文件中的 active_profile。
+            invite_batch_size: 单批邀请上限（建群首批 + 后续补邀每批），默认读取配置或 30。
 
         Returns:
             Optional[GroupMetadata]: 创建成功的群聊元数据，失败返回 None.
         """
-        prefixes = target_friend_prefixes or ["A0110", "测试05", "测试", "192000001"]
         print(f"[{self.device_id}] 🚀 正在启动底层微秒协议极速建群: 目标群名 【{group_name}】...")
 
         # 1. 提取当前登录账号作为创建者 (必须包含在建群请求中，orgin=1)
@@ -782,20 +1030,35 @@ class IMGroupClient:
             return None
         print(f"[{self.device_id}] 👑 当前创建者: 【{creator['name']}】 (CustID: {creator['cust_id']})")
 
-        # 2. 记录已有群聊 ID 集合
+        # 2. 记录已有群聊 ID 与真实 group_table ID 集合
         existing_groups = {g.chat_id: g for g in self.discover_groups(limit=100)}
+        existing_group_nos = self._list_group_table_ids()
 
-        # 3. 从本地 SQLite 数据库直接装载图四、图五目标好友
-        target_friends = self.filter_target_friends(prefixes_or_names=prefixes, max_count=max_select_count)
+        # 3. 优先从 config/im_group_targets.yaml 装载目标好友，显式传 prefixes 时按前缀过滤
+        if target_friend_prefixes:
+            target_friends = self.filter_target_friends(
+                prefixes_or_names=target_friend_prefixes,
+                max_count=max_select_count or 100,
+                exclude_cust_id=creator["cust_id"],
+            )
+        else:
+            target_friends = self.resolve_configured_friends(
+                profile_name=friend_profile,
+                max_count=max_select_count,
+                exclude_cust_id=creator["cust_id"],
+            )
         if not target_friends:
             print(f"[{self.device_id}] ❌ 未在本地数据库中检索到有效好友，建群终止")
             return None
 
         print(f"[{self.device_id}] 👥 成功装载 {len(target_friends)} 位目标好友 (免 UI 滑动，直接从底库抽取):")
         for idx, f in enumerate(target_friends, 1):
-            print(f"   {idx:02d}. 【{f['display_name']}】 (CustID: {f['cust_id']})")
+            if idx <= 10 or idx > len(target_friends) - 5:
+                print(f"   {idx:03d}. 【{f['display_name']}】 (CustID: {f['cust_id']})")
+            elif idx == 11:
+                print(f"   ... 已省略中间 {len(target_friends) - 15} 位好友明细 ...")
 
-        # 4. 构造受邀成员参数数组
+        # 4. 构造受邀成员参数数组，并按单批上限拆分首批建群与后续补邀队列
         members_payload = [
             {
                 "open_id": f["open_id"],
@@ -804,37 +1067,63 @@ class IMGroupClient:
             }
             for f in target_friends
         ]
+        if invite_batch_size is None:
+            cfg = load_group_targets_config()
+            invite_batch_size = int((cfg.get("group_task") or {}).get("invite_batch_size", 30))
+        batch_limit = max(2, int(invite_batch_size))
 
-        # 5. 通过运行时协议桥直调 STGroup.INSTANCE.createGroup
+        # 5. 通过运行时协议桥建群（若首批人数触发后端上限，自动折半缩容重发建群）
         bridge = self._get_bridge()
         t_start = time.time()
-        res = bridge.create_group_fast(
-            group_name=group_name,
-            members=members_payload,
-            creator=creator,
-        )
-        if not res.get("success"):
-            print(f"[{self.device_id}] ❌ 底层建群协议调用失败: {res.get('message')}")
-            return None
-
-        print(f"[{self.device_id}] ⚡ 建群协议已直通投递，等待服务端确认与 SQLite 落库...")
-
-        # 6. 轮询本地 SQLite 捕获新增群聊
         new_group: Optional[GroupMetadata] = None
-        while time.time() - t_start < timeout:
-            time.sleep(0.3)
-            current_groups = self.discover_groups(limit=50)
-            for cg in current_groups:
-                if cg.chat_id not in existing_groups:
-                    new_group = cg
+        first_batch_count = min(len(members_payload), batch_limit)
+
+        while True:
+            first_batch = members_payload[:first_batch_count]
+            if len(members_payload) > first_batch_count:
+                print(
+                    f"[{self.device_id}] 📦 目标受邀共 {len(members_payload)} 人，启动自动分批建群："
+                    f"先带 {first_batch_count} 人建群，其余 {len(members_payload) - first_batch_count} 人自动分批补邀..."
+                )
+            res = bridge.create_group_fast(
+                group_name=group_name,
+                members=first_batch,
+                creator=creator,
+            )
+            if not res.get("success"):
+                print(f"[{self.device_id}] ❌ 底层建群协议调用失败: {res.get('message')}")
+                return None
+
+            print(f"[{self.device_id}] ⚡ 建群协议已直通投递，等待服务端确认与 SQLite 落库...")
+
+            attempt_start = time.time()
+            while time.time() - attempt_start < timeout:
+                time.sleep(0.3)
+                current_groups = self.discover_groups(limit=50)
+                for cg in current_groups:
+                    if cg.chat_id not in existing_groups:
+                        new_group = cg
+                        break
+                if new_group:
                     break
+                cb_now = bridge.get_last_create_callback()
+                if cb_now and "success=false" in cb_now:
+                    break
+
             if new_group:
                 break
 
-        if not new_group:
-            cb_info = bridge.get_last_create_callback()
+            cb_info = bridge.get_last_create_callback() or ""
+            if "一次性邀请人数过多" in cb_info and first_batch_count > 2:
+                first_batch_count = max(2, first_batch_count // 2)
+                print(
+                    f"[{self.device_id}] ⚠️ 建群首批人数触发后端限制，自动缩减首批人数为 "
+                    f"{first_batch_count} 人并重新建群..."
+                )
+                continue
+
             if cb_info:
-                print(f"[{self.device_id}] ❌ 规定时间内未捕获到新生成的群聊，建群超时 (底层协程回调: {cb_info})")
+                print(f"[{self.device_id}] ❌ 规定时间内未捕获到新生成的群聊，建群失败 (底层协程回调: {cb_info})")
             else:
                 print(f"[{self.device_id}] ❌ 规定时间内未捕获到新生成的群聊，建群超时 (未收到协程回调)")
             return None
@@ -843,25 +1132,42 @@ class IMGroupClient:
         print(f"[{self.device_id}] 🎉 [免UI极速建群成功] 耗时: {elapsed:.2f} 秒！")
         print(f"[{self.device_id}] 🏷️ 初始群名: 【{new_group.name}】 | Chat ID: 【{new_group.chat_id}】")
 
+        # 6. 精确捕获新建群对应的服务端真实 group_id (groupNo)
+        new_group_nos = self._list_group_table_ids() - existing_group_nos
+        real_group_no = next(iter(new_group_nos), None) or self.get_latest_group_no()
+
         # 7. 若服务端初始未采用传入群名，自动通过底层协议 RPC 秒级对齐群名称
         if group_name and new_group.name != group_name:
-            latest_group_no = self.get_latest_group_no()
-            if latest_group_no:
-                rename_ok = self.rename_group(
-                    group_id=latest_group_no,
-                    new_name=group_name,
-                    conv_id=new_group.chat_id,
-                )
-                if rename_ok:
-                    new_group.name = group_name
-            else:
-                rename_ok = self.rename_group(
-                    group_id=new_group.chat_id,
-                    new_name=group_name,
-                    conv_id=new_group.chat_id,
-                )
-                if rename_ok:
-                    new_group.name = group_name
+            rename_target_id = real_group_no or new_group.chat_id
+            rename_ok = self.rename_group(
+                group_id=rename_target_id,
+                new_name=group_name,
+                conv_id=new_group.chat_id,
+            )
+            if rename_ok:
+                new_group.name = group_name
+
+        # 8. 将剩余受邀好友按 batch_limit 自动分批调用 addMembers 拉满入群
+        remaining_members = members_payload[first_batch_count:]
+        if remaining_members:
+            target_add_gid = real_group_no or self.get_group_server_id(new_group.name) or new_group.chat_id
+            print(
+                f"[{self.device_id}] 🚀 开始自动分批补邀剩余 {len(remaining_members)} 位好友入群 "
+                f"(群编号: {target_add_gid}, 每批上限: {batch_limit} 人)..."
+            )
+            ok_cnt, fail_cnt = self.add_members_in_batches(
+                group_id=target_add_gid,
+                members=remaining_members,
+                batch_size=batch_limit,
+            )
+            time.sleep(0.5)
+            final_cnt = self._get_group_member_count(target_add_gid)
+            if final_cnt is not None:
+                new_group.member_count = final_cnt
+            print(
+                f"[{self.device_id}] 📊 分批补邀完成：本次补邀成功 {ok_cnt} 人，失败 {fail_cnt} 人"
+                + (f" | 群当前总人数: {final_cnt} 人" if final_cnt is not None else "")
+            )
 
         return new_group
 
@@ -897,8 +1203,9 @@ class IMGroupClient:
         start_index: Optional[int] = 1,
         digits: int = 3,
         target_friend_prefixes: Optional[List[str]] = None,
-        max_select_count: int = 30,
+        max_select_count: Optional[int] = None,
         interval: float = 0.5,
+        friend_profile: Optional[str] = None,
     ) -> List[GroupMetadata]:
         """在当前设备上批量创建名称依次递增的群聊 (如 测试群001, 测试群002 ...).
 
@@ -910,9 +1217,10 @@ class IMGroupClient:
             prefix: 群聊名称前缀 (默认 "测试群").
             start_index: 起始编号。默认为 1 (每次重新开始)；若设为 None 则自动检测已有序号顺延.
             digits: 序号数字补零位数 (例如 3 对应 "001", "002"; 1 对应 "1", "2").
-            target_friend_prefixes: 邀请目标好友前缀白名单.
-            max_select_count: 每个群邀请的好友上限.
+            target_friend_prefixes: 邀请目标好友前缀覆盖白名单；为 None 时走 config/im_group_targets.yaml。
+            max_select_count: 每个群邀请的好友上限；为 None 时采用配置值。
             interval: 两次建群之间的安全缓冲间隔 (秒).
+            friend_profile: 指定好友池预设名；为 None 时采用配置中的 active_profile。
 
         Returns:
             List[GroupMetadata]: 成功创建的群聊列表.
@@ -938,6 +1246,7 @@ class IMGroupClient:
                 group_name=target_name,
                 target_friend_prefixes=target_friend_prefixes,
                 max_select_count=max_select_count,
+                friend_profile=friend_profile,
             )
 
             if new_grp:
@@ -1337,7 +1646,8 @@ class ClusterTopologyManager:
         device_configs: List[DeviceAccountConfig] = DEFAULT_CLUSTER_DEVICES,
         group_prefix: str = "测试群",
         target_friend_prefixes: Optional[List[str]] = None,
-        max_select_count: int = 30,
+        max_select_count: Optional[int] = None,
+        friend_profile: Optional[str] = None,
     ) -> List[Tuple[str, str, str]]:
         """为集群中的设备依次自动创建对应专属群聊。
 
@@ -1345,7 +1655,6 @@ class ClusterTopologyManager:
             List[Tuple[设备ID, 群名称, 生成的ChatID]]
         """
         results: List[Tuple[str, str, str]] = []
-        prefixes = target_friend_prefixes or ["A0110", "测试05", "测试", "1920000005", "192000001"]
         print("\n==================================================")
         print(f"🚀 开始为集群 {len(device_configs)} 台设备批量创建专属群...")
         print("==================================================")
@@ -1363,8 +1672,9 @@ class ClusterTopologyManager:
 
             group = client.create_group(
                 group_name=target_name,
-                target_friend_prefixes=prefixes,
+                target_friend_prefixes=target_friend_prefixes,
                 max_select_count=max_select_count,
+                friend_profile=friend_profile,
             )
             if group:
                 results.append((cfg.device_id, target_name, group.chat_id))
@@ -1384,95 +1694,53 @@ class ClusterTopologyManager:
 
 
 # ---------------------------------------------------------------------------
-# 4. 入口直接执行：自由配置与选择设备直接运行 (对标 im_client.py 极简体验)
+# 4. 入口直接执行：配置驱动 (config/im_group_targets.yaml) + CLI 按需覆盖
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     print("==================================================")
     print("🚀 三条 IM 自动化群组拓扑与测试数据治理引擎 (微秒协议版)")
     print("==================================================")
 
-    # -------------------------------------------------------------
-    # 🎯 运行模式配置开关 (与 im_client.py 保持完全一致的极简体验)：
-    #   【批量操作模式】：
-    #   MODE = "batch_single"   : 【推荐】单设备批量创建名称依次递增的群聊 (如 离线群001 ~ 离线群050)
-    #   MODE = "batch_cluster"  : 5 台模拟器集群批量创建专属群 (测试群001~005 分布式创建)
-    #   MODE = "batch_transfer" : 批量转让匹配前缀的群聊群主给指定好友 (TARGET_TRANSFER_USER)
-    #   MODE = "batch_quit"     : 批量退出匹配前缀的群聊 (成员退群通道)
-    #   MODE = "batch_disband"  : 批量解散匹配前缀的群聊 (群主专属一键销毁测试群)
-    #
-    #   【单群操作模式】：
-    #   MODE = "single"         : 单设备仅创建单个指定群聊 (TARGET_GROUP_NAME)
-    #   MODE = "single_transfer": 单群转让群主 (TARGET_GROUP_NAME -> TARGET_TRANSFER_USER)
-    #   MODE = "single_quit"    : 单群退出群聊 (退出 TARGET_GROUP_NAME)
-    #   MODE = "single_disband" : 单群解散群聊 (解散 TARGET_GROUP_NAME)
-    # -------------------------------------------------------------
-    MODE = "batch_single"
+    raw_cfg = load_group_targets_config()
+    task_cfg = raw_cfg.get("group_task") or {}
+    active_friend_profile = str(raw_cfg.get("active_profile") or "a0110_selected_friends")
+    profile_meta = (raw_cfg.get("friend_profiles") or {}).get(active_friend_profile) or {}
 
-    # 批量治理名称匹配关键字 (支持「前缀+序号」如 "离线群"/"批量群"，或「序号+后缀」如 "群" 匹配 1群, 2群, 3群...)：
-    GROUP_PREFIX = "正式群"               # 填 "群" 匹配 1群~50群；填 "离线群" 匹配 离线群001~050；填 "批量群" 匹配 批量群001~050
-    BATCH_COUNT = 10                 # 批量建群总数 (例如连续创建 50 个群)
-    START_INDEX = 11                  # 起始序号: 设为 1 (配合 END_INDEX 可精准切片 1群 ~ 50群 或 001 ~ 050)
-    END_INDEX = 50                   # 截止序号: 设为 50 (设为 None 则不设上限)
-    DIGITS_PADDING = 3               # 序号位数 (3 表示 001, 002; 1 表示 1, 2, 3...)
+    MODE = str(task_cfg.get("mode", "batch_single"))
+    GROUP_PREFIX = str(task_cfg.get("group_prefix", "正式群"))
+    BATCH_COUNT = int(task_cfg.get("batch_count", 10))
+    START_INDEX = task_cfg.get("start_index", 1)
+    END_INDEX = task_cfg.get("end_index", 50)
+    DIGITS_PADDING = int(task_cfg.get("digits_padding", 3))
+    TARGET_TRANSFER_USER = str(task_cfg.get("transfer_owner_to", "A0110"))
+    TARGET_DEVICE_INDEX = int(task_cfg.get("target_device_index", 0))
+    CONFIGURED_DEVICE_ID = str(task_cfg.get("device_id") or "").strip()
+    TARGET_GROUP_NAME = str(task_cfg.get("target_group_name", "正式群001"))
+    MAX_INVITE_COUNT = int(profile_meta.get("max_invite_count", 200))
+    INVITE_BATCH_SIZE = int(task_cfg.get("invite_batch_size", 30))
 
-    # 🎯 转让新群主目标 (支持手机号、昵称、备注或 open_id，例如设备 2 的 19200000051):
-    TARGET_TRANSFER_USER = "A0110"
+    default_device_id = (
+        CONFIGURED_DEVICE_ID
+        if CONFIGURED_DEVICE_ID
+        else DEFAULT_CLUSTER_DEVICES[TARGET_DEVICE_INDEX].device_id
+    )
 
-    # 【单机模式下自由选择目标设备】：
-    #   0: 设备 1 (emulator-5562 | 测试050 / 19200000050)
-    #   1: 设备 2 (emulator-5564 | 测试051 / 19200000051)
-    #   2: 设备 3 (emulator-5566 | 测试052 / 19200000052)
-    #   3: 设备 4 (emulator-5568 | 测试053 / 19200000053)
-    #   4: 设备 5 (emulator-5572 | 测试054 / 19200000054)
-    TARGET_DEVICE_INDEX = 0
+    print(
+        f"🎯 [群配置中心] 当前激活好友池: 【{active_friend_profile}】 "
+        f"({profile_meta.get('description', '未命名预设')} | 上限: {MAX_INVITE_COUNT} 人)"
+    )
 
-    # 🎯 单群操作的目标群名称 (用于 single, single_transfer, single_quit, single_disband):
-    TARGET_GROUP_NAME = "离线群011"
-
-    # 🎯 批量好友选择目标规则 (涵盖 A0110、测试050~054、测试130~135、19200000136~140 及新增测试好友):
-    #   "A0110"        : 匹配 A0110
-    #   "测试05"       : 匹配 测试050 ~ 测试054 (原 19200000050 ~ 19200000054 集群压测模拟器账号)
-    #   "测试"         : 匹配 测试0224、测试130 ~ 测试135 等
-    #   "1920000005"   : 兼容未改昵称时的 19200000050 ~ 19200000055
-    #   "192000001"    : 匹配 19200000136 ~ 19200000140 (压测目标好友，包含 19200000140)
-    TARGET_FRIEND_PREFIXES = [
-        # "A0110",
-        # "测试05",
-        # "测试",
-        # "1920000005",
-        # "192000001",
-        # 新增好友 (emulator-5562 当前账号 28100000423)
-        "测试0222",
-        "测试0224",
-        "测试205",
-        "测试228",
-        "测试230",
-        "测试231",
-        "测试424",
-        "422😾😾😾",
-        "test-220",
-        "test-206@@",
-        "泡沫🫧",
-        "系统009维护",
-        "诶嘿二月402",
-        "210-210---"
-    ]
-
-    # 最大邀请好友数量 (设为 30，确保 19+ 位目标好友全部拉满入群，不被截断)
-    MAX_INVITE_COUNT = 30
-
-    # -------------------------------------------------------------
-    # 支持 CLI 命令行参数；无传参时直接走上方配置平滑运行！
-    # -------------------------------------------------------------
+    # 支持 CLI 命令行参数；无传参时直接走 config/im_group_targets.yaml 配置平滑运行！
     if len(sys.argv) > 1:
         parser = argparse.ArgumentParser(description="三条 IM 自动化群组拓扑与测试数据治理引擎")
         parser.add_argument("--list", action="store_true", help="巡检并列出当前所有设备的群聊列表")
         parser.add_argument("--create", type=str, default=None, help="在指定设备上创建单个群聊，例如 --create 测试群001")
         parser.add_argument("--batch", type=int, default=None, help="在指定设备上批量创建递增群聊，例如 --batch 5")
-        parser.add_argument("--prefix", type=str, default="测试群", help="批量群名称前缀，例如 --prefix 测试群")
-        parser.add_argument("--start", type=int, default=None, help="批量操作起始序号 (如 --start 10)")
+        parser.add_argument("--prefix", type=str, default=GROUP_PREFIX, help="批量群名称前缀，例如 --prefix 正式群")
+        parser.add_argument("--start", type=int, default=None, help="批量操作起始序号 (如 --start 1)")
         parser.add_argument("--end", type=int, default=None, help="批量操作截止序号 (如 --end 50)")
         parser.add_argument("--device", type=str, default=None, help="指定操作的 ADB 设备 ID (如 emulator-5562)")
+        parser.add_argument("--profile", type=str, default=None, help="指定使用的好友池预设名称")
         parser.add_argument("--batch-init", action="store_true", help="一键为集群 5 台设备批量创建并对齐专属测试群")
         parser.add_argument("--transfer-owner", type=str, default=None, help="批量转让匹配前缀的群主给指定用户 (手机号/昵称/open_id)")
         parser.add_argument("--quit-groups", action="store_true", help="批量退出匹配前缀的所有群聊")
@@ -1483,25 +1751,27 @@ if __name__ == "__main__":
         parser.add_argument("--disband", type=str, default=None, help="解散单个指定群聊 (群名或群ID)")
         args = parser.parse_args()
 
+        chosen_profile = args.profile or active_friend_profile
+        target_device = args.device or default_device_id
+
         if args.list:
             ClusterTopologyManager.inspect_cluster()
         elif args.batch_init:
-            ClusterTopologyManager.batch_init_groups(target_friend_prefixes=TARGET_FRIEND_PREFIXES, max_select_count=MAX_INVITE_COUNT)
+            ClusterTopologyManager.batch_init_groups(
+                max_select_count=MAX_INVITE_COUNT,
+                friend_profile=chosen_profile,
+            )
         elif args.transfer:
-            target_device = args.device or DEFAULT_CLUSTER_DEVICES[TARGET_DEVICE_INDEX].device_id
             client = IMGroupClient(device_id=target_device)
             recipient = args.to or TARGET_TRANSFER_USER
             client.transfer_owner(group_name_or_id=args.transfer, target_friend_or_openid=recipient)
         elif args.quit:
-            target_device = args.device or DEFAULT_CLUSTER_DEVICES[TARGET_DEVICE_INDEX].device_id
             client = IMGroupClient(device_id=target_device)
             client.quit_group(group_name_or_id=args.quit)
         elif args.disband:
-            target_device = args.device or DEFAULT_CLUSTER_DEVICES[TARGET_DEVICE_INDEX].device_id
             client = IMGroupClient(device_id=target_device)
             client.disband_group(group_name_or_id=args.disband)
         elif args.transfer_owner:
-            target_device = args.device or DEFAULT_CLUSTER_DEVICES[TARGET_DEVICE_INDEX].device_id
             client = IMGroupClient(device_id=target_device)
             client.batch_transfer_owners(
                 prefix=args.prefix,
@@ -1510,7 +1780,6 @@ if __name__ == "__main__":
                 end_index=args.end,
             )
         elif args.quit_groups:
-            target_device = args.device or DEFAULT_CLUSTER_DEVICES[TARGET_DEVICE_INDEX].device_id
             client = IMGroupClient(device_id=target_device)
             client.batch_quit_groups(
                 prefix=args.prefix,
@@ -1518,7 +1787,6 @@ if __name__ == "__main__":
                 end_index=args.end,
             )
         elif args.disband_groups:
-            target_device = args.device or DEFAULT_CLUSTER_DEVICES[TARGET_DEVICE_INDEX].device_id
             client = IMGroupClient(device_id=target_device)
             client.batch_disband_groups(
                 prefix=args.prefix,
@@ -1526,53 +1794,57 @@ if __name__ == "__main__":
                 end_index=args.end,
             )
         elif args.batch:
-            target_device = args.device or DEFAULT_CLUSTER_DEVICES[TARGET_DEVICE_INDEX].device_id
             client = IMGroupClient(device_id=target_device)
             client.batch_create_groups(
                 count=args.batch,
                 prefix=args.prefix,
-                start_index=args.start or 1,
+                start_index=args.start if args.start is not None else 1,
                 digits=DIGITS_PADDING,
-                target_friend_prefixes=TARGET_FRIEND_PREFIXES,
                 max_select_count=MAX_INVITE_COUNT,
+                friend_profile=chosen_profile,
             )
         elif args.create:
-            target_device = args.device or DEFAULT_CLUSTER_DEVICES[TARGET_DEVICE_INDEX].device_id
             client = IMGroupClient(device_id=target_device)
             client.create_group(
                 group_name=args.create,
-                target_friend_prefixes=TARGET_FRIEND_PREFIXES,
                 max_select_count=MAX_INVITE_COUNT,
+                friend_profile=chosen_profile,
             )
     else:
         # 无需任何命令行参数，直接在 IDE 中按 F5 或右键运行！
+        client = IMGroupClient(device_id=default_device_id)
+        cur_user = client.get_current_user()
+        account_label = f"{cur_user['name']} ({cur_user['cust_id']})" if cur_user else "未识别登录账号"
+
         if MODE == "batch_cluster":
             print("🌟 [当前模式]: 集群模式 (为 5 台设备批量创建专属测试群)...")
-            ClusterTopologyManager.batch_init_groups(target_friend_prefixes=TARGET_FRIEND_PREFIXES, max_select_count=MAX_INVITE_COUNT)
+            ClusterTopologyManager.batch_init_groups(
+                max_select_count=MAX_INVITE_COUNT,
+                friend_profile=active_friend_profile,
+            )
         elif MODE == "batch_single":
-            cfg = DEFAULT_CLUSTER_DEVICES[TARGET_DEVICE_INDEX]
-            print(f"📱 [当前模式]: 单机批量递增建群 (设备 {TARGET_DEVICE_INDEX + 1}: 【{cfg.device_id}】 -> 账号: 【{cfg.sender_name}】)")
-            client = IMGroupClient(device_id=cfg.device_id)
+            print(f"📱 [当前模式]: 单机批量递增建群 (设备: 【{default_device_id}】 -> 当前登录: 【{account_label}】)")
             batch_grps = client.batch_create_groups(
                 count=BATCH_COUNT,
                 prefix=GROUP_PREFIX,
                 start_index=START_INDEX,
                 digits=DIGITS_PADDING,
-                target_friend_prefixes=TARGET_FRIEND_PREFIXES,
                 max_select_count=MAX_INVITE_COUNT,
+                friend_profile=active_friend_profile,
             )
             if batch_grps:
                 print("\n==================================================")
-                print("📋 【可直接复制到 im_client.py 的群聊拓扑配置列表】:")
+                print("📋 【可直接复制到 config/im_targets.yaml 的群聊拓扑配置】:")
                 for bg in batch_grps:
-                    print(f'SessionTarget(name="{bg.name}", chat_type=ChatType.GROUP, to_cust_id="0", chat_id="{bg.chat_id}", is_top=True),')
+                    print(
+                        f'  - {{ name: "{bg.name}", chat_type: "GROUP", '
+                        f'to_cust_id: "0", chat_id: "{bg.chat_id}", is_top: false }}'
+                    )
                 print("==================================================")
         elif MODE == "batch_transfer":
-            cfg = DEFAULT_CLUSTER_DEVICES[TARGET_DEVICE_INDEX]
-            range_info = f" (切片范围: {START_INDEX:03d} ~ {END_INDEX:03d})" if START_INDEX or END_INDEX else ""
-            print(f"📱 [当前模式]: 批量转让群主 (设备 {TARGET_DEVICE_INDEX + 1}: 【{cfg.device_id}】 -> 账号: 【{cfg.sender_name}】)")
+            range_info = f" (切片范围: {START_INDEX} ~ {END_INDEX})" if START_INDEX or END_INDEX else ""
+            print(f"📱 [当前模式]: 批量转让群主 (设备: 【{default_device_id}】 -> 当前登录: 【{account_label}】)")
             print(f"🎯 正在将匹配前缀 【{GROUP_PREFIX}】{range_info} 的群聊批量转让给: 【{TARGET_TRANSFER_USER}】...")
-            client = IMGroupClient(device_id=cfg.device_id)
             client.batch_transfer_owners(
                 prefix=GROUP_PREFIX,
                 target_friend_or_openid=TARGET_TRANSFER_USER,
@@ -1580,58 +1852,50 @@ if __name__ == "__main__":
                 end_index=END_INDEX,
             )
         elif MODE == "batch_quit":
-            cfg = DEFAULT_CLUSTER_DEVICES[TARGET_DEVICE_INDEX]
-            range_info = f" (切片范围: {START_INDEX:03d} ~ {END_INDEX:03d})" if START_INDEX or END_INDEX else ""
-            print(f"📱 [当前模式]: 批量退出群聊 (设备 {TARGET_DEVICE_INDEX + 1}: 【{cfg.device_id}】 -> 账号: 【{cfg.sender_name}】)")
+            range_info = f" (切片范围: {START_INDEX} ~ {END_INDEX})" if START_INDEX or END_INDEX else ""
+            print(f"📱 [当前模式]: 批量退出群聊 (设备: 【{default_device_id}】 -> 当前登录: 【{account_label}】)")
             print(f"🚪 正在批量退出匹配前缀 【{GROUP_PREFIX}】{range_info} 的群聊...")
-            client = IMGroupClient(device_id=cfg.device_id)
             client.batch_quit_groups(
                 prefix=GROUP_PREFIX,
                 start_index=START_INDEX,
                 end_index=END_INDEX,
             )
         elif MODE == "batch_disband":
-            cfg = DEFAULT_CLUSTER_DEVICES[TARGET_DEVICE_INDEX]
-            range_info = f" (切片范围: {START_INDEX:03d} ~ {END_INDEX:03d})" if START_INDEX or END_INDEX else ""
-            print(f"📱 [当前模式]: 批量解散群聊 (设备 {TARGET_DEVICE_INDEX + 1}: 【{cfg.device_id}】 -> 账号: 【{cfg.sender_name}】)")
+            range_info = f" (切片范围: {START_INDEX} ~ {END_INDEX})" if START_INDEX or END_INDEX else ""
+            print(f"📱 [当前模式]: 批量解散群聊 (设备: 【{default_device_id}】 -> 当前登录: 【{account_label}】)")
             print(f"💥 正在批量解散匹配前缀 【{GROUP_PREFIX}】{range_info} 的群聊 (测试数据一键彻底销毁)...")
-            client = IMGroupClient(device_id=cfg.device_id)
             client.batch_disband_groups(
                 prefix=GROUP_PREFIX,
                 start_index=START_INDEX,
                 end_index=END_INDEX,
             )
         elif MODE in ("single_transfer", "transfer"):
-            cfg = DEFAULT_CLUSTER_DEVICES[TARGET_DEVICE_INDEX]
-            print(f"📱 [当前模式]: 单群转让群主 (设备 {TARGET_DEVICE_INDEX + 1}: 【{cfg.device_id}】 -> 账号: 【{cfg.sender_name}】)")
+            print(f"📱 [当前模式]: 单群转让群主 (设备: 【{default_device_id}】 -> 当前登录: 【{account_label}】)")
             print(f"👑 正在将群聊 【{TARGET_GROUP_NAME}】 转让给: 【{TARGET_TRANSFER_USER}】...")
-            client = IMGroupClient(device_id=cfg.device_id)
             client.transfer_owner(group_name_or_id=TARGET_GROUP_NAME, target_friend_or_openid=TARGET_TRANSFER_USER)
         elif MODE in ("single_quit", "quit"):
-            cfg = DEFAULT_CLUSTER_DEVICES[TARGET_DEVICE_INDEX]
-            print(f"📱 [当前模式]: 单群退出群聊 (设备 {TARGET_DEVICE_INDEX + 1}: 【{cfg.device_id}】 -> 账号: 【{cfg.sender_name}】)")
+            print(f"📱 [当前模式]: 单群退出群聊 (设备: 【{default_device_id}】 -> 当前登录: 【{account_label}】)")
             print(f"🚪 正在退出群聊: 【{TARGET_GROUP_NAME}】...")
-            client = IMGroupClient(device_id=cfg.device_id)
             client.quit_group(group_name_or_id=TARGET_GROUP_NAME)
         elif MODE in ("single_disband", "disband"):
-            cfg = DEFAULT_CLUSTER_DEVICES[TARGET_DEVICE_INDEX]
-            print(f"📱 [当前模式]: 单群解散群聊 (设备 {TARGET_DEVICE_INDEX + 1}: 【{cfg.device_id}】 -> 账号: 【{cfg.sender_name}】)")
+            print(f"📱 [当前模式]: 单群解散群聊 (设备: 【{default_device_id}】 -> 当前登录: 【{account_label}】)")
             print(f"💥 正在解散群聊: 【{TARGET_GROUP_NAME}】...")
-            client = IMGroupClient(device_id=cfg.device_id)
             client.disband_group(group_name_or_id=TARGET_GROUP_NAME)
         else:
-            cfg = DEFAULT_CLUSTER_DEVICES[TARGET_DEVICE_INDEX]
-            print(f"📱 [当前模式]: 单群创建模式 (设备 {TARGET_DEVICE_INDEX + 1}: 【{cfg.device_id}】 -> 账号: 【{cfg.sender_name}】)")
-            print(f"🎯 正在创建群聊: 【{TARGET_GROUP_NAME}】 (目标匹配: {TARGET_FRIEND_PREFIXES} | 最多邀请: {MAX_INVITE_COUNT} 位)...")
-            client = IMGroupClient(device_id=cfg.device_id)
+            print(f"📱 [当前模式]: 单群创建模式 (设备: 【{default_device_id}】 -> 当前登录: 【{account_label}】)")
+            print(f"🎯 正在创建群聊: 【{TARGET_GROUP_NAME}】 (激活好友池: 【{active_friend_profile}】 | 上限: {MAX_INVITE_COUNT} 位)...")
             new_grp = client.create_group(
                 group_name=TARGET_GROUP_NAME,
-                target_friend_prefixes=TARGET_FRIEND_PREFIXES,
                 max_select_count=MAX_INVITE_COUNT,
+                friend_profile=active_friend_profile,
             )
             if new_grp:
                 print("\n==================================================")
-                print("🎉 建群成功！可直接将以下配置粘贴至 im_client.py:")
-                print(f"SessionTarget(name=\"{new_grp.name}\", chat_type=ChatType.GROUP, to_cust_id=\"0\", chat_id=\"{new_grp.chat_id}\", is_top=True)")
+                print("🎉 建群成功！可直接将以下配置粘贴至 config/im_targets.yaml:")
+                print(
+                    f'  - {{ name: "{new_grp.name}", chat_type: "GROUP", '
+                    f'to_cust_id: "0", chat_id: "{new_grp.chat_id}", is_top: false }}'
+                )
                 print("==================================================")
+
 

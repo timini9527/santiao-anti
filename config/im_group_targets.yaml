@@ -1,0 +1,261 @@
+# ==============================================================================
+# 🎯 三条 IM 群组拓扑治理与建群好友池配置 (config/im_group_targets.yaml)
+# ==============================================================================
+# 核心定位：
+#   1. 遵循单一职责原则，将「建群造数与群拓扑治理」同「消息压测消费 (im_targets.yaml)」彻底解耦。
+#   2. 消除 tools/im_group_client.py 中的硬编码好友列表与运行参数，实现纯配置驱动建群。
+#   3. 运行时自动与设备当前登录账号的本地 SQLite friend 表实时校验对齐（自动剔除自身与官方号）。
+# ==============================================================================
+
+# 当前全局激活的建群好友池预设 (可选: a0110_selected_friends / prefix_rule_friends)
+active_profile: "a0110_selected_friends"
+
+# ------------------------------------------------------------------------------
+# 默认建群与群治理任务参数 (直接运行 tools/im_group_client.py 时生效，CLI 传参可覆盖)
+# ------------------------------------------------------------------------------
+group_task:
+  # 运行模式:
+  #   batch_single   : 单设备批量创建递增群聊 (如 正式群001 ~ 正式群010)
+  #   single         : 单设备仅创建单个指定群聊 (target_group_name)
+  #   batch_cluster  : 5 台模拟器集群批量创建专属群
+  #   batch_transfer : 批量转让匹配前缀的群聊群主给 transfer_owner_to
+  #   batch_quit     : 批量退出匹配前缀的群聊
+  #   batch_disband  : 批量解散匹配前缀的群聊
+  #   single_transfer / single_quit / single_disband : 单群治理操作
+  mode: "batch_single"
+  device_id: "emulator-5562"         # 指定执行建群的设备 ID (留空则按 target_device_index 选择)
+  target_device_index: 0             # 集群设备索引 (0 -> emulator-5562)
+  group_prefix: "多会话群"              # 批量群名称前缀/后缀关键字
+  batch_count: 201                    # 批量创建群数量
+  start_index: 1                     # 批量起始序号 (设为 null 则自动检测本地最大序号顺延)
+  end_index: 201                      # 批量治理截止序号
+  digits_padding: 3                  # 序号补零位数 (3 -> 001; 1 -> 1)
+  target_group_name: "正式群001"      # 单群操作时的目标群名称
+  transfer_owner_to: "A0110"         # 转让群主时的接收方标识 (手机号/昵称/备注/open_id)
+  invite_batch_size: 49              # 建群及追加邀请单批人数上限 (触发后端限流时自动折半重试)
+
+# ------------------------------------------------------------------------------
+# 建群目标好友池预设矩阵
+# ------------------------------------------------------------------------------
+friend_profiles:
+  # 预设 1：当前登录账号 A0110 (19200000110) 通讯录拉群好友池 (截图 35 人 + 补充其余有效好友 165 人 = 200 人)
+  # 说明：图中「系统通知 (cust_id=10000)」为官方系统号，不支持拉入普通群聊，已自动排除；建群含群主共 201 人。
+  a0110_selected_friends:
+    description: "账号 A0110 (19200000110) 200+ 人大群好友池 (指定 35 人 + 补充 165 人)"
+    match_mode: "exact"              # exact: 按下方 friends 明细精准匹配; prefix: 按 prefixes 前缀匹配; hybrid: 混合匹配
+    max_invite_count: 200            # 单群最大拉人上限 (设为 200，保证 200 位受邀好友全量入群)
+    friends:
+      # --- C 组 (测试系列) ---
+      - { name: "测试050", cust_id: "1500692599256551424", open_id: "SOorz7P7qqKAtlnrv7C9HCJnUtGiapId" }
+      - { name: "测试051", cust_id: "1500692599583707136", open_id: "SOorz7P7qqLyTO52cHNBj6R15VpHDtWL" }
+      - { name: "测试052", cust_id: "1500692599990554624", open_id: "SOorz7P7qqIFd-BbwaqJgjfclrNXdkeB" }
+      - { name: "测试053", cust_id: "1500692600422567936", open_id: "zcamCiqn1iUZfb320IYg5_3OdCiM6uWk" }
+      - { name: "测试054", cust_id: "1500692600787472384", open_id: "zcamCiqn1iU5medwAyVt245ovsNZB1uh" }
+      - { name: "测试130", cust_id: "1500692627358388224", open_id: "zcamCiqn1iUyJNoG_vjgjTK7exgGdf0n" }
+      - { name: "测试131", cust_id: "1500692627706515456", open_id: "zcamCiqn1iVlaSExP-PaMxcfkM5yQQAC" }
+      - { name: "测试132", cust_id: "1500692628088197120", open_id: "zcamCiqn1iUy6dplbJfKDClzSMRISrZ8" }
+      - { name: "测试133", cust_id: "1500692628398575616", open_id: "zcamCiqn1iWl5_eebtT6rIIIf_UZXkG_" }
+      - { name: "测试134", cust_id: "1500692628729925632", open_id: "zcamCiqn1iX9oneyIJ6MjQaeNqYuAZrP" }
+      - { name: "测试135", cust_id: "1500692629031915520", open_id: "zcamCiqn1iWineLt9-zwZJxXnkkTQW-o" }
+
+      # --- G / K / L / M / U / W / X / Y 字母组 ---
+      - { name: "咕咕嘎嘎", cust_id: "1543840402862149632", open_id: "bdSx5-sGo661fqDkS1vL2taOvRAUF3OG" }
+      - { name: "客服1号", cust_id: "1500692776558170112", open_id: "kti6ORZ7oMDTM9kNul0fH9iw5yxJnviA" }
+      - { name: "客服2号", cust_id: "1500692776847577088", open_id: "kti6ORZ7oMA29xSOtVsE1vC2QqPwZAUV" }
+      - { name: "客服4", remark: "客服4鱼鱼鱼不东侧吃肉肉如厕吃如果同感同感鱼鱼鱼吕玉凤电池充", cust_id: "1500692777761935360", open_id: "kti6ORZ7oMC3SYXmPb_uaC1WVLAWByeh" }
+      - { name: "l零零🍇", cust_id: "1500692503462842368", open_id: "SOorz7P7qqKYTFt8QK0olNcU-t5uw0T1" }
+      - { name: "木木木木木木木木木木", cust_id: "1500692661818789888", open_id: "zcamCiqn1iUSndtqDBkJyocjWjZJ613B" }
+      - { name: "UK  008-🐸", cust_id: "1500692505622908928", open_id: "SOorz7P7qqJG76fuTkxE_zD1DD6eIX0F" }
+      - { name: "哇咔咔6127", cust_id: "1500692652415160320", open_id: "zcamCiqn1iWEqHp7n_JXOH0hZb4n_m-w" }
+      - { name: "嘻嘻哈哈", cust_id: "1500692723072405504", open_id: "kti6ORZ7oMC3BcbU3jL8Ri8SGijGadxJ" }
+      - { name: "摇一摇037", cust_id: "1500692590083608576", open_id: "SOorz7P7qqKNh37_2CGFyYj7aBk5CtU_" }
+
+      # --- # 数字组 ---
+      - { name: "001野心勃勃", cust_id: "1500690910172581888", open_id: "G06256pusXm1GLrzI0zO6ByIMzeOOBup" }
+      - { name: "003超多好友", cust_id: "1500692486584963072", open_id: "almKZeK5rCCN5K_0Ue_2mnp_8_iWNq_T" }
+      - { name: "005", cust_id: "1500692503076966400", open_id: "SOorz7P7qqIBj5cUwrcah-IbSu_KqdWk" }
+      - { name: "021哈哈哈哈", cust_id: "1500692562866769920", open_id: "SOorz7P7qqIV_nmrQDg0ujmLwLab_jx7" }
+      - { name: "0220", cust_id: "1500692659033772032", open_id: "zcamCiqn1iW2qcPHB8PMTe5u1G5f_MLd" }
+      - { name: "028", cust_id: "1500692573239283712", open_id: "SOorz7P7qqKvKz_25AgwtlR78sCRlWXO" }
+      - { name: "123456", cust_id: "1500692647595905024", open_id: "zcamCiqn1iUvCy2tZomcrEjbdDvYtOc7" }
+      - { name: "19200000002", cust_id: "1500692371325489152", open_id: "AwUgGNClHVMne37rHSdyryCuaLBZlCIA" }
+      - { name: "19200000004", cust_id: "1500692492528291840", open_id: "almKZeK5rCBPiDDMkPxv0T51yItXghJH" }
+      - { name: "19200000007", cust_id: "1500692505270587392", open_id: "SOorz7P7qqLjxRwzNElgx3tmxZZq5SSF" }
+      - { name: "19200000009", cust_id: "1500692506080088064", open_id: "SOorz7P7qqL-9GVy6dXPAUnoGz0-bZgz" }
+      - { name: "19200000016", cust_id: "1500692511578820608", open_id: "SOorz7P7qqIrIBCZHLKLTDIfK0F4nrcO" }
+      - { name: "19200000017", cust_id: "1500692517010444288", open_id: "SOorz7P7qqInDMx23Qj14U4ZUnQblSjd" }
+      - { name: "19200000018", cust_id: "1500692517383737344", open_id: "SOorz7P7qqLo3n2imZh77sl99rFvZ5aN" }
+      - { name: "19200000019", cust_id: "1500692522773417984", open_id: "SOorz7P7qqKUP1FCe6M9qHo5n18KJ9_l" }
+      - { name: "19200000020", cust_id: "1500692533548584960", open_id: "SOorz7P7qqIOFXypgCWgpge71YoQxJk2" }
+      - { name: "19200000022", cust_id: "1500692564645154816", open_id: "SOorz7P7qqKRO2HTwrWhJIe1GJnTBbEH" }
+
+      # --- 补充剩余有效好友 (165 人，与上方 35 人合计 200 位好友) ---
+      - { name: "19200000012", cust_id: "1500692508542144512", open_id: "SOorz7P7qqKyj0eMQD7GCh6oQv67ThL0" }
+      - { name: "19200000013", cust_id: "1500692508873494528", open_id: "SOorz7P7qqJ1e2SIuGK3iS6RALJBVciU" }
+      - { name: "19200000014", cust_id: "1500692509250981888", open_id: "SOorz7P7qqLDkxEsx0NkzZAHBiLD0yok" }
+      - { name: "19200000015", cust_id: "1500692511226499072", open_id: "SOorz7P7qqJwzdT2nD51Dxx6x199PeVL" }
+      - { name: "19200000023", cust_id: "1500692566687780864", open_id: "SOorz7P7qqJSlVoHYJSs4U7d9c1wf_Fl" }
+      - { name: "19200000024", cust_id: "1500692567161737216", open_id: "SOorz7P7qqL0K4TKF1TTo9BqjiYOXvNm" }
+      - { name: "19200000026", cust_id: "1500692567979626496", open_id: "SOorz7P7qqIAni37Frgo1Rg-hnc1lnE2" }
+      - { name: "19200000027", cust_id: "1500692571267960832", open_id: "SOorz7P7qqKKd-1f33F5iUM2m430s4QO" }
+      - { name: "19200000029", cust_id: "1500692573671297024", open_id: "SOorz7P7qqKRMhmjtrw3eF0XD-33NAd8" }
+      - { name: "19200000030", cust_id: "1500692574015229952", open_id: "SOorz7P7qqKNC13dd6nk5qp2e-jnkAgx" }
+      - { name: "19200000031", cust_id: "1500692575613259776", open_id: "SOorz7P7qqIkZFlxu-2oDyVLe1LqXAc-" }
+      - { name: "19200000032", cust_id: "1500692581153935360", open_id: "SOorz7P7qqIZ5RmQbjKcSAm4MymV2Wke" }
+      - { name: "19200000033", cust_id: "1500692584337412096", open_id: "SOorz7P7qqIQmgKySz04BBWB9DVAW8_O" }
+      - { name: "19200000034", cust_id: "1500692586086436864", open_id: "SOorz7P7qqIVc9EONKOCszB207YnZPUL" }
+      - { name: "19200000035", cust_id: "1500692589295079424", open_id: "SOorz7P7qqLfryO2FW2Ugp1U937X5Vw2" }
+      - { name: "19200000036", cust_id: "1500692589722898432", open_id: "SOorz7P7qqJaSuELkTZ0kqwpw_gBLCdv" }
+      - { name: "19200000038", cust_id: "1500692590477873152", open_id: "SOorz7P7qqJbtlt38cFOup99x3DB00da" }
+      - { name: "19200000039", cust_id: "1500692590842777600", open_id: "SOorz7P7qqJirJTDvt3FT9geuUsgLlFM" }
+      - { name: "19200000040", cust_id: "1500692591161544704", open_id: "SOorz7P7qqI_GOzEp0Tfio5RHMytRh0O" }
+      - { name: "19200000041", cust_id: "1500692592730214400", open_id: "SOorz7P7qqJKh-NFPFRZkobDKyVXPxQu" }
+      - { name: "19200000042", cust_id: "1500692593116090368", open_id: "SOorz7P7qqK3XwItm20VS1opEDioMetO" }
+      - { name: "19200000043", cust_id: "1500692593569075200", open_id: "SOorz7P7qqL8OPXbS8K7GLVMT72dKOs7" }
+      - { name: "19200000044", cust_id: "1500692595024498688", open_id: "SOorz7P7qqJ7MiMd23Npnxgg2FI3sZ5G" }
+      - { name: "19200000045", cust_id: "1500692595683004416", open_id: "SOorz7P7qqLxJFTzoednScvwDW7YqlcX" }
+      - { name: "19200000046", cust_id: "1500692596073074688", open_id: "SOorz7P7qqKaNJy5chkWTLOWK3glJR-t" }
+      - { name: "19200000047", cust_id: "1500692596467339264", open_id: "SOorz7P7qqJN7T6CMh-6Cn7fh7nYOF6n" }
+      - { name: "19200000048", cust_id: "1500692596920324096", open_id: "SOorz7P7qqJSuN8Wdh_5o1E4YoiHqFSj" }
+      - { name: "19200000049", cust_id: "1500692598895841280", open_id: "SOorz7P7qqJ7M-LYWXD9wiw_uHG_77J8" }
+      - { name: "19200000055", cust_id: "1500692601177542656", open_id: "zcamCiqn1iUY3_rL6RKWqJwDfbBW333T" }
+      - { name: "19200000056", cust_id: "1500692601475338240", open_id: "zcamCiqn1iXbfDffeBWuJKXy-jpcxv9B" }
+      - { name: "19200000057", cust_id: "1500692601961877504", open_id: "zcamCiqn1iVk27_25-nuBwcVmCjcQfKq" }
+      - { name: "19200000058", cust_id: "1500692602251284480", open_id: "zcamCiqn1iWQjkUavcCEGG5mkiMdod4P" }
+      - { name: "19200000059", cust_id: "1500692602662326272", open_id: "zcamCiqn1iWSYGkVR_0WQGnj1vVng_sj" }
+      - { name: "19200000060", cust_id: "1500692602960121856", open_id: "zcamCiqn1iVay55-btyoLVOZcwmxafJU" }
+      - { name: "19200000061", cust_id: "1500692603274694656", open_id: "zcamCiqn1iWQzF2ojuWLB0czCSBFgcT0" }
+      - { name: "19200000062", cust_id: "1500692603656376320", open_id: "zcamCiqn1iUqrA7v-dmxjhvUWdhGoCX4" }
+      - { name: "19200000063", cust_id: "1500692603970949120", open_id: "zcamCiqn1iVACpQBJOqxEJ-P2hLhcX6T" }
+      - { name: "19200000064", cust_id: "1500692604289716224", open_id: "zcamCiqn1iVn81B7znxGzEEAK5FU98xO" }
+      - { name: "19200000065", cust_id: "1500692604604289024", open_id: "zcamCiqn1iXhHndt2TAeu4tc7vsqdnAv" }
+      - { name: "19200000066", cust_id: "1500692604923056128", open_id: "zcamCiqn1iW28Yz0vOC1qP4ldQHelGig" }
+      - { name: "19200000067", cust_id: "1500692605225046016", open_id: "zcamCiqn1iX3q-BYhkPEJToZdlxvkEqX" }
+      - { name: "19200000068", cust_id: "1500692605665447936", open_id: "zcamCiqn1iX8hmECt9SbUZG0ejeh2R4h" }
+      - { name: "19200000069", cust_id: "1500692605967437824", open_id: "zcamCiqn1iW5NYXN25XWWrhMGrLrCMzJ" }
+      - { name: "19200000070", cust_id: "1500692606470754304", open_id: "zcamCiqn1iXFwEYNoP-UeI9eiRmbP5or" }
+      - { name: "19200000071", cust_id: "1500692606781132800", open_id: "zcamCiqn1iUEwNKrDR1lrILDCgAQWrR2" }
+      - { name: "19200000072", cust_id: "1500692607167008768", open_id: "zcamCiqn1iV6tifqq53pDiAHSOvWXb3S" }
+      - { name: "19200000073", cust_id: "1500692607468998656", open_id: "zcamCiqn1iW6IxoQ1RIb8AezaoCBJkzk" }
+      - { name: "19200000074", cust_id: "1500692607812931584", open_id: "zcamCiqn1iXWMBySQ2kg9GntaFQQIknx" }
+      - { name: "19200000075", cust_id: "1500692608102338560", open_id: "zcamCiqn1iUP2JnMNyj0bkK7igouCRU4" }
+      - { name: "19200000076", cust_id: "1500692608395939840", open_id: "zcamCiqn1iUrgHTYXjypx59fl7a85neh" }
+      - { name: "19200000077", cust_id: "1500692608685346816", open_id: "zcamCiqn1iW5oXHQbCsQrj8qSjlSW3QH" }
+      - { name: "19200000078", cust_id: "1500692608978948096", open_id: "zcamCiqn1iWlY_jfwHqYdjlAhC9d08Kc" }
+      - { name: "19200000079", cust_id: "1500692609293520896", open_id: "zcamCiqn1iUokirbdhVmzpAegRrqVtn6" }
+      - { name: "19200000080", cust_id: "1500692609633259520", open_id: "zcamCiqn1iW9ofBq4ZYfPQLaeEZ_Y0j5" }
+      - { name: "19200000081", cust_id: "1500692609922666496", open_id: "zcamCiqn1iWt1MaEoOJS2UkEzVL5Kw7w" }
+      - { name: "19200000082", cust_id: "1500692610224656384", open_id: "zcamCiqn1iXTxG5oxD6j5eVmc1iyzUGl" }
+      - { name: "19200000083", cust_id: "1500692610635698176", open_id: "zcamCiqn1iXgd9l0e5JbAUxb9Js1kdEG" }
+      - { name: "19200000084", cust_id: "1500692610967048192", open_id: "zcamCiqn1iVdHgyDaifS-UNp58FzEJt9" }
+      - { name: "19200000085", cust_id: "1500692611403255808", open_id: "zcamCiqn1iXwFy5CLSsw-sw1oAXpScwt" }
+      - { name: "19200000086", cust_id: "1500692611709440000", open_id: "zcamCiqn1iXcblThT1iArSjjeJ1NHk2u" }
+      - { name: "19200000087", cust_id: "1500692612019818496", open_id: "zcamCiqn1iWPYJ_AsjE4IwMDE7KGIMK3" }
+      - { name: "19200000088", cust_id: "1500692612552495104", open_id: "zcamCiqn1iW9hRNnJjk7iNkTq3rrft4F" }
+      - { name: "19200000089", cust_id: "1500692612837707776", open_id: "zcamCiqn1iWLFdEjdxKwNjeoQQ1FpAkB" }
+      - { name: "19200000090", cust_id: "1500692613164863488", open_id: "zcamCiqn1iW794L7VK3eQfRrQreON7_8" }
+      - { name: "19200000091", cust_id: "1500692613521379328", open_id: "zcamCiqn1iU0UEv8O1LyfR0_sB6azg1N" }
+      - { name: "19200000092", cust_id: "1500692613814980608", open_id: "zcamCiqn1iVUiA8p-1mmjgh4TvFKzfAL" }
+      - { name: "19200000093", cust_id: "1500692614112776192", open_id: "zcamCiqn1iUUC-B_s5tlVs35q6lKMvsv" }
+      - { name: "19200000094", cust_id: "1500692614410571776", open_id: "zcamCiqn1iViD_-6LdWyUjX23J-E2uHs" }
+      - { name: "19200000095", cust_id: "1500692615362678784", open_id: "zcamCiqn1iVWS_cW5smJmps8NE1GhcT4" }
+      - { name: "19200000096", cust_id: "1500692615673057280", open_id: "zcamCiqn1iXFc1oomyEBsqNwRezka-rh" }
+      - { name: "19200000097", cust_id: "1500692616042156032", open_id: "zcamCiqn1iX_45ndSvucoHkbvWaKzMze" }
+      - { name: "19200000098", cust_id: "1500692616398671872", open_id: "zcamCiqn1iXw7lxy2lHs0Tk008QwLe5q" }
+      - { name: "19200000099", cust_id: "1500692616700661760", open_id: "zcamCiqn1iWZUKnx_1kiUfthVC7T7E0r" }
+      - { name: "19200000100", cust_id: "1500692616994263040", open_id: "zcamCiqn1iUa6I5V2HZ2R98rRkMIm3rx" }
+      - { name: "19200000101", cust_id: "1500692617296252928", open_id: "zcamCiqn1iVadOw-D6g8MKn-3I9a6JdV" }
+      - { name: "19200000102", cust_id: "1500692617673740288", open_id: "zcamCiqn1iVyoTBCyE-dCZH2GkRWmwfF" }
+      - { name: "19200000103", cust_id: "1500692618000896000", open_id: "zcamCiqn1iVyLYehTx3G-GR5uErgld09" }
+      - { name: "19200000104", cust_id: "1500692618302885888", open_id: "zcamCiqn1iVP4UOUIYKgQCJQsg2_ohQO" }
+      - { name: "19200000105", cust_id: "1500692618642624512", open_id: "zcamCiqn1iVVRRRh6x8z3qnPkB1Oi6KQ" }
+      - { name: "19200000106", cust_id: "1500692619015917568", open_id: "zcamCiqn1iXfTWWMLqhaMk4yIs4ZuU5A" }
+      - { name: "19200000107", cust_id: "1500692619317907456", open_id: "zcamCiqn1iVsnV3NJseaDBpHrXE8P5Vg" }
+      - { name: "19200000108", cust_id: "1500692619674423296", open_id: "zcamCiqn1iUdr2CCZe5Ti1NsgL_ZeaF1" }
+      - { name: "19200000109", cust_id: "1500692620030939136", open_id: "zcamCiqn1iVOgDtoOriTAIlM6bHEcGoU" }
+      - { name: "19200000117", cust_id: "1500692622811762688", open_id: "zcamCiqn1iXWDJkd_kDf6X5D97J7wJs7" }
+      - { name: "19200000118", cust_id: "1500692623117946880", open_id: "zcamCiqn1iUdZFqmfzyd0ANgFDhrI49J" }
+      - { name: "19200000119", cust_id: "1500692623415742464", open_id: "zcamCiqn1iXBYEBI-01eBgQbeuBRvDpP" }
+      - { name: "19200000120", cust_id: "1500692623797424128", open_id: "zcamCiqn1iUDfwifpk8IEpGLrfE1D4BG" }
+      - { name: "19200000121", cust_id: "1500692624153939968", open_id: "zcamCiqn1iVD426E5o37YJ-V8LwfdwV7" }
+      - { name: "19200000122", cust_id: "1500692624468512768", open_id: "zcamCiqn1iU8xLYm0adt_HSiFgRaBC4h" }
+      - { name: "19200000123", cust_id: "1500692624783085568", open_id: "zcamCiqn1iXgHg-WYAeAERxFRjJgIckU" }
+      - { name: "19200000124", cust_id: "1500692625097658368", open_id: "zcamCiqn1iXx9nDeEzQpIvYafKtyKX1X" }
+      - { name: "19200000125", cust_id: "1500692625403842560", open_id: "zcamCiqn1iV7tQivv1YgxnOhyHh7Odnv" }
+      - { name: "19200000126", cust_id: "1500692625710026752", open_id: "zcamCiqn1iV7LMvt4zpKbaX6WT84mlLC" }
+      - { name: "19200000127", cust_id: "1500692626041376768", open_id: "zcamCiqn1iUIbZJH3vzLLgMi9rxF0ZYF" }
+      - { name: "19200000128", cust_id: "1500692626347560960", open_id: "zcamCiqn1iXlZXHi46CM5avAXnvb7L_F" }
+      - { name: "19200000129", cust_id: "1500692626976706560", open_id: "zcamCiqn1iVdSQ-SlWLCOnpmj4-9UkjN" }
+      - { name: "19200000136", cust_id: "1500692629333905408", open_id: "zcamCiqn1iWHKbrX-O--EfWTnM9Fm-hN" }
+      - { name: "19200000137", cust_id: "1500692629816250368", open_id: "zcamCiqn1iWJ3rZdxc8Gf65tLRdlqAtH" }
+      - { name: "19200000138", cust_id: "1500692630298595328", open_id: "zcamCiqn1iUFvvERrR4dWS8ln64XCIBV" }
+      - { name: "19200000139", cust_id: "1500692630617362432", open_id: "zcamCiqn1iVLBCCSRc_WVLAwX3eecYAg" }
+      - { name: "19200000140", cust_id: "1500692630927740928", open_id: "zcamCiqn1iUHqRurzfnvNIpt3kF5K4eS" }
+      - { name: "19200000141", cust_id: "1500692631233925120", open_id: "zcamCiqn1iXmuqCr2UOc-jTfeW6Jo3Uw" }
+      - { name: "19200000142", cust_id: "1500692631527526400", open_id: "zcamCiqn1iVV-psSKpOQ8lRXRxKbRX6P" }
+      - { name: "19200000143", cust_id: "1500692631833710592", open_id: "zcamCiqn1iXxjRudC8w_HFpArG0A9ruv" }
+      - { name: "19200000144", cust_id: "1500692632144089088", open_id: "zcamCiqn1iXsjK-uf1Swdrkhd4t3myDv" }
+      - { name: "19200000145", cust_id: "1500692632441884672", open_id: "zcamCiqn1iXIcFq6RreD8nuSUnvBxbNI" }
+      - { name: "19200000146", cust_id: "1500692632748068864", open_id: "zcamCiqn1iUXb8bjBnz3HrPH0iG6rhYS" }
+      - { name: "19200000147", cust_id: "1500692633066835968", open_id: "zcamCiqn1iVv6hnTxx0iGdeR80YgsOqa" }
+      - { name: "19200000148", cust_id: "1500692633465294848", open_id: "zcamCiqn1iUsDVNa9r5c_gu2I-Gkvnc3" }
+      - { name: "19200000149", cust_id: "1500692633771479040", open_id: "zcamCiqn1iUmt-lyNU6EN9wNp4PaeUTA" }
+      - { name: "19200000150", cust_id: "1500692634350292992", open_id: "zcamCiqn1iXqajrq6ml4fI-SKtAGD1WT" }
+      - { name: "19200000151", cust_id: "1500692634656477184", open_id: "zcamCiqn1iUh2D52-44sA56lnml_S7rd" }
+      - { name: "19200000152", cust_id: "1500692634979438592", open_id: "zcamCiqn1iWDk735tkUOQ8qM1CVLBzO-" }
+      - { name: "19200000153", cust_id: "1500692635294011392", open_id: "zcamCiqn1iWk020286vAiuztjZqaVuG1" }
+      - { name: "19200000154", cust_id: "1500692635612778496", open_id: "zcamCiqn1iU8kwJUyDwbgVfjCBUAfX2N" }
+      - { name: "19200000155", cust_id: "1500692635914768384", open_id: "zcamCiqn1iV6IfuX30y2FrEIp-9bNMH0" }
+      - { name: "19200000156", cust_id: "1500692636279672832", open_id: "zcamCiqn1iWsB6Ean86MwncslFWJfeHE" }
+      - { name: "19200000157", cust_id: "1500692636590051328", open_id: "zcamCiqn1iUGJ0pSrSt7ldXURmesrEqq" }
+      - { name: "19200000158", cust_id: "1500692636896235520", open_id: "zcamCiqn1iVHy9tzkO8XKtFgj2R4PXtb" }
+      - { name: "19200000159", cust_id: "1500692637185642496", open_id: "zcamCiqn1iXabM6iDnnGf4Jq-Vmd0ha5" }
+      - { name: "19200000160", cust_id: "1500692637487632384", open_id: "zcamCiqn1iUFaJgzacuBHSYUvTiwbmnp" }
+      - { name: "19200000161", cust_id: "1500692637798010880", open_id: "zcamCiqn1iUk8VCCJleV_xcYCyu5r8-h" }
+      - { name: "19200000162", cust_id: "1500692638083223552", open_id: "zcamCiqn1iX3jPHbyfJEy-eyRVht6PjW" }
+      - { name: "19200000163", cust_id: "1500692638385213440", open_id: "zcamCiqn1iUMwnPhB0dmynwXqWNXZp0B" }
+      - { name: "19200000164", cust_id: "1500692638683009024", open_id: "zcamCiqn1iWUr7Fw7XlBG8Zu5PMjr111" }
+      - { name: "19200000165", cust_id: "1500692639182131200", open_id: "zcamCiqn1iVB7kPq1SEkVSd-hXLyVHVE" }
+      - { name: "19200000166", cust_id: "1500692639509286912", open_id: "zcamCiqn1iVDaSHWNTt4dgrGsB9bBWsR" }
+      - { name: "19200000167", cust_id: "1500692639840636928", open_id: "zcamCiqn1iV2ewluQpMp8TRJUbZwB-rl" }
+      - { name: "19200000168", cust_id: "1500692640264261632", open_id: "zcamCiqn1iUoQe_0LLEMKd1sWcfSOezg" }
+      - { name: "19200000169", cust_id: "1500692640608194560", open_id: "zcamCiqn1iXxpBa9nvw70X25hS1rbere" }
+      - { name: "19200000170", cust_id: "1500692640943738880", open_id: "zcamCiqn1iWlkWSkZrsSH6OcW4hABqrb" }
+      - { name: "19200000171", cust_id: "1500692641321226240", open_id: "zcamCiqn1iUepK8hM6kgnfugAqqa5vWJ" }
+      - { name: "19200000172", cust_id: "1500692641744850944", open_id: "zcamCiqn1iWfPCr6KLAYrJh_bisF2Us5" }
+      - { name: "19200000173", cust_id: "1500692642189447168", open_id: "zcamCiqn1iUQhW8QKXwG6iEx6KEUCYod" }
+      - { name: "19200000174", cust_id: "1500692642474659840", open_id: "zcamCiqn1iUmr2hCBG-7yGy1EQNZ4Y7_" }
+      - { name: "19200000175", cust_id: "1500692642780844032", open_id: "zcamCiqn1iUIMuqzENk0PUrAAZEp5eT7" }
+      - { name: "19200000176", cust_id: "1500692643066056704", open_id: "zcamCiqn1iWFXwS27f5exi9bw4hiBxcA" }
+      - { name: "19200000177", cust_id: "1500692643418378240", open_id: "zcamCiqn1iU2NZHxP8sT427RKAtq8fRB" }
+      - { name: "19200000178", cust_id: "1500692643711979520", open_id: "zcamCiqn1iUqJ4u8MNiF9-MVn7sFUuLG" }
+      - { name: "19200000179", cust_id: "1500692643992997888", open_id: "zcamCiqn1iUazFVOyWcUTHhWtR7_XCdn" }
+      - { name: "19200000180", cust_id: "1500692644362096640", open_id: "zcamCiqn1iXV474K0Ud4kR9MdEl7lnra" }
+      - { name: "19200000181", cust_id: "1500692644672475136", open_id: "zcamCiqn1iWiV4qowzkLwuuGcyvY3OSV" }
+      - { name: "19200000182", cust_id: "1500692644978659328", open_id: "zcamCiqn1iULCKHLeefb5xTY6ltYLErL" }
+      - { name: "19200000183", cust_id: "1500692645335175168", open_id: "zcamCiqn1iWtne1f5y65BQ7hhDSbbGuY" }
+      - { name: "19200000184", cust_id: "1500692645624582144", open_id: "zcamCiqn1iWFxRFNsqR44mo5trqKd9cr" }
+      - { name: "19200000185", cust_id: "1500692645913989120", open_id: "zcamCiqn1iVnu7UKTg1Ev1Ia4L1Xl5Wd" }
+      - { name: "19200000186", cust_id: "1500692646278893568", open_id: "zcamCiqn1iVGB-yBSAaiWoGEypUqe_t-" }
+      - { name: "19200000187", cust_id: "1500692646618632192", open_id: "zcamCiqn1iWrSCqaGgKLEogZZvu5nNu8" }
+      - { name: "19200000188", cust_id: "1500692646933204992", open_id: "zcamCiqn1iXRqYF01RhijvabmSmf1wIR" }
+      - { name: "19200000189", cust_id: "1500692647256166400", open_id: "zcamCiqn1iVO-Nd19F48kfVlGIX1aPnC" }
+      - { name: "19200000191", cust_id: "1500692647876923392", open_id: "zcamCiqn1iV54letB0fVKY400iPWqaiQ" }
+      - { name: "19200000192", cust_id: "1500692648166330368", open_id: "zcamCiqn1iUl-7YCRMYWdxJ659sHiUXM" }
+      - { name: "19200000193", cust_id: "1500692648514457600", open_id: "zcamCiqn1iXCCJrdNc5uKJ9pLQkZWw8_" }
+      - { name: "19200000194", cust_id: "1500692648816447488", open_id: "zcamCiqn1iVQiNf9AhyCrnPTG85DHrF8" }
+      - { name: "19200000195", cust_id: "1500692649110048768", open_id: "zcamCiqn1iVmEg1c7uv9yNq3Hm1FnDSa" }
+      - { name: "19200000196", cust_id: "1500692649420427264", open_id: "zcamCiqn1iWs2UHt3nM9SOzE5omBA_YQ" }
+      - { name: "19200000197", cust_id: "1500692649869217792", open_id: "zcamCiqn1iWZrIQYtUrsSI2DgqHP0Koy" }
+      - { name: "19200000198", cust_id: "1500692650179596288", open_id: "zcamCiqn1iUBk5RhRAkZ09Cm09XakWrz" }
+
+  # 预设 2：按前缀规则模糊拉人模式 (适用于多账号通用建群兜底)
+  prefix_rule_friends:
+    description: "按昵称/号段前缀规则批量模糊筛选好友"
+    match_mode: "prefix"
+    max_invite_count: 50
+    prefixes:
+      - "测试05"
+      - "测试13"
+      - "客服"
+      - "192000000"
