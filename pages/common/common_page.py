@@ -94,25 +94,29 @@ class CommonPage(BasePage):
     def confirm_dialog(self, btn_text: Optional[str] = None, timeout: float = 3.0) -> None:
         """
         通用点击当前弹窗确认按钮:
-        - iOS 先锁定弹窗容器再定位子按钮，防止点穿到底层页面同名按钮
+        - iOS 无指定文案时直接单步点击容器锚定的 DIALOG_CONFIRM_BTN，省去分步子树扫描开销；指定文案时在容器作用域内查找
         - Android / 鸿蒙直接复用平台 DIALOG_CONFIRM_BTN
         """
         if self._platform_name == "ios":
+            if not btn_text:
+                try:
+                    self.click(CommonLocator.DIALOG_CONFIRM_BTN, timeout=timeout)
+                    return
+                except Exception:
+                    sys_btn = getattr(CommonLocator, "SYSTEM_DIALOG_CONFIRM_BTN", CommonLocator.DIALOG_CONFIRM_BTN)
+                    logger.info(f"{LogIcon.SETUP} 回退点击系统/单按钮弹窗确认按钮")
+                    self.click(sys_btn, timeout=1)
+                    return
+
             container = self._find_ios_dialog_container(timeout=timeout)
-            if container is not None:
-                if btn_text and hasattr(CommonLocator, "get_dialog_child_button_by_text"):
-                    btns = self.find_child_elements(container, CommonLocator.get_dialog_child_button_by_text(btn_text))
-                    target_btn = btns[0] if btns else None
-                else:
-                    btns = self.find_child_elements(container, CommonLocator.DIALOG_CHILD_BUTTONS)
-                    target_btn = btns[-1] if btns else None
-                if target_btn is not None:
-                    self.click_element(target_btn, desc=f"弹窗确认按钮{f' ({btn_text})' if btn_text else ''}")
+            if container is not None and hasattr(CommonLocator, "get_dialog_child_button_by_text"):
+                btns = self.find_child_elements(container, CommonLocator.get_dialog_child_button_by_text(btn_text))
+                if btns:
+                    self.click_element(btns[0], desc=f"弹窗确认按钮 ({btn_text})")
                     return
 
             sys_btn = getattr(CommonLocator, "SYSTEM_DIALOG_CONFIRM_BTN", CommonLocator.DIALOG_CONFIRM_BTN)
-            logger.info(f"{LogIcon.SETUP} 回退点击系统/单按钮弹窗确认按钮")
-            self.click(sys_btn, timeout=int(max(1, timeout)))
+            self.click(sys_btn, timeout=1)
             return
 
         logger.info(f"{LogIcon.SETUP} 点击弹窗确认按钮")
@@ -120,12 +124,5 @@ class CommonPage(BasePage):
 
     def cancel_dialog(self, timeout: float = 3.0) -> None:
         """通用点击当前弹窗取消/关闭按钮"""
-        if self._platform_name == "ios":
-            container = self._find_ios_dialog_container(timeout=timeout)
-            if container is not None:
-                cancel_btns = self.find_child_elements(container, CommonLocator.DIALOG_CANCEL_BTN)
-                if cancel_btns:
-                    self.click_element(cancel_btns[0], desc="弹窗取消按钮")
-                    return
         logger.info(f"{LogIcon.SETUP} 点击弹窗取消按钮")
         self.click(CommonLocator.DIALOG_CANCEL_BTN, timeout=int(max(1, timeout)))

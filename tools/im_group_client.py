@@ -444,6 +444,26 @@ class GroupRuntimeBridge:
         java_core = java_js_file.read_text(encoding="utf-8")
         return f"{java_core}\n;\n(function(Java) {{\n{self._BRIDGE_JS}\n}})(bridge);"
 
+    def _launch_target_app(self, wait_timeout: float = 8.0) -> Optional[int]:
+        """当设备上三条 IM 未运行时，自动通过 ADB 拉起前台 Activity 并等待进程就绪。"""
+        print(f"[{self.device_id}] 🚀 未检测到 {self.PACKAGE_NAME} 进程，正在自动拉起 App...")
+        subprocess.run(
+            [
+                "adb", "-s", self.device_id, "shell",
+                "am", "start", "-n", f"{self.PACKAGE_NAME}/com.vvchat.vcapp.activity.MainActivity",
+            ],
+            capture_output=True,
+            timeout=5.0,
+        )
+        deadline = time.time() + wait_timeout
+        while time.time() < deadline:
+            pid = self._find_target_pid()
+            if pid is not None:
+                time.sleep(1.5)
+                return pid
+            time.sleep(0.5)
+        return None
+
     def connect(self) -> bool:
         """挂接目标 App 运行时。"""
         if self._is_ready:
@@ -451,6 +471,8 @@ class GroupRuntimeBridge:
         try:
             self._ensure_frida_server_running()
             target_pid = self._find_target_pid()
+            if target_pid is None:
+                target_pid = self._launch_target_app()
             if target_pid is None:
                 print(f"[{self.device_id}] ❌ 未找到 {self.PACKAGE_NAME} 运行进程，请确保 App 已启动并在前台")
                 return False

@@ -216,7 +216,7 @@ from locators.home.home_locator_hos import _HomeLocatorHos
 from locators.home.home_locator_ios import _HomeLocatorIos
 
 
-class HomeLocator(_HomeLocatorIos, _HomeLocatorAndroid, _HomeLocatorHos, metaclass=DynamicLocatorMeta):
+class HomeLocator(_HomeLocatorHos, _HomeLocatorAndroid, _HomeLocatorIos, metaclass=DynamicLocatorMeta):
     """跨端主页与会话列表定位器（支持 IDE Ctrl + 鼠标左键直接跳转定义，运行时按设备平台动态分发）"""
 
     _android_cls = _HomeLocatorAndroid

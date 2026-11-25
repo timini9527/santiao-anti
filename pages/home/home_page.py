@@ -20,12 +20,21 @@ class HomePage(BasePage):
             logger.error(f"{LogIcon.FAIL} 未找到主页左侧菜单 (超时: {timeout}s)")
         return loaded
 
+    # 主页 - 判断左上角菜单按钮是否可见
+    def is_left_menu_visible(self, timeout: int | float = 2) -> bool:
+        """ 判断主页左上角侧边栏入口按钮是否可见（单次定位快速探测） """
+        logger.info(f"{LogIcon.FIND} 正在检测主页左上角菜单按钮是否可见(超时: {timeout}s)...")
+        visible = self.find_element(HomeLocator.LEFT_MENU, timeout=timeout, expect_missing=True) is not None
+        logger.info(f"{LogIcon.SUCCESS if visible else LogIcon.FAIL} 主页左上角菜单按钮检测结果: {visible}")
+        return visible
+
     # 主页 - 打开侧边栏
     def open_left_menu(self, timeout: int = 2) -> None:
         """ 主页 - 点击打开侧边栏 """
         logger.info(f"{LogIcon.ACTION} 主页 - 点击打开侧边栏")
         self.click(HomeLocator.LEFT_MENU, timeout=timeout)
-        time.sleep(0.5)
+        if self._platform_name != "ios":
+            time.sleep(0.5)
 
     # 主页 - 点击主页标题
     def click_home_title(self, timeout: int = 2) -> None:

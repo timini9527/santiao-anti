@@ -1,7 +1,6 @@
 import os
 import re
 import time
-import weakref
 import allure
 from typing import Union, List
 from contextlib import contextmanager
@@ -28,12 +27,6 @@ from locators.common.common_locator import CommonLocator
 _ASCII_CONTROL_RE = re.compile(r'[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f-\x9f]')
 _UNICODE_CONTROL_RE = re.compile(r'[\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufffc\ufffd]')
 
-# iOS 真机运行 WDA 超过数秒无交互时屏幕会进入暗屏节能态，首次点击会被系统吞掉用于亮屏；
-# 使用弱引用字典按驱动实例隔离记录交互时间，驱动销毁自动回收，避免内存地址复用串扰
-_IOS_IDLE_WAKE_SECONDS = 3.5
-_IOS_LAST_TOUCH_TS: weakref.WeakKeyDictionary[object, float] = weakref.WeakKeyDictionary()
-
-
 
 class BasePage:
     PACKAGE_ID = 'com.santiaotalk.im:id'
@@ -42,37 +35,61 @@ class BasePage:
         self.driver = driver
         self._platform_name = self._resolve_driver_platform(driver)
 
-    def _mark_ios_touch(self) -> None:
-        """仅针对 iOS 设备记录最近一次有效交互时间戳"""
-        if self._platform_name == "ios" and self.driver is not None:
-            _IOS_LAST_TOUCH_TS[self.driver] = time.monotonic()
+    @staticmethod
+    def _build_ios_single_pass_locator(locator: tuple, require_enabled: bool = False) -> tuple | None:
+        """
+        将 iOS 原生定位器下推合并 visible/enabled 条件，在单次 WDA 快照内完成可见性过滤，
+        彻底省去 find_element 之后二次调用 is_displayed() 的全树快照开销。
+        """
+        if not isinstance(locator, (tuple, list)) or len(locator) != 2:
+            return None
+        by, raw_val = locator[0], str(locator[1] or "").strip()
+        if not raw_val:
+            return None
+        extra = "visible == 1 AND enabled == 1" if require_enabled else "visible == 1"
 
-    def _ensure_ios_screen_awake(self) -> None:
-        """
-        iOS 设备专属空闲防暗屏吞点击唤醒（Android / HarmonyOS 直接跳过）：
-        仅当距离上次触摸超过阈值时，在最左边缘执行 1px 垂直无副作用微滑唤醒背光，
-        避免第 1 次业务点击被 iOS 系统暗屏待机态吞掉；连续操作期间零额外开销。
-        """
-        if self._platform_name != "ios" or self.driver is None:
-            return
-        now = time.monotonic()
-        last_ts = _IOS_LAST_TOUCH_TS.get(self.driver)
-        if last_ts is not None and (now - last_ts) < _IOS_IDLE_WAKE_SECONDS:
-            return
-        logger.info(f"{LogIcon.ACTION} [iOS] 距上次触控已超过 {_IOS_IDLE_WAKE_SECONDS}s，执行无害微触唤醒屏幕")
-        try:
-            self.driver.execute_script(
-                "mobile: dragFromToForDuration",
-                {"duration": 0, "fromX": 2, "fromY": 100, "toX": 2, "toY": 101},
-            )
-            time.sleep(0.08)
-        except Exception:
-            try:
-                if hasattr(self.driver, "unlock"):
-                    self.driver.unlock()
-            except Exception:
-                pass
-        _IOS_LAST_TOUCH_TS[self.driver] = time.monotonic()
+        if by == AppiumBy.ACCESSIBILITY_ID:
+            if "'" not in raw_val:
+                return (AppiumBy.IOS_PREDICATE, f"name == '{raw_val}' AND {extra}")
+            if '"' not in raw_val:
+                return (AppiumBy.IOS_PREDICATE, f'name == "{raw_val}" AND {extra}')
+            return None
+
+        if by == AppiumBy.IOS_PREDICATE:
+            if raw_val.startswith("/"):
+                return None
+            has_vis = "visible" in raw_val
+            has_en = "enabled" in raw_val
+            if has_vis and (not require_enabled or has_en):
+                return (by, raw_val)
+            if has_vis and require_enabled:
+                return (by, f"({raw_val}) AND enabled == 1")
+            return (by, f"({raw_val}) AND {extra}")
+
+        if by == AppiumBy.IOS_CLASS_CHAIN:
+            # 切出末端节点片段（忽略方括号内部的斜杠）
+            segs = re.split(r"/(?![^\[]*\])", raw_val)
+            last_seg = segs[-1] if segs else raw_val
+            if "$" in last_seg:
+                return None
+            # 末端带自身谓词 [`...`]（可选尾随 [index]）
+            m_bt = re.search(r"\[`([^`]+)`\](\[-?\d+\])?$", last_seg)
+            if m_bt:
+                inner = m_bt.group(1)
+                idx_part = m_bt.group(2) or ""
+                if "visible" in inner and (not require_enabled or "enabled" in inner):
+                    return (by, raw_val)
+                add_cond = "enabled == 1" if ("visible" in inner and require_enabled) else extra
+                prefix = raw_val[: len(raw_val) - len(m_bt.group(0))]
+                return (by, f"{prefix}[`({inner}) AND {add_cond}`]{idx_part}")
+            # 末端为纯类名或类名+[index]
+            m_cls = re.match(r"^(XCUIElementType\w+)(\[-?\d+\])?$", last_seg)
+            if m_cls:
+                cls_name, idx_part = m_cls.group(1), m_cls.group(2) or ""
+                prefix = raw_val[: len(raw_val) - len(last_seg)]
+                return (by, f"{prefix}{cls_name}[`{extra}`]{idx_part}")
+
+        return None
 
     @staticmethod
     def _resolve_driver_platform(driver) -> str:
@@ -135,6 +152,10 @@ class BasePage:
 
         if condition in ("visibility", "clickable"):
             require_enabled = condition == "clickable"
+            if self._platform_name == "ios":
+                ios_fast_locator = self._build_ios_single_pass_locator(locator, require_enabled=require_enabled)
+                if ios_fast_locator is not None:
+                    return wait.until(EC.presence_of_element_located(ios_fast_locator))
 
             def _first_usable_element(driver) -> WebElement | bool:
                 # 1. 优先走单元素短路查找，确保常规唯一定位场景零额外树扫描开销
@@ -296,11 +317,9 @@ class BasePage:
             return []
 
     def click_element(self, element: WebElement, desc: str = "") -> None:
-        """安全点击已定位的 WebElement，自动包含 iOS 息屏防休眠唤醒保护"""
-        self._ensure_ios_screen_awake()
+        """安全点击已定位的 WebElement"""
         logger.info(f"{LogIcon.ACTION} 点击已定位元素{f': {desc}' if desc else ''}")
-        element.click()
-        self._mark_ios_touch()
+        self._fast_click_element(element)
         
 
     @allure.step("获取元素属性值")
@@ -319,6 +338,30 @@ class BasePage:
             return value
         return ""
 
+    def _fast_click_element(self, element: WebElement) -> None:
+        """
+        统一底层元素点击执行器：
+        - iOS：若元素携带 1.5s 内 findElement 免费附带的缓存 rect，直接通过 mobile: tap 坐标点击，
+          彻底绕过 WDA handleClick 内部的 checkStaleness 二次全树快照（3.0s -> ~0.15s）；
+          无有效缓存坐标时无缝回退标准 element.click()。
+        - Android / 鸿蒙：直接执行标准 element.click()。
+        """
+        if self._platform_name == "ios":
+            rect = getattr(element, "_ios_cached_rect", None)
+            rect_ts = getattr(element, "_ios_cached_rect_ts", 0.0)
+            if isinstance(rect, dict) and (time.monotonic() - rect_ts) <= 1.5:
+                try:
+                    w = float(rect.get("width", 0))
+                    h = float(rect.get("height", 0))
+                    cx = float(rect.get("x", -1)) + w / 2.0
+                    cy = float(rect.get("y", -1)) + h / 2.0
+                    if w > 0 and h > 0 and cx >= 0 and cy >= 0:
+                        self.driver.execute_script("mobile: tap", {"x": round(cx, 1), "y": round(cy, 1)})
+                        return
+                except Exception:
+                    pass
+        element.click()
+
     @allure.step("点击元素: {locator}")
     def click(self, locator: tuple, force_wait: bool = False, timeout: int = 2) -> None:
         """
@@ -330,10 +373,8 @@ class BasePage:
         condition = "clickable" if force_wait else "visibility"
         element = self.find_element(locator, condition=condition, timeout=timeout)
         if element:
-            self._ensure_ios_screen_awake()
             logger.info(f"{LogIcon.ACTION} 以 {condition} 模式点击元素: {locator}")
-            element.click()
-            self._mark_ios_touch()
+            self._fast_click_element(element)
         else:
             logger.error(f"{LogIcon.FAIL} 点击失败，未找到元素: {locator}")
             raise NoSuchElementException(f"无法点击，元素未找到: {locator}")
@@ -363,9 +404,7 @@ class BasePage:
             raise NoSuchElementException(f"未找到元素: {locator}")
         if clear and not append:
             ele.clear()
-        self._ensure_ios_screen_awake()
         ele.send_keys(text)
-        self._mark_ios_touch()
         logger.info(f"{LogIcon.ACTION} 输入消息: {text}")
 
     @catch_exception
@@ -386,9 +425,7 @@ class BasePage:
             raise NoSuchElementException(f"无法输入，元素未找到: {target}")
         if clear:
             ele.clear()
-        self._ensure_ios_screen_awake()
         ActionChains(self.driver).click(ele).send_keys(text).perform()
-        self._mark_ios_touch()
         logger.info(f"{LogIcon.ACTION} ActionChains 物理键盘按键输入成功: {text}")
         return True
 
@@ -407,9 +444,7 @@ class BasePage:
             ele.send_keys(text)
         elif self._platform_name == "ios":
             # iOS XCUITest 标准安全输入通道
-            self._ensure_ios_screen_awake()
             ele.send_keys(text)
-            self._mark_ios_touch()
         else:
             element_id = getattr(ele, "id", None) or getattr(ele, "_id", "")
             self.driver.execute_script("mobile: replaceElementValue", {"elementId": element_id, "text": text})
@@ -613,9 +648,7 @@ class BasePage:
     @allure.step("通过坐标进行点击: {x}, {y}")
     def click_by_coordinate(self, x: int | float, y: int | float):
         """ 点击固定坐标 """
-        self._ensure_ios_screen_awake()
         self.driver.tap([(x, y)])
-        self._mark_ios_touch()
         logger.info(f"{LogIcon.ACTION} 通过坐标进行点击，点击坐标: {x}, {y}")
 
 
@@ -793,14 +826,12 @@ class BasePage:
                 return
 
             # 3. 使用 W3C ActionChains 执行物理点击 (兼容 Appium 2.x)
-            self._ensure_ios_screen_awake()
             actions, touch_input = self.init_w3c_actions()
             actions.w3c_actions.pointer_action.move_to_location(center_x, center_y)
             actions.w3c_actions.pointer_action.pointer_down()
             actions.w3c_actions.pointer_action.pause(duration / 1000.0)  # 稍微停顿，防止点太快系统没反应
             actions.w3c_actions.pointer_action.pointer_up()
             actions.perform()
-            self._mark_ios_touch()
 
             logger.info(f"{LogIcon.SUCCESS} 坐标强点执行完毕")
 
@@ -810,9 +841,7 @@ class BasePage:
                 raise
             logger.warning(f"{LogIcon.WARN} 坐标强点失败，尝试退回原生 click() 兜底: {e}")
             if click_elem:
-                self._ensure_ios_screen_awake()
                 click_elem.click()
-                self._mark_ios_touch()
     
     @allure.step("检查页面 DOM 是否发生变化")
     def is_page_source_changed(self, last_source: str) -> tuple[bool, str]:

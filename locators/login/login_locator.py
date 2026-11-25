@@ -123,7 +123,7 @@ class _LoginLocatorAndroid(CommonLocator):
 # ==============================================================================
 # 跨端通用定位器透明代理 (自动识别 Android / HarmonyOS NEXT / iOS)
 # ==============================================================================
-class LoginLocator(_LoginLocatorIos, _LoginLocatorAndroid, _LoginLocatorHos, metaclass=DynamicLocatorMeta):
+class LoginLocator(_LoginLocatorHos, _LoginLocatorAndroid, _LoginLocatorIos, metaclass=DynamicLocatorMeta):
     """跨端登录页面定位器（支持 IDE Ctrl + 鼠标左键直接跳转定义，运行时按设备平台动态分发）"""
 
     _android_cls = _LoginLocatorAndroid

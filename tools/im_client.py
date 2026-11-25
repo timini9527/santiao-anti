@@ -696,12 +696,34 @@ class AppRuntimeBridge:
                 pass
             self._session = None
 
+    def _launch_target_app(self, wait_timeout: float = 8.0) -> Optional[int]:
+        """当设备上三条 IM 未运行时，自动通过 ADB 拉起前台 Activity 并等待进程就绪。"""
+        print(f"🚀 [协议桥接] 设备 {self.device_id} 未检测到三条 IM 进程，正在自动拉起 {self.package_name}...")
+        subprocess.run(
+            [
+                "adb", "-s", self.device_id, "shell",
+                "am", "start", "-n", f"{self.package_name}/com.vvchat.vcapp.activity.MainActivity",
+            ],
+            capture_output=True,
+            timeout=5.0,
+        )
+        deadline = time.time() + wait_timeout
+        while time.time() < deadline:
+            pid = self._find_target_pid()
+            if pid is not None:
+                time.sleep(1.5)  # 预留冷启动初始化 WebSocketManager 与登录态的缓冲
+                return pid
+            time.sleep(0.5)
+        return None
+
     def connect(self) -> bool:
         """连接目标设备上的三条 IM 进程并初始化注入桥（全链路超时与防死锁）。"""
         try:
             self._cleanup_session()
             self._ensure_frida_server_running()
             target_pid = self._find_target_pid()
+            if target_pid is None:
+                target_pid = self._launch_target_app()
             if target_pid is None:
                 raise ProcessLookupError(f"设备 {self.device_id} 上未找到三条 IM 运行进程 ({self.package_name})，请确认 App 前台处于运行状态")
 

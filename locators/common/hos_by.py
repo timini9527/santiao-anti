@@ -60,7 +60,7 @@ class HosBy:
         return ("HypiumBy", f'BY.isBefore(BY.text("{safe_anchor}")).type("{safe_type}")')
 
     @classmethod
-    def after_text(cl7s, anchor_text: str, target_type: str = "Image") -> tuple[str, str]:
+    def after_text(cls, anchor_text: str, target_type: str = "Image") -> tuple[str, str]:
         """无文本图标定位：按相对顺序定位位于锚点文本之后的指定类型控件。"""
         safe_anchor = cls._escape(anchor_text)
         safe_type = cls._escape(target_type)

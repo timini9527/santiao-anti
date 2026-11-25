@@ -153,12 +153,13 @@ class LoginPage(BasePage):
     def click_password_login_button(self) -> None:
         """ 点击‘密码登录’，如果当前是验证码等其他模式则切换 """
         logger.info(f"{LogIcon.SETUP} 检查并尝试切换到密码登录模式")
-        pass_elem = self.find_element(LoginLocator.PASSWORD_LOGIN_SWITCH, timeout=2)
-        pwd_elem = self.get_password_element(expect_missing=True)
-        if pass_elem and not pwd_elem:
-            logger.info(f"{LogIcon.SETUP} 执行切换到密码登录模式")
-            pass_elem.click()
-            time.sleep(0.5)
+        pass_elem = self.find_element(LoginLocator.PASSWORD_LOGIN_SWITCH, timeout=2, expect_missing=True)
+        if pass_elem:
+            pwd_elem = self.find_element(LoginLocator.PASSWORD_EDIT, timeout=0.3, expect_missing=True)
+            if not pwd_elem:
+                logger.info(f"{LogIcon.SETUP} 执行切换到密码登录模式")
+                pass_elem.click()
+                time.sleep(0.5)
 
     # 登录页 - 切换到验证码登录模式
     def click_code_login_button(self) -> None:
@@ -185,10 +186,9 @@ class LoginPage(BasePage):
 
     # 登录页 - 输入手机号或账号
     def input_account(self, phone: str) -> None:
-        """ 在手机号/账号输入框中输入内容 """
+        """ 在手机号/账号输入框中输入内容 (send_keys 默认已内置清空，避免重复两次查找与清空) """
         logger.info(f"{LogIcon.SETUP} 输入账号/手机号: {phone}")
-        self.clear_phone()
-        self.send_keys(LoginLocator.PHONE_NUMBER_EDIT, phone)
+        self.send_keys(LoginLocator.PHONE_NUMBER_EDIT, phone, clear=True)
     
     # 登录页 - 获取手机号输入框内容
     def get_phone_number(self) -> str:
@@ -216,10 +216,9 @@ class LoginPage(BasePage):
 
     # 登录页 - 输入密码
     def input_password(self, password: str) -> None:
-        """ 在密码输入框中输入内容 """
+        """ 在密码输入框中输入内容 (send_keys 默认已内置清空，避免重复两次查找与清空) """
         logger.info(f"{LogIcon.SETUP} 输入登录密码: {password}")
-        self.clear_password()
-        self.send_keys(LoginLocator.PASSWORD_EDIT, password)
+        self.send_keys(LoginLocator.PASSWORD_EDIT, password, clear=True)
     
     # 登录页 - 获取密码输入框内容
     def get_password(self) -> str:
@@ -347,8 +346,10 @@ class LoginPage(BasePage):
     # 登录页 - 自动处理系统保存密码弹窗
     def handle_save_password_popup(self, timeout: float = 2.0) -> bool:
         """
-        自动检测并消除系统级‘自动保存账号密码’弹窗 (MIUI/HyperOS)
+        自动检测并消除系统级‘自动保存账号密码’弹窗 (MIUI/HyperOS；iOS 系统密码框属独立进程不在 App 树内，直接跳过防空等)
         """
+        if self._platform_name == "ios":
+            return False
         cancel_btn = self.find_element(LoginLocator.AUTO_SAVE_PWD_CANCEL, timeout=timeout, expect_missing=True)
         if cancel_btn:
             logger.info(f"{LogIcon.SETUP} 检测到系统‘自动保存账号密码’弹窗，点击【取消】")
@@ -378,7 +379,15 @@ class LoginPage(BasePage):
     def is_login_success(self) -> bool:
         """ 根据是否能找到主页特有元素判断登录是否成功 """
         from pages.home.home_page import HomePage
-        title = HomePage(self.driver).get_top_middle_title()
+        home_page = HomePage(self.driver)
+        if self._platform_name == "ios":
+            if home_page.is_left_menu_visible(timeout=2):
+                logger.info(f"{LogIcon.SUCCESS} [iOS] 登录成功，已检测到主页左上角菜单按钮")
+                return True
+            logger.info(f"{LogIcon.FAIL} [iOS] 登录未成功，未检测到主页左上角菜单按钮")
+            return False
+
+        title = home_page.get_top_middle_title()
         if '三条' in title:
             logger.info(f"{LogIcon.SUCCESS} 登录成功，获取到主页标题: {title}")
             return True
@@ -446,8 +455,11 @@ class LoginPage(BasePage):
     # ==========================
     # 登录页 - 退出登录业务流转
     # ==========================
-    def logout_if_logged_in(self) -> str:
-        """ 退出登录业务流转 (对齐最新设置中心退出逻辑) """
+    def logout_if_logged_in(self, wait_toast: bool = True) -> str:
+        """
+        退出登录业务流转 (对齐最新设置中心退出逻辑)
+        :param wait_toast: 是否等待退出登录 Toast（不校验 Toast 的清理场景传 False 以避免无效轮询耗时）
+        """
         from pages.home.home_page import HomePage
         from pages.home.side_slip_page import SideSlipPage
         from pages.home.left_menus.settings_center_page import SettingsCenterPage
@@ -455,7 +467,7 @@ class LoginPage(BasePage):
         logger.info(f"{LogIcon.ACTION} 开始执行退出登录流转...")
         HomePage(self.driver).open_left_menu()
         SideSlipPage(self.driver).click_setting()
-        msg = SettingsCenterPage(self.driver).click_logout_and_get_toast()
+        msg = SettingsCenterPage(self.driver).click_logout_and_get_toast(wait_toast=wait_toast)
         return msg
 
     # 登录页 - 验证登录按钮是否置灰

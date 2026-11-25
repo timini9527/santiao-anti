@@ -260,6 +260,35 @@ class DriverFactory:
                 client_config=client_config,
             )
             driver.implicitly_wait(0)
+            # 核心提速：显式下发 WDA 16.x 真实生效的运行时 Settings（与 devices.yaml 双重保障）
+            try:
+                driver.update_settings({
+                    "waitForIdleTimeout": 0,
+                    "animationCoolOffTimeout": 0,
+                    "useFirstMatch": True,
+                    "snapshotMaxDepth": 30,
+                    "snapshotMaxChildren": 60,
+                    "boundElementsByIndex": True,
+                    "shouldUseCompactResponses": False,
+                    "elementResponseAttributes": "rect",
+                })
+            except Exception as settings_err:
+                logger.warning(f"{LogIcon.WARN} [DriverFactory] 下发 iOS WDA 运行时提速设置失败: {settings_err}")
+
+            # 拦截 iOS findElement 响应中的附带 rect 并缓存到 WebElement，供 BasePage.click 走坐标直点免二次全树快照
+            _orig_unwrap = driver._unwrap_value
+
+            def _unwrap_with_ios_rect(value: Any) -> Any:
+                if isinstance(value, dict) and "element-6066-11e4-a52e-4f735466cecf" in value:
+                    rect = value.get("rect")
+                    el = driver.create_web_element(value["element-6066-11e4-a52e-4f735466cecf"])
+                    if isinstance(rect, dict):
+                        el._ios_cached_rect = rect
+                        el._ios_cached_rect_ts = time.monotonic()
+                    return el
+                return _orig_unwrap(value)
+
+            driver._unwrap_value = _unwrap_with_ios_rect
             driver._factory_device_key = device_key
             driver._factory_appium_url = appium_url
             driver._factory_udid = desired_caps.get("udid")

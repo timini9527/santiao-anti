@@ -86,8 +86,8 @@ class _CommonLocatorIos:
     # 消极/取消类按钮通用谓词 (限定 visible == 1，防止后台隐藏页面的“关闭/取消”按钮抢占 [-1] 锚点)
     _DIALOG_CANCEL_PRED = (
         "type == 'XCUIElementTypeButton' AND visible == 1 AND ("
-        "label IN {'取消', '关闭',} "
-        "OR name IN {'取消', '关闭',}"
+        "label IN {'取消', '关闭'} "
+        "OR name IN {'取消', '关闭'}"
         ")"
     )
     # 确认/积极类按钮通用谓词 (用于系统单按钮弹窗等无消极按钮兜底)
@@ -116,10 +116,10 @@ class _CommonLocatorIos:
         f"{_CUSTOM_DIALOG_CHAIN}/XCUIElementTypeTextView[1]",
     )
 
-    # 通用弹窗确认按钮：取同一自定义弹窗容器下最后一个 Button (无论是“确定 / 确认 / 退出登录 / 删除”均可精准命中且不点穿底层页面)
+    # 通用弹窗确认按钮：直接取最顶层可见确认按钮 [-1]（iOS 模态弹窗恒位于底层页面之后，免全树 Other[$...$] 子树回溯且不点穿底层）
     DIALOG_CONFIRM_BTN = (
         AppiumBy.IOS_CLASS_CHAIN,
-        f"{_CUSTOM_DIALOG_CHAIN}/XCUIElementTypeButton[-1]",
+        "**/XCUIElementTypeButton[`visible == 1 AND (label IN {'确定', '确认', '删除', '退出登录'} OR name IN {'确定', '确认', '删除', '退出登录'})`][-1]",
     )
     # 系统弹窗 / 单按钮提示弹窗确认按钮兜底
     SYSTEM_DIALOG_CONFIRM_BTN = (AppiumBy.IOS_PREDICATE, _DIALOG_CONFIRM_PRED)

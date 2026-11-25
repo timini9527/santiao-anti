@@ -123,12 +123,16 @@ class SettingsCenterPage(CommonPage):
         logger.warning(f"{LogIcon.WARN} {timeout}s 内未捕获到目标 Toast '{target_text}', 最后捕获: '{last_text}'")
         return last_text
 
-    def click_logout_and_get_toast(self, timeout: int = 5) -> str:
+    def click_logout_and_get_toast(self, timeout: int = 5, wait_toast: bool = True) -> str:
         """
         【标准一键退登链路】
-        点击【退出登录】 -> 点击弹窗【确认】 -> 等待并返回 Toast 消息
+        点击【退出登录】 -> 点击弹窗【确认】 -> 按需等待并返回 Toast 消息
+        :param timeout: Toast 轮询最大超时时间（秒）
+        :param wait_toast: 是否轮询捕获退出成功 Toast（纯环境清理场景可设为 False 跳过无效等待）
         """
         logger.info(f"{LogIcon.SETUP} 执行一键退出登录流水线...")
         self.click_logout_button()
         self.click_logout_confirm_btn()
+        if not wait_toast:
+            return ""
         return self.get_logout_success_msg(timeout=timeout)

@@ -102,7 +102,9 @@ class _LoginLocatorHos(_CommonLocatorHos):
         "//Dialog//__Common__/RelativeContainer",
     )
     AGREE_AND_CONTINUE_BTN = HosBy.type_text("Text", "同意并继续")
-    CLOSE_BTN = HosBy.type_text("Text", "×")
+    CLOSE_BTN = (
+        AppiumBy.XPATH, "//Stack[Text[@text='用户协议及隐私政策']]//Image"
+    )
     USER_AGREEMENT_DESC = HosBy.id_only("prvacy_content")
 
     # 通用 Toast 提示 (用于校验错误信息)

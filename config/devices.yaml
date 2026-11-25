@@ -3,8 +3,8 @@ current_env: "dev"              # 默认执行环境：dev 或 test
 # current_env: "test"
 
 # current_platform: "android"   # 默认单端平台２android / harmonyos / ios (none)&local multi-device
-# current_platform: "harmonyos"
-current_platform: "ios" 
+current_platform: "harmonyos"
+# current_platform: "ios" 
 
 server:
   host: "127.0.0.1"
@@ -77,6 +77,15 @@ ios_app:
   "appium:shouldTerminateApp": false
   "appium:connectHardwareKeyboard": true              # 核心：连接虚拟硬件键盘，全局抑制屏幕软键盘弹出
   "appium:maxTypingFrequency": 60                     # 核心：提升击键速率至 60 字符/秒，极速打字无停顿感
+  # --- WDA 运行时提速 Settings（对齐 WDA 16.x FBSettings.m 真实生效项） ---
+  "appium:settings[waitForIdleTimeout]": 0            # 关闭 WDA 默认 10s 等待 UI 空闲，无视 IM 心跳与列表刷新
+  "appium:settings[animationCoolOffTimeout]": 0       # 关闭手势/点击后默认 2s 动画冷却等待
+  "appium:settings[useFirstMatch]": true              # 开启 Apple 原生 query.firstMatch 命中即停，避免枚举整棵 999+ 会话树
+  "appium:settings[snapshotMaxDepth]": 30             # 保留深层页面兼容性
+  "appium:settings[snapshotMaxChildren]": 60          # 截断底层 999+ 扁平会话列表超宽无用兄弟 Cell 快照
+  "appium:settings[boundElementsByIndex]": true       # 索引绑定元素，减少重复全树快照求值
+  "appium:settings[shouldUseCompactResponses]": false # 随 findElement 免费附带缓存快照中的 rect，供点击免二次快照直达
+  "appium:settings[elementResponseAttributes]": "rect" # 仅附带 rect 坐标字段，零额外属性开销
 
 devices:
   dev:
