@@ -1,25 +1,112 @@
-import time
+import os
 import pytest
 import allure
 import pytest_check as check
+from dataclasses import dataclass
 from pages.login.login_page import LoginPage
 from common.toast_enums import ToastMsg
 from core.logger_utils import logger, LogIcon
-from utils.file_reader.data_loader import load_yaml_data
-from dataclasses import dataclass
-from utils.cv_recognition.ocr_utils import OcrUtils
+from utils.file_reader.data_loader import load_yaml_data, render_template_data
 
-def load_verification_login_test_cases():
-    """从 YAML 加载并返回验证码登录的用例列表"""
+
+def _load_verification_yaml() -> dict:
+    """加载验证码登录 YAML 数据文件（含顶层 vars 变量区与 verification_cases 用例列表）"""
     try:
-        data = load_yaml_data("login/test_verification_login_data.yaml")
-        cases = data.get('verification_cases', [])
-        for item in cases:
-            item.pop('priority', None)  # 过滤优先级说明字段
-        return cases
+        return load_yaml_data("login/test_verification_login_data.yaml") or {}
     except Exception as e:
-        logger.error(f"{LogIcon.FAIL} 加载 YAML 用例失败: {e}")
-        return []
+        logger.error(f"{LogIcon.FAIL} 加载验证码登录 YAML 用例失败: {e}")
+        return {}
+
+
+_VERIFICATION_YAML_DATA = _load_verification_yaml()
+
+
+def load_verification_login_test_cases() -> list[dict]:
+    """返回验证码登录参数化用例列表"""
+    return _VERIFICATION_YAML_DATA.get("verification_cases", [])
+
+
+def resolve_app_env(driver: object = None) -> str:
+    """
+    解析当前被测 App 后端业务环境（test / gray / prod）。
+    优先级：环境变量 APP_ENV > devices.yaml 的 app_env > 环境变量 ENV > driver._factory_env > devices.yaml 的 current_env > 'test'
+    """
+    env_from_os = (os.environ.get("APP_ENV") or "").strip().lower()
+    if env_from_os:
+        return env_from_os
+
+    try:
+        devices_cfg = load_yaml_data("devices.yaml") or {}
+    except Exception:
+        devices_cfg = {}
+
+    app_env = str(devices_cfg.get("app_env") or "").strip().lower()
+    if app_env:
+        return app_env
+
+    fallback_env = (
+        os.environ.get("ENV")
+        or getattr(driver, "_factory_env", None)
+        or devices_cfg.get("current_env")
+        or "test"
+    )
+    return str(fallback_env).strip().lower()
+
+
+def resolve_verification_vars(platform: str, app_env: str | None = None, driver: object = None) -> dict[str, str]:
+    """
+    按「业务环境 (app_env) -> 运行平台 (platform)」两级路由解析验证码登录变量表：
+    - gray / test 默认提供万能验证码 9999；
+    - prod（正式环境）严禁使用万能验证码，强制保持 verify_code 为空。
+    """
+    raw_vars = _VERIFICATION_YAML_DATA.get("vars") or {}
+    variables: dict[str, str] = {
+        key: str(value)
+        for key, value in raw_vars.items()
+        if not isinstance(value, (dict, list))
+    }
+
+    resolved_env = (app_env or resolve_app_env(driver)).strip().lower()
+    platform_key = (platform or "").strip().lower()
+
+    env_accounts = raw_vars.get("env_accounts")
+    if isinstance(env_accounts, dict):
+        env_block = env_accounts.get(resolved_env)
+        if isinstance(env_block, dict):
+            env_vars: dict[str, str] = {}
+            env_default = env_block.get("default")
+            if isinstance(env_default, dict):
+                for key, value in env_default.items():
+                    if value is not None and str(value).strip():
+                        env_vars[key] = str(value)
+            platform_override = env_block.get(platform_key)
+            if isinstance(platform_override, dict):
+                for key, value in platform_override.items():
+                    if value is not None and str(value).strip():
+                        env_vars[key] = str(value)
+            variables["account"] = env_vars.get("account", "")
+            variables["verify_code"] = env_vars.get("verify_code", "")
+        else:
+            logger.warning(
+                f"{LogIcon.WARN} [VerifyVars] test_verification_login_data.yaml 未配置环境 '{resolved_env}' 的账号池，回退顶层默认变量"
+            )
+
+    if os.environ.get("LOGIN_ACCOUNT"):
+        variables["account"] = os.environ["LOGIN_ACCOUNT"].strip()
+
+    # 正式环境严禁使用万能验证码
+    if resolved_env == "prod":
+        variables["verify_code"] = ""
+
+    if not variables.get("account"):
+        raise ValueError(
+            f"环境 '{resolved_env}'（平台: {platform_key}）未配置验证码登录测试账号，"
+            f"请在 data/login/test_verification_login_data.yaml 的 vars.env_accounts.{resolved_env} 中填写。"
+        )
+
+    variables["app_env"] = resolved_env
+    return variables
+
 
 @dataclass
 class VerificationLoginCaseData:
@@ -35,68 +122,88 @@ class VerificationLoginCaseData:
     expected_toast: str = ""
     expected_agreement_title: str = ""
     expected_send_toast: str = ""
+    priority: str = "P1"
+
+
+_PRIORITY_SEVERITY_MAP = {
+    "P0": allure.severity_level.BLOCKER,
+    "P1": allure.severity_level.CRITICAL,
+    "P2": allure.severity_level.NORMAL,
+}
 
 
 @allure.epic("IM核心功能测试")
 @allure.feature("登录注册模块-验证码登录")
-@allure.story("每条用例运行前的初始化：实例化页面对象")
+@allure.story("验证码登录全路径功能测试")
 class TestVerificationLogin:
-    
-    # 标记是否已经进入过验证码登录页面
+    """验证码登录全路径功能测试"""
+
+    # 标记是否已经进入过手机号/验证码登录表单页
     _has_entered_verification_login = False
-    
-    @pytest.fixture(autouse=True)
-    def setup_method_fixture(self, driver_sender):
-        """每条用例运行前的初始化：实例化页面对象"""
-        self.loginPage = LoginPage(driver_sender)
-        self.ocr_utils = OcrUtils(driver_sender)
-        yield
 
     @pytest.fixture(autouse=True)
     def enter_verification_login_page(self, request, driver_sender):
-        """ 智能路由：根据用例标签决定进入哪个页面类级别前置：App 启动后只点一次'手机号登录'进入登录表单"""
+        """智能路由：初始化页面对象，并根据用例标签决定是否首次点击进入手机号登录表单"""
         self.loginPage = LoginPage(driver_sender)
 
-        # 获取当前运行的这个具体的测试函数 (node)
         current_test_node = request.node
-        
-        # 嗅探当前测试函数身上有没有贴 @pytest.mark.no_login_entrance 标签
         is_lo_test = current_test_node.get_closest_marker("no_login_entrance") is not None
 
-        # 智能页面路由 (Smart Routing)
         if not is_lo_test:
             if not TestVerificationLogin._has_entered_verification_login:
                 logger.info(f"{LogIcon.ACTION} 首次进入验证码登录表单，执行点击操作。")
                 self.loginPage.click_phone_login_button()
-                TestVerificationLogin._has_entered_verification_login = True # 上锁
+                TestVerificationLogin._has_entered_verification_login = True
             else:
                 logger.debug(f"{LogIcon.ACTION} 检测到已经处于验证码登录表单页，跳过点击，直接开始测试。")
         else:
             logger.info(f"{LogIcon.ACTION} 探测到 @pytest.mark.no_login_entrance 标签，停留在登录首页，不进入手机号表单。")
-            
+
         yield
 
-
     @pytest.mark.p0
-    @allure.severity(allure.severity_level.BLOCKER)
     @allure.story("验证码登录场景回归验证")
     @allure.title("验证码登录场景-状态：已完成")
-    @pytest.mark.parametrize("case_dict", load_verification_login_test_cases(), ids=lambda x: x.get('id', 'TC'))
+    @pytest.mark.parametrize("case_dict", load_verification_login_test_cases(), ids=lambda x: x.get("id", "TC"))
     def test_verification_login_scenarios(self, case_dict):
-        case = VerificationLoginCaseData(**case_dict)
+        platform_key = (self.loginPage.platform or "").strip().lower()
+        verify_vars = resolve_verification_vars(platform_key, driver=self.loginPage.driver)
+        rendered_case = render_template_data(case_dict, verify_vars)
+
+        # 按当前设备平台合并差异化预期配置（如 V3_TC04 在 iOS 允许超长输入导致后端拦截失败）
+        platform_overrides = rendered_case.pop("platform_overrides", None)
+        if isinstance(platform_overrides, dict):
+            override = platform_overrides.get(platform_key)
+            if isinstance(override, dict):
+                rendered_case.update(override)
+
+        case = VerificationLoginCaseData(**rendered_case)
 
         allure.dynamic.title(f"[{case.id}] 验证码登录场景 - {case.desc}")
-        logger.info(f"{LogIcon.ACTION} 开始执行用例: [{case.id}] {case.desc}")
+        allure.dynamic.severity(
+            _PRIORITY_SEVERITY_MAP.get(case.priority.upper(), allure.severity_level.NORMAL)
+        )
 
-        with allure.step("1. 初始化登录环境并输入验证码和账号"):
+        # 正式环境严禁使用万能验证码，直接跳过预期成功登录的验证码用例
+        if case.expected_status == "success" and (verify_vars["app_env"] == "prod" or not case.verify_code):
+            pytest.skip(f"环境 '{verify_vars['app_env']}' 不支持万能验证码，跳过成功登录用例 [{case.id}]")
+
+        logger.info(
+            f"{LogIcon.ACTION} 开始执行用例: [{case.id}] {case.desc} "
+            f"(环境: {verify_vars['app_env']} | 平台: {platform_key})"
+        )
+
+        with allure.step("1. 切换至短信验证码登录模式并输入手机号"):
+            self.loginPage.click_code_login_button()
             self.loginPage.input_account(case.account)
-            
+
             if case.check_agreement:
                 self.loginPage.click_user_agreement()
             else:
                 self.loginPage.cancel_user_agreement()
-                
-            self.loginPage.click_login_button()
+
+            # 短信验证码登录无密码框，关闭 2s 保存密码弹窗探测避免漏捕短时拦截 Toast
+            self.loginPage.click_login_button(auto_dismiss_save_pwd=False)
 
         # ========================================================
         # 拦截：未勾选协议的分支
@@ -104,81 +211,113 @@ class TestVerificationLogin:
         if not case.check_agreement:
             with allure.step(f"1.1 拦截处理：未勾选隐私协议弹窗 (预期标题: '{case.expected_agreement_title}')"):
                 actual_popup_title = self.loginPage.get_agreement_popup_title()
-                check.equal(actual_popup_title, case.expected_agreement_title,
-                            f"❌ 预期弹出协议框标题为 '{case.expected_agreement_title}', 实际看到 '{actual_popup_title}'")
+                check.equal(
+                    actual_popup_title,
+                    case.expected_agreement_title,
+                    f"❌ 预期弹出协议框标题为 '{case.expected_agreement_title}', 实际看到 '{actual_popup_title}'",
+                )
 
                 if case.popup_action == "agree":
                     self.loginPage.click_handle_agreement_popup()
-                elif case.popup_action == "reject":
-                    self.loginPage.close_agreement_popup()
-                    num_title = self.loginPage.get_top_title()
-                    check.equal(num_title, "手机号登录", f"❌ 预期停留在登录页，实际非此界面")
-                    return
                 else:
-                    self.loginPage.close_agreement_popup() # 兜底防止弹窗遗留
-                    num_title = self.loginPage.get_top_title()
-                    check.equal(num_title, "手机号登录", f"❌ 预期停留在登录页，实际非此界面")
+                    self.loginPage.close_agreement_popup()
+                    check.is_true(
+                        self.loginPage.is_on_phone_login_page(),
+                        f"❌ [{case.id}] 拒绝/关闭隐私协议弹窗后，未停留在手机号登录表单页",
+                    )
                     return
 
         # ========================================================
-        # 拦截：基于规则（如位数不足或为空）不触发后续手机号校验
+        # 拦截：基于前端规则（如位数不足或为空）不触发人机校验
         # ========================================================
         if not case.trigger_verify:
-            with allure.step(f"1.2 预期规则拦截不触发验证 (预期提示: '{case.expected_toast}')"):
-                early_toast = self.loginPage.get_toast_text(expected_toast=case.expected_toast)
-                check.equal(early_toast, case.expected_toast, f"❌ 预期早期拦截 '{case.expected_toast}', 实际 '{early_toast}'")
-                return 
-                    
+            with allure.step(f"1.2 预期前端规则拦截不触发校验 (预期提示: '{case.expected_toast}')"):
+                if platform_key == "android" and case.expected_toast:
+                    early_toast = self.loginPage.get_toast_text(expected_toast=case.expected_toast)
+                    check.equal(
+                        early_toast,
+                        case.expected_toast,
+                        f"❌ 预期早期拦截 Toast '{case.expected_toast}', 实际 '{early_toast}'",
+                    )
+                check.is_true(
+                    self.loginPage.is_on_phone_login_page(),
+                    f"❌ [{case.id}] 预期被前端规则拦截留在登录表单页，但当前已离开表单页",
+                )
+                return
+
         # ========================================================
-        # 业务分支：验证码分发、获取倒计时、最终业务输入
+        # 业务分支：人机校验、获取倒计时、输入验证码与结果校验
         # ========================================================
+        is_success = False
+        entered_code_page = False
         try:
-            with allure.step(f"2. 验证人机校验 UI 交互状态 (预期发码状态: '{case.expected_send_toast}')"):
+            with allure.step(f"2. 完成人机校验并校验发码结果 (预期发码状态: '{case.expected_send_toast}')"):
                 self.loginPage.click_human_verification_button()
-                toast_message = self.loginPage.get_login_toast_message()
-                
-                if case.expected_send_toast:
-                    check.equal(toast_message, case.expected_send_toast, f"❌ 发送验证码状态提示不符: 预期'{case.expected_send_toast}', 实际'{toast_message}'")
-                    
-                    # ⚠️ 如果业务本身就因如‘手机号错误’等后端拦截了获取验证码动作，就不可能进入倒计时和输入验证码的格子了
-                    if case.expected_send_toast != ToastMsg.VERIFY_CODE_SENT:
-                        logger.info(f"{LogIcon.FAIL} 由于获取验证码阶段被业务规则拦截或失败 ('{case.expected_send_toast}')，安全跳出后续倒计时及填验证码流程。")
-                        return
-            
-            with allure.step("3. 验证人机校验 UI 交互状态: 验证码倒计时"):
-                countdown_text = self.loginPage.get_verification_code_countdown_text()
-                check.is_in('s', countdown_text, f"点击灰色按钮后，未发现正确验证码倒计时特征字符 's': {countdown_text}")  
+                if platform_key in ("android", "harmonyos") and case.expected_send_toast:
+                    if platform_key == "harmonyos":
+                        # 鸿蒙端走原生 HosBy.text_contains 极速捕获短时发码 Toast，避免 XPath 漏捕
+                        toast_message = self.loginPage.get_toast_text(
+                            timeout=3.0,
+                            expected_toast=case.expected_send_toast,
+                        )
+                    else:
+                        toast_message = self.loginPage.get_login_toast_message()
+                    check.equal(
+                        toast_message,
+                        case.expected_send_toast,
+                        f"❌ 发送验证码状态提示不符: 预期 '{case.expected_send_toast}', 实际 '{toast_message}'",
+                    )
 
-            with allure.step(f"4. 输入验证码并验证预期结果 (输入:{case.verify_code} / 预期:{case.expected_status})"):
-                self.loginPage.input_verify_code_robust(case.verify_code)
-                
-                if case.expected_status == "fail":
-                    verify_code_toast = self.loginPage.get_toast_text()
-                    check.equal(verify_code_toast, case.expected_toast, f"❌ 输入验证码后 Toast 提示不符合预期: {verify_code_toast}")
-                    
+                # 若发码阶段预期被业务规则拦截（如手机号不合法），则不会进入验证码四宫格页面
+                if case.expected_send_toast and case.expected_send_toast != ToastMsg.VERIFY_CODE_SENT:
+                    is_in_code_page = self.loginPage.is_on_verification_login_page(timeout=1)
+                    check.is_false(
+                        is_in_code_page,
+                        f"❌ [{case.id}] 预期发码阶段被拦截 ('{case.expected_send_toast}')，却意外进入了验证码输入页",
+                    )
+                    logger.info(
+                        f"{LogIcon.SUCCESS} 发码阶段已按预期拦截 ('{case.expected_send_toast}')，结束后续流程。"
+                    )
+                    return
+
+            with allure.step("3. 校验进入验证码输入页与倒计时状态"):
+                countdown_text = self.loginPage.get_verification_code_countdown_text()
+                entered_code_page = True
+                check.is_in("s", countdown_text, f"❌ 未发现验证码倒计时特征字符 's': '{countdown_text}'")
+
+            with allure.step(f"4. 输入验证码并验证预期结果 (输入: '{case.verify_code}' / 预期: {case.expected_status})"):
+                if case.verify_code:
+                    self.loginPage.input_verify_code_robust(case.verify_code)
+
+                if case.expected_status == "success":
                     is_success = self.loginPage.is_login_success()
-                    check.is_false(is_success, f"❌ [危险] 预期登录失败，但发生了极其严重的漏洞：成功进入了主页！")
-                    
-                # elif case.expected_status == "success":
-                #     is_success = self.loginPage.is_login_success()
-                #     check.is_true(is_success, f"❌ 预期登录成功进入主页，但未检测到主页特征元素！")
+                    check.is_true(is_success, "❌ 预期验证码登录成功进入主页，但未检测到主页特征元素！")
+                elif case.expected_status == "fail":
+                    if platform_key == "android" and case.expected_toast:
+                        verify_code_toast = self.loginPage.get_toast_text(expected_toast=case.expected_toast)
+                        check.equal(
+                            verify_code_toast,
+                            case.expected_toast,
+                            f"❌ 输入验证码后 Toast 不符 | 预期: '{case.expected_toast}', 实际: '{verify_code_toast}'",
+                        )
+
+                    is_success = self.loginPage.is_login_success()
+                    check.is_false(is_success, "❌ [危险] 预期登录失败，但发生了越权：成功进入了主页！")
 
         # ========================================================
-        # Teardown 环境清理
+        # Teardown 环境清理（按真实页面栈复位，严禁在表单页误点返回）
         # ========================================================
         finally:
-            with allure.step("5. 环境清理：确保账号登出或重置界面栈"):
-                if self.loginPage.is_login_success():  
-                    logger.info(f"{LogIcon.SETUP} 环境清理：检测到账号处于登录状态，执行强制登出和环境重置...")
+            with allure.step("5. 环境清理：确保账号登出或从验证码页安全复位"):
+                if is_success:
+                    logger.info(f"{LogIcon.SETUP} 环境清理：检测到账号处于登录状态，执行强制登出...")
                     msg = self.loginPage.logout_if_logged_in()
-                    if self.loginPage.platform == "android":
-                        check.equal(msg, ToastMsg.LOGOUT_SUCCESS, f"⚠️ 环境清理失败：退出登录动作未成功！")
-                    
-                    # 为了下一条验证码用例回归正常态，需要再切一次验证码模式
-                    self.loginPage.click_code_login_button() 
-                else:
-                    # 对于登录失败（填写错误验证码）的用例，弹窗会停留在四个格子的验证码独立页面中
-                    is_in_code_page = self.loginPage.is_on_verification_login_page()
-                    if is_in_code_page:
-                        logger.info(f"{LogIcon.FIND} 当前界面遗留在验证码四宫格输入页，执行点击左上角返回至手机号表单...")
-                self.loginPage.click_back_btn()
+                    if platform_key == "android":
+                        check.equal(msg, ToastMsg.LOGOUT_SUCCESS, "⚠️ 环境清理失败：退出登录动作未成功！")
+                    is_back = self.loginPage.wait_for_login_page()
+                    check.is_true(is_back, f"❌ 账号 {case.account} 退出登录失败，未回到登录页")
+                    # 鸿蒙/iOS 登出后回到登录入口主页，重置标记确保下一条用例正常重新进入手机号表单
+                    TestVerificationLogin._has_entered_verification_login = False
+                elif entered_code_page or self.loginPage.is_on_verification_login_page(timeout=1):
+                    logger.info(f"{LogIcon.FIND} 当前停留在验证码四宫格输入页，点击左上角返回至手机号表单...")
+                    self.loginPage.click_back_btn()

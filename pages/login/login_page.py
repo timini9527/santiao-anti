@@ -204,14 +204,16 @@ class LoginPage(BasePage):
         """ 点击‘密码登录’，如果当前是验证码等其他模式则切换 """
         logger.info(f"{LogIcon.SETUP} 检查并尝试切换到密码登录模式")
         if self._platform_name == "harmonyos":
-            # 鸿蒙密码模式存在 2 个 TextInput（手机号 + 密码），短信模式仅 1 个；用原生 type 直查规避 5s XPath 负向超时
-            try:
-                inputs = self.driver.find_elements("type", "TextInput")
-                if len(inputs) >= 2:
-                    logger.info(f"{LogIcon.SUCCESS} 当前已处于密码登录模式（检测到 {len(inputs)} 个输入框），无需切换")
-                    return
-            except Exception:
-                pass
+            # 鸿蒙密码模式存在 2 个 TextInput（手机号 + 密码），短信模式仅 1 个；走定位器原生 type 直查规避 XPath 负向超时
+            inputs = self.find_elements(
+                LoginLocator.FORM_INPUTS,
+                condition="presence",
+                timeout=0.5,
+                expect_missing=True,
+            )
+            if len(inputs) >= 2:
+                logger.info(f"{LogIcon.SUCCESS} 当前已处于密码登录模式（检测到 {len(inputs)} 个输入框），无需切换")
+                return
             pass_elem = self.find_element(LoginLocator.PASSWORD_LOGIN_SWITCH, condition="presence", timeout=2, expect_missing=True)
             if pass_elem:
                 logger.info(f"{LogIcon.SETUP} 执行切换到密码登录模式")
@@ -231,15 +233,35 @@ class LoginPage(BasePage):
 
     # 登录页 - 切换到验证码登录模式
     def click_code_login_button(self) -> None:
-        """ 点击‘验证码登录’，切换到验证码模式 """
+        """ 点击‘短信验证登录’，如果当前是密码登录模式则切换（跨端短路，避免已在短信模式时产生误导 ERROR 日志） """
         logger.info(f"{LogIcon.SETUP} 检查并尝试切换到验证码登录模式")
-        code_elem = self.find_element(LoginLocator.CODE_LOGIN_SWITCH, timeout=2)
-        pwd_elem = self.get_password_element()
-        if code_elem and pwd_elem:
-            logger.info(f"{LogIcon.SETUP} 执行切换到验证码登录模式")
-            self._set_cached_password(None)
-            code_elem.click()
-            time.sleep(1)
+        if self._platform_name == "harmonyos":
+            # 鸿蒙短信模式仅 1 个 TextInput（手机号），密码模式有 2 个；走定位器原生 type 直查规避 XPath 负向超时
+            inputs = self.find_elements(
+                LoginLocator.FORM_INPUTS,
+                condition="presence",
+                timeout=0.5,
+                expect_missing=True,
+            )
+            if len(inputs) == 1:
+                logger.info(f"{LogIcon.SUCCESS} 当前已处于验证码登录模式（检测到 1 个输入框），无需切换")
+                return
+            code_elem = self.find_element(LoginLocator.CODE_LOGIN_SWITCH, condition="presence", timeout=2, expect_missing=True)
+            if code_elem:
+                logger.info(f"{LogIcon.SETUP} 执行切换到验证码登录模式")
+                self._set_cached_password(None)
+                self.tap_point(click_elem=code_elem, duration=100)
+                time.sleep(0.3)
+            return
+
+        code_elem = self.find_element(LoginLocator.CODE_LOGIN_SWITCH, timeout=1.5, expect_missing=True)
+        if code_elem:
+            pwd_elem = self.find_element(LoginLocator.PASSWORD_EDIT, timeout=0.3, expect_missing=True)
+            if pwd_elem:
+                logger.info(f"{LogIcon.SETUP} 执行切换到验证码登录模式")
+                self._set_cached_password(None)
+                code_elem.click()
+                time.sleep(0.5)
 
     # ==========================
     # 账号/密码输入类操作
@@ -390,14 +412,15 @@ class LoginPage(BasePage):
         return countdown_text
 
     # 登录页 - 判断是否在验证码登录页面
-    def is_on_verification_login_page(self, timeout: int = 2) -> bool:
+    def is_on_verification_login_page(self, timeout: int | float = 2) -> bool:
         """
-        判断当前是否处于验证码登录页面
+        判断当前是否处于验证码四宫格输入页面
         :param timeout: 超时时间
-        :return: True(在验证码登录页面) / False(不在验证码登录页面)
+        :return: True(在验证码输入页面) / False(不在验证码输入页面)
         """
         logger.info(f"{LogIcon.WAIT} 🧐 [Action - Login] 判断当前是否处于验证码登录页面 (超时: {timeout}s)")
-        return self.is_element_exist(LoginLocator.PLEASE_ENTER_VERIFICATION_CODE, timeout=timeout, condition="visibility")
+        lookup_condition = "presence" if self._platform_name == "harmonyos" else "visibility"
+        return self.is_element_exist(LoginLocator.PLEASE_ENTER_VERIFICATION_CODE, timeout=timeout, condition=lookup_condition)
 
     # ==========================
     # 协议与底层弹窗操作
@@ -698,27 +721,41 @@ class LoginPage(BasePage):
     # 登录页 - 稳健版输入分离式验证码
     def input_verify_code_robust(self, code: str) -> None:
         """
-        输入分离式验证码（稳健版：逐个框输入）
-        :param code: 验证码字符串，如 "1234"
+        输入分离式验证码：
+        - HarmonyOS：单次点击首格聚焦后，纯数字验证码直接下发原生按键事件 (NUM_0=2000..NUM_9=2009)，
+          规避逐格 XpathWidget 剪贴板粘贴耗时长达 7~8s 的性能瓶颈（压缩至 <1s）；
+        - Android / iOS：保持逐格点击并输入的稳健逻辑。
+        :param code: 验证码字符串，如 "9999"
         """
         logger.info(f"{LogIcon.ACTION} 准备输入验证码: {code}")
-        
+        if not code:
+            return
+
+        lookup_condition = "presence" if self._platform_name == "harmonyos" else "visibility"
         # 1. 找到这 4 个输入框
-        edit_texts = self.find_elements(LoginLocator.CODE_EDIT_TEXTS, timeout=3)
+        edit_texts = self.find_elements(LoginLocator.CODE_EDIT_TEXTS, condition=lookup_condition, timeout=2)
         if not edit_texts:
             raise RuntimeError("❌ 未找到验证码输入框！")
-            
+
         # 2. 校验框的数量和验证码长度是否匹配 (通常是 4 位或 6 位)
         if len(edit_texts) != len(code):
             logger.warning(f"{LogIcon.WARN} 验证码长度({len(code)})与输入框数量({len(edit_texts)})不一致！")
 
-        # 3. 逐个提取字符并输入
+        # 3. 鸿蒙极速路径：聚焦首格一次 + 原生数字键直打（省去 4 轮剪贴板粘贴与重复点击）
+        if self._platform_name == "harmonyos" and code.isdigit():
+            self.tap_point(click_elem=edit_texts[0], duration=60)
+            for i, digit in enumerate(code, 1):
+                logger.info(f"{LogIcon.SETUP} [HarmonyOS] 原生按键输入第 {i} 位验证码: {digit}")
+                self.driver.execute_script("mobile: pressKey", {"keycode": 2000 + int(digit)})
+            return
+
+        # 4. 通用逐格输入路径（Android / iOS 或非纯数字字符）
         for i, digit in enumerate(code):
             if i < len(edit_texts):
                 try:
                     logger.info(f"{LogIcon.SETUP} 点击并输入第 {i+1} 个验证码字符: {digit}")
-                    edit_texts[i].click() 
+                    edit_texts[i].click()
                     edit_texts[i].send_keys(digit)
-                    time.sleep(0.2) 
+                    time.sleep(0.2)
                 except Exception as e:
                     logger.error(f"{LogIcon.FAIL} 输入第 {i+1} 个验证码字符时失败: {e}")

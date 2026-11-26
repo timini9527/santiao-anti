@@ -6532,6 +6532,523 @@ def validate_ios_selector_syntax(strategy: str, val: str) -> Tuple[Optional[str]
 
 
 # ==============================================================================
+# 鸿蒙 HypiumBy (BY.* 原生链式表达式) 静态解析与 DOM 树求值引擎
+# ==============================================================================
+
+_HYPIUM_MATCH_PATTERNS: Dict[str, int] = {
+    "EQUALS": 0,
+    "CONTAINS": 1,
+    "STARTS_WITH": 2,
+    "ENDS_WITH": 3,
+    "REGEXP": 4,
+    "REGEXP_ICASE": 5,
+}
+
+_HYPIUM_STR_METHODS = frozenset({
+    "text", "type", "id", "key", "hint", "description", "inWindow",
+    "originalText", "bundleName", "accessibilityId",
+})
+_HYPIUM_XPATH_METHODS = frozenset({"xpath"})
+_HYPIUM_BOOL_METHODS = frozenset({
+    "clickable", "longClickable", "scrollable", "enabled",
+    "focused", "selected", "checked", "checkable",
+})
+_HYPIUM_REL_METHODS = frozenset({"within", "isBefore", "isAfter"})
+
+_HARMONY_TUPLE_STRATEGY_MAP: Dict[str, str] = {
+    "hypiumby": "hypium",
+    "byexpression": "hypium",
+    "hypium": "hypium",
+    "xpath": "xpath",
+    "text": "text",
+    "type": "type",
+    "class name": "type",
+    "id": "id",
+    "key": "id",
+    "description": "description",
+    "accessibility id": "description",
+}
+
+
+def _eval_hosby_ast_arg(node: ast.AST) -> Tuple[Optional[str], Any]:
+    """安全静态求值 HosBy.xxx(...) 调用中的字面量与常量参数（零 eval 风险）。"""
+    if isinstance(node, ast.Constant):
+        if isinstance(node.value, (str, int, float, bool)) or node.value is None:
+            return None, node.value
+        return f"不支持的常量参数类型: {type(node.value).__name__}", None
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
+        if isinstance(node.operand, ast.Constant) and isinstance(node.operand.value, (int, float)) and not isinstance(node.operand.value, bool):
+            return None, -node.operand.value
+    if isinstance(node, ast.Name):
+        low = node.id.lower()
+        if low == "true":
+            return None, True
+        if low == "false":
+            return None, False
+        if low in ("none", "null"):
+            return None, None
+        return f"不支持的变量引用 '{node.id}'，请替换为具体字面量字符串或 HosBy.MATCH_* 常量", None
+    if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
+        if node.value.id in ("HosBy", "MatchPattern"):
+            attr_name = node.attr.upper()
+            if attr_name.startswith("MATCH_"):
+                attr_name = attr_name[6:]
+            if attr_name in _HYPIUM_MATCH_PATTERNS:
+                return None, _HYPIUM_MATCH_PATTERNS[attr_name]
+        return f"不支持的属性引用 '{node.value.id}.{node.attr}'", None
+    return "HosBy 参数仅支持字符串、数字、布尔值、None 及 HosBy.MATCH_* 常量", None
+
+
+def _convert_hosby_call_to_by_expr(raw: str) -> Tuple[bool, Optional[str], Optional[str]]:
+    """
+    安全静态解析从源码直接复制的 HosBy.<method>(...) 调用（兼容变量赋值前缀、return 前缀与多行缩进），
+    返回 (是否识别为 HosBy 调用, 转换后的标准 BY.* 表达式, 错误提示信息)。
+    """
+    cleaned = (raw or "").strip()
+    if not cleaned:
+        return False, None, None
+
+    # 剥离从 *_hos.py 整行复制时可能携带的 "VAR_NAME = " 或 "return " 前缀
+    cleaned = re.sub(r"^(?:return\s+|[A-Za-z_][A-Za-z0-9_]*\s*=\s*)", "", cleaned).strip()
+    if not re.match(r"^HosBy\.", cleaned):
+        return False, None, None
+
+    # 去除行尾孤立逗号（如从参数/列表里顺手复制出来的尾逗号）
+    if cleaned.endswith(","):
+        cleaned = cleaned[:-1].strip()
+
+    try:
+        tree = ast.parse(cleaned, mode="eval")
+    except SyntaxError as e:
+        return True, None, f"HosBy 调用语法错误（请检查引号与括号是否闭合）: {e.msg}"
+
+    call_node = tree.body
+    if (
+        not isinstance(call_node, ast.Call)
+        or not isinstance(call_node.func, ast.Attribute)
+        or not isinstance(call_node.func.value, ast.Name)
+        or call_node.func.value.id != "HosBy"
+    ):
+        return True, None, "请输入完整的 HosBy.<方法>(...) 调用，例如 HosBy.text_contains(\"我已阅读且同意\", \"Text\")"
+
+    method_name = call_node.func.attr
+    if method_name.startswith("_"):
+        return True, None, f"不允许调用私有方法 HosBy.{method_name}"
+
+    try:
+        from locators.common.hos_by import HosBy as _ProjectHosBy
+    except Exception as imp_err:
+        return True, None, f"无法加载 locators.common.hos_by.HosBy: {imp_err}"
+
+    target_fn = getattr(_ProjectHosBy, method_name, None)
+    if not callable(target_fn):
+        return True, None, f"HosBy 中不存在方法 '{method_name}'，请核对 locators/common/hos_by.py 中的方法名"
+
+    pos_args: List[Any] = []
+    for arg in call_node.args:
+        a_err, a_val = _eval_hosby_ast_arg(arg)
+        if a_err:
+            return True, None, f"HosBy.{method_name}() 参数错误: {a_err}"
+        pos_args.append(a_val)
+
+    kw_args: Dict[str, Any] = {}
+    for kw in call_node.keywords:
+        if not kw.arg:
+            return True, None, f"HosBy.{method_name}() 不支持 **kwargs 展开"
+        a_err, a_val = _eval_hosby_ast_arg(kw.value)
+        if a_err:
+            return True, None, f"HosBy.{method_name}({kw.arg}=...) 参数错误: {a_err}"
+        kw_args[kw.arg] = a_val
+
+    try:
+        res = target_fn(*pos_args, **kw_args)
+    except Exception as call_err:
+        return True, None, f"HosBy.{method_name}() 参数校验失败: {call_err}"
+
+    if not (isinstance(res, tuple) and len(res) == 2 and isinstance(res[0], str) and isinstance(res[1], str)):
+        return True, None, f"HosBy.{method_name}() 返回值不是标准 (strategy, value) 二元组"
+
+    strat_raw, val_raw = res[0].strip(), res[1].strip()
+    strat_low = strat_raw.lower()
+    if strat_low in ("hypiumby", "byexpression", "hypium"):
+        return True, val_raw, None
+
+    # 将 HosBy.text / type_only / id_only / key 等单条件直查统一等价转为精确 BY.*，严格保持真机精确语义
+    safe_v = _ProjectHosBy._escape(val_raw)
+    if strat_low == "text":
+        return True, f'BY.text("{safe_v}")', None
+    if strat_low == "type":
+        return True, f'BY.type("{safe_v}")', None
+    if strat_low == "key":
+        return True, f'BY.key("{safe_v}")', None
+    if strat_low == "id":
+        return True, f'BY.id("{safe_v}")', None
+    return True, val_raw, None
+
+
+def resolve_harmony_locator_input(raw: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """
+    统一识别鸿蒙端粘贴的多种高级定位格式（不修改输入框原文，仅返回规范化后的策略与值）：
+    1. 源码直贴：HosBy.between_texts(...) / AGREE_AND_LOGIN_BTN = HosBy.within_type(...)
+    2. 日志/代码二元组：('HypiumBy', 'BY....') / ('text', '手机号登录') / ('type', 'TextInput') /
+       ('key', '...') / ('id', '...') / ('xpath', '//...') / (AppiumBy.XPATH, '//...') 及整行日志
+    3. 纯 HypiumBy 链式表达式：BY.isAfter(...).type("Image")
+    返回 (目标策略键或 None, 解包后的表达式值或 None, 语法错误信息或 None)。
+    """
+    text = (raw or "").strip()
+    if not text:
+        return None, None, None
+
+    # 1. 优先识别源码直贴的 HosBy.<method>(...)
+    is_hosby, by_expr, hosby_err = _convert_hosby_call_to_by_expr(text)
+    if is_hosby:
+        if hosby_err:
+            return "hypium", None, hosby_err
+        return "hypium", by_expr, None
+
+    # 2. 尝试解包任意鸿蒙定位二元组（支持整行日志、AppiumBy.XXX 与普通字符串策略名）
+    def _try_parse_locator_tuple(candidate: str) -> Optional[Tuple[str, str]]:
+        # 先兼容 (AppiumBy.XPATH, "//...") / (AppiumBy.ID, "...") 等代码二元组
+        cand_norm = re.sub(
+            r"^\(\s*(?:AppiumBy|By)\.([A-Za-z_]+)\s*,",
+            lambda m: f"('{m.group(1).lower().replace('_', ' ')}',",
+            candidate.strip(),
+        )
+        try:
+            parsed = ast.literal_eval(cand_norm)
+        except Exception:
+            return None
+        if isinstance(parsed, (tuple, list)) and len(parsed) == 2 and isinstance(parsed[0], str) and isinstance(parsed[1], str):
+            mapped = _HARMONY_TUPLE_STRATEGY_MAP.get(parsed[0].strip().lower())
+            if mapped:
+                return mapped, parsed[1].strip()
+        if isinstance(parsed, str) and re.match(r"^(?:BY|By|by)\.", parsed.strip()):
+            return "hypium", parsed.strip()
+        return None
+
+    direct_tuple = _try_parse_locator_tuple(text)
+    if direct_tuple is not None:
+        return direct_tuple[0], direct_tuple[1], None
+
+    # 剥离整行复制的 "VAR_NAME = (AppiumBy.XPATH, '...')" 赋值前缀后再尝试一次
+    no_assign = re.sub(r"^(?:return\s+|[A-Za-z_][A-Za-z0-9_]*\s*=\s*)", "", text).strip().rstrip(",").strip()
+    if no_assign != text:
+        assign_tuple = _try_parse_locator_tuple(no_assign)
+        if assign_tuple is not None:
+            return assign_tuple[0], assign_tuple[1], None
+
+    # 扫描运行日志文本中嵌套的平衡圆括号定位元组，如 "正在查找元素: ('text', '手机号登录') (模式: visibility)"
+    strat_keys_pat = "|".join(re.escape(k) for k in _HARMONY_TUPLE_STRATEGY_MAP)
+    m_tuple = re.search(
+        rf"\(\s*(?:['\"](?:{strat_keys_pat})['\"]|(?:AppiumBy|By)\.[A-Za-z_]+)\s*,",
+        text,
+        re.IGNORECASE,
+    )
+    if m_tuple:
+        start_idx = m_tuple.start()
+        depth = 0
+        in_sq = False
+        in_dq = False
+        escaped = False
+        for i in range(start_idx, len(text)):
+            ch = text[i]
+            if escaped:
+                escaped = False
+                continue
+            if ch == "\\" and (in_sq or in_dq):
+                escaped = True
+                continue
+            if ch == "'" and not in_dq:
+                in_sq = not in_sq
+            elif ch == '"' and not in_sq:
+                in_dq = not in_dq
+            elif not in_sq and not in_dq:
+                if ch == "(":
+                    depth += 1
+                elif ch == ")":
+                    depth -= 1
+                    if depth == 0:
+                        extracted = _try_parse_locator_tuple(text[start_idx:i + 1])
+                        if extracted is not None:
+                            return extracted[0], extracted[1], None
+                        break
+
+    # 3. 识别纯 BY.xxx(...) 表达式
+    if re.match(r"^(?:BY|By|by)\.", text):
+        return "hypium", text, None
+
+    return None, None, None
+
+
+def extract_hypium_expression(raw: str) -> str:
+    """
+    智能规范化用户粘贴的 HypiumBy 表达式：
+    1. 支持直接粘贴源码调用：HosBy.between_texts(...) / HosBy.text_contains(...)
+    2. 支持直接粘贴纯表达式：BY.isAfter(BY.text("...", 4)).isBefore(BY.text("我已阅读且同意", 1)).type("Image")
+    3. 支持直接粘贴日志元组或整行日志：正在查找元素: ('HypiumBy', 'BY....') (模式: visibility)
+    """
+    resolved_strat, resolved_val, err = resolve_harmony_locator_input(raw)
+    if err is None and resolved_strat == "hypium" and resolved_val:
+        return resolved_val
+    return (raw or "").strip()
+
+
+def _eval_hypium_match_pattern(arg_node: ast.AST) -> Tuple[Optional[str], int]:
+    """解析 HypiumBy 字符串方法的第 2 个匹配模式参数（支持 0~5 整型或 MatchPattern.XXX）。"""
+    if isinstance(arg_node, ast.Constant) and isinstance(arg_node.value, int) and not isinstance(arg_node.value, bool):
+        mode = int(arg_node.value)
+        if 0 <= mode <= 5:
+            return None, mode
+        return f"匹配模式数值 {mode} 超出有效范围 (0=精确, 1=包含, 2=前缀, 3=后缀, 4=正则, 5=正则忽略大小写)", 0
+    if isinstance(arg_node, ast.Attribute) and isinstance(arg_node.value, ast.Name):
+        if arg_node.value.id in ("MatchPattern", "HosBy"):
+            attr_name = arg_node.attr.upper()
+            if attr_name.startswith("MATCH_"):
+                attr_name = attr_name[6:]
+            if attr_name in _HYPIUM_MATCH_PATTERNS:
+                return None, _HYPIUM_MATCH_PATTERNS[attr_name]
+    return "匹配模式参数非法，请传入 0~5 整数或 MatchPattern.CONTAINS / MatchPattern.REGEXP", 0
+
+
+def _eval_hypium_bool_arg(arg_node: ast.AST) -> Tuple[Optional[str], bool]:
+    """解析 HypiumBy 布尔参数（兼容 JS true/false 与 Python True/False）。"""
+    if isinstance(arg_node, ast.Constant) and isinstance(arg_node.value, bool):
+        return None, bool(arg_node.value)
+    if isinstance(arg_node, ast.Name):
+        low = arg_node.id.lower()
+        if low == "true":
+            return None, True
+        if low == "false":
+            return None, False
+    return "布尔状态方法参数必须为 true / false (或 True / False)", True
+
+
+def _parse_hypium_ast_chain(node: ast.AST) -> Tuple[Optional[str], List[Tuple[str, Tuple[Any, ...]]]]:
+    """递归解析单条 BY.xxx(...).yyy(...) 链式调用 AST 为有序条件步骤列表。"""
+    if isinstance(node, ast.Name):
+        if node.id in ("BY", "By", "by"):
+            return None, []
+        return f"HypiumBy 表达式必须以 'BY.' 开头，不能以 '{node.id}' 开头", []
+
+    if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+        return "HypiumBy 表达式必须为标准链式方法调用，如 BY.type(\"Text\").text(\"确定\")", []
+
+    if node.keywords:
+        return f"方法 .{node.func.attr}() 不支持关键字参数，请使用位置参数", []
+
+    err, prev_steps = _parse_hypium_ast_chain(node.func.value)
+    if err:
+        return err, []
+
+    method = node.func.attr
+    args = node.args
+
+    if method in _HYPIUM_STR_METHODS:
+        if len(args) not in (1, 2):
+            return f"方法 .{method}() 需要 1~2 个参数，当前传入了 {len(args)} 个", []
+        if not (isinstance(args[0], ast.Constant) and isinstance(args[0].value, str)):
+            return f"方法 .{method}() 第 1 个参数必须为字符串字面量", []
+        val_str = str(args[0].value)
+        mode = 0
+        if len(args) == 2:
+            m_err, mode = _eval_hypium_match_pattern(args[1])
+            if m_err:
+                return f"方法 .{method}() {m_err}", []
+        if mode in (4, 5):
+            try:
+                re.compile(val_str, re.IGNORECASE if mode == 5 else 0)
+            except re.error as re_err:
+                return f"方法 .{method}() 中的正则表达式语法无效: {re_err}", []
+        prev_steps.append((method, (val_str, mode)))
+        return None, prev_steps
+
+    if method in _HYPIUM_XPATH_METHODS:
+        if len(args) != 1:
+            return f"方法 .{method}() 必须且只能传入 1 个 XPath 字符串参数", []
+        if not (isinstance(args[0], ast.Constant) and isinstance(args[0].value, str)):
+            return f"方法 .{method}() 参数必须为 XPath 字符串字面量", []
+        xp_str = str(args[0].value).strip()
+        xp_err = validate_xpath_syntax(xp_str)
+        if xp_err:
+            return f".xpath(...) 内部 XPath 语法错误: {xp_err}", []
+        prev_steps.append((method, (xp_str,)))
+        return None, prev_steps
+
+    if method in _HYPIUM_BOOL_METHODS:
+        if len(args) == 0:
+            prev_steps.append((method, (True,)))
+            return None, prev_steps
+        if len(args) == 1:
+            b_err, flag = _eval_hypium_bool_arg(args[0])
+            if b_err:
+                return f"方法 .{method}() {b_err}", []
+            prev_steps.append((method, (flag,)))
+            return None, prev_steps
+        return f"方法 .{method}() 最多接受 1 个布尔参数，当前传入了 {len(args)} 个", []
+
+    if method in _HYPIUM_REL_METHODS:
+        if len(args) != 1:
+            return f"关系定位方法 .{method}() 必须且只能传入 1 个子 BY 表达式", []
+        sub_err, sub_steps = _parse_hypium_ast_chain(args[0])
+        if sub_err:
+            return f".{method}(...) 内部子表达式错误: {sub_err}", []
+        if not sub_steps:
+            return f".{method}(...) 内部不能仅传入空的 BY，请补充至少一个过滤条件", []
+        prev_steps.append((method, (sub_steps,)))
+        return None, prev_steps
+
+    supported_list = "text / originalText / type / id / key / hint / description / accessibilityId / inWindow / bundleName / xpath / checked / clickable / within / isBefore / isAfter"
+    return f"暂不支持的 HypiumBy 方法 '.{method}()'；当前支持: {supported_list}", []
+
+
+def parse_hypium_by_expression(raw: str) -> Tuple[Optional[str], List[Tuple[str, Tuple[Any, ...]]]]:
+    """
+    校验并解析鸿蒙 HypiumBy (BY.*) 表达式（兼容直接粘贴 HosBy.xxx(...) 源码调用与日志元组）。
+    返回 (错误提示信息或 None, 解析后的链式条件列表)。
+    """
+    is_hosby, by_expr, hosby_err = _convert_hosby_call_to_by_expr(raw)
+    if is_hosby:
+        if hosby_err:
+            return hosby_err, []
+        expr = by_expr or ""
+    else:
+        expr = extract_hypium_expression(raw)
+
+    if not expr:
+        return "HypiumBy 表达式不能为空", []
+
+    if not re.match(r"^(?:BY|By|by)\.", expr):
+        return (
+            "HypiumBy 表达式必须以 'BY.' 开头（也可直接粘贴 HosBy.xxx(...) 源码或日志中的 ('HypiumBy', 'BY....') 元组）",
+            [],
+        )
+
+    try:
+        tree = ast.parse(expr, mode="eval")
+    except SyntaxError as e:
+        return f"HypiumBy 表达式语法错误（请检查引号与括号是否闭合）: {e.msg}", []
+
+    err, steps = _parse_hypium_ast_chain(tree.body)
+    if err:
+        return err, []
+    if not steps:
+        return "HypiumBy 表达式缺少条件方法，请至少追加一个如 .text(...) 或 .type(...)", []
+    return None, steps
+
+
+def _match_hypium_str(actual: str, pattern: str, mode: int) -> bool:
+    """按鸿蒙 uitest MatchPattern (0~5) 规则执行字符串匹配。"""
+    if mode == 0:
+        return actual == pattern
+    if mode == 1:
+        return pattern in actual
+    if mode == 2:
+        return actual.startswith(pattern)
+    if mode == 3:
+        return actual.endswith(pattern)
+    if mode == 4:
+        return bool(re.search(pattern, actual))
+    if mode == 5:
+        return bool(re.search(pattern, actual, re.IGNORECASE))
+    return actual == pattern
+
+
+def _eval_hypium_attr_step(
+    method: str,
+    args: Tuple[Any, ...],
+    comp: Dict[str, Any],
+    elem: Optional[ET.Element],
+    parent_map: Dict[ET.Element, ET.Element],
+    comp_by_elem: Dict[ET.Element, Dict[str, Any]],
+) -> bool:
+    """求值单条非关系型 HypiumBy 属性/状态过滤步骤。"""
+    raw_attrs = comp.get("raw_attributes") or comp.get("raw") or {}
+
+    if method == "text":
+        pat, mode = args
+        val = str(comp.get("text") or raw_attrs.get("text") or raw_attrs.get("originalText") or "")
+        return _match_hypium_str(val, pat, mode)
+
+    if method == "originalText":
+        pat, mode = args
+        val = str(raw_attrs.get("originalText") or comp.get("text") or raw_attrs.get("text") or "")
+        return _match_hypium_str(val, pat, mode)
+
+    if method == "type":
+        pat, mode = args
+        c_type = str(comp.get("type") or raw_attrs.get("type") or "")
+        c_full = str(comp.get("full_type") or "")
+        return _match_hypium_str(c_type, pat, mode) or (bool(c_full) and _match_hypium_str(c_full, pat, mode))
+
+    if method == "id":
+        pat, mode = args
+        candidates = [
+            str(comp.get("id") or ""),
+            str(raw_attrs.get("id") or ""),
+            str(raw_attrs.get("key") or ""),
+        ]
+        return any(_match_hypium_str(c, pat, mode) for c in candidates if c or pat == "")
+
+    if method == "key":
+        pat, mode = args
+        candidates = [
+            str(raw_attrs.get("key") or ""),
+            str(comp.get("id") or ""),
+            str(raw_attrs.get("id") or ""),
+        ]
+        return any(_match_hypium_str(c, pat, mode) for c in candidates if c or pat == "")
+
+    if method == "accessibilityId":
+        pat, mode = args
+        val = str(raw_attrs.get("accessibilityId") or raw_attrs.get("accessibility-id") or comp.get("id") or "")
+        return _match_hypium_str(val, pat, mode)
+
+    if method == "hint":
+        pat, mode = args
+        val = str(raw_attrs.get("hint") or raw_attrs.get("placeholder") or "")
+        return _match_hypium_str(val, pat, mode)
+
+    if method == "description":
+        pat, mode = args
+        val = str(
+            raw_attrs.get("description")
+            or raw_attrs.get("accessibilityDescription")
+            or raw_attrs.get("content-desc")
+            or ""
+        )
+        return _match_hypium_str(val, pat, mode)
+
+    if method in ("inWindow", "bundleName"):
+        pat, mode = args
+        cur_el = elem
+        while cur_el is not None:
+            cur_comp = comp_by_elem.get(cur_el) or {}
+            cur_attrs = cur_comp.get("raw_attributes") or cur_comp.get("raw") or {}
+            bundle = str(cur_attrs.get("bundleName") or cur_attrs.get("package") or "")
+            if bundle:
+                return _match_hypium_str(bundle, pat, mode)
+            cur_el = parent_map.get(cur_el)
+        bundle = str(raw_attrs.get("bundleName") or raw_attrs.get("package") or "")
+        return _match_hypium_str(bundle, pat, mode)
+
+    if method in _HYPIUM_BOOL_METHODS:
+        expected_flag = bool(args[0])
+        kebab_key = re.sub(r"([A-Z])", lambda m: "-" + m.group(1).lower(), method)
+        raw_val = None
+        for k in (method, method.lower(), kebab_key):
+            if k in raw_attrs:
+                raw_val = raw_attrs.get(k)
+                break
+        if isinstance(raw_val, bool):
+            actual_flag = raw_val
+        else:
+            actual_flag = str(raw_val or "").strip().lower() in ("true", "1", "yes")
+        return actual_flag == expected_flag
+
+    return False
+
+
+# ==============================================================================
 # 自动上下调整方框大小的多行代码/选择器输入框控件 (保持水平宽度不变)
 # ==============================================================================
 
@@ -6897,6 +7414,7 @@ class SearchElementDialog(QDialog):
             return [
                 ("id", "ID / Key", "id (组件 Key / ID 标识 - By.id - 推荐首选)"),
                 ("text", "Text 文本", "text (文本内容 - By.text - 原生高效)"),
+                ("hypium", "HypiumBy", "HypiumBy (BY.* 原生链式表达式 - 支持 isAfter/isBefore/within)"),
                 ("description", "Description", "description (无障碍描述 - By.description)"),
                 ("xpath", "XPath", "xpath (XPath 路径表达式 - 灵活兜底)"),
                 ("type", "Type 类型", "type / class name (ArkUI 组件类型名 - By.type)"),
@@ -7012,6 +7530,25 @@ class SearchElementDialog(QDialog):
             return rec_full_type if self.platform in ("ios", "android") else rec_type
         elif strategy == "text":
             return rec_text
+        elif strategy == "hypium":
+            safe_type = rec_type.replace("\\", "\\\\").replace('"', '\\"') if rec_type else ""
+            safe_id = rec_id.replace("\\", "\\\\").replace('"', '\\"') if rec_id else ""
+            safe_text = rec_text.replace("\\", "\\\\").replace('"', '\\"') if rec_text else ""
+            raw_hint = str(raw_attrs.get("hint") or raw_attrs.get("placeholder") or "")
+            safe_hint = raw_hint.replace("\\", "\\\\").replace('"', '\\"') if raw_hint else ""
+            if safe_type and safe_id:
+                return f'BY.type("{safe_type}").id("{safe_id}")'
+            if safe_id:
+                return f'BY.id("{safe_id}")'
+            if safe_type and safe_text:
+                return f'BY.type("{safe_type}").text("{safe_text}")'
+            if safe_text:
+                return f'BY.text("{safe_text}")'
+            if safe_type and safe_hint:
+                return f'BY.type("{safe_type}").hint("{safe_hint}")'
+            if safe_type:
+                return f'BY.type("{safe_type}")'
+            return ""
         elif strategy == "description":
             return str(raw_attrs.get("description") or raw_attrs.get("content-desc") or rec_text)
         elif strategy == "uiautomator":
@@ -7305,6 +7842,7 @@ class SearchElementDialog(QDialog):
                 "id": "例如: login_button 或 send_btn (ArkUI key/id 标识)",
                 "xpath": "例如: //Button[@text='发送'] 或 //Text[@text='925']",
                 "text": "例如: 发送 或 925 (匹配组件展示文本)",
+                "hypium": '例如: BY.type("Text").text("手机号登录")，或直接粘贴源码 HosBy.between_texts(...) / 日志元组',
                 "type": "例如: Button 或 Text 或 TextInput (ArkUI 类型)",
                 "description": "例如: 无障碍描述文本",
             }
@@ -7338,10 +7876,33 @@ class SearchElementDialog(QDialog):
             return
 
         # 1. 严格语法静态校验与前置拦截 (杜绝语法错误时伪装成“匹配到 0 个元素”)
-        syntax_err = None
-        example_str = ""
-        if self.platform == "ios":
+        # 鸿蒙平台友好增强：自动识别并解包源码 HosBy.xxx(...)、日志定位二元组 ('text'/'type'/'id'/'key'/'xpath'/'HypiumBy', ...) 与 BY.* 表达式
+        # 仅在内部按解包后的策略与值执行查询，保持输入框原文不变，方便用户微调参数反复验证
+        hos_pre_err = None
+        if self.platform == "harmony":
+            res_strat, res_val, hos_pre_err = resolve_harmony_locator_input(val)
+            if res_strat:
+                if res_strat != strategy:
+                    target_idx = self.combo_strategy.findData(res_strat)
+                    if target_idx >= 0:
+                        self.combo_strategy.blockSignals(True)
+                        self.combo_strategy.setCurrentIndex(target_idx)
+                        self.combo_strategy.blockSignals(False)
+                        self._update_format_pills_active_state(res_strat)
+                        self.update_placeholder()
+                        strategy = res_strat
+                if res_val is not None:
+                    val = res_val
+
+        syntax_err = hos_pre_err
+        example_str = 'HosBy.between_texts(after_text="密码验证登录", before_text="我已阅读且同意", target_type="Image")' if hos_pre_err else ""
+        if syntax_err:
+            pass
+        elif self.platform == "ios":
             syntax_err, example_str = validate_ios_selector_syntax(strategy, val)
+        elif strategy == "hypium":
+            syntax_err, _ = parse_hypium_by_expression(val)
+            example_str = 'BY.isAfter(BY.text("密码验证登录")).isBefore(BY.text("我已阅读且同意", 1)).type("Image") 或 HosBy.text_contains("我已阅读且同意", "Text")'
         elif strategy == "xpath":
             syntax_err = validate_xpath_syntax(val)
             example_str = "//Text[@text='会员中心'] 或 //Button[contains(@text, '发送')]"
@@ -7700,6 +8261,8 @@ class SearchElementDialog(QDialog):
                         matched = []
                 else:
                     matched = cand_matched
+            elif strategy == "hypium":
+                matched = self.match_hypium_by(val)
             elif strategy == "xpath":
                 matched = self.match_xpath(val)
         except Exception as e:
@@ -7725,6 +8288,7 @@ class SearchElementDialog(QDialog):
                 "id": "建议核对组件 Key/ID 属性是否存在，或切换为 [text] / [xpath] 策略重试",
                 "xpath": "建议核对标签名大小写、属性值及层级，或点击【填入主视窗选中元素】获取推荐路径",
                 "text": "建议核对文本大小写、去除首尾空格，或取消勾选【仅匹配当前真实展示元素】重试",
+                "hypium": "建议核对 BY.text/type/isAfter/isBefore 参数与匹配模式 (0=精确, 1=包含, 4=正则)，或取消勾选【仅匹配当前真实展示元素】排查背景页命中情况",
                 "type": "未找到该类型的组件，请核对组件类型拼写 (如 Button、Text、ListItem、Flex)",
                 "class name": "未找到该类型的组件，请核对类型名拼写",
                 "description": "未找到包含该无障碍描述的组件，请检查 accessibility 属性设置",
@@ -8191,6 +8755,114 @@ class SearchElementDialog(QDialog):
             current_nodes = dedup_nodes
 
         return current_nodes
+
+    def match_hypium_by(self, expr: str) -> List[Dict[str, Any]]:
+        """
+        基于当前 DOM 完整节点树执行鸿蒙 HypiumBy (BY.*) 原生语义匹配：
+        完整支持 text/type/id/key/hint/description/inWindow (含 MatchPattern 0~5)、
+        布尔状态属性以及 within / isBefore / isAfter 递归相对位置定位。
+        """
+        err, steps = parse_hypium_by_expression(expr)
+        if err:
+            raise ValueError(err)
+
+        parent_map: Dict[ET.Element, ET.Element] = {}
+        comp_by_elem: Dict[ET.Element, Dict[str, Any]] = {}
+        ordered_items: List[Tuple[Optional[ET.Element], Dict[str, Any], int]] = []
+
+        if self.xml_root is not None:
+            for p in self.xml_root.iter():
+                for ch in p:
+                    parent_map[ch] = p
+
+            idx_counter = 0
+            for el in self.xml_root.iter():
+                node_id = el.attrib.get("node_id")
+                if not node_id:
+                    continue
+                comp = self.comp_map.get(node_id) if self.comp_map else None
+                if not comp:
+                    continue
+                comp_by_elem[el] = comp
+                ordered_items.append((el, comp, idx_counter))
+                idx_counter += 1
+        else:
+            for idx_counter, comp in enumerate(self.flat_components):
+                ordered_items.append((None, comp, idx_counter))
+
+        def _is_ancestor(maybe_anc: Optional[ET.Element], node: Optional[ET.Element]) -> bool:
+            if maybe_anc is None or node is None or maybe_anc is node:
+                return False
+            cur = parent_map.get(node)
+            while cur is not None:
+                if cur is maybe_anc:
+                    return True
+                cur = parent_map.get(cur)
+            return False
+
+        def _eval_chain(chain_steps: List[Tuple[str, Tuple[Any, ...]]]) -> List[Tuple[Optional[ET.Element], Dict[str, Any], int]]:
+            candidates = list(ordered_items)
+            for method, args in chain_steps:
+                if not candidates:
+                    break
+                if method == "within":
+                    sub_steps = args[0]
+                    container_elems = {el for el, _, _ in _eval_chain(sub_steps) if el is not None}
+                    if not container_elems:
+                        candidates = []
+                        continue
+                    next_cands = []
+                    for el, comp, idx in candidates:
+                        cur = parent_map.get(el) if el is not None else None
+                        found_anc = False
+                        while cur is not None:
+                            if cur in container_elems:
+                                found_anc = True
+                                break
+                            cur = parent_map.get(cur)
+                        if found_anc:
+                            next_cands.append((el, comp, idx))
+                    candidates = next_cands
+                elif method == "isBefore":
+                    sub_steps = args[0]
+                    anchors = _eval_chain(sub_steps)
+                    if not anchors:
+                        candidates = []
+                        continue
+                    next_cands = []
+                    for el, comp, idx in candidates:
+                        if any(idx < a_idx and not _is_ancestor(el, a_el) for a_el, _, a_idx in anchors):
+                            next_cands.append((el, comp, idx))
+                    candidates = next_cands
+                elif method == "isAfter":
+                    sub_steps = args[0]
+                    anchors = _eval_chain(sub_steps)
+                    if not anchors:
+                        candidates = []
+                        continue
+                    next_cands = []
+                    for el, comp, idx in candidates:
+                        if any(idx > a_idx and not _is_ancestor(a_el, el) for a_el, _, a_idx in anchors):
+                            next_cands.append((el, comp, idx))
+                    candidates = next_cands
+                elif method == "xpath":
+                    xp_str = str(args[0])
+                    xp_matched_ids = {c.get("node_id") for c in self.match_xpath(xp_str) if c.get("node_id")}
+                    candidates = [
+                        (el, comp, idx)
+                        for el, comp, idx in candidates
+                        if comp.get("node_id") in xp_matched_ids
+                    ]
+                else:
+                    candidates = [
+                        (el, comp, idx)
+                        for el, comp, idx in candidates
+                        if _eval_hypium_attr_step(method, args, comp, el, parent_map, comp_by_elem)
+                    ]
+            return candidates
+
+        result_items = _eval_chain(steps)
+        return [comp for _, comp, _ in result_items]
 
     def match_xpath(self, xpath: str) -> List[Dict[str, Any]]:
         xp = xpath.strip()

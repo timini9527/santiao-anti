@@ -2645,7 +2645,7 @@
           },
           {
             "name": "test_login_remember_account",
-            "display_name": "连续登录退出不同由于，验证手机号记住功能-状态：已完成",
+            "display_name": "连续登录退出不同账号，验证手机号记住功能-状态：已完成",
             "params": [],
             "priority": "P1"
           },
@@ -3989,7 +3989,7 @@
           },
           {
             "name": "test_login_remember_account",
-            "display_name": "连续登录退出不同由于，验证手机号记住功能-状态：已完成",
+            "display_name": "连续登录退出不同账号，验证手机号记住功能-状态：已完成",
             "params": [],
             "priority": "P1"
           }

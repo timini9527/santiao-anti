@@ -26,6 +26,9 @@ class _LoginLocatorHos(_CommonLocatorHos):
         "//__Common__/Row/Row",
     )
 
+    # 登录表单全部输入框集合（原生 TextInput 直查：短信模式 1 个、密码模式 2 个，用于快速判定当前登录模式）
+    FORM_INPUTS = HosBy.type_only("TextInput")
+
     # 手机号输入框与一键清空
     PHONE_NUMBER_EDIT = (
         AppiumBy.XPATH,
@@ -84,9 +87,10 @@ class _LoginLocatorHos(_CommonLocatorHos):
         "//__Common__/Stack/Row/Stack/Text",
     )
 
-    # 协议同意勾选框（用上方主按钮与下方“我已阅读且同意”区间夹逼锁定紧邻 Image，避免单用 isBefore 误命中顶部返回/清空图标）
+    # 协议同意勾选框（仅用表单内“密码验证登录/短信验证登录”与“我已阅读且同意”区间夹逼锁定勾选框 Image；
+    # 严禁包含登录主页 NavBar 的“手机号登录/一键登录”，否则在 Navigation 栈中会先命中背景页按钮而误点顶部返回图标）
     AGREE_AND_LOGIN_BTN = HosBy.between_texts(
-        after_text="^(密码验证登录|短信验证登录|一键登录|手机号登录)$",
+        after_text="^(密码验证登录|短信验证登录)$",
         before_text="我已阅读且同意",
         target_type="Image",
         after_pattern=HosBy.MATCH_REGEXP,
