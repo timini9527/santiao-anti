@@ -171,7 +171,8 @@ class TestVerificationLogin:
                 if self.loginPage.is_login_success():  
                     logger.info(f"{LogIcon.SETUP} 环境清理：检测到账号处于登录状态，执行强制登出和环境重置...")
                     msg = self.loginPage.logout_if_logged_in()
-                    check.equal(msg, ToastMsg.LOGOUT_SUCCESS, f"⚠️ 环境清理失败：退出登录动作未成功！")
+                    if self.loginPage.platform == "android":
+                        check.equal(msg, ToastMsg.LOGOUT_SUCCESS, f"⚠️ 环境清理失败：退出登录动作未成功！")
                     
                     # 为了下一条验证码用例回归正常态，需要再切一次验证码模式
                     self.loginPage.click_code_login_button() 

@@ -9,11 +9,60 @@ from locators.home.home_locator import HomeLocator
 
 class HomePage(BasePage):
 
+    # 主页 - 关闭首次登录弹出的“选择你偏好的首页布局”引导弹窗
+    def dismiss_layout_guide_if_present(self, timeout: float = 0.5) -> bool:
+        """
+        检测并关闭首次进入主页时可能弹出的“选择你偏好的首页布局”引导弹窗（全平台 Android / iOS / 鸿蒙通用）。
+        先按弹窗标题确认存在，再点击同容器内的关闭按钮，避免误关其他复用关闭图标的弹窗。
+        :param timeout: 探测弹窗标题的短超时时间（默认 0.5s）
+        :return: True(检测到并成功关闭) / False(当前未弹出)
+        """
+        is_harmony = self._platform_name == "harmonyos"
+        lookup_condition = "presence" if is_harmony else "visibility"
+
+        title_elem = self.find_element(
+            HomeLocator.HOME_LAYOUT_GUIDE_TITLE,
+            condition=lookup_condition,
+            timeout=timeout,
+            expect_missing=True,
+        )
+        if not title_elem:
+            return False
+
+        logger.info(f"{LogIcon.ACTION} 检测到主页引导弹窗【选择你偏好的首页布局】，点击右上角关闭按钮")
+        close_btn = self.find_element(
+            HomeLocator.HOME_LAYOUT_GUIDE_CLOSE,
+            condition=lookup_condition,
+            timeout=1,
+            expect_missing=True,
+        )
+        if close_btn:
+            if is_harmony:
+                self.tap_point(click_elem=close_btn, duration=80)
+            else:
+                close_btn.click()
+            time.sleep(0.3)
+            logger.info(f"{LogIcon.SUCCESS} 已关闭【选择你偏好的首页布局】引导弹窗")
+            return True
+
+        logger.warning(f"{LogIcon.WARN} 检测到【选择你偏好的首页布局】弹窗但未找到关闭按钮")
+        return False
+
     # 主页 - 等待 home page 完全加载
     def wait_home_page(self, timeout: int = 10) -> bool:
-        """等待主页左侧菜单出现，并返回主页是否加载完成。"""
+        """等待主页左侧菜单出现，自动关闭首次进入主页的布局引导弹窗，并返回主页是否加载完成。"""
         logger.info(f"{LogIcon.WAIT} 正在等待主页加载完成 (超时: {timeout}s)...")
-        loaded = bool(self.find_elements(HomeLocator.LEFT_MENU, timeout=timeout))
+        first_wait = min(3, timeout)
+        loaded = bool(self.find_elements(HomeLocator.LEFT_MENU, timeout=first_wait))
+        if loaded:
+            self.dismiss_layout_guide_if_present(timeout=0.3)
+        else:
+            self.dismiss_layout_guide_if_present(timeout=0.5)
+            remaining_timeout = max(1, timeout - first_wait)
+            loaded = bool(self.find_elements(HomeLocator.LEFT_MENU, timeout=remaining_timeout))
+            if loaded:
+                self.dismiss_layout_guide_if_present(timeout=0.3)
+
         if loaded:
             logger.info(f"{LogIcon.SUCCESS} 主页加载完成 (耗时上限: {timeout}s)")
         else:
@@ -30,9 +79,14 @@ class HomePage(BasePage):
 
     # 主页 - 打开侧边栏
     def open_left_menu(self, timeout: int = 2) -> None:
-        """ 主页 - 点击打开侧边栏 """
+        """ 主页 - 点击打开侧边栏（若被首次登录布局引导弹窗遮挡则自动关闭后重试一次） """
         logger.info(f"{LogIcon.ACTION} 主页 - 点击打开侧边栏")
-        self.click(HomeLocator.LEFT_MENU, timeout=timeout)
+        try:
+            self.click(HomeLocator.LEFT_MENU, timeout=timeout)
+        except Exception:
+            if not self.dismiss_layout_guide_if_present(timeout=0.5):
+                raise
+            self.click(HomeLocator.LEFT_MENU, timeout=timeout)
         if self._platform_name != "ios":
             time.sleep(0.5)
 
@@ -43,10 +97,19 @@ class HomePage(BasePage):
         self.click(HomeLocator.MIDDLE_TITLE, force_wait=True, timeout=timeout)
 
     # 主页 - 获取顶部中间标题 三条标题
-    def get_top_middle_title(self, timeout: int = 2) -> str:
-        """ 主页 - 获取顶部中间标题 三条标题 """
+    def get_top_middle_title(self, timeout: int = 2, expect_missing: bool = False) -> str:
+        """
+        主页 - 获取顶部中间标题 三条标题
+        :param timeout: 查找超时时间（默认 2s）
+        :param expect_missing: 是否处于状态探测场景（True 时未找到不打印 ERROR 日志）
+        """
         logger.info(f"{LogIcon.FIND} 正在获取主页顶部中间标题(超时: {timeout}s)...")
-        title = self.get_attribute(HomeLocator.MIDDLE_TITLE, 'text', timeout=timeout)
+        title = self.get_attribute(
+            HomeLocator.MIDDLE_TITLE,
+            'text',
+            timeout=timeout,
+            expect_missing=expect_missing,
+        )
         logger.info(f"{LogIcon.ACTION} 主页 - 获取顶部中间标题（{timeout} 秒内）: {title}")
         return title
 

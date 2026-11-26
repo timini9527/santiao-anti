@@ -19,6 +19,21 @@ class LoginPage(BasePage):
         self.commonPage = CommonPage(driver)
         self.ocrUtils = OcrUtils(driver)
 
+    def _raw_driver(self) -> object:
+        """获取底层真实 Driver 实例（兼容 RecoverableDriver，Session 重建时缓存自动失效）"""
+        return getattr(self.driver, "_driver", self.driver)
+
+    def _get_cached_password(self) -> Optional[str]:
+        """读取当前表单周期缓存的密码（None 表示未知态，'' 表示已确认空框）"""
+        return getattr(self._raw_driver(), "_last_login_password", None)
+
+    def _set_cached_password(self, value: Optional[str]) -> None:
+        """更新当前表单周期的密码缓存，供鸿蒙密文密码框实现同密码短路与已知空框免清空"""
+        try:
+            setattr(self._raw_driver(), "_last_login_password", value)
+        except Exception:
+            pass
+
     # ==========================
     # 页面状态检测
     # ==========================
@@ -49,6 +64,42 @@ class LoginPage(BasePage):
             return True
 
         logger.warning(f"{LogIcon.FAIL} [Action - Login] 未能检测到登录主入口及应用 Logo，当前不处于登录主页面")
+        return False
+
+    # 登录页 - 检测当前是否处于手机号/账号密码登录表单页
+    def is_on_phone_login_page(self, timeout: int | float = 2) -> bool:
+        """
+        检测当前是否处于手机号 / 账号密码 / 验证码登录表单页。
+        密码切换与短信切换按钮互斥，因此优先检测双模式均常驻的手机号输入框与登录提交按钮，避免先查不存在的切换项白等超时。
+        :param timeout: 显式等待超时时间 (默认 2s)
+        :return: True(当前处于登录表单页) / False(不在登录表单页)
+        """
+        logger.info(f"{LogIcon.FIND} 🧐 [Action - Login] 检测当前是否处于手机号/密码登录表单页 (超时: {timeout}s)")
+        lookup_condition = "presence" if self._platform_name == "harmonyos" else "visibility"
+        primary_timeout = max(0.5, float(timeout))
+        fallback_timeout = max(0.3, min(0.8, float(timeout)))
+
+        # 1. 优先判定双模式常驻核心特征：手机号输入框（密码登录与短信登录下均固定存在）
+        if self.find_element(
+            LoginLocator.PHONE_NUMBER_EDIT,
+            condition=lookup_condition,
+            timeout=primary_timeout,
+            expect_missing=True,
+        ):
+            logger.info(f"{LogIcon.SUCCESS} [Action - Login] 识别到手机号输入框，当前处于登录表单页")
+            return True
+
+        # 2. 兜底判定双模式常驻提交按钮（避免依赖互斥的密码/短信切换按钮）
+        if self.find_element(
+            LoginLocator.VERIFY_AND_LOGIN_BTN,
+            condition=lookup_condition,
+            timeout=fallback_timeout,
+            expect_missing=True,
+        ):
+            logger.info(f"{LogIcon.SUCCESS} [Action - Login] 识别到登录提交按钮，当前处于登录表单页")
+            return True
+
+        logger.warning(f"{LogIcon.FAIL} [Action - Login] 未能检测到登录表单特征元素，当前不处于登录表单页")
         return False
 
     # 登录页 - 自动返回直到检测到登录主页面
@@ -89,6 +140,7 @@ class LoginPage(BasePage):
     def click_back_btn(self) -> None:
         """ 点击界面左上角的返回按钮 """
         logger.info(f"{LogIcon.SETUP} 点击左上角返回按钮")
+        self._set_cached_password(None)
         self.click(LoginLocator.TOP_IV_BACK_BTN)
 
     # 登录页 - 获取顶部标题（手机号，密码，一键登录）
@@ -118,23 +170,21 @@ class LoginPage(BasePage):
         )
         if entrance:
             logger.info(f"{LogIcon.ACTION} 直接命中手机号登录入口，执行点击")
+            self._set_cached_password(None)
             if is_harmony:
                 self.tap_point(click_elem=entrance, duration=100)
             else:
                 entrance.click()
             return
 
-        # 2. 异常兜底-短路：若未找到登录入口，检查是否已处于手机号表单页（优先高速切换文案）
-        form_switch = (
-            self.find_element(LoginLocator.PASSWORD_LOGIN_SWITCH, condition=lookup_condition, timeout=0.8, expect_missing=True)
-            or self.find_element(LoginLocator.CODE_LOGIN_SWITCH, condition=lookup_condition, timeout=0.8, expect_missing=True)
-        )
-        if form_switch:
+        # 2. 异常兜底-短路：若未找到登录入口，复用表单页常驻特征检测是否已处于手机号表单页
+        if self.is_on_phone_login_page(timeout=0.8):
             logger.info(f"{LogIcon.SUCCESS} 当前已处于手机号输入界面，无需重复点击‘手机号登录’")
             return
 
         # 3. 异常兜底-状态自愈：不在登录主页也不在表单页，自动返回直到回到登录主页面后再点击
         logger.info(f"{LogIcon.ACTION} 当前不在登录主页面，执行自动返回自愈")
+        self._set_cached_password(None)
         self.back_to_login_main_page()
         if is_harmony:
             entrance = self.find_element(LoginLocator.LOGIN_ENTRANCE, condition="presence", timeout=3)
@@ -153,11 +203,29 @@ class LoginPage(BasePage):
     def click_password_login_button(self) -> None:
         """ 点击‘密码登录’，如果当前是验证码等其他模式则切换 """
         logger.info(f"{LogIcon.SETUP} 检查并尝试切换到密码登录模式")
+        if self._platform_name == "harmonyos":
+            # 鸿蒙密码模式存在 2 个 TextInput（手机号 + 密码），短信模式仅 1 个；用原生 type 直查规避 5s XPath 负向超时
+            try:
+                inputs = self.driver.find_elements("type", "TextInput")
+                if len(inputs) >= 2:
+                    logger.info(f"{LogIcon.SUCCESS} 当前已处于密码登录模式（检测到 {len(inputs)} 个输入框），无需切换")
+                    return
+            except Exception:
+                pass
+            pass_elem = self.find_element(LoginLocator.PASSWORD_LOGIN_SWITCH, condition="presence", timeout=2, expect_missing=True)
+            if pass_elem:
+                logger.info(f"{LogIcon.SETUP} 执行切换到密码登录模式")
+                self._set_cached_password(None)
+                self.tap_point(click_elem=pass_elem, duration=100)
+                time.sleep(0.3)
+            return
+
         pass_elem = self.find_element(LoginLocator.PASSWORD_LOGIN_SWITCH, timeout=2, expect_missing=True)
         if pass_elem:
             pwd_elem = self.find_element(LoginLocator.PASSWORD_EDIT, timeout=0.3, expect_missing=True)
             if not pwd_elem:
                 logger.info(f"{LogIcon.SETUP} 执行切换到密码登录模式")
+                self._set_cached_password(None)
                 pass_elem.click()
                 time.sleep(0.5)
 
@@ -169,6 +237,7 @@ class LoginPage(BasePage):
         pwd_elem = self.get_password_element()
         if code_elem and pwd_elem:
             logger.info(f"{LogIcon.SETUP} 执行切换到验证码登录模式")
+            self._set_cached_password(None)
             code_elem.click()
             time.sleep(1)
 
@@ -177,17 +246,34 @@ class LoginPage(BasePage):
     # ==========================
     # 登录页 - 清空手机号输入框内容
     def clear_phone(self) -> None:
-        """ 清空手机号输入框内容 (使用 element.clear()) """
+        """ 清空手机号输入框内容（鸿蒙端走一键全选秒清，避免逐字退格慢删） """
         logger.info(f"{LogIcon.SETUP} 准备清空手机号输入框")
         elem = self.find_element(LoginLocator.PHONE_NUMBER_EDIT, timeout=2)
         if elem:
             logger.info(f"{LogIcon.SETUP} 执行清空手机号输入框")
-            elem.clear()
+            self.clear_input_element(elem)
 
     # 登录页 - 输入手机号或账号
     def input_account(self, phone: str) -> None:
-        """ 在手机号/账号输入框中输入内容 (send_keys 默认已内置清空，避免重复两次查找与清空) """
+        """ 在手机号/账号输入框中输入内容（鸿蒙端自动升级原生 UiComponent，支持实时判同短路与原子清空） """
         logger.info(f"{LogIcon.SETUP} 输入账号/手机号: {phone}")
+        if self._platform_name == "harmonyos":
+            ele = self.find_element(LoginLocator.PHONE_NUMBER_EDIT, timeout=2)
+            if not ele:
+                self.send_keys(LoginLocator.PHONE_NUMBER_EDIT, phone, clear=True)
+                return
+            ele = self._resolve_native_harmony_input(ele)
+            current_text = self.read_element_attr(ele, "text").strip()
+            if current_text == str(phone).strip():
+                logger.info(f"{LogIcon.SUCCESS} 手机号输入框已为目标账号 {phone}，跳过清空与重复输入")
+                return
+            if current_text:
+                self.clear_input_element(ele)
+            if phone:
+                ele.send_keys(phone)
+                logger.info(f"{LogIcon.ACTION} 输入消息: {phone}")
+            return
+
         self.send_keys(LoginLocator.PHONE_NUMBER_EDIT, phone, clear=True)
     
     # 登录页 - 获取手机号输入框内容
@@ -205,20 +291,69 @@ class LoginPage(BasePage):
             logger.info(f"{LogIcon.SETUP} 点击清空手机号图标")
             self.click(LoginLocator.CLEAR_PHONE_NUMBER)
 
+    def _dismiss_harmony_secure_keyboard(self) -> None:
+        """
+        鸿蒙密文密码框获焦时会触发系统安全输入法防截屏黑屏保护（screenCap 全黑）。
+        轻点顶部静态标题空白区（屏幕 50%, 14%，无交互控件）使密码框失焦并收起安全键盘，确保后续视觉颜色校验正常截屏。
+        """
+        if self._platform_name != "harmonyos":
+            return
+        try:
+            raw_driver = self._raw_driver()
+            win_size = getattr(raw_driver, "_cached_window_size", None)
+            if not isinstance(win_size, dict) or not win_size.get("width") or not win_size.get("height"):
+                win_size = self.driver.get_window_size()
+            width = int(win_size.get("width", 0))
+            height = int(win_size.get("height", 0))
+            if width > 0 and height > 0:
+                self.tap_point(x=width // 2, y=int(height * 0.05), duration=60)
+                time.sleep(0.25)
+        except Exception as err:
+            logger.debug(f"{LogIcon.WARN} [HarmonyOS] 收起安全键盘失焦失败（不阻断流程）: {err}")
+
     # 登录页 - 清空密码输入框内容
     def clear_password(self) -> None:
-        """ 清空密码输入框内容 (使用 element.clear()) """
+        """ 清空密码输入框内容（兼容鸿蒙 ArkUI 密文密码框强清空，并同步密码缓存为空串） """
         logger.info(f"{LogIcon.SETUP} 准备清空密码输入框")
         elem = self.find_element(LoginLocator.PASSWORD_EDIT, timeout=2)
         if elem:
             logger.info(f"{LogIcon.SETUP} 执行清空密码输入框")
-            elem.clear()
+            self._set_cached_password(None)
+            self.clear_input_element(elem, force_select_all=True)
+            self._set_cached_password("")
+            self._dismiss_harmony_secure_keyboard()
 
     # 登录页 - 输入密码
     def input_password(self, password: str) -> None:
-        """ 在密码输入框中输入内容 (send_keys 默认已内置清空，避免重复两次查找与清空) """
+        """
+        在密码输入框中输入内容：
+        - 鸿蒙端支持同密码短路（连续留在登录页且目标密码不变时 0ms 跳过）与已知空框免清空，
+          最大限度规避 ArkUI 密文框禁止 Ctrl+A 触发原生逐字清空的耗时；
+        - 输入/清空结束后自动轻点顶部静态标题区失焦收起安全键盘，解除系统防截屏黑屏保护；
+        - Android / iOS 保持原有标准清空并输入逻辑。
+        """
         logger.info(f"{LogIcon.SETUP} 输入登录密码: {password}")
-        self.send_keys(LoginLocator.PASSWORD_EDIT, password, clear=True)
+        if self._platform_name == "harmonyos":
+            target_pwd = "" if password is None else str(password)
+            cached_pwd = self._get_cached_password()
+            if cached_pwd is not None and cached_pwd == target_pwd:
+                logger.info(f"{LogIcon.SUCCESS} [HarmonyOS] 密码框已为当前目标密码，跳过重复清空与输入")
+                return
+
+            # 执行前先置为未知，避免输入异常遗留脏缓存
+            self._set_cached_password(None)
+            need_clear = cached_pwd != ""
+            self.send_keys(
+                LoginLocator.PASSWORD_EDIT,
+                target_pwd,
+                clear=need_clear,
+                force_select_all=True,
+            )
+            self._set_cached_password(target_pwd)
+            self._dismiss_harmony_secure_keyboard()
+            return
+
+        self.send_keys(LoginLocator.PASSWORD_EDIT, password, clear=True, force_select_all=True)
     
     # 登录页 - 获取密码输入框内容
     def get_password(self) -> str:
@@ -269,23 +404,29 @@ class LoginPage(BasePage):
     # ==========================
     # 登录页 - 勾选用户协议
     def click_user_agreement(self) -> None:
-        """ 检查登录页面的底部的协议复选框是否勾选，未勾选则点击 """
+        """ 检查登录页面的底部的协议复选框是否勾选，未勾选则直接点击已定位元素 """
         logger.info(f"{LogIcon.SETUP} 检查用户协议勾选状态")
         agren_elem = self.find_element(LoginLocator.AGREE_AND_LOGIN_BTN, timeout=2)
         if agren_elem:
             if not VerifyColor.verify_agree_btn(agren_elem):
                 logger.info(f"{LogIcon.SETUP} 执行勾选用户协议复选框")
-                self.click(LoginLocator.AGREE_AND_LOGIN_BTN)
+                if self._platform_name == "harmonyos":
+                    self.tap_point(click_elem=agren_elem, duration=80)
+                else:
+                    self.click_element(agren_elem, "用户协议复选框")
     
     # 登录页 - 取消勾选用户协议
     def cancel_user_agreement(self) -> None:
-        """ 检查登录页面的底部的协议复选框是否勾选，已勾选则取消勾选 """
+        """ 检查登录页面的底部的协议复选框是否勾选，已勾选则直接点击已定位元素取消勾选 """
         logger.info(f"{LogIcon.SETUP} 检查用户协议勾选状态以取消勾选")
         agren_elem = self.find_element(LoginLocator.AGREE_AND_LOGIN_BTN, timeout=2)
         if agren_elem:
             if VerifyColor.verify_agree_btn(agren_elem):
                 logger.info(f"{LogIcon.SETUP} 执行取消勾选用户协议")
-                self.click(LoginLocator.AGREE_AND_LOGIN_BTN)
+                if self._platform_name == "harmonyos":
+                    self.tap_point(click_elem=agren_elem, duration=80)
+                else:
+                    self.click_element(agren_elem, "用户协议复选框")
 
     # 登录页 - 处理协议拦截弹窗同意并继续
     def click_handle_agreement_popup(self) -> None:
@@ -377,23 +518,38 @@ class LoginPage(BasePage):
 
     # 登录页 - 判断登录是否成功
     def is_login_success(self) -> bool:
-        """ 根据是否能找到主页特有元素判断登录是否成功 """
+        """ 根据是否能找到主页特有元素判断登录是否成功，并自动关闭首次进入主页的布局引导弹窗 """
         from pages.home.home_page import HomePage
         home_page = HomePage(self.driver)
         if self._platform_name == "ios":
             if home_page.is_left_menu_visible(timeout=2):
+                home_page.dismiss_layout_guide_if_present(timeout=0.5)
                 logger.info(f"{LogIcon.SUCCESS} [iOS] 登录成功，已检测到主页左上角菜单按钮")
                 return True
+            if home_page.dismiss_layout_guide_if_present(timeout=0.8):
+                if home_page.is_left_menu_visible(timeout=2):
+                    logger.info(f"{LogIcon.SUCCESS} [iOS] 关闭主页布局引导弹窗后确认登录成功，已检测到主页左上角菜单按钮")
+                    return True
             logger.info(f"{LogIcon.FAIL} [iOS] 登录未成功，未检测到主页左上角菜单按钮")
             return False
 
-        title = home_page.get_top_middle_title()
+        title = home_page.get_top_middle_title(expect_missing=True)
         if '三条' in title:
+            self._set_cached_password(None)
+            home_page.dismiss_layout_guide_if_present(timeout=0.5)
             logger.info(f"{LogIcon.SUCCESS} 登录成功，获取到主页标题: {title}")
             return True
-        else:
-            logger.info(f"{LogIcon.FAIL} 登录未成功，获取到主页标题: {title}")
-            return False
+
+        # 引导弹窗抢占焦点窗口导致主页标题暂不可见时，关闭弹窗后复核主页标题
+        if home_page.dismiss_layout_guide_if_present(timeout=0.8):
+            title = home_page.get_top_middle_title(expect_missing=True)
+            if '三条' in title:
+                self._set_cached_password(None)
+                logger.info(f"{LogIcon.SUCCESS} 关闭主页布局引导弹窗后确认登录成功，获取到主页标题: {title}")
+                return True
+
+        logger.info(f"{LogIcon.FAIL} 登录未成功，获取到主页标题: {title}")
+        return False
 
     # 登录页 - 获取 Toast 提示
     def get_toast_text(self, timeout: float = 3.0, expected_toast: str = "") -> str:
@@ -438,17 +594,53 @@ class LoginPage(BasePage):
             logger.warning(f"{LogIcon.FAIL} 未能在规定时间内进入无卡登录首页")
             return False
 
-    # 登录页 - 显式等待验证是否处于登录主页面
-    def wait_for_login_page(self, timeout: int = 2) -> bool:
-        """ 显式等待验证是否处于登录主页面 (通过 APPLICATION_LOGO 进行检测优化) """
-        logger.info(f"{LogIcon.WAIT} 开始等待返回登录主页面 (超时: {timeout}s)")
-        elem = self.is_on_login_main_page(timeout=timeout)
-        if elem:
-            logger.info(f"{LogIcon.SUCCESS} 成功回到登录主页面")
+    # 登录页 - 显式等待验证是否处于登录页（同时兼容登录入口主页面与手机号/密码表单页）
+    def wait_for_login_page(self, timeout: int | float = 2) -> bool:
+        """
+        显式等待验证当前是否处于登录页面（优先高速入口按钮直查，避免登出回到主页时先跑表单页 XPath 空等 11s）
+        :param timeout: 显式等待超时时间 (默认 2s)
+        :return: True(处于登录主页面或登录表单页) / False(均未命中)
+        """
+        logger.info(f"{LogIcon.WAIT} 开始等待确认处于登录页面 (超时: {timeout}s)")
+        lookup_condition = "presence" if self._platform_name == "harmonyos" else "visibility"
+        fast_timeout = max(0.5, min(1.5, float(timeout)))
+
+        # 1. 优先高速直查登录主入口（鸿蒙走原生 text/HypiumBy 仅 ~0.1s，退出登录后默认即落在此页）
+        if self.find_element(
+            LoginLocator.LOGIN_ENTRANCE,
+            condition=lookup_condition,
+            timeout=fast_timeout,
+            expect_missing=True,
+        ):
+            logger.info(f"{LogIcon.SUCCESS} 确认已回到登录主页面（识别到手机号登录入口）")
             return True
-        else:
-            logger.warning(f"{LogIcon.FAIL} 未能在规定时间内返回登录主页面")
-            return False
+
+        if self.find_element(
+            LoginLocator.ONE_KEY_LOGIN_ENTRANCE,
+            condition=lookup_condition,
+            timeout=0.5,
+            expect_missing=True,
+        ):
+            logger.info(f"{LogIcon.SUCCESS} 确认已回到登录主页面（识别到一键登录入口）")
+            return True
+
+        # 2. 次级检测：退出后若直接停在账号密码/手机号表单页
+        if self.is_on_phone_login_page(timeout=fast_timeout):
+            logger.info(f"{LogIcon.SUCCESS} 确认已处于账号密码/手机号登录表单页")
+            return True
+
+        # 3. 最终兜底：弱网或入口按钮尚未渲染时校验顶部 Logo
+        if self.find_element(
+            LoginLocator.APPLICATION_LOGO,
+            condition=lookup_condition,
+            timeout=min(1.0, float(timeout)),
+            expect_missing=True,
+        ):
+            logger.info(f"{LogIcon.SUCCESS} 确认已处于登录主页面（识别到应用 Logo）")
+            return True
+
+        logger.warning(f"{LogIcon.FAIL} 未能在规定时间内检测到登录主页面或登录表单页")
+        return False
     
     # ==========================
     # 跨页面业务流转 (Business Flow)
@@ -458,33 +650,35 @@ class LoginPage(BasePage):
     def logout_if_logged_in(self, wait_toast: bool = True) -> str:
         """
         退出登录业务流转 (对齐最新设置中心退出逻辑)
-        :param wait_toast: 是否等待退出登录 Toast（不校验 Toast 的清理场景传 False 以避免无效轮询耗时）
+        :param wait_toast: 是否等待退出登录 Toast（仅 Android 端存在退出 Toast，iOS / 鸿蒙自动跳过轮询避免无效等待）
         """
         from pages.home.home_page import HomePage
         from pages.home.side_slip_page import SideSlipPage
         from pages.home.left_menus.settings_center_page import SettingsCenterPage
 
         logger.info(f"{LogIcon.ACTION} 开始执行退出登录流转...")
+        self._set_cached_password(None)
         HomePage(self.driver).open_left_menu()
         SideSlipPage(self.driver).click_setting()
-        msg = SettingsCenterPage(self.driver).click_logout_and_get_toast(wait_toast=wait_toast)
+        should_wait_toast = wait_toast and self._platform_name == "android"
+        msg = SettingsCenterPage(self.driver).click_logout_and_get_toast(wait_toast=should_wait_toast)
         return msg
 
-    # 登录页 - 验证登录按钮是否置灰
-    def is_login_button_enabled(self) -> bool:
-        """ 验证登录按钮是否有效（未置灰） """
-        login_btn = self.find_element(LoginLocator.VERIFY_AND_LOGIN_BTN, timeout=2)
-        if login_btn:
-            is_enabled = login_btn.is_enabled()
-            if is_enabled:
-                logger.info(f"{LogIcon.SETUP} 登录按钮处于置灰状态")
-                return True
-            else:
-                logger.info(f"{LogIcon.SETUP} 登录按钮处于激活状态（未置灰）")
-                return False
-        else:
-            logger.warning(f"{LogIcon.WARN} 未找到登录按钮")
+    # 登录页 - 通过像素颜色特征验证登录按钮是否置灰
+    def is_login_button_gray(self) -> bool:
+        """
+        通过按钮元素截图颜色特征判断登录按钮是否处于置灰（未激活）状态。
+        登录按钮置灰时不具备原生 enabled 属性变化，统一使用跨平台像素颜色校验。
+        :return: True(按钮呈灰色未激活状态) / False(按钮已激活或未定位到按钮)
+        """
+        lookup_condition = "presence" if self._platform_name == "harmonyos" else "visibility"
+        login_btn = self.find_element(LoginLocator.VERIFY_AND_LOGIN_BTN, condition=lookup_condition, timeout=2)
+        if not login_btn:
+            logger.warning(f"{LogIcon.WARN} 未找到登录按钮，无法校验置灰状态")
             return False
+        is_gray = VerifyColor.verify_btn_is_gray(login_btn)
+        logger.info(f"{LogIcon.FIND} 登录按钮视觉状态校验: {'置灰(未激活)' if is_gray else '高亮(已激活)'}")
+        return is_gray
 
     # ==========================
     # 验证码登录

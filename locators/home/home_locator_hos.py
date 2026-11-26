@@ -17,7 +17,7 @@ class _HomeLocatorHos:
     LEFT_MENU = (AppiumBy.XPATH, "(//NavDestinationContent//Stack/__Common__//Row[2]/Column/Row/Stack/Image)[1]")
 
     # 顶部中间标题 (应用名 "三条" 或 消息连接状态)
-    MIDDLE_TITLE = (AppiumBy.XPATH, "//Text[contains(@text, '三条')]")
+    MIDDLE_TITLE = HosBy.text_contains("三条", "Text")
 
     # 顶部右上角添加 "+" 功能菜单按钮 (完全脱离页面标题)
     RIGHT_MENU = (AppiumBy.XPATH, "(//NavDestinationContent//Stack/__Common__//Row[2]/Column/Image)[1]")
@@ -106,8 +106,8 @@ class _HomeLocatorHos:
     # 会话最后更新时间标签 (位于第一行右侧)
     CONVERSATION_TIME = (AppiumBy.XPATH, "//ListItem//Row[1]/Text[last()]")
 
-    # 会话未读消息数量气泡/红点 (真机真实结构为 Badge 容器内的独立角标 Text)
-    CONVERSATION_UNREAD_COUNT = (AppiumBy.XPATH, "//Badge/Text")
+    # 会话未读消息数量气泡/红点 (真机真实结构为 Badge 容器内的独立角标 Text，原生作用域直查)
+    CONVERSATION_UNREAD_COUNT = HosBy.within_type("Badge", target_type="Text")
 
     # 置顶会话折叠入口容器与图标
     CONVERSATION_FOLD_ENTRY = (AppiumBy.XPATH, "//ListItem/Column/Row")
@@ -118,16 +118,33 @@ class _HomeLocatorHos:
     # 会话状态标识：已停用/免打扰
     CONVERSATION_DISABLE = (AppiumBy.XPATH, "//ListItem//Flex/Image[2]")
 
-    # 会话状态前缀标签 (公用支持: 草稿、未读/已读、进群申请、@所有人、有人@我)
-    CONVERSATION_STATUS_TAG = (
-        AppiumBy.XPATH,
-        "//ListItem//Text[contains(@text, '草稿') or contains(@text, '未读') or contains(@text, '已读') or contains(@text, '进群申请') or contains(@text, '@所有人') or contains(@text, '@我') or starts-with(@text, '[@')]"
+    # 会话状态前缀标签 (公用支持: 草稿、未读/已读、进群申请、@所有人、有人@我；原生正则直查免整树 XPath)
+    CONVERSATION_STATUS_TAG = HosBy.within_type(
+        "ListItem",
+        text=r"(草稿|未读|已读|进群申请|@所有人|@我|^\[@)",
+        target_type="Text",
+        match_pattern=HosBy.MATCH_REGEXP,
     )
 
-    # 细分状态标签定位 (基于真实会话结构精准过滤)
-    CONVERSATION_DRAFT = (AppiumBy.XPATH, "//ListItem//Text[contains(@text, '草稿')]")
-    CONVERSATION_UNREAD = (AppiumBy.XPATH, "//ListItem//Text[contains(@text, '未读') or contains(@text, '已读')]")
-    CONVERSATION_REMIND_TAG = (AppiumBy.XPATH, "//ListItem//Text[contains(@text, '@所有人') or contains(@text, '有人@我') or contains(@text, '进群申请') or starts-with(@text, '[@')]")
+    # 细分状态标签定位 (原生 ListItem 作用域直查)
+    CONVERSATION_DRAFT = HosBy.within_type(
+        "ListItem",
+        text="草稿",
+        target_type="Text",
+        match_pattern=HosBy.MATCH_CONTAINS,
+    )
+    CONVERSATION_UNREAD = HosBy.within_type(
+        "ListItem",
+        text="(未读|已读)",
+        target_type="Text",
+        match_pattern=HosBy.MATCH_REGEXP,
+    )
+    CONVERSATION_REMIND_TAG = HosBy.within_type(
+        "ListItem",
+        text=r"(@所有人|有人@我|进群申请|^\[@)",
+        target_type="Text",
+        match_pattern=HosBy.MATCH_REGEXP,
+    )
 
 
 
@@ -135,14 +152,24 @@ class _HomeLocatorHos:
     # 5. 会话侧滑快捷动作与删除确认弹窗 (Swipe Actions & Confirmation)
     # --------------------------------------------------------------------------
 
-    # 侧滑菜单 - 会话静音
-    CONVERSATION_MUTE = (AppiumBy.XPATH, "//ListItem//Row/Column/Text[contains(@text, '静音') or contains(@text, '取消静音')]")
+    # 侧滑菜单 - 会话静音（首尾锚定精确文案，避免误中聊天预览正文）
+    CONVERSATION_MUTE = HosBy.within_type(
+        "ListItem",
+        text="^(静音|取消静音)$",
+        target_type="Text",
+        match_pattern=HosBy.MATCH_REGEXP,
+    )
 
     # 侧滑菜单 - 会话置顶 / 取消置顶
-    CONVERSATION_TOP = (AppiumBy.XPATH, "//ListItem//Row/Column/Text[contains(@text, '置顶') or contains(@text, '取消置顶')]")
+    CONVERSATION_TOP = HosBy.within_type(
+        "ListItem",
+        text="^(置顶|取消置顶)$",
+        target_type="Text",
+        match_pattern=HosBy.MATCH_REGEXP,
+    )
 
     # 侧滑菜单 - 会话删除
-    CONVERSATION_DELETE = (AppiumBy.XPATH, "//ListItem//Row/Column/Text[contains(@text, '删除')]")
+    CONVERSATION_DELETE = HosBy.within_type("ListItem", text="删除", target_type="Text")
 
     # 删除会话弹窗 - 隐藏
     CONVERSATION_HIDE = (AppiumBy.XPATH, "//Dialog//Column[@clickable='true' and .//Text[@text='清空聊天记录']]")
@@ -150,11 +177,29 @@ class _HomeLocatorHos:
     # 会话删除二次确认弹窗 - 清空聊天记录并隐藏
     CONVERSATION_DELETE_DIALOG_CLEAR_CHAT_RECORD = (AppiumBy.XPATH, "//Dialog//Column[@clickable='true' and .//Text[@text='确认删除']]")
 
-    # 会话删除二次确认弹窗 - 确认删除
-    CONVERSATION_DELETE_DIALOG_CONFIRM = (AppiumBy.XPATH, "//Button[@text='删除' or @text='确定'] | //Text[@text='删除' or @text='确定']")
+    # 会话删除二次确认弹窗 - 确认删除（限定 Dialog 作用域，防点穿背景会话列表）
+    CONVERSATION_DELETE_DIALOG_CONFIRM = HosBy.in_dialog_text(
+        "^(删除|确定)$",
+        match_pattern=HosBy.MATCH_REGEXP,
+    )
 
     # 会话删除二次确认弹窗 - 取消操作 (锁定 Dialog 弹窗下的取消组件，避免底层会话列表干扰)
-    CONVERSATION_DELETE_DIALOG_CANCEL = (AppiumBy.XPATH, "//Dialog//Column//Text[@clickable='true' and @text='取消']")
+    CONVERSATION_DELETE_DIALOG_CANCEL = HosBy.in_dialog_text("取消", "Text")
+
+    # --------------------------------------------------------------------------
+    # 5.5 首次登录主页引导弹窗（选择你偏好的首页布局）TODO：HOS这里没有做
+    # --------------------------------------------------------------------------
+
+    # 引导弹窗标题（HypiumBy 原生直查，无弹窗时约 0.1s 返回，避免 XPath 全树扫描）
+    HOME_LAYOUT_GUIDE_TITLE = HosBy.type_text("Text", "选择你偏好的首页布局")
+
+    # 引导弹窗右上角关闭图标（仅在命中标题后触发，兼容 Stack/Row 标题栏与 Dialog 容器）
+    HOME_LAYOUT_GUIDE_CLOSE = (
+        AppiumBy.XPATH,
+        "//Stack[Text[@text='选择你偏好的首页布局']]//Image"
+        " | //Row[Text[@text='选择你偏好的首页布局']]//Image"
+        " | //Dialog[.//Text[@text='选择你偏好的首页布局']]//Image[1]",
+    )
 
     # --------------------------------------------------------------------------
     # 6. 聊天安全密码保护弹窗 (Chat Password Dialog)

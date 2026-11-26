@@ -1,8 +1,7 @@
-import io
 import math
 from dataclasses import dataclass
-from PIL import Image
 from core.logger_utils import logger, LogIcon
+from utils.cv_recognition.screenshot_utils import ScreenshotUtils
 
 
 @dataclass(frozen=True)
@@ -34,14 +33,8 @@ class VerifyColor:
         try:
             gender_icon = gender_elem
 
-            # 2. 仅获取该控件的局部截图 (返回 PNG 的二进制格式)
-            image_data = gender_icon.screenshot_as_png
-
-            # 3. 将二进制数据转换为 PIL Image 对象
-            img = Image.open(io.BytesIO(image_data))
-
-            # 将图片转换为 RGB 模式（排除透明度 Alpha 通道的干扰）
-            img = img.convert("RGB")
+            # 2. 获取该控件的局部 RGB 图像（Android/iOS 走 Appium 原生截图，鸿蒙自动全屏裁剪）
+            img = ScreenshotUtils.element_image(gender_icon)
 
             # 4. 获取图片的宽高，并提取中心点的 RGB 颜色
             width, height = img.size
@@ -72,11 +65,8 @@ class VerifyColor:
         使用像素统计避免勾号中间白色像素造成的干扰。
         """
         try:
-            # 1. 仅获取该控件的局部截图 (返回 PNG 的二进制格式)
-            image_data = btn_elem.screenshot_as_png
-
-            # 2. 将二进制数据转换为 PIL Image 对象并转为 RGB 模式
-            img = Image.open(io.BytesIO(image_data)).convert("RGB")
+            # 1. 获取该控件的局部 RGB 图像（Android/iOS 走 Appium 原生截图，鸿蒙自动全屏裁剪）
+            img = ScreenshotUtils.element_image(btn_elem)
 
             # 3. 统计图片中的绿色像素点
             width, height = img.size
@@ -106,8 +96,7 @@ class VerifyColor:
     @staticmethod
     def _extract_color_features(element) -> _ColorFeatures:
         """提取元素截图的颜色特征，供不同页面的语义判断复用。"""
-        image_data = element.screenshot_as_png
-        img = Image.open(io.BytesIO(image_data)).convert("RGB")
+        img = ScreenshotUtils.element_image(element)
         width, height = img.size
 
         # 排除元素边缘，避免把相邻控件或边界线算入结果。
@@ -234,14 +223,27 @@ class VerifyColor:
                 logger.warning(f"{LogIcon.WARN} [ColorVerify] 未在元素中心区域提取到有效的无色系像素点，默认判定为非灰色")
                 return False
 
+            # 全黑帧告警：当系统安全键盘或防截屏隐私保护生效时，截屏整图会被涂黑 (0, 0, 0)
+            if features.avg_darkest <= 2 and features.light_ratio == 0.0 and features.colored_ratio == 0.0:
+                logger.warning(
+                    f"{LogIcon.WARN} [ColorVerify] 检测到元素截图为纯黑 "
+                    f"(avg_darkest={features.avg_darkest:.1f})，可能触发了系统安全键盘或防截屏隐私保护！"
+                )
+
             # 保留旧调用的背景兼容规则；日期页面不再使用本方法。
             if features.avg_darkest >= 120 or (
                 features.light_ratio > 0.8 and features.colored_ratio < 0.03
             ):
-                logger.info(f"{LogIcon.ACTION} [ColorVerify] 判定结果：灰色 🩶 (未激活/未选中)")
+                logger.info(
+                    f"{LogIcon.ACTION} [ColorVerify] 判定结果：灰色 🩶 (未激活/未选中) "
+                    f"(avg_darkest={features.avg_darkest:.1f}, light_ratio={features.light_ratio:.1%})"
+                )
                 return True
             else:
-                logger.info(f"{LogIcon.ACTION} [ColorVerify] 判定结果：非灰色/黑色 🩵 (已激活/已选中)")
+                logger.info(
+                    f"{LogIcon.ACTION} [ColorVerify] 判定结果：非灰色/黑色 🩵 (已激活/已选中) "
+                    f"(avg_darkest={features.avg_darkest:.1f}, light_ratio={features.light_ratio:.1%})"
+                )
                 return False
         except Exception as e:
             logger.error(f"{LogIcon.FAIL} [ColorVerify] 分析灰色状态失败: {e}")
@@ -292,8 +294,7 @@ class FigmaColorToken:
         """
         try:
             target_rgb = cls.hex_to_rgb(target_hex)
-            image_data = element.screenshot_as_png
-            img = Image.open(io.BytesIO(image_data)).convert("RGB")
+            img = ScreenshotUtils.element_image(element)
             width, height = img.size
 
             margin_x = min(int(width * 0.15), max((width - 1) // 2, 0))

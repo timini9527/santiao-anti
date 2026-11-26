@@ -1,6 +1,7 @@
 
 from typing import Tuple
 from appium.webdriver.common.appiumby import AppiumBy
+from locators.common.hos_by import HosBy
 
 
 class _CommonLocatorHos:
@@ -87,7 +88,8 @@ class _CommonLocatorHos:
     # 二次弹窗确认按钮 (如 "确定"、"确认"、"删除")
     DIALOG_CONFIRM_BTN = (
         AppiumBy.XPATH,
-        "//Dialog//Row/Text[@text='确定' or @text='确认' or @text='删除']",
+        "//Dialog//Row/Text[@text='确定' or @text='确认退出' or @text='删除']"
+        " | //Text[@text='确认退出']"
     )
     BTN_CONFIRM = DIALOG_CONFIRM_BTN
     TV_CONFIRM_BTN = DIALOG_CONFIRM_BTN
@@ -119,26 +121,20 @@ class _CommonLocatorHos:
     @classmethod
     def get_title_by_text(cls, title_text: str) -> Tuple[str, str]:
         """
-        根据指定标题文本精准定位导航栏或页面中的标题 Text 元素
+        根据指定标题文本精准定位导航栏或页面中的标题 Text 元素（原生 HypiumBy 直查）
         :param title_text: 页面标题文本内容
-        :return: (AppiumBy.XPATH, xpath_expression)
+        :return: (strategy, selector)
         """
-        return (
-            AppiumBy.XPATH,
-            f"//NavDestination//Text[@text='{title_text}'] | //Navigation//Text[@text='{title_text}'] | //Text[@text='{title_text}']",
-        )
+        return HosBy.type_text("Text", title_text)
 
     @classmethod
     def get_button_by_text(cls, btn_text: str) -> Tuple[str, str]:
         """
-        根据文本精准定位通用按钮 (支持 Button 与具备交互语义的 Text 组件)
+        根据文本精准定位通用按钮（原生 text 直查，同时兼容 Button 与可点击 Text 组件）
         :param btn_text: 按钮显示文本
-        :return: (AppiumBy.XPATH, xpath_expression)
+        :return: (strategy, selector)
         """
-        return (
-            AppiumBy.XPATH,
-            f"//Button[@text='{btn_text}'] | //Text[@text='{btn_text}' and (@clickable='true' or parent::Button)]",
-        )
+        return HosBy.text(btn_text)
 
     @classmethod
     def get_dialog_action_by_text(cls, action_text: str) -> Tuple[str, str]:

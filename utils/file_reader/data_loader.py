@@ -1,4 +1,5 @@
 import csv
+import re
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,31 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from core.logger_utils import logger, LogIcon
 import pandas as pd
 from config import CONFIG_DIR, DATA_DIR, RESOURCE_DIR
+
+
+_TEMPLATE_VAR_PATTERN = re.compile(r"\$\{(\w+)\}")
+
+
+def render_template_data(data: Any, variables: dict[str, Any]) -> Any:
+    """
+    递归渲染 YAML/JSON 测试数据中的 `${变量名}` 占位符。
+    仅替换变量表中显式声明的键，不干扰 SQL 注入、XSS 或普通花括号字符。
+    :param data: 待渲染数据（支持 str / list / dict 任意嵌套）
+    :param variables: 变量名与替换值映射表
+    :return: 渲染后的新数据对象（不修改原始数据）
+    """
+    if not variables:
+        return data
+    if isinstance(data, str):
+        return _TEMPLATE_VAR_PATTERN.sub(
+            lambda m: str(variables[m.group(1)]) if m.group(1) in variables else m.group(0),
+            data,
+        )
+    if isinstance(data, list):
+        return [render_template_data(item, variables) for item in data]
+    if isinstance(data, dict):
+        return {k: render_template_data(v, variables) for k, v in data.items()}
+    return data
 
 
 def find_file(filename: str) -> Any | None:

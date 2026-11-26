@@ -1,4 +1,5 @@
 from appium.webdriver.common.appiumby import AppiumBy
+from locators.common.hos_by import HosBy
 
 
 class _ChatLocatorHos:
@@ -11,9 +12,9 @@ class _ChatLocatorHos:
     # ==================================================================================================================
     # 1. 聊天页面基础列表与行容器 (Message List & Item Rows)
     # ==================================================================================================================
-    # 消息列表主滚动容器 (ArkUI List 组件)
+    # 消息列表主滚动容器 (ArkUI List 组件，原生 type 直查)
     MESSAGES_LIST_ID = "__ChatMessagesList__"
-    MESSAGES_LIST_ITEM = (AppiumBy.XPATH, "//List")
+    MESSAGES_LIST_ITEM = HosBy.type_only("List")
 
     # 消息单行容器 (每个消息气泡所属的 ListItem 容器)
     MESSAGE_LAYOUT_XPATH = "//ListItem//Row[2]"
@@ -55,9 +56,9 @@ class _ChatLocatorHos:
     IMAGE_ITEM = (AppiumBy.XPATH, "//ListItem//Row[2]//Stack//__Common__/Stack/Image")
     PREVIEW_IMAGE_ID = "__ImagePreview__"
     PREVIEW_IMAGE_ITEM = (AppiumBy.XPATH, "//ListItem//Row//Stack/Stack/__Common__/Image")
-    # 预览图片保存按钮
+    # 预览图片保存按钮 (原生 SaveButton 组合直查)
     IV_DOWNLOAD_ID = "__ImageDownload__"
-    IV_DOWNLOAD_ITEM = (AppiumBy.XPATH, "//Dialog//Stack//SaveButton[@text='保存']")
+    IV_DOWNLOAD_ITEM = HosBy.type_text("SaveButton", "保存")
     # 预览图片顶部数字（如 1/6）
     IV_IMAGE_PAGE_TEXT = (AppiumBy.XPATH, "//Dialog//Stack/Row/Text")
 
@@ -116,11 +117,8 @@ class _ChatLocatorHos:
     MERGE_CARD_PREVIEW = (AppiumBy.XPATH, "//ListItem//Column//Text[contains(@text, '的聊天记录')]/following-sibling::Text")
     MERGE_CARD_KIND = (AppiumBy.XPATH, "//ListItem//Column//Text[contains(@text, '的聊天记录')]/following-sibling::Text[last()]")
 
-    # 2.9 停用账号 / 封禁提示 //NavDestination//Stack/Stack/__Common__/Stack/Column//Image
-    DISABLE_MESSAGE_TIP = (
-        AppiumBy.XPATH,
-        "//Text[@text='对方账号已无法使用 详情']"
-    )
+    # 2.9 停用账号 / 封禁提示 (原生 HypiumBy 文本直查)
+    DISABLE_MESSAGE_TIP = HosBy.type_text("Text", "对方账号已无法使用 详情")
 
     # 2.10 音视频通话记录卡片 (Call Card) TODO：鸿蒙还没有做，等待优化
     CALL_CARD_ID = "__CallCard__"
@@ -184,10 +182,10 @@ class _ChatLocatorHos:
     # 底部输入整行容器
     CHAT_INPUT = (AppiumBy.XPATH, "//NavDestination//Stack/__Common__//Column/Stack/Column/Row")
 
-    # 文本输入框 (TextInput / TextArea)
+    # 文本输入框 (TextInput / TextArea / RichEditor)
     CHAT_INPUT_CONTENT = (AppiumBy.XPATH, "")
     CHAT_INPUT_BOX = (AppiumBy.XPATH, "//TextInput | //TextArea")
-    TEXT_INPUT = (AppiumBy.XPATH, "//RichEditor[@id='inputText'] | //*[@id='inputText'] | //RichEditor")
+    TEXT_INPUT = HosBy.type_only("RichEditor")
 
     # 语音 / 键盘切换按钮
     VOICE_BUTTON = (
@@ -207,7 +205,7 @@ class _ChatLocatorHos:
         "//NavDestination//Stack/__Common__//Column/Stack/Column/Row/Stack/Image"
     )
     INPUT_MORE_PAGER = (AppiumBy.XPATH, "//Grid | //Scroll[.//Text[@text='图片' or @text='拍摄']]")
-    INPUT_MORE_SCROLLABLE_INDICATOR = (AppiumBy.XPATH, "//Swiper")
+    INPUT_MORE_SCROLLABLE_INDICATOR = HosBy.type_only("Swiper")
 
     # 发送按钮 (文本变动后显示为 "发送")
     SEND_BUTTON = (
@@ -248,9 +246,9 @@ class _ChatLocatorHos:
     IV_DELETE = (AppiumBy.XPATH, "//NavDestinationContent/Stack/Column/Stack/Column/Row/Image[2]")
 
     # 转发方式底部弹窗 (ActionSheet / Dialog)
-    DESIGN_BOTTOM_SHEET = (AppiumBy.XPATH, "//Dialog")
-    TV_FORWARD_ONE_BY_ONE = (AppiumBy.XPATH, "//Dialog//Column/Text[@text='逐条转发']")
-    TV_FORWARD_COMBINE = (AppiumBy.XPATH, "//Dialog//Column/Text[@text='合并转发']")
+    DESIGN_BOTTOM_SHEET = HosBy.type_only("Dialog")
+    TV_FORWARD_ONE_BY_ONE = HosBy.type_text("Text", "逐条转发")
+    TV_FORWARD_COMBINE = HosBy.type_text("Text", "合并转发")
     TV_CONFIRM = (AppiumBy.XPATH, "//Dialog//Column/Text[@text='确定']")
     TV_CANCEL = (AppiumBy.XPATH, "//Dialog/Column/Column/Text[@text='取消']")
 
@@ -258,7 +256,7 @@ class _ChatLocatorHos:
     # 6. 聊天记录（合并转发）详情页内部结构 (Chat History Detail Page)
     # ==================================================================================================================
     CHAT_HISTORY_RECYCLER_ID = "__ChatHistoryList__"
-    CHAT_HISTORY_RECYCLER_VIEW = (AppiumBy.XPATH, "//List")
+    CHAT_HISTORY_RECYCLER_VIEW = HosBy.type_only("List")
 
     CHAT_HISTORY_TIME_ID = "__ChatHistoryTime__"
     CHAT_HISTORY_TIME = (AppiumBy.XPATH, "//ListItem//Text[contains(@text, ':')]")
@@ -301,7 +299,7 @@ class _ChatLocatorHos:
 
     # 二次确认弹窗按钮
     TWO_CONFIRM = (AppiumBy.XPATH, "//Button[.//Text[@text='确定' or @text='删除']] | //Text[@text='确定' or @text='删除']")
-    TWO_CANCEL = (AppiumBy.XPATH, "//Button[.//Text[@text='取消']] | //Text[@text='取消']")
+    TWO_CANCEL = HosBy.text("取消")
 
     ALERT_TITLE = (AppiumBy.XPATH, "//Dialog//Text[1]")
     BUTTON1 = TWO_CONFIRM
@@ -320,8 +318,8 @@ class _ChatLocatorHos:
     # ==================================================================================================================
     @classmethod
     def get_message_item_by_text(cls, text: str) -> tuple[str, str]:
-        """通过传入的文本内容精确定位消息气泡"""
-        return (AppiumBy.XPATH, f"//ListItem//Text[@text='{text}']")
+        """通过传入的文本内容精确定位消息气泡（原生 HypiumBy 直查，避免长消息流整树 XPath 扫描）"""
+        return HosBy.type_text("Text", text)
 
     @classmethod
     def get_bubble_by_text(cls, text: str) -> tuple[str, str]:

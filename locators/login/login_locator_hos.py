@@ -40,9 +40,11 @@ class _LoginLocatorHos(_CommonLocatorHos):
     # 密码与验证码登录模式切换按钮
     PASSWORD_LOGIN_SWITCH = HosBy.type_text("Text", "密码验证登录")
     CODE_LOGIN_SWITCH = HosBy.type_text("Text", "短信验证登录")
-    PWD_AND_CODE = (
-        AppiumBy.XPATH,
-        "//Row/Text[contains(@text,'密码验证登录') or contains(@text,'短信验证登录')]",
+    PWD_AND_CODE = HosBy.within_type(
+        "Row",
+        text="(密码验证登录|短信验证登录)",
+        target_type="Text",
+        match_pattern=HosBy.MATCH_REGEXP,
     )
 
     # 密码输入框与可见性切换
@@ -65,19 +67,16 @@ class _LoginLocatorHos(_CommonLocatorHos):
     # 验证码页面组件
     PLEASE_ENTER_VERIFICATION_CODE = HosBy.type_text("Text", "请填写验证码")
     # 验证码已发送 title
-    VERIFICATION_CODE_SENT = (AppiumBy.XPATH, "//Text[contains(@text, '验证码已发送')]")
+    VERIFICATION_CODE_SENT = HosBy.text_contains("验证码已发送", "Text")
     # 发送验证码手机号
     SEND_VERIFICATION_CODE_PHONE = (
         AppiumBy.XPATH,
         "(//Column/Text[2])[1]",
     )
     # 收不到验证码 text
-    CANNOT_RECEIVE_VERIFICATION_CODE = (AppiumBy.XPATH, "//Text[contains(@text, '收不到验证码')]")
+    CANNOT_RECEIVE_VERIFICATION_CODE = HosBy.text_contains("收不到验证码", "Text")
     # 验证码倒计时 60s
-    VERIFICATION_CODE_COUNTDOWN = (
-        AppiumBy.XPATH,
-        "//Text[contains(@text, '重新获取')]",
-    )
+    VERIFICATION_CODE_COUNTDOWN = HosBy.text_contains("重新获取", "Text")
 
     # 获取所有的独立验证码输入框集合
     CODE_EDIT_TEXTS = (
@@ -85,16 +84,19 @@ class _LoginLocatorHos(_CommonLocatorHos):
         "//__Common__/Stack/Row/Stack/Text",
     )
 
-    # 协议同意按钮与说明
-    AGREE_AND_LOGIN_BTN = HosBy.type_text("Checkbox", "privacyCb")
-    # 账密和一键登录协议文本
-    AGREE_AND_LOGIN_TEXT = (
-        AppiumBy.XPATH,
-        "//Column/Column/Column/Row/Text",
+    # 协议同意勾选框（用上方主按钮与下方“我已阅读且同意”区间夹逼锁定紧邻 Image，避免单用 isBefore 误命中顶部返回/清空图标）
+    AGREE_AND_LOGIN_BTN = HosBy.between_texts(
+        after_text="^(密码验证登录|短信验证登录|一键登录|手机号登录)$",
+        before_text="我已阅读且同意",
+        target_type="Image",
+        after_pattern=HosBy.MATCH_REGEXP,
+        before_pattern=HosBy.MATCH_CONTAINS,
     )
+    # 账密和一键登录协议文本（原生包含直查，摆脱脆弱的 Column 层级 XPath）
+    AGREE_AND_LOGIN_TEXT = HosBy.text_contains("我已阅读且同意", "Text")
 
     # 反馈按钮
-    FEEDBACK_BTN = (AppiumBy.XPATH, "//Text[contains(@text, '反馈')]")
+    FEEDBACK_BTN = HosBy.text_contains("反馈", "Text")
 
     # 未勾选协议点击登录后弹出容器
     AGREEMENT_BOTTOM_SHEET = (
@@ -114,8 +116,9 @@ class _LoginLocatorHos(_CommonLocatorHos):
     )
 
     @staticmethod
-    def get_dynamic_toast_msg(expected_toast: str):
-        return (AppiumBy.XPATH, f"//*[contains(@text, '{expected_toast}') or contains(@content-desc, '{expected_toast}')]")
+    def get_dynamic_toast_msg(expected_toast: str) -> tuple[str, str]:
+        """按预期提示文案原生模糊包含直查 Toast（提速至 ~0.1s，大幅提升短时 Toast 捕获率）"""
+        return HosBy.text_contains(expected_toast)
 
     # ======================================================
     # 系统级弹窗 - 使用已保存的账号/使用其他账号/手动输入

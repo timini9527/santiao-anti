@@ -1,7 +1,96 @@
 # 登录模块测试用例数据
-# 设计原则：数据驱动测试 (DDT)
+# 设计原则：数据驱动测试 (DDT) + 顶层变量统一管理
 # 覆盖维度：成功路径 / 协议约束 / 账号异常 / 密码异常 / 格式边界 / 安全防护 / 交互状态
 # 执行顺序建议：按 group_id 顺序执行
+# 支持占位符：${account}、${password}、${password_swapcase}(自动反转大小写)、${long_string_1000}(1000位超长串)
+
+vars:
+  # 兜底默认账号（当当前环境与平台均未命中 env_accounts 时回退使用）
+  account: "19200000007"
+  password: "a1234567B"
+
+  # 按「被测业务环境 (config/devices.yaml -> app_env 或环境变量 APP_ENV) -> 平台 (platform)」两级路由账号
+  env_accounts:
+    # 灰度环境账号池（三端主/副号严格隔离，防并发互踢；frequent_account 填写独立防刷专用号）
+    gray:
+      default:
+        account: "19200000007"
+        password: "a1234567B"
+        secondary_account: "19200000017"
+        secondary_password: "a1234567B"
+        frequent_account: "19200000999"
+      harmonyos:
+        account: "19200000006"
+        password: "a1234567B"
+        secondary_account: "19200000016"
+        secondary_password: "a1234567B"
+        frequent_account: "19200000999"
+      android:
+        account: "19200000007"
+        password: "a1234567B"
+        secondary_account: "19200000017"
+        secondary_password: "a1234567B"
+        frequent_account: "19200000999"
+      ios:
+        account: "19200000008"
+        password: "a1234567B"
+        secondary_account: "19200000018"
+        secondary_password: "a1234567B"
+        frequent_account: "19200000999"
+
+    # 测试环境账号池（各端可按需替换为独立测试号）
+    test:
+      default:
+        account: "38100000225"
+        password: "a1234567B"
+        secondary_account: "38100000224"
+        secondary_password: "a1234567B"
+        frequent_account: "38100000220"
+      harmonyos:
+        account: "38100000225"
+        password: "a1234567B"
+        secondary_account: "38100000224"
+        secondary_password: "a1234567B"
+        frequent_account: "38100000220"
+      android:
+        account: "38100000225"
+        password: "a1234567B"
+        secondary_account: "38100000224"
+        secondary_password: "a1234567B"
+        frequent_account: "38100000220"
+      ios:
+        account: "38100000225"
+        password: "a1234567B"
+        secondary_account: "38100000224"
+        secondary_password: "a1234567B"
+        frequent_account: "38100000220"
+
+    # 正式环境账号池（仅配置专用线上巡检测试号；严禁混用灰度/测试账号，也支持通过环境变量 LOGIN_ACCOUNT / LOGIN_PASSWORD 注入）
+    prod:
+      default:
+        account: "38100000225"
+        password: "a1234567B9"
+        secondary_account: "38100000224"
+        secondary_password: "a1234567B9"
+        frequent_account: "38100000220"
+      harmonyos:
+        account: "38100000225"
+        password: "a1234567B9"
+        secondary_account: "38100000224"
+        secondary_password: "a1234567B9"
+        frequent_account: "38100000220"
+      android:
+        account: "38100000225"
+        password: "a1234567B9"
+        secondary_account: "38100000224"
+        secondary_password: "a1234567B9"
+        frequent_account: "38100000220"
+      ios:
+        account: "38100000225"
+        password: "a1234567B9"
+        secondary_account: "38100000224"
+        secondary_password: "a1234567B9"
+        frequent_account: "38100000220"
 
 login_cases:
 
@@ -10,8 +99,8 @@ login_cases:
   # ==========================================
   - id: G1_TC01
     desc: "合法账号密码 + 已勾选协议 → 登录成功"
-    account: "38100000225"
-    password: "a1234567B9"
+    account: "${account}"
+    password: "${password}"
     check_agreement: true
     eye_click: false
     expected_status: "success"
@@ -20,8 +109,8 @@ login_cases:
 
   - id: G1_TC02
     desc: "点击密码眼睛图标切换明文后 → 登录成功（验证明文模式不影响登录）"
-    account: "38100000225"
-    password: "a1234567B9"
+    account: "${account}"
+    password: "${password}"
     check_agreement: true
     eye_click: true
     expected_status: "success"
@@ -44,8 +133,8 @@ login_cases:
   # ==========================================
   - id: G2_TC01
     desc: "未勾选用户协议 → 弹出隐私协议提示框"
-    account: "38100000225"
-    password: "a1234567B9"
+    account: "${account}"
+    password: "${password}"
     check_agreement: false
     popup_action: "" # 不处理，仅验证弹窗弹出
     expected_status: "fail"
@@ -54,8 +143,8 @@ login_cases:
 
   - id: G2_TC02
     desc: "未勾选协议弹窗后点击「同意」→ 完成登录"
-    account: "38100000225"
-    password: "a1234567B9"
+    account: "${account}"
+    password: "${password}"
     check_agreement: false
     popup_action: "agree"
     expected_status: "success"
@@ -64,8 +153,8 @@ login_cases:
 
   - id: G2_TC03
     desc: "未勾选协议弹窗后点击「拒绝」→ 停留登录页"
-    account: "38100000225"
-    password: "a1234567B9"
+    account: "${account}"
+    password: "${password}"
     check_agreement: false
     popup_action: "reject"
     expected_status: "fail" # 拒绝后业务结果是登录失败
@@ -78,7 +167,7 @@ login_cases:
   - id: G3_TC01
     desc: "账号为空 → 前端拦截提示"
     account: ""
-    password: "a1234567B9"
+    password: "${password}"
     check_agreement: true
     expected_status: "fail"
     expected_toast: "请输入手机号"
@@ -87,7 +176,7 @@ login_cases:
   - id: G3_TC02
     desc: "账号不存在（未注册手机号）→ 后端拒绝"
     account: "13900000000"
-    password: "a1234567B9"
+    password: "${password}"
     check_agreement: true
     expected_status: "fail"
     expected_toast: "请检查手机号或密码是否正确"
@@ -96,25 +185,28 @@ login_cases:
   - id: G3_TC03
     desc: "账号长度不足（如 10 位手机号）→ 前端或后端拦截"
     account: "1380000000" 
-    password: "a1234567B9"
+    password: "${password}"
     check_agreement: true
     expected_status: "fail"
     expected_toast: "请检查手机号或密码是否正确"
     priority: P1
   
   - id: G3_TC04
-    desc: "账号长度超限（如 12 位手机号）→ 前端限制输入或后端拦截去掉最后一位"
-    account: "381000002251" 
-    password: "a1234567B9"
+    desc: "账号长度超限（如 12 位手机号）→ Android/鸿蒙前端截断至11位登录成功，iOS允许超长输入由后端拦截失败"
+    account: "${account}1"
+    password: "${password}"
     check_agreement: true
     expected_status: "success"
     expected_toast: ""
     priority: P1
+    platform_overrides:
+      ios:
+        expected_status: "fail"
 
   - id: G3_TC05
     desc: "账号包含非数字字符（英文字母/中文）→ 无法输入或提示错误"
     account: "138AAAA0000"
-    password: "a1234567B9"
+    password: "${password}"
     check_agreement: true
     expected_status: "fail"
     expected_toast: "请检查手机号或密码是否正确"
@@ -123,8 +215,8 @@ login_cases:
   # 账号格式异常, 有问题待修复
   # - id: G3_TC08
   #   desc: "账号含前后空格 → 自动 trim 后正常登录"
-  #   account: " 38100000225 "
-  #   password: "a1234567B9"
+  #   account: " ${account} "
+  #   password: "${password}"
   #   check_agreement: true
   #   expected_status: "success" # 明确预期产品逻辑（假设要求trim）
   #   expected_toast: ""
@@ -135,7 +227,7 @@ login_cases:
   # ==========================================
   - id: G4_TC01
     desc: "密码为空 → 前端拦截提示"
-    account: "38100000225"
+    account: "${account}"
     password: ""
     check_agreement: true
     expected_status: "fail"
@@ -144,7 +236,7 @@ login_cases:
 
   - id: G4_TC02
     desc: "密码错误 → 后端拒绝提示"
-    account: "38100000225"
+    account: "${account}"
     password: "wrong_password"
     check_agreement: true
     expected_status: "fail"
@@ -153,8 +245,8 @@ login_cases:
 
   - id: G4_TC03
     desc: "密码大小写敏感度验证（输入错误的大小写）→ 拒绝登录"
-    account: "38100000225"
-    password: "A1234567b9" 
+    account: "${account}"
+    password: "${password_swapcase}"
     check_agreement: true
     expected_status: "fail"
     expected_toast: "请检查手机号或密码是否正确"
@@ -166,7 +258,7 @@ login_cases:
   - id: G6_TC01
     desc: "账号输入 SQL 注入字符串 → 正常拦截"
     account: "' OR '1'='1"
-    password: "a1234567B9"
+    password: "${password}"
     check_agreement: true
     expected_status: "fail"
     expected_toast: "请检查手机号或密码是否正确"
@@ -175,16 +267,16 @@ login_cases:
   - id: G6_TC03
     desc: "账号输入 XSS 跨站脚本 → 正常拦截（防日志注入/前端反射）"
     account: "<script>alert(1)</script>"
-    password: "a1234567B9"
+    password: "${password}"
     check_agreement: true
     expected_status: "fail"
     expected_toast: "请检查手机号或密码是否正确"
     priority: P2
 
   - id: G6_TC04
-    desc: "密码输入超长字符串（依赖代码替换）→ 正常拦截"
-    account: "38100000225"
-    password: "[LONG_STRING_1000]"  # Python 脚本中识别并替换
+    desc: "密码输入超长字符串（通过变量模板动态生成）→ 正常拦截"
+    account: "${account}"
+    password: "${long_string_1000}"
     check_agreement: true
     expected_status: "fail"
     expected_toast: "请检查手机号或密码是否正确"
@@ -206,8 +298,8 @@ login_cases:
 
   - id: G7_TC02
     desc: "密码框默认为密文状态"
-    account: "38100000225"
-    password: "a1234567B9"
+    account: "${account}"
+    password: "${password}"
     check_agreement: true
     eye_click: false
     assert_ui_state: "password_masked"
@@ -217,8 +309,8 @@ login_cases:
 
   - id: G7_TC03
     desc: "点击眼睛图标双向切换明密文"
-    account: "38100000225"
-    password: "a1234567B9"
+    account: "${account}"
+    password: "${password}"
     check_agreement: true
     eye_click: true
     assert_ui_state: "password_toggle"
@@ -231,8 +323,8 @@ login_cases:
   # ==========================================
   # - id: G8_TC01
   #   desc: "无网络环境下点击登录 → 前端友好提示而非长时间白屏卡死"
-  #   account: "38100000225"
-  #   password: "a1234567B9"
+  #   account: "${account}"
+  #   password: "${password}"
   #   check_agreement: true
   #   network_env: "offline" 
   #   expected_status: "fail"

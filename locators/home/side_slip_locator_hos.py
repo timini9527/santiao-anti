@@ -1,4 +1,5 @@
 from appium.webdriver.common.appiumby import AppiumBy
+from locators.common.hos_by import HosBy
 
 
 class _SideSlipLocatorHos:
@@ -63,32 +64,32 @@ class _SideSlipLocatorHos:
     # ID区域-箭头图标/靓号图标（不是会员则为箭头图标，是会员则为靓号图标）
     TV_NAV_ID_ICON = (AppiumBy.XPATH, "//Column//Row/Column/Row[2]/Image")
 
-    # 3. 核心功能菜单项 (Navigation Menu Items - 多级自适应点击回退)
-    # 【会员中心】条目整行 (优先命中 clickable=true 容器，级联回退到 Row 或 Text)
-    NAV_ITEM_VIP = (AppiumBy.XPATH, "//Text[@text='会员中心']/parent::Row")
+    # 3. 核心功能菜单项 (采用 HosBy 原生文本直查，绕过整树 XPath 扫描，ArkUI 点击自动冒泡至整行容器)
+    # 【会员中心】条目整行
+    NAV_ITEM_VIP = HosBy.type_text("Text", "会员中心")
 
     # 【靓号商城】条目整行
-    NAV_ITEM_NICE_NO = (AppiumBy.XPATH, "//Text[@text='靓号商城']/parent::Row")
+    NAV_ITEM_NICE_NO = HosBy.type_text("Text", "靓号商城")
 
     # 【我的动态】条目整行
-    NAV_ITEM_DYNAMIC = (AppiumBy.XPATH, "//Text[@text='我的动态']/parent::Row")
+    NAV_ITEM_DYNAMIC = HosBy.type_text("Text", "我的动态")
 
     # 【我的收藏】条目整行
-    NAV_ITEM_COLLECT = (AppiumBy.XPATH, "//Text[@text='我的收藏']/parent::Row")
+    NAV_ITEM_COLLECT = HosBy.type_text("Text", "我的收藏")
 
     # 【设置中心】条目整行
-    NAV_ITEM_SETTINGS = (AppiumBy.XPATH, "//Text[@text='设置中心']/parent::Row")
+    NAV_ITEM_SETTINGS = HosBy.type_text("Text", "设置中心")
 
     # 【安全中心】条目整行
-    NAV_ITEM_SECURITY = (AppiumBy.XPATH, "//Text[@text='安全中心']/parent::Row")
+    NAV_ITEM_SECURITY = HosBy.type_text("Text", "安全中心")
 
     # 4. 专属菜单标题定位器 (可直接用于断言文案与可见性)
-    TV_VIP_TITLE = (AppiumBy.XPATH, "//Text[@text='会员中心']")
-    TV_NICE_NO_TITLE = (AppiumBy.XPATH, "//Text[@text='靓号商城']")
-    TV_DYNAMIC_TITLE = (AppiumBy.XPATH, "//Text[@text='我的动态']")
-    TV_COLLECT_TITLE = (AppiumBy.XPATH, "//Text[@text='我的收藏']")
-    TV_SETTINGS_TITLE = (AppiumBy.XPATH, "//Text[@text='设置中心']")
-    TV_SECURITY_TITLE = (AppiumBy.XPATH, "//Text[@text='安全中心']")
+    TV_VIP_TITLE = HosBy.type_text("Text", "会员中心")
+    TV_NICE_NO_TITLE = HosBy.type_text("Text", "靓号商城")
+    TV_DYNAMIC_TITLE = HosBy.type_text("Text", "我的动态")
+    TV_COLLECT_TITLE = HosBy.type_text("Text", "我的收藏")
+    TV_SETTINGS_TITLE = HosBy.type_text("Text", "设置中心")
+    TV_SECURITY_TITLE = HosBy.type_text("Text", "安全中心")
     TV_MENU_TITLE = (AppiumBy.XPATH, "//Text[@text='会员中心' or @text='靓号商城' or @text='我的动态' or @text='我的收藏' or @text='设置中心' or @text='安全中心']")
 
 
@@ -116,16 +117,13 @@ class _SideSlipLocatorHos:
 
     @classmethod
     def get_menu_title_locator(cls, menu_text: str) -> tuple[str, str]:
-        """动态获取指定抽屉菜单项的标题定位器"""
+        """动态获取指定抽屉菜单项的标题定位器（原生 HypiumBy 文本直查）"""
         target_text = cls._resolve_menu_text(menu_text)
-        return (AppiumBy.XPATH, f"//Text[@text='{target_text}']")
+        return HosBy.type_text("Text", target_text)
 
     @classmethod
     def get_menu_item_by_text(cls, menu_text: str) -> tuple[str, str]:
-        """根据菜单文案动态检索整行可点击抽屉菜单条目 (优先整行 Row 容器，兜底直达 Text)"""
+        """根据菜单文案动态检索抽屉菜单条目（原生 HypiumBy 文本直查，点击事件自动冒泡至行容器）"""
         target_text = cls._resolve_menu_text(menu_text)
-        return (
-            AppiumBy.XPATH,
-            f"//Text[@text='{target_text}']/parent::Row | //Row[.//Text[@text='{target_text}']] | //Text[@text='{target_text}']"
-        )
+        return HosBy.type_text("Text", target_text)
 

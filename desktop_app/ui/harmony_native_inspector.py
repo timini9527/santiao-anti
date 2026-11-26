@@ -2437,7 +2437,18 @@ def parse_layout_file(layout_path: str, platform: str, screen_w: int = 0, screen
                     "launcher", "miui.home", "trebuchet", "lawnchair", "wallpaper",
                 )
 
+                def _contains_toast_node(elem: ET.Element) -> bool:
+                    """判断顶层窗口是否包含系统或自定义 Toast 节点，避免被系统浮层过滤逻辑误删"""
+                    for node in elem.iter("node"):
+                        cls_name = (node.attrib.get("class") or "").strip().lower()
+                        res_id = (node.attrib.get("resource-id") or "").strip().lower()
+                        if cls_name == "android.widget.toast" or "toast" in res_id:
+                            return True
+                    return False
+
                 def _is_system_overlay(elem: ET.Element) -> bool:
+                    if _contains_toast_node(elem):
+                        return False
                     pkg = (elem.attrib.get("package") or "").strip().lower()
                     if pkg == "com.android.systemui":
                         return True
@@ -4440,6 +4451,35 @@ class CaptureWorker(QThread):
         return False
 
     @staticmethod
+    def _inject_android_toast_xml(xml_text: str, toast_text: str) -> str:
+        """
+        将 Android 无障碍事件 (TYPE_NOTIFICATION_STATE_CHANGED) 捕获的系统 Toast 注入层级树 XML：
+        Android 原生 dumpWindowHierarchy 不会导出 android.widget.Toast 悬浮窗，
+        通过 uiautomator2 getLastToast 补齐标准 Toast 节点，使审查器 DOM 树与推荐定位器完整可见。
+        """
+        if not toast_text or "</hierarchy>" not in xml_text or "android.widget.Toast" in xml_text:
+            return xml_text
+        from xml.sax.saxutils import escape as _xml_escape
+
+        w, h = 1080, 2340
+        for m in re.finditer(r'bounds="\[0,0\]\[(\d+),(\d+)\]"', xml_text[:65536]):
+            cand_w, cand_h = int(m.group(1)), int(m.group(2))
+            if cand_w >= 600 and cand_h >= 1000:
+                w, h = cand_w, cand_h
+                break
+        left, top, right, bottom = int(w * 0.25), int(h * 0.49), int(w * 0.75), int(h * 0.56)
+        safe_text = _xml_escape(toast_text, {'"': "&quot;", "'": "&apos;"})
+        toast_node = (
+            f'<node index="99" text="{safe_text}" resource-id="" '
+            f'class="android.widget.Toast" package="android" content-desc="" '
+            f'checkable="false" checked="false" clickable="false" enabled="true" '
+            f'focusable="false" focused="false" scrollable="false" long-clickable="false" '
+            f'password="false" selected="false" bounds="[{left},{top}][{right},{bottom}]" />'
+        )
+        idx = xml_text.rfind("</hierarchy>")
+        return xml_text[:idx] + toast_node + xml_text[idx:]
+
+    @staticmethod
     def _dump_android_hierarchy(udid: str, layout_file: str) -> bool:
         """
         安卓实时 DOM 树高可靠抓取引擎（彻底根治 uiautomator 服务锁抢占与固定路径旧文件残留污染）：
@@ -4457,8 +4497,14 @@ class CaptureWorker(QThread):
             except Exception:
                 pass
 
-        # 通道 1：探测本地活跃的 Appium Server 会话，避免与正在调试的 Appium UiAutomator2 争抢 UiAutomation 独占锁
+        # 通道 1：探测本地活跃的 Appium Server 会话（前置 50ms TCP 快探，跳过未监听端口，避免拖慢瞬态 Toast 抓树时机）
+        import socket as _sock
         for port in (4723, 4725):
+            try:
+                with _sock.create_connection(("127.0.0.1", port), timeout=0.05):
+                    pass
+            except Exception:
+                continue
             for prefix in ("", "/wd/hub"):
                 base_url = f"http://127.0.0.1:{port}{prefix}"
                 try:
@@ -4488,6 +4534,14 @@ class CaptureWorker(QThread):
             d = u2.connect(udid) if udid else u2.connect()
             xml_text = d.dump_hierarchy(compressed=False)
             if isinstance(xml_text, str) and "<hierarchy" in xml_text and len(xml_text) > 100:
+                # 同步读取并消费 Android 无障碍事件捕获的系统 Toast（dumpWindowHierarchy 原生不导出 android.widget.Toast）
+                try:
+                    toast_msg = (d.jsonrpc.getLastToast() or "").strip()
+                    if toast_msg:
+                        xml_text = CaptureWorker._inject_android_toast_xml(xml_text, toast_msg)
+                        d.jsonrpc.clearLastToast()
+                except Exception:
+                    pass
                 with open(norm_layout, "w", encoding="utf-8") as f_xml:
                     f_xml.write(xml_text)
                 return True
@@ -4836,7 +4890,12 @@ class CaptureWorker(QThread):
                         self.failed.emit("获取安卓组件层级树失败，请确认设备屏幕已解锁且已授权 USB 调试。")
                     return
 
-                # 安卓: 优先复用当前活跃投屏的新鲜显存帧 (耗时 0ms)
+                # 全量模式优先抢抓 DOM 树，最大限度在 Toast/悬浮弹窗消失前捕获瞬态节点，紧接着再抓画面底图
+                layout_ok = False
+                if self.mode != "screen_only":
+                    layout_ok = self._dump_android_hierarchy(self.udid, layout_file)
+
+                # 安卓画面采集: 优先复用当前活跃投屏的新鲜显存帧 (耗时 0ms)
                 shot_ok = False
                 if ScreenCastWorker.is_active and (ScreenCastWorker.latest_udid == self.udid or not ScreenCastWorker.latest_udid):
                     latest_bytes = ScreenCastWorker.get_latest_jpeg_bytes(self.udid)
@@ -4881,18 +4940,18 @@ class CaptureWorker(QThread):
                     except Exception:
                         pass
 
-                if shot_ok:
-                    self.screen_finished.emit(local_png)
-
                 if self.mode == "screen_only":
-                    if not shot_ok:
+                    if shot_ok:
+                        self.screen_finished.emit(local_png)
+                    else:
                         self.failed.emit("获取安卓真机画面失败，请确认屏幕已点亮并解锁。")
                     return
 
-                layout_ok = self._dump_android_hierarchy(self.udid, layout_file)
-
-                if os.path.exists(local_png) and layout_ok and os.path.exists(layout_file):
+                if shot_ok and os.path.exists(local_png) and layout_ok and os.path.exists(layout_file):
                     self.finished.emit(local_png, layout_file, "android")
+                elif shot_ok and os.path.exists(local_png):
+                    self.screen_finished.emit(local_png)
+                    self.failed.emit("抓取安卓组件层级树失败，请确认设备屏幕已解锁且已授权 USB 调试。")
                 else:
                     self.failed.emit("抓取安卓现场数据失败，请确认设备屏幕已解锁且已授权 USB 调试。")
 
@@ -11307,23 +11366,35 @@ class HarmonyAppiumInspector(QMainWindow):
                 if comp:
                     self.search_dialog.sync_element_from_main(comp)
 
+    def _sync_after_device_action(self, delay_ms: int = 300) -> None:
+        """
+        设备交互动作（点击/滑动/直接点击元素）后的视图刷新统一调度：
+        - 实时投屏中：画面由投屏流实时推送，仅延迟刷新 DOM 树（iOS 无 WDA 时静默跳过）；
+        - 非投屏状态：延迟等待页面跳转/渲染完成后，全量同步最新真机画面与 DOM 树。
+        """
+        def _do_sync() -> None:
+            if not self.current_udid:
+                return
+            if self.is_screencasting:
+                if self.current_platform == "ios":
+                    wda_ok, _ = IosWdaManager.get_wda_url(self.current_udid, allow_spawn=False)
+                    if not wda_ok:
+                        return
+                self.refresh_screen_and_dom()
+            else:
+                self.refresh_screen_only()
+
+        QTimer.singleShot(delay_ms, _do_sync)
+
     def on_canvas_coordinate_tapped(self, x: int, y: int):
         if self.current_udid:
             DeviceController.tap(self.current_platform, self.current_udid, x, y)
-            if self.current_platform == "ios" and self.is_screencasting:
-                wda_ok, _ = IosWdaManager.get_wda_url(self.current_udid, allow_spawn=False)
-                if not wda_ok:
-                    return
-            self.refresh_screen_and_dom()
+            self._sync_after_device_action(delay_ms=300)
 
     def on_canvas_coordinate_swiped(self, x1: int, y1: int, x2: int, y2: int):
         if self.current_udid:
             DeviceController.swipe(self.current_platform, self.current_udid, x1, y1, x2, y2, 600)
-            if self.current_platform == "ios" and self.is_screencasting:
-                wda_ok, _ = IosWdaManager.get_wda_url(self.current_udid, allow_spawn=False)
-                if not wda_ok:
-                    return
-            self.refresh_screen_and_dom()
+            self._sync_after_device_action(delay_ms=350)
 
     def update_selected_element_panel(self, node_id: str):
         """刷新右侧 Selected Element 面板与实时输入同步栏"""
@@ -11441,7 +11512,7 @@ class HarmonyAppiumInspector(QMainWindow):
         if comp and self.current_udid:
             cx, cy = comp["center_x"], comp["center_y"]
             DeviceController.tap(self.current_platform, self.current_udid, cx, cy)
-            self.refresh_screen_and_dom()
+            self._sync_after_device_action(delay_ms=300)
 
     def direct_send_keys_to_element(self, node_id: str, text: str):
         """

@@ -1,6 +1,7 @@
 import hashlib
 from appium.webdriver import WebElement
 from core.logger_utils import logger, LogIcon
+from utils.cv_recognition.screenshot_utils import ScreenshotUtils
 
 
 
@@ -13,8 +14,8 @@ class AvatarComparator:
         """
         获取某个元素的图片内容的 MD5 哈希值
         """
-        # 仅截取该元素区域的图片（返回二进制流）
-        img_bytes = imageElement.screenshot_as_png
+        # 截取该元素区域的 PNG 二进制流（Android/iOS 走 Appium 原生截图，鸿蒙自动全屏裁剪）
+        img_bytes = ScreenshotUtils.element_png(imageElement)
 
         # 计算 MD5
         md5_hash = hashlib.md5(img_bytes).hexdigest()

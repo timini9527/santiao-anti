@@ -1,6 +1,7 @@
 from typing import Tuple
 from appium.webdriver.common.appiumby import AppiumBy
 from locators.common.common_locator_hos import _CommonLocatorHos
+from locators.common.hos_by import HosBy
 
 
 class _ContactSelectLocatorHos(_CommonLocatorHos):
@@ -15,16 +16,16 @@ class _ContactSelectLocatorHos(_CommonLocatorHos):
     TV_TITLE = _CommonLocatorHos.TOP_TV_TITLE                # 标题
     TV_FB_ACTION = _CommonLocatorHos.TOP_IV_CONFIRM_BTN      # 确定按钮
 
-    # 创建新的会话按钮
-    CREATE_NEW_CONVERSATION = (AppiumBy.XPATH, "//NavDestinationContent/Stack/Column/Column/Row/Text | //Text[@text='创建新的会话']")
+    # 创建新的会话按钮 (原生 HypiumBy 文本直查)
+    CREATE_NEW_CONVERSATION = HosBy.type_text("Text", "创建新的会话")
 
-    # 创建会话-搜索框
-    SEARCH_EDIT = (AppiumBy.XPATH, "//NavDestinationContent/Stack/Column/Column/Row/TextInput")                 # 搜索输入框
+    # 创建会话-搜索框 (原生 TextInput 类型直查)
+    SEARCH_EDIT = HosBy.type_only("TextInput")                                                                   # 搜索输入框
     SEARCH_CLEAR = (AppiumBy.XPATH, "//NavDestinationContent/Stack/Column/Column/Row/__Common__/Stack/Image")   # 搜索清除按钮
     SEARCH_ICON = (AppiumBy.XPATH, "//NavDestinationContent/Stack/Column/Column/Row/Image")                     # 搜索图标
 
-    # 列表容器 List 列表
-    CONTACT_LIST_RV = (AppiumBy.XPATH, "//NavDestinationContent/Stack/Column/List")
+    # 列表容器 List 列表 (原生 List 类型直查)
+    CONTACT_LIST_RV = HosBy.type_only("List")
 
     # 创建会话-好友条目元素（转发图片页面）
     RECYCLER_VIEW = CONTACT_LIST_RV                                                                 # List 列表
@@ -69,40 +70,31 @@ class _ContactSelectLocatorHos(_CommonLocatorHos):
     @classmethod
     def get_contact_by_name(cls, name: str) -> Tuple[str, str]:
         """
-        通过好友名称精准定位好友条目或文本节点
+        通过好友名称精准定位好友条目或文本节点（原生 HypiumBy 直查，避免长列表全树 XPath 扫描）
         :param name: 好友姓名/昵称
-        :return: (AppiumBy.XPATH, xpath_expression)
+        :return: (strategy, selector)
         """
-        return (
-            AppiumBy.XPATH,
-            f"//ListItem/Column/Row/Column/Row/Text[@text='{name}']",
-        )
+        return HosBy.type_text("Text", name)
 
     # 转发页面通过好友名字定位
     @classmethod
     def get_forward_contact_by_name(cls, name: str) -> Tuple[str, str]:
         """
-        通过名称精准定位转发列表中的好友条目或文本节点
+        通过名称精准定位转发列表中的好友条目或文本节点（原生 HypiumBy 直查）
         :param name: 转发目标好友姓名/群名称
-        :return: (AppiumBy.XPATH, xpath_expression)
+        :return: (strategy, selector)
         """
-        return (
-            AppiumBy.XPATH,
-            f"//ListItem/Column/Row/Column/Row/Text[@text='{name}']",
-        )
+        return HosBy.type_text("Text", name)
 
     # 通过群名称定位
     @classmethod
     def get_group_by_name(cls, name: str) -> Tuple[str, str]:
         """
-        通过群名称精准定位群聊条目或文本节点
+        通过群名称精准定位群聊条目或文本节点（原生 HypiumBy 直查）
         :param name: 群聊名称
-        :return: (AppiumBy.XPATH, xpath_expression)
+        :return: (strategy, selector)
         """
-        return (
-            AppiumBy.XPATH,
-            f"//ListItem//Text[@text='{name}'] | //ListItem[.//Text[@text='{name}']]",
-        )
+        return HosBy.type_text("Text", name)
 
     # 动态参数化：根据好友姓名获取其专属勾选框
     @classmethod

@@ -144,6 +144,16 @@ class _HomeLocatorAndroid:
     # 会话发送消息状态=发送失败，待完善
 
 
+    # 首次登录主页引导弹窗（选择你偏好的首页布局）
+    HOME_LAYOUT_GUIDE_TITLE = (
+        AppiumBy.ANDROID_UIAUTOMATOR,
+        'new UiSelector().text("选择你偏好的首页布局")',
+    )
+    # 限定与弹窗标题同属一个 FrameLayout 容器，避免误点其他复用 iv_close 的弹窗关闭按钮
+    HOME_LAYOUT_GUIDE_CLOSE = (
+        AppiumBy.ID, f'{PACKAGE_ID}/iv_close',
+    )
+
     # 聊天密码
     # 输入聊天密码弹窗
     CHAT_PASSWORD_DIALOG_TITLE = (AppiumBy.ID, f"{PACKAGE_ID}/tv_dialog_title")             # 请输入密码标题

@@ -379,8 +379,130 @@ class BasePage:
             logger.error(f"{LogIcon.FAIL} 点击失败，未找到元素: {locator}")
             raise NoSuchElementException(f"无法点击，元素未找到: {locator}")
 
+    def _resolve_native_harmony_input(self, ele: WebElement) -> WebElement:
+        """
+        将鸿蒙端通过 XPath 查到的伪控件 XpathWidget 自动升级为同一坐标的原生 UiComponent（Component_*）。
+        背景：appium-harmonyos-driver 对 XPath 返回 XpathWidget，其 clearText() 按静态 XML 的 text.length
+        循环退格——密文密码框在 XML 中 text 为空导致循环 0 次完全不清空，且 getText() 永不刷新；
+        而原生 UiComponent 直接调用设备端 C++ Component.clearText / Component.inputText，可原子清空密文框。
+        """
+        if self._platform_name != "harmonyos":
+            return ele
+
+        ele_id = str(getattr(ele, "id", "") or "")
+        if ele_id.startswith("Component_"):
+            return ele
+
+        try:
+            target_rect = ele.rect or {}
+            tw = float(target_rect.get("width", 0) or 0)
+            th = float(target_rect.get("height", 0) or 0)
+            if tw <= 0 or th <= 0:
+                return ele
+            tx = float(target_rect.get("x", 0) or 0) + tw / 2.0
+            ty = float(target_rect.get("y", 0) or 0) + th / 2.0
+
+            comp_type = self.read_element_attr(ele, "type").strip() or "TextInput"
+            candidates = self.driver.find_elements("type", comp_type)
+            best_match: Optional[WebElement] = None
+            best_dist = float("inf")
+            for cand in candidates:
+                cand_id = str(getattr(cand, "id", "") or "")
+                if not cand_id.startswith("Component_"):
+                    continue
+                rect = cand.rect or {}
+                cw = float(rect.get("width", 0) or 0)
+                ch = float(rect.get("height", 0) or 0)
+                if cw <= 0 or ch <= 0:
+                    continue
+                cx = float(rect.get("x", 0) or 0) + cw / 2.0
+                cy = float(rect.get("y", 0) or 0) + ch / 2.0
+                dist = abs(cx - tx) + abs(cy - ty)
+                if dist < best_dist:
+                    best_dist = dist
+                    best_match = cand
+
+            if best_match is not None and best_dist <= 30.0:
+                logger.debug(
+                    f"{LogIcon.ACTION} 鸿蒙 XPath 输入框({ele_id})已升级为原生 UiComponent({getattr(best_match, 'id', '')})"
+                )
+                return best_match
+        except Exception as err:
+            logger.debug(f"{LogIcon.WARN} 鸿蒙输入框升级原生 UiComponent 失败，回退原对象: {err}")
+        return ele
+
+    def clear_input_element(self, ele: WebElement, force_select_all: bool = False) -> None:
+        """
+        跨平台高效清空输入框内容：
+        - Android / iOS：执行标准 ele.clear()；
+        - HarmonyOS：先将 XPath 伪控件自动升级为原生 UiComponent（获取实时 getText，避免 XpathWidget 缓存不刷新），
+          再统一首选“聚焦 + Ctrl+A 全选 + DEL”一键秒清（~0.3s）；
+          仅当明文框复核仍有残留、或密文密码框（force_select_all=True，ArkUI 密文态屏蔽 Ctrl+A）时，
+          才调用原生 UiComponent.clearText() 兜底确保不残留旧密码。
+        :param ele: 已定位的输入框 WebElement
+        :param force_select_all: 是否为密文密码框等无法通过 text 判空的场景
+        """
+        if self._platform_name != "harmonyos":
+            ele.clear()
+            return
+
+        target_ele = self._resolve_native_harmony_input(ele)
+        is_native_component = str(getattr(target_ele, "id", "") or "").startswith("Component_")
+
+        # 1. 普通明文框先实时判空短路：本身无内容时零耗时直接放行
+        if not force_select_all:
+            try:
+                if not self.read_element_attr(target_ele, "text").strip():
+                    return
+            except Exception:
+                pass
+
+        # 2. 统一首选极速方案：聚焦 + Ctrl(2072)+A(2017) 全选 + DEL(2055) 一键全删（~0.3s，不逐字删）
+        logger.info(f"{LogIcon.ACTION} 鸿蒙输入框启用 Ctrl+A + DEL 极速清空 (force_select_all={force_select_all})")
+        try:
+            self.tap_point(click_elem=target_ele, duration=80)
+            time.sleep(0.15)
+            self.driver.execute_script("mobile: pressCombineKeys", {"keycode": [2072, 2017]})
+            self.driver.execute_script("mobile: pressKey", {"keycode": 2055})
+
+            # 普通明文框通过原生 UiComponent 实时校验：已清空立刻返回，绝不进入慢速 clearText
+            if not force_select_all:
+                try:
+                    if not self.read_element_attr(target_ele, "text").strip():
+                        return
+                except Exception:
+                    return
+        except Exception as err:
+            logger.warning(f"{LogIcon.WARN} 鸿蒙 Ctrl+A + DEL 清空异常，回退原生 clear() 兜底: {err}")
+
+        # 3. 兜底清空：仅当明文框屏蔽 Ctrl+A 仍有残留，或密文密码框（ArkUI 密文态禁止 Ctrl+A）时触发
+        # 注：若前面 Ctrl+A 已清干净（例如明文态或空框），原生 Component.clearText() 见空框会直接快速返回
+        if is_native_component:
+            logger.info(
+                f"{LogIcon.ACTION} 鸿蒙原生输入框补执行 Component.clearText 兜底 "
+                f"(id={getattr(target_ele, 'id', '')}, force_select_all={force_select_all})"
+            )
+            target_ele.clear()
+            return
+
+        # 极端兜底：元素未能升级为原生 UiComponent 且为密文框（XpathWidget.clearText 在密文框 text.length=0 不生效）
+        if force_select_all:
+            self.driver.execute_script("mobile: pressKey", {"keycode": 2082})
+            for _ in range(24):
+                self.driver.execute_script("mobile: pressKey", {"keycode": 2055})
+            return
+        target_ele.clear()
+
     @allure.step("input -> 输入文本: {text}")
-    def send_keys(self, locator: tuple, text: str, clear: bool = True, append: bool = False, timeout: int | float = 2) -> None:
+    def send_keys(
+        self,
+        locator: tuple,
+        text: str,
+        clear: bool = True,
+        append: bool = False,
+        timeout: int | float = 2,
+        force_select_all: bool = False,
+    ) -> None:
         """
         向指定元素输入文本。
         :param locator: 元素定位器元组
@@ -388,6 +510,7 @@ class BasePage:
         :param clear: 是否在输入前清空已有内容（默认 True）
         :param append: 是否在末尾以无损模式追加（默认 False；Android 采用系统剪贴板注入以规避 UiAutomator2 自动清空，HarmonyOS 直接跳过清空追加注入）
         :param timeout: 元素查找超时时间（秒）
+        :param force_select_all: 清空时是否强制跳过判空直接清空（密文密码框建议为 True）
         """
         if append and self._platform_name == "android" and hasattr(self.driver, "set_clipboard_text"):
             logger.info(f"{LogIcon.ACTION} 以无损追加模式输入文本: '{text}'")
@@ -402,9 +525,12 @@ class BasePage:
         if not ele:
             logger.warning(f"{LogIcon.WARN} 未找到元素: {locator}")
             raise NoSuchElementException(f"未找到元素: {locator}")
+        if self._platform_name == "harmonyos":
+            ele = self._resolve_native_harmony_input(ele)
         if clear and not append:
-            ele.clear()
-        ele.send_keys(text)
+            self.clear_input_element(ele, force_select_all=force_select_all)
+        if text:
+            ele.send_keys(text)
         logger.info(f"{LogIcon.ACTION} 输入消息: {text}")
 
     @catch_exception

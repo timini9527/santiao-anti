@@ -46,7 +46,7 @@ class _LoginLocatorIos:
     # 手机号登录入口按钮 (支持 Accessibility ID 与 Button 谓词)
     LOGIN_ENTRANCE = (
         AppiumBy.IOS_PREDICATE,
-        "type == 'XCUIElementTypeButton' AND (name == '手机号登录' or name == '密码验证登录')",
+        "type == 'XCUIElementTypeButton' AND name == '手机号登录'",
     )
     # 一键登录入口按钮 (有 SIM 卡时展示)
     ONE_KEY_LOGIN_ENTRANCE = (

@@ -182,7 +182,7 @@ class DriverFactory:
             # 预热 hypium-driver 的 initAgent() 懒加载通道（uitest 守护检查 + hdc fport），避免冷启动耗时落到首条业务定位
             warmup_start = time.monotonic()
             try:
-                driver.get_window_size()
+                driver._cached_window_size = driver.get_window_size()
                 logger.info(
                     f"{LogIcon.SUCCESS} [DriverFactory] 鸿蒙 uitest 通道预热完成 "
                     f"(耗时: {time.monotonic() - warmup_start:.2f}s)"

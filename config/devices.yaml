@@ -1,6 +1,10 @@
 # --- 测试环境与三端平台配置 (支持 Android / HarmonyOS / iOS) ---
-current_env: "dev"              # 默认执行环境：dev 或 test
+current_env: "dev"              # 设备池配置组：dev（本地真机）或 test（测试机/模拟器）
 # current_env: "test"
+
+# app_env: "prod"
+app_env: "gray"                 # 被测 App 后端业务环境：test（测试）/ gray（灰度）/ prod（正式），用于隔离各环境测试账号与数据
+# app_env: "test"
 
 # current_platform: "android"   # 默认单端平台２android / harmonyos / ios (none)&local multi-device
 current_platform: "harmonyos"

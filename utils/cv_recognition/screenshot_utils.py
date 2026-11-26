@@ -76,6 +76,124 @@ class ScreenshotUtils:
     并支持生成抗噪的图片特征码（dHash/MD5）。
     """
 
+    # --- 平台与坐标适配辅助方法 ---
+    @staticmethod
+    def _resolve_driver(element: object) -> Optional[_DriverLike]:
+        """从元素对象中推断所属的 Driver 实例（兼容 Appium/Selenium/Playwright/自定义驱动）。"""
+        for attr in ("parent", "driver", "page"):
+            candidate = getattr(element, attr, None)
+            if candidate is not None and hasattr(candidate, "get_screenshot_as_png"):
+                return candidate
+        return None
+
+    @staticmethod
+    def _is_harmonyos_driver(driver: Optional[object]) -> bool:
+        """判断当前 Driver 是否为鸿蒙驱动（appium-harmonyos-driver 未实现原生元素级截图接口）。"""
+        if driver is None:
+            return False
+        platform_name = str(getattr(driver, "_platform_name", "") or "").strip().lower()
+        if platform_name in ("harmonyos", "harmony", "hos", "ohos"):
+            return True
+        caps = getattr(driver, "capabilities", None)
+        if isinstance(caps, dict):
+            cap_platform = str(caps.get("platformName", "") or "").strip().lower()
+            cap_automation = str(
+                caps.get("automationName") or caps.get("appium:automationName") or ""
+            ).strip().lower()
+            if cap_platform in ("harmonyos", "harmony", "hos", "ohos") or "harmony" in cap_automation:
+                return True
+        return False
+
+    @staticmethod
+    def _is_not_implemented_error(exc: Exception) -> bool:
+        """判断异常是否属于驱动未实现元素截图接口（避免吞掉断连或元素失效异常）。"""
+        if isinstance(exc, NotImplementedError):
+            return True
+        msg = str(exc).lower()
+        return any(
+            keyword in msg
+            for keyword in (
+                "not yet been implemented",
+                "not implemented",
+                "unknown command",
+                "unknown method",
+                "unsupported command",
+            )
+        )
+
+    @staticmethod
+    def _resolve_screenshot_scale(driver: object, img_width: int, img_height: int) -> tuple[float, float]:
+        """
+        计算全屏截图物理像素与元素 rect 坐标系的缩放比例。
+        优先复用 Driver 上缓存的窗口尺寸，避免每次截图都发起额外的 get_window_size RPC。
+        """
+        win_size = getattr(driver, "_cached_window_size", None)
+        if isinstance(win_size, dict):
+            win_w = win_size.get("width", 0) or 0
+            win_h = win_size.get("height", 0) or 0
+            # 若发生横竖屏切换导致宽高方向不一致，刷新一次窗口尺寸缓存
+            if win_w > 0 and win_h > 0 and (img_width >= img_height) != (win_w >= win_h):
+                win_size = None
+
+        if not isinstance(win_size, dict) and hasattr(driver, "get_window_size"):
+            try:
+                win_size = driver.get_window_size()
+                if isinstance(win_size, dict):
+                    try:
+                        setattr(driver, "_cached_window_size", win_size)
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.debug(f"{LogIcon.WARN} 获取窗口尺寸失败，默认按 1:1 物理像素裁剪: {e}")
+                return 1.0, 1.0
+
+        if isinstance(win_size, dict):
+            win_w = float(win_size.get("width", 0) or 0)
+            win_h = float(win_size.get("height", 0) or 0)
+            if win_w > 0 and win_h > 0 and (img_width >= img_height) == (win_w >= win_h):
+                return img_width / win_w, img_height / win_h
+        return 1.0, 1.0
+
+    @staticmethod
+    def _crop_element_image(driver: _DriverLike, element: _ElementLike) -> Image.Image:
+        """基于全屏截图与 element.rect 精准裁剪元素图像，供鸿蒙端及原生截图降级使用。"""
+        rect = element.rect or {}
+        x = float(rect.get("x", 0))
+        y = float(rect.get("y", 0))
+        width = float(rect.get("width", 0))
+        height = float(rect.get("height", 0))
+        if width <= 0 or height <= 0:
+            raise ValueError(f"元素矩形区域宽高无效，无法裁剪截图: {rect}")
+
+        full_bytes = ScreenshotUtils.full_png(driver)
+        with Image.open(io.BytesIO(full_bytes)) as full_img:
+            img_width, img_height = full_img.size
+            scale_x, scale_y = ScreenshotUtils._resolve_screenshot_scale(driver, img_width, img_height)
+
+            raw_left = int(round(x * scale_x))
+            raw_top = int(round(y * scale_y))
+            raw_right = int(round((x + width) * scale_x))
+            raw_bottom = int(round((y + height) * scale_y))
+
+            if raw_right <= 0 or raw_bottom <= 0 or raw_left >= img_width or raw_top >= img_height:
+                raise ValueError(
+                    f"元素区域超出当前屏幕可见范围: rect={rect}, screen=({img_width}, {img_height})"
+                )
+
+            left = max(0, min(raw_left, img_width - 1))
+            top = max(0, min(raw_top, img_height - 1))
+            right = max(left + 1, min(raw_right, img_width))
+            bottom = max(top + 1, min(raw_bottom, img_height))
+            return full_img.crop((left, top, right, bottom)).copy()
+
+    @staticmethod
+    def _crop_element_png(driver: _DriverLike, element: _ElementLike) -> bytes:
+        """基于全屏截图与 element.rect 裁剪元素区域并返回 PNG 字节流。"""
+        cropped = ScreenshotUtils._crop_element_image(driver, element)
+        out = io.BytesIO()
+        cropped.save(out, format="PNG")
+        return out.getvalue()
+
     # --- 基础截图方法 ---
     @staticmethod
     def full_png(driver: _DriverLike) -> bytes:
@@ -83,9 +201,42 @@ class ScreenshotUtils:
         return driver.get_screenshot_as_png()
 
     @staticmethod
-    def element_png(element: _ElementLike) -> bytes:
-        """调用底层原生能力：直接获取该控件区域的精准截图字节流"""
-        return element.screenshot_as_png
+    def element_png(element: _ElementLike, driver: Optional[_DriverLike] = None) -> bytes:
+        """
+        跨平台获取元素级 PNG 截图字节流：
+        - Android / iOS：直走 Appium 原生 element.screenshot_as_png（零额外开销，仅在驱动未实现接口时降级裁剪）；
+        - HarmonyOS：直走全屏截图 + element.rect 裁剪，避免触发 appium-harmonyos-driver 的 NotYetImplementedError。
+        """
+        resolved_driver = driver or ScreenshotUtils._resolve_driver(element)
+        if resolved_driver is not None and ScreenshotUtils._is_harmonyos_driver(resolved_driver):
+            return ScreenshotUtils._crop_element_png(resolved_driver, element)
+
+        try:
+            return element.screenshot_as_png
+        except Exception as e:
+            if resolved_driver is not None and ScreenshotUtils._is_not_implemented_error(e):
+                logger.warning(f"{LogIcon.WARN} 驱动未实现原生元素截图接口，自动降级为全屏坐标裁剪: {e}")
+                return ScreenshotUtils._crop_element_png(resolved_driver, element)
+            raise
+
+    @staticmethod
+    def element_image(
+        element: _ElementLike,
+        driver: Optional[_DriverLike] = None,
+        mode: str = "RGB",
+    ) -> Image.Image:
+        """
+        跨平台获取元素级 PIL Image 对象：
+        - Android / iOS：复用 Appium 原生元素截图并转换为指定色彩模式；
+        - HarmonyOS：直接从全屏截图裁剪得到图像对象，省去一次多余的 PNG 编解码开销。
+        """
+        resolved_driver = driver or ScreenshotUtils._resolve_driver(element)
+        if resolved_driver is not None and ScreenshotUtils._is_harmonyos_driver(resolved_driver):
+            return ScreenshotUtils._crop_element_image(resolved_driver, element).convert(mode)
+
+        png_bytes = ScreenshotUtils.element_png(element, driver=resolved_driver)
+        with Image.open(io.BytesIO(png_bytes)) as img:
+            return img.convert(mode)
 
     @staticmethod
     def crop_png(driver: _DriverLike, rect: CropRect) -> bytes:
@@ -174,10 +325,10 @@ class ScreenshotUtils:
         if driver is None and element is None:
             raise ValueError("❌ 必须提供 driver 或 element，否则无法进行截图兜底！")
         
-        # 1. 尝试原生控件截图
+        # 1. 尝试原生控件截图（鸿蒙端自动路由至全屏坐标裁剪）
         if element is not None:
             try:
-                data = ScreenshotUtils.element_png(element)
+                data = ScreenshotUtils.element_png(element, driver=driver)
                 logger.debug(f"{LogIcon.ACTION} Element 截图，大小: {len(data)} 字节")
             except Exception as e:
                 logger.warning(f"{LogIcon.WARN} Element 截图失败，降级至坐标裁切: {e}")

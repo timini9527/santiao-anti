@@ -1,5 +1,6 @@
 from appium.webdriver.common.appiumby import AppiumBy
 from locators.common.common_locator_hos import _CommonLocatorHos
+from locators.common.hos_by import HosBy
 
 
 class _SettingsCenterLocatorHos(_CommonLocatorHos):
@@ -23,53 +24,26 @@ class _SettingsCenterLocatorHos(_CommonLocatorHos):
     # =========================================================================
     # 2. 主内容滚动容器 (Main Scroll Content)
     # =========================================================================
-    CONTENT_SCROLL = (
-        AppiumBy.XPATH,
-        "//Scroll[.//Text[@text='账号安全']] | //List[.//Text[@text='账号安全']] | //Scroll",
-    )                                                                                # 滚动内容容器
+    CONTENT_SCROLL = HosBy.type_only("Scroll")                                        # 滚动内容容器 (原生 type 直查)
 
     # =========================================================================
-    # 3. 核心功能条目容器 (优先整行 Row，兜底直达文本 Text)
+    # 3. 核心功能条目 (采用 HosBy 原生文本直查，物理点击自动冒泡至整行容器，绕过 XPath 整树 Dump)
     # =========================================================================
-    ITEM_ACCOUNT_SECURITY = (
-        AppiumBy.XPATH,
-        "//Text[@text='账号安全']/parent::Row | //Text[@text='账号安全']",
-    )                                                                                # 【账号安全】条目
-    ITEM_MESSAGE_NOTIFICATION = (
-        AppiumBy.XPATH,
-        "//Text[@text='消息通知']/parent::Row | //Text[@text='消息通知']",
-    )                                                                                # 【消息通知】条目
-    ITEM_PRIVACY_PROTECTION = (
-        AppiumBy.XPATH,
-        "//Text[@text='隐私防护']/parent::Row | //Text[@text='隐私防护']",
-    )                                                                                # 【隐私防护】条目
-    ITEM_GENERAL_SETTING = (
-        AppiumBy.XPATH,
-        "//Text[@text='通用设置']/parent::Row | //Text[@text='通用设置']",
-    )                                                                                # 【通用设置】条目
+    ITEM_ACCOUNT_SECURITY = HosBy.type_text("Text", "账号安全")                       # 【账号安全】条目
+    ITEM_MESSAGE_NOTIFICATION = HosBy.type_text("Text", "消息通知")                   # 【消息通知】条目
+    ITEM_PRIVACY_PROTECTION = HosBy.type_text("Text", "隐私防护")                     # 【隐私防护】条目
+    ITEM_GENERAL_SETTING = HosBy.type_text("Text", "通用设置")                        # 【通用设置】条目
 
     # 版本信息区域
     VERSION_CONTAINER = (
         AppiumBy.XPATH,
         "//Row[.//Text[@text='版本信息']] | //Column[.//Text[@text='版本信息']]",
     )                                                                                # 版本信息外部容器
-    ITEM_VERSION = (
-        AppiumBy.XPATH,
-        "//Text[@text='版本信息']/parent::Row | //Text[@text='版本信息']",
-    )                                                                                # 【版本信息】条目容器
-    VERSION_VALUE = (
-        AppiumBy.XPATH,
-        "//Text[@text='版本信息']/following-sibling::Text[1]",
-    )                                                                                # 版本号展示文本 (如 "11.1.20")
+    ITEM_VERSION = HosBy.type_text("Text", "版本信息")                                # 【版本信息】条目
+    VERSION_VALUE = HosBy.after_text("版本信息", "Text")                              # 版本号展示文本 (原生 isAfter 锚定，如 "11.1.20")
 
-    ITEM_FEEDBACK = (
-        AppiumBy.XPATH,
-        "//Text[@text='意见反馈']/parent::Row | //Text[@text='意见反馈']",
-    )                                                                                # 【意见反馈】条目
-    ITEM_CONTACT_US = (
-        AppiumBy.XPATH,
-        "//Text[@text='联系我们']/parent::Row | //Text[@text='联系我们']",
-    )                                                                                # 【联系我们】条目
+    ITEM_FEEDBACK = HosBy.type_text("Text", "意见反馈")                               # 【意见反馈】条目
+    ITEM_CONTACT_US = HosBy.type_text("Text", "联系我们")                             # 【联系我们】条目
 
     # 条目内部通用标题
     TV_MENU_TITLE = (
@@ -80,14 +54,8 @@ class _SettingsCenterLocatorHos(_CommonLocatorHos):
     # =========================================================================
     # 4. 底部账号操作按钮
     # =========================================================================
-    SWITCH_ACCOUNT_BTN = (
-        AppiumBy.XPATH,
-        "//Button[@text='切换账号'] | //Text[@text='切换账号']/parent::Row | //Text[@text='切换账号']",
-    )                                                                                # 【切换账号】按钮
-    LOGOUT_BTN = (
-        AppiumBy.XPATH,
-        "//Button[@text='退出登录'] | //Text[@text='退出登录']/parent::Row | //Text[@text='退出登录']",
-    )                                                                                # 【退出登录】按钮
+    SWITCH_ACCOUNT_BTN = HosBy.text("切换账号")                                       # 【切换账号】按钮
+    LOGOUT_BTN = HosBy.text("退出登录")                                               # 【退出登录】按钮 (原生 text 直查)
 
     # 退出登录二次确认弹窗
     LOGOUT_CONFIRM_BTN = _CommonLocatorHos.DIALOG_CONFIRM_BTN                        # 确认退出按钮
