@@ -13,21 +13,46 @@ vars:
   verify_code: "9999"
 
   # 按「被测业务环境 (config/devices.yaml -> app_env 或环境变量 APP_ENV) -> 平台 (platform)」两级路由账号与万能验证码
+  # 号池轮转说明：
+  # - gray 环境 19200000001 ~ 19200001000 均为可用号，其中 001~100 保留给密码登录/有状态 IM 用例，999 保留给防刷异常用例；
+  # - 验证码登录按三端分号段轮转（harmonyos: 101~399 / android: 401~699 / ios: 701~998），每次发码用例自动取新号，
+  #   规避「触发天极流控 / 触发小时级流控」与 60s 发码冷却，同时避免三端并发互踢。
   env_accounts:
     gray:
       default:
         account: "19200000007"
         verify_code: "9999"
+        account_pool:
+          prefix: "1920000"
+          start: 401
+          end: 699
+          width: 4
       harmonyos:
         account: "19200000006"
         verify_code: "9999"
+        account_pool:
+          prefix: "1920000"
+          start: 101
+          end: 399
+          width: 4
       android:
         account: "19200000007"
         verify_code: "9999"
+        account_pool:
+          prefix: "1920000"
+          start: 401
+          end: 699
+          width: 4
       ios:
         account: "19200000008"
         verify_code: "9999"
+        account_pool:
+          prefix: "1920000"
+          start: 701
+          end: 998
+          width: 4
 
+    # 测试环境如同样开放 1~1000 批量号段，可参照 gray 在各平台下补充 account_pool 配置
     test:
       default:
         account: "38100000225"
@@ -148,6 +173,11 @@ verification_cases:
     expected_status: "fail"
     expected_toast: ""
     priority: P1
+    platform_overrides:
+      harmonyos:
+        trigger_verify: false
+        expected_send_toast: ""
+        expected_toast: "请输入正确手机号"
 
   - id: V3_TC04
     desc: "手机号长度超限（如 12 位）→ Android/鸿蒙截断至11位成功，iOS允许超长输入由后端拦截失败"
@@ -174,6 +204,11 @@ verification_cases:
     expected_status: "fail"
     expected_toast: ""
     priority: P2
+    platform_overrides:
+      harmonyos:
+        trigger_verify: false
+        expected_send_toast: ""
+        expected_toast: "请输入正确手机号"
 
   - id: V3_TC06
     desc: "手机号位数小于6位 → 不触发手机号验证直接拦截"
@@ -210,6 +245,9 @@ verification_cases:
     expected_status: "fail"
     expected_toast: "验证码错误！"
     priority: P0
+    platform_overrides:
+      harmonyos:
+        expected_toast: "验证码错误，请重新输入"
 
   - id: V4_TC03
     desc: "输入过期的验证码 → 后端强拒绝"
@@ -221,6 +259,9 @@ verification_cases:
     expected_status: "fail"
     expected_toast: "验证码错误！"
     priority: P1
+    platform_overrides:
+      harmonyos:
+        expected_toast: "验证码错误，请重新输入"
 
 
   # ==========================================
@@ -236,6 +277,11 @@ verification_cases:
     expected_status: "fail"
     expected_toast: ""
     priority: P2
+    platform_overrides:
+      harmonyos:
+        trigger_verify: false
+        expected_send_toast: ""
+        expected_toast: "请输入正确手机号"
 
   - id: V6_TC02
     desc: "手机号输入 XSS 跨站脚本"
@@ -247,3 +293,8 @@ verification_cases:
     expected_status: "fail"
     expected_toast: ""
     priority: P2
+    platform_overrides:
+      harmonyos:
+        trigger_verify: false
+        expected_send_toast: ""
+        expected_toast: "请输入正确手机号"

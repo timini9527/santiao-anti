@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pages.login.login_page import LoginPage
 from common.toast_enums import ToastMsg
 from core.logger_utils import logger, LogIcon
+from utils.account_pool import VerificationAccountPool, is_rate_limit_toast
 from utils.file_reader.data_loader import load_yaml_data, render_template_data
 
 
@@ -53,11 +54,18 @@ def resolve_app_env(driver: object = None) -> str:
     return str(fallback_env).strip().lower()
 
 
-def resolve_verification_vars(platform: str, app_env: str | None = None, driver: object = None) -> dict[str, str]:
+def resolve_verification_vars(
+    platform: str,
+    app_env: str | None = None,
+    driver: object = None,
+    use_account_pool: bool = False,
+) -> dict[str, str]:
     """
     按「业务环境 (app_env) -> 运行平台 (platform)」两级路由解析验证码登录变量表：
     - gray / test 默认提供万能验证码 9999；
-    - prod（正式环境）严禁使用万能验证码，强制保持 verify_code 为空。
+    - prod（正式环境）严禁使用万能验证码，强制保持 verify_code 为空；
+    - 当 use_account_pool=True 且当前环境/平台配置了 account_pool（且未通过 LOGIN_ACCOUNT 强行固定账号）时，
+      自动从三端隔离的持久化号池轮转取号，避免单号重复发码触发「触发天极流控 / 触发小时级流控」。
     """
     raw_vars = _VERIFICATION_YAML_DATA.get("vars") or {}
     variables: dict[str, str] = {
@@ -68,6 +76,7 @@ def resolve_verification_vars(platform: str, app_env: str | None = None, driver:
 
     resolved_env = (app_env or resolve_app_env(driver)).strip().lower()
     platform_key = (platform or "").strip().lower()
+    pool_cfg: dict | None = None
 
     env_accounts = raw_vars.get("env_accounts")
     if isinstance(env_accounts, dict):
@@ -77,12 +86,16 @@ def resolve_verification_vars(platform: str, app_env: str | None = None, driver:
             env_default = env_block.get("default")
             if isinstance(env_default, dict):
                 for key, value in env_default.items():
-                    if value is not None and str(value).strip():
+                    if key == "account_pool" and isinstance(value, dict):
+                        pool_cfg = value
+                    elif value is not None and not isinstance(value, (dict, list)) and str(value).strip():
                         env_vars[key] = str(value)
             platform_override = env_block.get(platform_key)
             if isinstance(platform_override, dict):
                 for key, value in platform_override.items():
-                    if value is not None and str(value).strip():
+                    if key == "account_pool" and isinstance(value, dict):
+                        pool_cfg = value
+                    elif value is not None and not isinstance(value, (dict, list)) and str(value).strip():
                         env_vars[key] = str(value)
             variables["account"] = env_vars.get("account", "")
             variables["verify_code"] = env_vars.get("verify_code", "")
@@ -91,8 +104,25 @@ def resolve_verification_vars(platform: str, app_env: str | None = None, driver:
                 f"{LogIcon.WARN} [VerifyVars] test_verification_login_data.yaml 未配置环境 '{resolved_env}' 的账号池，回退顶层默认变量"
             )
 
-    if os.environ.get("LOGIN_ACCOUNT"):
-        variables["account"] = os.environ["LOGIN_ACCOUNT"].strip()
+    explicit_account = (os.environ.get("LOGIN_ACCOUNT") or "").strip()
+    if explicit_account:
+        variables["account"] = explicit_account
+    elif (
+        use_account_pool
+        and resolved_env != "prod"
+        and isinstance(pool_cfg, dict)
+        and pool_cfg.get("prefix")
+        and pool_cfg.get("start") is not None
+        and pool_cfg.get("end") is not None
+    ):
+        variables["account"] = VerificationAccountPool.acquire(
+            app_env=resolved_env,
+            platform=platform_key or "default",
+            prefix=str(pool_cfg["prefix"]),
+            start=int(pool_cfg["start"]),
+            end=int(pool_cfg["end"]),
+            width=int(pool_cfg.get("width", 4)),
+        )
 
     # 正式环境严禁使用万能验证码
     if resolved_env == "prod":
@@ -167,16 +197,33 @@ class TestVerificationLogin:
     @pytest.mark.parametrize("case_dict", load_verification_login_test_cases(), ids=lambda x: x.get("id", "TC"))
     def test_verification_login_scenarios(self, case_dict):
         platform_key = (self.loginPage.platform or "").strip().lower()
-        verify_vars = resolve_verification_vars(platform_key, driver=self.loginPage.driver)
-        rendered_case = render_template_data(case_dict, verify_vars)
 
-        # 按当前设备平台合并差异化预期配置（如 V3_TC04 在 iOS 允许超长输入导致后端拦截失败）
-        platform_overrides = rendered_case.pop("platform_overrides", None)
+        # 先按当前设备平台合并差异化预期配置（如 V3_TC04 在 iOS 允许超长输入导致后端拦截，不真实发码）
+        effective_case_dict = dict(case_dict)
+        platform_overrides = effective_case_dict.pop("platform_overrides", None)
         if isinstance(platform_overrides, dict):
             override = platform_overrides.get(platform_key)
             if isinstance(override, dict):
-                rendered_case.update(override)
+                effective_case_dict.update(override)
 
+        # 仅当本用例会向 ${account} 真实发码时才向号池轮转取新号，不浪费池额度
+        raw_account_tpl = str(effective_case_dict.get("account", ""))
+        will_send_real_sms = (
+            "${account}" in raw_account_tpl
+            and bool(effective_case_dict.get("trigger_verify", True))
+            and (
+                bool(effective_case_dict.get("check_agreement", True))
+                or str(effective_case_dict.get("popup_action", "")) == "agree"
+            )
+            and str(effective_case_dict.get("expected_send_toast", "")) == ToastMsg.VERIFY_CODE_SENT
+        )
+
+        verify_vars = resolve_verification_vars(
+            platform_key,
+            driver=self.loginPage.driver,
+            use_account_pool=will_send_real_sms,
+        )
+        rendered_case = render_template_data(effective_case_dict, verify_vars)
         case = VerificationLoginCaseData(**rendered_case)
 
         allure.dynamic.title(f"[{case.id}] 验证码登录场景 - {case.desc}")
@@ -184,13 +231,12 @@ class TestVerificationLogin:
             _PRIORITY_SEVERITY_MAP.get(case.priority.upper(), allure.severity_level.NORMAL)
         )
 
-        # 正式环境严禁使用万能验证码，直接跳过预期成功登录的验证码用例
         if case.expected_status == "success" and (verify_vars["app_env"] == "prod" or not case.verify_code):
             pytest.skip(f"环境 '{verify_vars['app_env']}' 不支持万能验证码，跳过成功登录用例 [{case.id}]")
 
         logger.info(
             f"{LogIcon.ACTION} 开始执行用例: [{case.id}] {case.desc} "
-            f"(环境: {verify_vars['app_env']} | 平台: {platform_key})"
+            f"(环境: {verify_vars['app_env']} | 平台: {platform_key} | 账号: {case.account})"
         )
 
         with allure.step("1. 切换至短信验证码登录模式并输入手机号"):
@@ -202,12 +248,8 @@ class TestVerificationLogin:
             else:
                 self.loginPage.cancel_user_agreement()
 
-            # 短信验证码登录无密码框，关闭 2s 保存密码弹窗探测避免漏捕短时拦截 Toast
             self.loginPage.click_login_button(auto_dismiss_save_pwd=False)
 
-        # ========================================================
-        # 拦截：未勾选协议的分支
-        # ========================================================
         if not case.check_agreement:
             with allure.step(f"1.1 拦截处理：未勾选隐私协议弹窗 (预期标题: '{case.expected_agreement_title}')"):
                 actual_popup_title = self.loginPage.get_agreement_popup_title()
@@ -232,7 +274,7 @@ class TestVerificationLogin:
         # ========================================================
         if not case.trigger_verify:
             with allure.step(f"1.2 预期前端规则拦截不触发校验 (预期提示: '{case.expected_toast}')"):
-                if platform_key == "android" and case.expected_toast:
+                if platform_key in ("android", "harmonyos") and case.expected_toast:
                     early_toast = self.loginPage.get_toast_text(expected_toast=case.expected_toast)
                     check.equal(
                         early_toast,
@@ -245,9 +287,6 @@ class TestVerificationLogin:
                 )
                 return
 
-        # ========================================================
-        # 业务分支：人机校验、获取倒计时、输入验证码与结果校验
-        # ========================================================
         is_success = False
         entered_code_page = False
         try:
@@ -255,13 +294,29 @@ class TestVerificationLogin:
                 self.loginPage.click_human_verification_button()
                 if platform_key in ("android", "harmonyos") and case.expected_send_toast:
                     if platform_key == "harmonyos":
-                        # 鸿蒙端走原生 HosBy.text_contains 极速捕获短时发码 Toast，避免 XPath 漏捕
+                        # 鸿蒙端走原生精确文本 + 流控关键字直查捕获短时发码 Toast，避免误抓静态副标题
                         toast_message = self.loginPage.get_toast_text(
                             timeout=3.0,
                             expected_toast=case.expected_send_toast,
+                            detect_rate_limit=(case.expected_send_toast == ToastMsg.VERIFY_CODE_SENT),
                         )
                     else:
                         toast_message = self.loginPage.get_login_toast_message()
+
+                    # 若命中「触发天极流控 / 触发小时级流控」，立即将该号加入当日号池熔断列表并快速失败，
+                    # 避免鸿蒙端被拦截在表单页后在倒计时步骤空等超时，且重跑时会自动分配新号
+                    if is_rate_limit_toast(toast_message):
+                        VerificationAccountPool.mark_rate_limited(
+                            app_env=verify_vars["app_env"],
+                            platform=platform_key,
+                            account=verify_vars["account"],
+                            reason=toast_message,
+                        )
+                        pytest.fail(
+                            f"❌ [{case.id}] 账号 {verify_vars['account']} 触发短信流控 ('{toast_message}')，"
+                            f"已加入今日号池熔断列表（重跑将自动分配下一个可用账号）"
+                        )
+
                     check.equal(
                         toast_message,
                         case.expected_send_toast,
@@ -293,7 +348,7 @@ class TestVerificationLogin:
                     is_success = self.loginPage.is_login_success()
                     check.is_true(is_success, "❌ 预期验证码登录成功进入主页，但未检测到主页特征元素！")
                 elif case.expected_status == "fail":
-                    if platform_key == "android" and case.expected_toast:
+                    if case.expected_toast:
                         verify_code_toast = self.loginPage.get_toast_text(expected_toast=case.expected_toast)
                         check.equal(
                             verify_code_toast,
@@ -304,9 +359,6 @@ class TestVerificationLogin:
                     is_success = self.loginPage.is_login_success()
                     check.is_false(is_success, "❌ [危险] 预期登录失败，但发生了越权：成功进入了主页！")
 
-        # ========================================================
-        # Teardown 环境清理（按真实页面栈复位，严禁在表单页误点返回）
-        # ========================================================
         finally:
             with allure.step("5. 环境清理：确保账号登出或从验证码页安全复位"):
                 if is_success:

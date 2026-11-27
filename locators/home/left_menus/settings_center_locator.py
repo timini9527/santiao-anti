@@ -62,7 +62,7 @@ class _SettingsCenterLocatorAndroid(_CommonLoactroAndroid):
 # =========================================================================
 # 跨端通用定位器透明代理 (自动识别 Android / HarmonyOS NEXT / iOS)
 # =========================================================================
-class SettingsCenterLocator(_SettingsCenterLocatorHos, _SettingsCenterLocatorAndroid, _SettingsCenterLocatorIos, metaclass=DynamicLocatorMeta):
+class SettingsCenterLocator(_SettingsCenterLocatorIos, _SettingsCenterLocatorAndroid, _SettingsCenterLocatorHos, metaclass=DynamicLocatorMeta):
     """跨端设置中心页面定位器（支持 IDE Ctrl + 鼠标左键直接跳转定义，运行时按设备平台动态分发）"""
 
     _android_cls = _SettingsCenterLocatorAndroid

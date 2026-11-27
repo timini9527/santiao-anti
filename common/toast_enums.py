@@ -13,6 +13,8 @@ class ToastMsg(StrEnum):
     LOGOUT_SUCCESS = "已退出登录"
     LOGGING_IN = "登录中..."
     VERIFY_CODE_SENT = "验证码已发送"
+    RATE_LIMIT_DAILY = "触发天极流控"
+    RATE_LIMIT_HOURLY = "触发小时级流控"
     SWITCH_NETWORK = "尝试更换网络环境"
 
     # --------------------------------------------------------------------------

@@ -74,6 +74,35 @@ class _LoginLocatorAndroid(CommonLocator):
     )
 
     # --------------------------------------------------------------------------
+    # 4.1 短信验证码人机验证弹窗 (WebView 原生透传节点)
+    # --------------------------------------------------------------------------
+    # 人机验证提示文案 (用于探测弹窗是否存在及兜底坐标锚点)
+    HUMAN_VERIFY_TITLE = (
+        AppiumBy.XPATH,
+        "//*[@text='请点击按钮进行验证' or @text='点击左侧灰色按钮']",
+    )
+    # 人机验证核心点击按钮 (紧邻提示文案前的同级灰色按钮容器)
+    HUMAN_VERIFY_BTN = (
+        AppiumBy.XPATH,
+        "//*[@text='请点击按钮进行验证']/preceding-sibling::android.view.View[1]",
+    )
+    # 人机验证指向按钮的左侧箭头图标
+    HUMAN_VERIFY_ARROW_ICON = (
+        AppiumBy.XPATH,
+        "//*[@content-desc='左侧箭头']",
+    )
+    # 人机验证弹窗 - 关闭按钮
+    HUMAN_VERIFY_CLOSE_BTN = (
+        AppiumBy.XPATH,
+        "//*[@resource-id='app']//*[@content-desc='关闭']",
+    )
+    # 人机验证弹窗 - 刷新按钮
+    HUMAN_VERIFY_REFRESH_BTN = (
+        AppiumBy.XPATH,
+        "//*[@resource-id='app']//*[@content-desc='刷新']",
+    )
+
+    # --------------------------------------------------------------------------
     # 5. 用户协议勾选与底部协议拦截弹窗
     # --------------------------------------------------------------------------
     # 登录页底部用户协议勾选框
@@ -82,11 +111,13 @@ class _LoginLocatorAndroid(CommonLocator):
     AGREE_AND_LOGIN_TEXT = (AppiumBy.ID, f"{PACKAGE_ID}/tv_agree_privacy")
     # 未勾选协议点击登录后弹出的底部弹窗容器
     AGREEMENT_BOTTOM_SHEET = (AppiumBy.ID, f"{PACKAGE_ID}/design_bottom_sheet")
+    # 协议拦截弹窗 - 标题文本（Android 底部弹窗独立 Window，沿用通用标题定位）
+    AGREEMENT_POPUP_TITLE = CommonLocator.TOP_TV_TITLE
     # 协议拦截弹窗 - 同意并继续按钮
     AGREE_AND_CONTINUE_BTN = (AppiumBy.ID, f"{PACKAGE_ID}/fb_agree_continue")
     # 协议拦截弹窗 - 右上角关闭按钮
     CLOSE_BTN = (AppiumBy.ID, f"{PACKAGE_ID}/iv_close")
-    # 协议拦截弹窗 - 协议正文描述文本 (弹窗标题复用 CommonLocator.TOP_TV_TITLE)
+    # 协议拦截弹窗 - 协议正文描述文本
     USER_AGREEMENT_DESC = (AppiumBy.ID, f"{PACKAGE_ID}/tv_desc")
 
     # --------------------------------------------------------------------------
@@ -94,6 +125,11 @@ class _LoginLocatorAndroid(CommonLocator):
     # --------------------------------------------------------------------------
     # 通用 Toast 提示 (复用 CommonLocator)
     TOAST_MSG = CommonLocator.TOAST_MSG
+    # 短信验证码流控提示（覆盖触发天级流控 / 触发小时级流控）
+    RATE_LIMIT_TOAST = (
+        AppiumBy.XPATH,
+        "//*[contains(@text, '流控') or contains(@content-desc, '流控')]",
+    )
 
     @staticmethod
     def get_dynamic_toast_msg(expected_toast: str) -> tuple[str, str]:
@@ -123,7 +159,7 @@ class _LoginLocatorAndroid(CommonLocator):
 # ==============================================================================
 # 跨端通用定位器透明代理 (自动识别 Android / HarmonyOS NEXT / iOS)
 # ==============================================================================
-class LoginLocator(_LoginLocatorHos, _LoginLocatorAndroid, _LoginLocatorIos, metaclass=DynamicLocatorMeta):
+class LoginLocator(_LoginLocatorIos, _LoginLocatorAndroid, _LoginLocatorHos, metaclass=DynamicLocatorMeta):
     """跨端登录页面定位器（支持 IDE Ctrl + 鼠标左键直接跳转定义，运行时按设备平台动态分发）"""
 
     _android_cls = _LoginLocatorAndroid

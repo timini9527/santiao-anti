@@ -25,6 +25,7 @@
 | :--- | :--- | :--- |
 | **三端互联自动化测试架构设计** | [tri_platform_mesh_architecture_design.md](tri_platform_mesh_architecture_design.md) | 定义 Android / HarmonyOS / iOS 三端互联自动化整体架构（v3.0.0），适合架构评审与多端统一 POM 设计参考 |
 | **桌面端与测试用例技术栈分析** | [desktop_app_tech_stack_analysis.md](desktop_app_tech_stack_analysis.md) | 盘点桌面控制台 `desktop_app` 与 `tests/`、`core/`、`pages/` 的技术栈选型与结构约束 |
+| **移动端 UI 审查器模块化架构与全文件手册** | [inspector_modular_architecture_guide.md](inspector_modular_architecture_guide.md) | 详述审查器 6 层 23 模块重构架构、三端隔离矩阵、每个文件内所有类与函数的作用、核心执行链路及 10 项修复记录 |
 | **自动化用例功能执行顺序表** | [test_cases_functional_order.md](test_cases_functional_order.md) | 梳理从冒烟登录、会话单聊、多媒体附件、好友关系到群聊社交的完整用例执行编排顺序 |
 
 ### 🖼️ 架构图资产 (`docs/images/`)

@@ -7,8 +7,8 @@ app_env: "gray"                 # 被测 App 后端业务环境：test（测试�
 # app_env: "test"
 
 # current_platform: "android"   # 默认单端平台２android / harmonyos / ios (none)&local multi-device
-current_platform: "harmonyos"
-# current_platform: "ios" 
+# current_platform: "harmonyos"
+current_platform: "ios" 
 
 server:
   host: "127.0.0.1"

@@ -1,7 +1,11 @@
 import time
 from typing import Optional
 from selenium.webdriver.remote.webelement import WebElement
-from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from selenium.common.exceptions import (
+    NoSuchElementException,
+    StaleElementReferenceException,
+    TimeoutException,
+)
 from common.base_page import BasePage
 from common.toast_enums import ToastMsg
 from locators.login.login_locator import LoginLocator
@@ -407,6 +411,7 @@ class LoginPage(BasePage):
     # 登录页 - 获取验证码倒计时文本
     def get_verification_code_countdown_text(self) -> str:
         """ 获取验证码倒计时文本 """
+        time.sleep(1)
         countdown_text = self.get_attribute(LoginLocator.VERIFICATION_CODE_COUNTDOWN, "text")
         logger.info(f"{LogIcon.WAIT} 🧐 [Action - Login] 获取验证码倒计时: {countdown_text}")
         return countdown_text
@@ -471,8 +476,8 @@ class LoginPage(BasePage):
     
     # 登录页 - 获取隐私弹窗标题
     def get_agreement_popup_title(self) -> str:
-        """ 获取‘用户协议及隐私政策’底层弹窗的标题 """
-        title = self.commonPage.get_top_middle_title()
+        """ 获取‘用户协议及隐私政策’底层弹窗的标题（走弹窗专属定位器，避免鸿蒙端误抓底层页面同名 id='title'） """
+        title = self.get_attribute(LoginLocator.AGREEMENT_POPUP_TITLE, "text") or ""
         logger.info(f"{LogIcon.FIND} 🧐 [Action - Login] 未勾选同意点击登录后，获取到隐私弹窗标题: {title}")
         return title
     
@@ -575,32 +580,56 @@ class LoginPage(BasePage):
         return False
 
     # 登录页 - 获取 Toast 提示
-    def get_toast_text(self, timeout: float = 3.0, expected_toast: str = "") -> str:
+    def get_toast_text(
+        self,
+        timeout: float = 3.0,
+        expected_toast: str = "",
+        detect_rate_limit: bool = False,
+    ) -> str:
         """
         获取页面弹出的系统级 Toast 或普通 TextView 错误提示。
         如果参数带有 expected_toast 预期文本，则开启预期文本驱动的全屏搜索，极大提升各类弹窗和红字提示的捕获率。
+        当 detect_rate_limit=True 时，同步探测「触发天极流控 / 触发小时级流控」等流控提示，避免漏捕并空等超时。
         """
         logger.info(f"{LogIcon.WAIT} 开始监听提示 (超时: {timeout}s | 优先内容: '{expected_toast}')")
 
         end_time = time.time() + timeout
         text = ""
         while time.time() < end_time:
-            # 1. 优先级策略：如果提供了预期文本，强制执行全屏模糊文本匹配
-            if expected_toast:
-                dynamic_locator = LoginLocator.get_dynamic_toast_msg(expected_toast)
-                toast = self.find_element(dynamic_locator, timeout=0.2, condition="presence", expect_missing=True)
-                if toast:
-                    text = toast.get_attribute("text")
-                    logger.info(f"{LogIcon.SUCCESS} 通过文本匹配命中业务提示 Toast: {text}")
-                    return text
+            try:
+                # 1. 优先级策略：如果提供了预期文本，优先匹配预期提示
+                if expected_toast:
+                    dynamic_locator = LoginLocator.get_dynamic_toast_msg(expected_toast)
+                    toast = self.find_element(dynamic_locator, timeout=0.2, condition="presence", expect_missing=True)
+                    if toast:
+                        text = self.read_element_attr(toast, "text")
+                        if text:
+                            logger.info(f"{LogIcon.SUCCESS} 通过文本匹配命中业务提示 Toast: {text}")
+                            return text
 
-            # 2. 匹配通用 Toast ID
-            toast = self.find_element(LoginLocator.TOAST_MSG, timeout=0.2, condition="presence", expect_missing=True)
-            if toast:
-                text = toast.get_attribute("text")
-                if text and text != ToastMsg.LOGGING_IN:
-                    logger.info(f"{LogIcon.SUCCESS} 通过 ID 命中业务提示 Toast: {text}")
-                    return text
+                # 2. 匹配通用 Toast ID
+                toast = self.find_element(LoginLocator.TOAST_MSG, timeout=0.2, condition="presence", expect_missing=True)
+                if toast:
+                    text = self.read_element_attr(toast, "text")
+                    if text and text != ToastMsg.LOGGING_IN:
+                        logger.info(f"{LogIcon.SUCCESS} 通过 ID 命中业务提示 Toast: {text}")
+                        return text
+
+                # 3. 短信发码场景同步探测流控提示（触发天极流控 / 触发小时级流控），命中后立即返回便于上层熔断切号
+                if detect_rate_limit:
+                    rate_limit_toast = self.find_element(
+                        LoginLocator.RATE_LIMIT_TOAST,
+                        timeout=0.1,
+                        condition="presence",
+                        expect_missing=True,
+                    )
+                    if rate_limit_toast:
+                        text = self.read_element_attr(rate_limit_toast, "text")
+                        if text:
+                            logger.warning(f"{LogIcon.WARN} 捕获到短信流控提示 Toast: {text}")
+                            return text
+            except StaleElementReferenceException:
+                continue
             time.sleep(0.05)
         logger.warning(f"{LogIcon.FAIL} 监听结束，在 {timeout}s 内未捕获到任何符合条件的提示内容 - 实际获取到的Toast: {text}")
         return ""
@@ -706,17 +735,127 @@ class LoginPage(BasePage):
     # ==========================
     # 验证码登录
     # ==========================
+    # 登录页 - 判断是否弹出人机验证弹窗
+    def is_human_verification_present(self, timeout: float = 2.0) -> bool:
+        """
+        跨端判断当前屏幕是否弹出短信验证码人机验证弹窗（Android / iOS / HarmonyOS 统一走 WebView 原生透传节点）。
+        """
+        return self.is_element_exist(
+            LoginLocator.HUMAN_VERIFY_TITLE,
+            timeout=timeout,
+            condition="presence",
+        )
+
     # 登录页 - 验证码登录人机验证弹窗
-    def click_human_verification_button(self) -> bool:
-        """ 处理验证码登录时出现的人机验证拖动/点击滑块 """
-        logger.info(f"{LogIcon.SETUP} 处理验证码人机验证弹窗")
-        time.sleep(2)  # 等待弹窗和滑块动画渲染
+    def click_human_verification_button(self, timeout: float = 3.0) -> bool:
+        """
+        跨端处理验证码登录时出现的人机验证弹窗（Android / iOS / HarmonyOS 统一三层稳健策略）：
+        1. 原生 DOM 优先：直接命中各端透传的左侧灰色按钮节点（iOS/鸿蒙走 tap_point 避开 occluded 校验与 5s Idle 等待）；
+        2. 次级原生兜底：基于提示文案 Bounds 按真机校准比例 (x - 2.9*h, y + h) 推算左侧按钮圆心，脱离固定像素依赖；
+        3. 终极视觉兜底：若特定机型 WebView 未暴露无障碍节点，自动降级至 OCR 偏移点击。
+        """
+        platform = self._platform_name
+        logger.info(f"{LogIcon.SETUP} [{platform}] 处理验证码人机验证弹窗")
+
+        # 1. 原生 DOM 优先：通过 presence 查找，兼容 iOS/鸿蒙 WebView 节点带 occluded="true" 的场景
+        verify_btn = self.find_element(
+            LoginLocator.HUMAN_VERIFY_BTN,
+            timeout=timeout,
+            condition="presence",
+            expect_missing=True,
+        )
+        if verify_btn:
+            # 短暂等待弹窗入场动画稳定，防止坐标偏移
+            time.sleep(0.3)
+            logger.info(f"{LogIcon.SUCCESS} [{platform}] 命中原生人机验证按钮，执行点击")
+            if platform in ("ios", "harmonyos"):
+                # iOS 节点常带 occluded="true"、鸿蒙原生 click 易触发 5s Idle，均优先走元素中心坐标手势点击
+                self.tap_point(click_elem=verify_btn, duration=80)
+            else:
+                try:
+                    verify_btn.click()
+                except Exception as err:
+                    logger.warning(f"{LogIcon.WARN} [{platform}] 原生 click 失败，改用元素中心坐标点击: {err}")
+                    self.tap_point(click_elem=verify_btn, duration=80)
+            time.sleep(0.8)
+            return True
+
+        # 2. 次级原生兜底：基于第一行提示文案的 Bounds 推算左侧圆形按钮圆心
+        # 左侧按钮与右侧两行文案垂直居中，故圆心约位于 (title.x - 2.9 * title.h, title.y + title.h)
+        title_elem = self.find_element(
+            LoginLocator.HUMAN_VERIFY_TITLE,
+            timeout=0.5,
+            condition="presence",
+            expect_missing=True,
+        )
+        if title_elem:
+            rect = title_elem.rect
+            if rect and rect.get("height", 0) > 0:
+                click_x = max(10, int(rect["x"] - rect["height"] * 2.9))
+                click_y = int(rect["y"] + rect["height"])
+                logger.info(
+                    f"{LogIcon.ACTION} [{platform}] 通过提示文案坐标动态推算验证按钮: ({click_x}, {click_y})"
+                )
+                self.tap_point(x=click_x, y=click_y, duration=80)
+                time.sleep(0.8)
+                return True
+
+        # 3. 终极兜底：若目标机型 WebView 未暴露无障碍节点，降级至 OCR 偏移点击
+        logger.warning(f"{LogIcon.WARN} [{platform}] 未检测到原生人机验证节点，降级使用 OCR 视觉偏移兜底")
         return self.ocrUtils.click_text_with_offset(
             target_text="请点击按钮进行验证",
             offset_x=-85,
             offset_y=10,
-            image_name="human_verification.png"
+            image_name="human_verification.png",
         )
+
+    # 登录页 - 关闭人机验证弹窗
+    def close_human_verification_dialog(self, timeout: float = 2.0) -> bool:
+        """跨端点击人机验证弹窗上的关闭按钮（Android / iOS / HarmonyOS）"""
+        platform = self._platform_name
+        close_btn = self.find_element(
+            LoginLocator.HUMAN_VERIFY_CLOSE_BTN,
+            timeout=timeout,
+            condition="presence",
+            expect_missing=True,
+        )
+        if not close_btn:
+            logger.warning(f"{LogIcon.WARN} [{platform}] 未找到人机验证关闭按钮")
+            return False
+        logger.info(f"{LogIcon.ACTION} [{platform}] 点击关闭人机验证弹窗")
+        if platform == "harmonyos":
+            self.tap_point(click_elem=close_btn, duration=80)
+        else:
+            try:
+                close_btn.click()
+            except Exception as err:
+                logger.warning(f"{LogIcon.WARN} [{platform}] 关闭按钮 click 失败，改用坐标点击: {err}")
+                self.tap_point(click_elem=close_btn, duration=80)
+        return True
+
+    # 登录页 - 刷新人机验证弹窗
+    def refresh_human_verification_dialog(self, timeout: float = 2.0) -> bool:
+        """跨端点击人机验证弹窗上的刷新按钮（Android / iOS / HarmonyOS）"""
+        platform = self._platform_name
+        refresh_btn = self.find_element(
+            LoginLocator.HUMAN_VERIFY_REFRESH_BTN,
+            timeout=timeout,
+            condition="presence",
+            expect_missing=True,
+        )
+        if not refresh_btn:
+            logger.warning(f"{LogIcon.WARN} [{platform}] 未找到人机验证刷新按钮")
+            return False
+        logger.info(f"{LogIcon.ACTION} [{platform}] 点击刷新人机验证弹窗")
+        if platform == "harmonyos":
+            self.tap_point(click_elem=refresh_btn, duration=80)
+        else:
+            try:
+                refresh_btn.click()
+            except Exception as err:
+                logger.warning(f"{LogIcon.WARN} [{platform}] 刷新按钮 click 失败，改用坐标点击: {err}")
+                self.tap_point(click_elem=refresh_btn, duration=80)
+        return True
     
     # 登录页 - 稳健版输入分离式验证码
     def input_verify_code_robust(self, code: str) -> None:
@@ -724,7 +863,9 @@ class LoginPage(BasePage):
         输入分离式验证码：
         - HarmonyOS：单次点击首格聚焦后，纯数字验证码直接下发原生按键事件 (NUM_0=2000..NUM_9=2009)，
           规避逐格 XpathWidget 剪贴板粘贴耗时长达 7~8s 的性能瓶颈（压缩至 <1s）；
-        - Android / iOS：保持逐格点击并输入的稳健逻辑。
+        - iOS：按横坐标排序锁定首格后，直接调用首格 send_keys(code)（底层走全系 iPhone 通用的 WDA FBTypeText
+          60Hz 系统键盘事件流，自动顺次跳格，1 次请求完成全部输入，避免 iPadOS 专属 mobile: keys 静默失效）；
+        - Android：保持逐格点击并输入的稳健逻辑。
         :param code: 验证码字符串，如 "9999"
         """
         logger.info(f"{LogIcon.ACTION} 准备输入验证码: {code}")
@@ -749,13 +890,23 @@ class LoginPage(BasePage):
                 self.driver.execute_script("mobile: pressKey", {"keycode": 2000 + int(digit)})
             return
 
-        # 4. 通用逐格输入路径（Android / iOS 或非纯数字字符）
+        # 4. iOS 极速稳健路径：按缓存横坐标从左到右排序，单次 send_keys 整串 60Hz 键入并自动跳格
+        if self._platform_name == "ios":
+            if all(isinstance(getattr(el, "_ios_cached_rect", None), dict) for el in edit_texts):
+                edit_texts = sorted(edit_texts, key=lambda el: float(el._ios_cached_rect.get("x", 0.0)))
+            logger.info(f"{LogIcon.SETUP} [iOS] 首格单次整串输入验证码: {code}")
+            edit_texts[0].send_keys(code)
+            return
+
+        # 5. Android 逐格输入路径
         for i, digit in enumerate(code):
             if i < len(edit_texts):
                 try:
                     logger.info(f"{LogIcon.SETUP} 点击并输入第 {i+1} 个验证码字符: {digit}")
                     edit_texts[i].click()
                     edit_texts[i].send_keys(digit)
-                    time.sleep(0.2)
+                    if i < len(code) - 1:
+                        time.sleep(0.2)
                 except Exception as e:
                     logger.error(f"{LogIcon.FAIL} 输入第 {i+1} 个验证码字符时失败: {e}")
+                    raise

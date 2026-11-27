@@ -87,6 +87,20 @@ class _LoginLocatorHos(_CommonLocatorHos):
         "//__Common__/Stack/Row/Stack/Text",
     )
 
+    # --------------------------------------------------------------------------
+    # 短信验证码人机验证弹窗 (ArkUI Web 组件内部无障碍透传节点，类型为小驼峰)
+    # --------------------------------------------------------------------------
+    # 人机验证提示文案 (用于探测弹窗是否存在及兜底坐标锚点)
+    HUMAN_VERIFY_TITLE = HosBy.text_regex("^(请点击按钮进行验证|点击左侧灰色按钮)$", "staticText")
+    # 人机验证核心点击按钮 (Web 组件内的 labelText 按钮节点，原生直查避开全树 XML XPath)
+    HUMAN_VERIFY_BTN = HosBy.type_only("labelText")
+    # 人机验证指向按钮的左侧箭头图标
+    HUMAN_VERIFY_ARROW_ICON = HosBy.type_text("image", "左侧箭头")
+    # 人机验证弹窗 - 关闭按钮 (Web 透传小写 image，与 ArkUI 原生大写 Image 隔离)
+    HUMAN_VERIFY_CLOSE_BTN = HosBy.type_text("image", "关闭")
+    # 人机验证弹窗 - 刷新按钮
+    HUMAN_VERIFY_REFRESH_BTN = HosBy.type_text("image", "刷新")
+
     # 协议同意勾选框（仅用表单内“密码验证登录/短信验证登录”与“我已阅读且同意”区间夹逼锁定勾选框 Image；
     # 严禁包含登录主页 NavBar 的“手机号登录/一键登录”，否则在 Navigation 栈中会先命中背景页按钮而误点顶部返回图标）
     AGREE_AND_LOGIN_BTN = HosBy.between_texts(
@@ -107,22 +121,26 @@ class _LoginLocatorHos(_CommonLocatorHos):
         AppiumBy.XPATH,
         "//Dialog//__Common__/RelativeContainer",
     )
+    # 协议拦截弹窗 - 标题文本（限定在 Dialog 弹窗内，避免命中底层 NavDestination 的同名 id="title"）
+    AGREEMENT_POPUP_TITLE = (
+        AppiumBy.XPATH,
+        "//Dialog//Text[@id='title']",
+    )
     AGREE_AND_CONTINUE_BTN = HosBy.type_text("Text", "同意并继续")
     CLOSE_BTN = (
         AppiumBy.XPATH, "//Stack[Text[@text='用户协议及隐私政策']]//Image"
     )
     USER_AGREEMENT_DESC = HosBy.id_only("prvacy_content")
 
-    # 通用 Toast 提示 (用于校验错误信息)
-    TOAST_MSG = (
-        AppiumBy.XPATH,
-        "//Toast | //Prompt | //Text[contains(@text, '验证码') or contains(@text, '错误') or contains(@text, '成功') or contains(@text, '失败')]",
-    )
+    # 通用 Toast 提示（复用 _CommonLocatorHos，移除原先宽泛的 //Text[contains(@text, '验证码')] 防止误抓页面静态副标题）
+    TOAST_MSG = _CommonLocatorHos.TOAST_MSG
+    # 短信验证码流控提示（原生模糊包含直查，覆盖触发天极流控 / 触发天级流控 / 触发小时级流控）
+    RATE_LIMIT_TOAST = HosBy.text_contains("流控", "Text")
 
     @staticmethod
     def get_dynamic_toast_msg(expected_toast: str) -> tuple[str, str]:
-        """按预期提示文案原生模糊包含直查 Toast（提速至 ~0.1s，大幅提升短时 Toast 捕获率）"""
-        return HosBy.text_contains(expected_toast)
+        """按预期提示文案原生精确直查 Toast（避免模糊包含误抓页面静态文本，如 '验证码已发送至(0086)...'）"""
+        return HosBy.text(expected_toast)
 
     # ======================================================
     # 系统级弹窗 - 使用已保存的账号/使用其他账号/手动输入

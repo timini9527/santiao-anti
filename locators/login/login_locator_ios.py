@@ -139,17 +139,46 @@ class _LoginLocatorIos:
     # 收不到验证码求助入口
     CANNOT_RECEIVE_VERIFICATION_CODE = (
         AppiumBy.IOS_PREDICATE,
-        f"type IN {'XCUIElementTypeStaticText'} AND (name CONTAINS '收不到验证码')",
+        "type IN {'XCUIElementTypeStaticText'} AND (name CONTAINS '收不到验证码')",
     )
     # 验证码重新获取倒计时文本 (60s)
     VERIFICATION_CODE_COUNTDOWN = (
         AppiumBy.IOS_PREDICATE,
-        f"type IN {'XCUIElementTypeStaticText'} AND (name CONTAINS '重新获取')",
+        "type IN {'XCUIElementTypeStaticText'} AND (name CONTAINS '重新获取')",
     )
     # 分离式验证码独立输入框集合 (find_elements 按文档顺序返回，与验证码位次一一对应)
     CODE_EDIT_TEXTS = (
         AppiumBy.IOS_PREDICATE,
         "type == 'XCUIElementTypeTextField'",
+    )
+
+    # --------------------------------------------------------------------------
+    # 4.1 短信验证码人机验证弹窗 (WKWebView 原生透传节点)
+    # --------------------------------------------------------------------------
+    # 人机验证提示文案 (用于探测弹窗是否存在及兜底坐标锚点)
+    HUMAN_VERIFY_TITLE = (
+        AppiumBy.IOS_PREDICATE,
+        "type == 'XCUIElementTypeStaticText' AND name IN {'请点击按钮进行验证', '点击左侧灰色按钮'}",
+    )
+    # 人机验证核心点击按钮 (紧邻提示文案前的同级 Other 容器，注意该节点带 occluded='true'，需以 presence 查找并坐标点击)
+    HUMAN_VERIFY_BTN = (
+        AppiumBy.XPATH,
+        "//XCUIElementTypeStaticText[@name='请点击按钮进行验证']/preceding-sibling::XCUIElementTypeOther[1]",
+    )
+    # 人机验证指向按钮的左侧箭头图标
+    HUMAN_VERIFY_ARROW_ICON = (
+        AppiumBy.IOS_PREDICATE,
+        "name == '左侧箭头' OR label == '左侧箭头'",
+    )
+    # 人机验证弹窗 - 关闭按钮
+    HUMAN_VERIFY_CLOSE_BTN = (
+        AppiumBy.IOS_PREDICATE,
+        "type == 'XCUIElementTypeImage' AND (name == '关闭' OR label == '关闭')",
+    )
+    # 人机验证弹窗 - 刷新按钮
+    HUMAN_VERIFY_REFRESH_BTN = (
+        AppiumBy.IOS_PREDICATE,
+        "type == 'XCUIElementTypeImage' AND (name == '刷新' OR label == '刷新')",
     )
 
     # --------------------------------------------------------------------------
@@ -191,6 +220,8 @@ class _LoginLocatorIos:
         AppiumBy.XPATH,
         "//XCUIElementTypeOther[XCUIElementTypeStaticText[@text='用户协议及隐私政策']]",
     )
+    # 协议拦截弹窗 - 标题文本（iOS 沿用通用弹窗/导航标题定位）
+    AGREEMENT_POPUP_TITLE = _CommonLocatorIos.TOP_TV_TITLE
     # 协议拦截弹窗 - 同意并继续按钮
     AGREE_AND_CONTINUE_BTN = (
         AppiumBy.IOS_PREDICATE,
@@ -219,6 +250,11 @@ class _LoginLocatorIos:
             " | //XCUIElementTypeOther[XCUIElementTypeImage[contains(@name, 'toast')]]//XCUIElementTypeStaticText"
             " | //XCUIElementTypeAlert//XCUIElementTypeStaticText"
         ),
+    )
+    # 短信验证码流控提示（覆盖触发天极流控 / 触发天级流控 / 触发小时级流控）
+    RATE_LIMIT_TOAST = (
+        AppiumBy.IOS_PREDICATE,
+        "type == 'XCUIElementTypeStaticText' AND (name CONTAINS '流控' OR value CONTAINS '流控')",
     )
 
     @staticmethod

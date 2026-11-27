@@ -204,6 +204,10 @@ class BasePage:
 
         if condition in ("visibility", "clickable"):
             require_enabled = condition == "clickable"
+            if self._platform_name == "ios":
+                ios_fast_locator = self._build_ios_single_pass_locator(locator, require_enabled=require_enabled)
+                if ios_fast_locator is not None:
+                    return wait.until(EC.presence_of_all_elements_located(ios_fast_locator))
 
             def _usable_elements(driver) -> list[WebElement] | bool:
                 found = driver.find_elements(*locator)

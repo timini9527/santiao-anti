@@ -194,6 +194,67 @@ def check_wda_ready() -> bool:
     return False
 
 
+def cleanup_stale_iphone_wda(bundle_id: str, wait_release_timeout: float = 3.0) -> None:
+    """
+    清理真机上尚未退出的残留 WebDriverAgentRunner 进程，防止重拉 xcuitest 时
+    出现新旧 Runner 同时抢占 testmanagerd 与 8100 端口导致的 9 秒互踢死循环。
+    """
+    if not check_wda_ready():
+        return
+
+    creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+    print("  🧹 [防互踢] 检测到真机 8100 仍有残留 WDA Runner 在线，先清理旧进程再重启...")
+
+    # 1. 优先尝试 tidevice kill（轻量、不额外抢占 userspace 隧道）
+    try:
+        subprocess.run(
+            _build_tidevice_cmd("kill", bundle_id),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=4,
+            creationflags=creationflags,
+        )
+    except Exception:
+        pass
+
+    # 等待短暂释放窗口，若旧 8100 已下线则无需再走 DVT pkill
+    deadline_short = time.monotonic() + 1.2
+    while time.monotonic() < deadline_short:
+        if not check_wda_ready():
+            print("    ✔ 残留 WDA Runner 已释放")
+            return
+        time.sleep(0.3)
+
+    # 2. iOS 17+ 兜底：通过 pymobiledevice3 DVT pkill 精准结束残留 Runner
+    pkill_cmd = (
+        _build_pmd3_cmd("developer", "dvt", "pkill", "--userspace", "WebDriverAgentRunner")
+        if sys.platform == "win32"
+        else _build_pmd3_cmd("developer", "dvt", "pkill", "WebDriverAgentRunner")
+    )
+    try:
+        subprocess.run(
+            pkill_cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=6,
+            creationflags=creationflags,
+        )
+    except Exception:
+        pass
+
+    deadline = time.monotonic() + max(0.5, wait_release_timeout)
+    while time.monotonic() < deadline:
+        if not check_wda_ready():
+            print("    ✔ 残留 WDA Runner 已彻底清理")
+            return
+        time.sleep(0.3)
+    print("    ⚠️ 旧 8100 尚未完全释放，将延迟后再尝试拉起新 Runner")
+
+
 def main() -> None:
     print("=" * 70)
     print("  🚀 Santiao iOS WDA 8100 自动化服务启动器 (Windows 11 守护版)")
@@ -201,7 +262,7 @@ def main() -> None:
     print()
 
     # 1. 检查真机连接
-    print("[1/4] 正在检测已连接的 iPhone 真机...")
+    print("[1/5] 正在检测已连接的 iPhone 真机...")
     device_info = get_connected_device()
     if not device_info:
         print("\n❌ [错误] 未检测到 USB 连接的 iPhone！")
@@ -213,7 +274,7 @@ def main() -> None:
     print(f"    ✔ 已识别设备: {device_info}")
 
     # 2. 匹配 Bundle ID
-    print("[2/4] 正在检索已安装的 WDA Bundle ID...")
+    print("[2/5] 正在检索已安装的 WDA Bundle ID...")
     bundle_id = get_wda_bundle_id()
     print(f"    ✔ 目标 Bundle ID: {bundle_id}")
 
@@ -326,9 +387,21 @@ def main() -> None:
 
     recent_logs: Deque[str] = collections.deque(maxlen=20)
     has_shown_ready = False
+    consecutive_fast_exits = 0
+    backoff_schedule = (2.0, 5.0, 8.0, 12.0, 15.0)
+
+    def _interruptible_sleep(seconds: float) -> None:
+        """可中断睡眠，避免退避等待期间阻塞停止信号"""
+        deadline = time.monotonic() + max(0.0, seconds)
+        while not is_terminating and time.monotonic() < deadline:
+            time.sleep(min(0.2, max(0.0, deadline - time.monotonic())))
 
     while not is_terminating:
         _ensure_forwarder()
+        # 重拉前清理真机上未退出的旧 Runner，避免新旧实例互相顶死 8100 / testmanagerd
+        cleanup_stale_iphone_wda(bundle_id)
+        if is_terminating:
+            break
 
         # macOS 不强锁 --userspace，允许 pymobiledevice3 自动在 userspace 与 native_tunnel (免 root) 间容灾切换
         xcuitest_cmd = (
@@ -336,6 +409,7 @@ def main() -> None:
             if sys.platform == "win32"
             else _build_pmd3_cmd("developer", "dvt", "xcuitest", bundle_id)
         )
+        launch_ts = time.monotonic()
         wda_proc = subprocess.Popen(
             xcuitest_cmd,
             stdout=subprocess.PIPE,
@@ -347,15 +421,19 @@ def main() -> None:
         )
 
         ready_event = threading.Event()
+        runner_started_event = threading.Event()
+        current_proc = wda_proc
 
-        def _poll_status() -> None:
-            """后台轮询 8100 服务就绪状态"""
+        def _poll_status(target_proc: subprocess.Popen, started_evt: threading.Event, ready_evt: threading.Event) -> None:
+            """后台轮询 8100 服务就绪状态（等待新 Runner 挂载后再判就绪，避免误命中旧残留进程）"""
             nonlocal has_shown_ready
+            # 先等待新测试计划挂载（最多 4 秒），杜绝旧 Runner 残留引发的假就绪日志
+            started_evt.wait(timeout=4.0)
             for _ in range(60):
-                if is_terminating or (wda_proc and wda_proc.poll() is not None):
+                if is_terminating or target_proc.poll() is not None:
                     break
                 if check_wda_ready():
-                    ready_event.set()
+                    ready_evt.set()
                     if not has_shown_ready:
                         has_shown_ready = True
                         print()
@@ -374,7 +452,11 @@ def main() -> None:
                     return
                 time.sleep(1.0)
 
-        threading.Thread(target=_poll_status, daemon=True).start()
+        threading.Thread(
+            target=_poll_status,
+            args=(current_proc, runner_started_event, ready_event),
+            daemon=True,
+        ).start()
 
         try:
             while not is_terminating:
@@ -404,6 +486,7 @@ def main() -> None:
                 if "didBeginExecutingTestPlan" in cleaned:
                     print("  ➜ 测试计划已挂载，正在启动真机 Runner...")
                 elif "testCaseDidStart: UITestingUITests/testRunner" in cleaned:
+                    runner_started_event.set()
                     print("  ➜ 真机 Runner 已进入就绪监听循环 (Listening)...")
                 elif not ready_event.is_set():
                     if "ERROR" in cleaned or "Exception" in cleaned or "failed" in cleaned:
@@ -417,6 +500,12 @@ def main() -> None:
             break
 
         exit_code = wda_proc.poll()
+        uptime = time.monotonic() - launch_ts
+        if uptime >= 30.0:
+            consecutive_fast_exits = 0
+        else:
+            consecutive_fast_exits += 1
+
         if exit_code not in (0, None):
             joined_recent = "\n".join(recent_logs)
             if "Failed to start service" in joined_recent or "mounter auto-mount" in joined_recent:
@@ -428,17 +517,26 @@ def main() -> None:
                 print("    2. 或前往 iPhone【设置 -> 通用 -> VPN 与设备管理】点击开发者证书并【信任/验证应用】；")
                 print("    3. 请确认 iPhone 屏幕处于解锁亮屏状态。")
             else:
-                print(f"\n⚠️  [警告] WDA 守护进程退出 (退出码: {exit_code})，可能原因：")
-                print("    1. 手机屏幕自动锁定/休眠（导致 iOS 系统杀死调试 Runner）；")
-                print("    2. USB 数据线连接出现瞬时断开或供电不足。")
+                print(f"\n⚠️  [警告] WDA 守护进程退出 (退出码: {exit_code}, 存活: {uptime:.1f}s)，可能原因：")
+                print("    1. 手机屏幕自动锁定/休眠（导致 iOS 系统挂起或终止调试 Runner）；")
+                print("    2. 其他工具（如 Appium Inspector / 投屏）并发抢占了 iOS 17+ 独占 userspace 隧道；")
+                print("    3. USB 数据线连接出现瞬时断开或供电不足。")
+                if consecutive_fast_exits >= 3 and "disconnected before the test plan finished" in joined_recent:
+                    print(
+                        f"    💡 [高频断连提醒] 已连续 {consecutive_fast_exits} 次短时断连："
+                        "请检查 iPhone【自动锁定】是否设为【永不】，并关闭空闲的 Appium Inspector / 重复投屏窗口。"
+                    )
                 if recent_logs:
                     print("    --- 诊断详情 (最后几行日志) ---")
                     for err_line in list(recent_logs)[-3:]:
                         print(f"    | {err_line}")
                     print("    -----------------------------")
             recent_logs.clear()
-            print("  🔄 [Watchdog] 看门狗正在 2 秒后自动重新拉起 WDA 守护进程...\n")
-            time.sleep(2.0)
+
+        backoff_idx = min(max(0, consecutive_fast_exits - 1), len(backoff_schedule) - 1) if consecutive_fast_exits > 0 else 0
+        retry_delay = backoff_schedule[backoff_idx]
+        print(f"  🔄 [Watchdog] 看门狗正在 {retry_delay:.0f} 秒后自动重新拉起 WDA 守护进程...\n")
+        _interruptible_sleep(retry_delay)
 
 
 if __name__ == "__main__":

@@ -241,7 +241,7 @@ from locators.chat.core.chat_locator_hos import _ChatLocatorHos
 from locators.chat.core.chat_locator_ios import _ChatLocatorIos
 
 
-class ChatLocator(_ChatLocatorHos, _ChatLocatorAndroid, _ChatLocatorIos, metaclass=DynamicLocatorMeta):
+class ChatLocator(_ChatLocatorIos, _ChatLocatorAndroid, _ChatLocatorHos, metaclass=DynamicLocatorMeta):
     """跨端聊天核心定位器（支持 IDE Ctrl + 鼠标左键直接跳转定义，运行时按设备平台动态分发）"""
 
     _android_cls = _ChatLocatorAndroid

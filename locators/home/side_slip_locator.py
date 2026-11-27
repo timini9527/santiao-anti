@@ -83,7 +83,7 @@ from locators.home.side_slip_locator_hos import _SideSlipLocatorHos
 from locators.home.side_slip_locator_ios import _SideSlipLocatorIos
 
 
-class SideSlipLocator(_SideSlipLocatorHos, _SideSlipLocatorAndroid, _SideSlipLocatorIos, metaclass=DynamicLocatorMeta):
+class SideSlipLocator(_SideSlipLocatorIos, _SideSlipLocatorAndroid, _SideSlipLocatorHos, metaclass=DynamicLocatorMeta):
     """跨端左侧侧滑抽屉定位器（支持 IDE Ctrl + 鼠标左键直接跳转定义，运行时按设备平台动态分发）"""
 
     _android_cls = _SideSlipLocatorAndroid

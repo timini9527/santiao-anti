@@ -28,10 +28,10 @@ PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
 BUILD_DMG = True
 
 # 控制 GitHub 云端构建的目标架构 (修改此变量后直接运行本脚本即可按需单独打包):
-# - ""   : 仅打包 Intel x86_64 版本 (Windows 上的 Mac 虚拟机 / Intel Mac 专用)
+# - "x64"   : 仅打包 Intel x86_64 版本 (Windows 上的 Mac 虚拟机 / Intel Mac 专用)
 # - "arm64" : 仅打包 Apple Silicon 版本 (M1/M2/M3/M4 Mac 真机专用，约 2 分钟完成)
 # - "both"  : 同时并行打包两个架构版本         
-TARGET_MAC_ARCH = "x64"       
+TARGET_MAC_ARCH = "arm64"       
 
 APP_NAME = "三条IM自动化测试控制台"
 BUNDLE_ID = "com.santiao.qa.desktop"
@@ -336,8 +336,30 @@ def build_mac(build_dmg_flag: bool = BUILD_DMG):
         "--hidden-import=desktop_app.ui.devices_page",
         "--hidden-import=desktop_app.ui.reports_page",
         "--hidden-import=desktop_app.ui.inspector_page",
-        "--hidden-import=desktop_app.ui.inspector_perf_ext",
         "--hidden-import=desktop_app.ui.harmony_native_inspector",
+        "--hidden-import=desktop_app.ui.inspector.common.icons",
+        "--hidden-import=desktop_app.ui.inspector.common.dialogs",
+        "--hidden-import=desktop_app.ui.inspector.common.widgets",
+        "--hidden-import=desktop_app.ui.inspector.locator.xpath_engine",
+        "--hidden-import=desktop_app.ui.inspector.locator.ios_selector",
+        "--hidden-import=desktop_app.ui.inspector.locator.harmony_hypium",
+        "--hidden-import=desktop_app.ui.inspector.platforms.base",
+        "--hidden-import=desktop_app.ui.inspector.platforms.harmony",
+        "--hidden-import=desktop_app.ui.inspector.platforms.harmony_cast",
+        "--hidden-import=desktop_app.ui.inspector.platforms.android",
+        "--hidden-import=desktop_app.ui.inspector.platforms.android_cast",
+        "--hidden-import=desktop_app.ui.inspector.platforms.ios_service",
+        "--hidden-import=desktop_app.ui.inspector.platforms.ios",
+        "--hidden-import=desktop_app.ui.inspector.platforms.ios_cast",
+        "--hidden-import=desktop_app.ui.inspector.platforms.registry",
+        "--hidden-import=desktop_app.ui.inspector.layout.parser",
+        "--hidden-import=desktop_app.ui.inspector.layout.dom_tree_builder",
+        "--hidden-import=desktop_app.ui.inspector.workers.screencast_worker",
+        "--hidden-import=desktop_app.ui.inspector.workers.capture_worker",
+        "--hidden-import=desktop_app.ui.inspector.views.screen_canvas",
+        "--hidden-import=desktop_app.ui.inspector.views.dom_tree_view",
+        "--hidden-import=desktop_app.ui.inspector.views.search_dialog",
+        "--hidden-import=desktop_app.ui.inspector.views.main_inspector",
         "--hidden-import=desktop_app.core.file_watcher",
         "--hidden-import=desktop_app.core.report_scanner",
         "--hidden-import=desktop_app.core.devices",
