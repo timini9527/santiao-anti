@@ -1,8 +1,3 @@
-# Windows 使用 iOS 自动化测试教程
-
-下面是可直接复制成 `Windows_iOS_Real_Device_Appium_Guide.md` 的版本。
-
-```
 # Windows 连接 iOS 真机做 Appium 自动化教程
 
 ## 0. 先看结论
@@ -282,6 +277,4 @@ locators/
 - tidevice：https://github.com/alibaba/tidevice
 - go-ios：https://github.com/danielpaulus/go-ios
 
-```
-关键点再强调一次：你要在 Windows 上直连 iOS 真机可以做，但前提是 WDA 已经被签名、安装，并且能通过 `tidevice wdaproxy` 或类似工具跑起来。没有这一步，Windows 不能像 Android 一样直接安装驱动后就开始定位元素。
-```
+> **关键点再强调一次**：在 Windows 上直连 iOS 真机可行，但前提是 WDA 已经被签名、安装，并且能通过 `tidevice wdaproxy` 或类似工具跑起来。没有这一步，Windows 不能像 Android 一样直接安装驱动后就开始定位元素。

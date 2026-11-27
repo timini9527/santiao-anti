@@ -47,3 +47,18 @@ class ToastMsg(StrEnum):
     # --------------------------------------------------------------------------
     ALREADY_ADDED = "已添加"
     EMOJI_ALREADY_ADDED = "该表情已添加"
+
+    def for_platform(self, platform: str | None = None) -> str:
+        """
+        按运行平台返回对应 Toast 文案；未配置平台特例时回退默认文案。
+        :param platform: 运行平台名称（如 'android' / 'harmonyos' / 'ios'）
+        :return: 适配目标平台的预期 Toast 文本
+        """
+        platform_key = (platform or "").strip().lower()
+        return _PLATFORM_TOAST_OVERRIDES.get((self, platform_key), str(self))
+
+
+# 仅登记与默认文案不一致的平台特例，避免枚举名出现 _HOS / _IOS 后缀膨胀
+_PLATFORM_TOAST_OVERRIDES: dict[tuple[ToastMsg, str], str] = {
+    (ToastMsg.SWITCH_NETWORK, "harmonyos"): "请检查网络或SIM卡后重试",
+}
