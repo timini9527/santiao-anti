@@ -420,6 +420,7 @@ def build(build_installer: bool = BUILD_INSTALLER):
         "--hidden-import=desktop_app.ui.devices_page",
         "--hidden-import=desktop_app.ui.reports_page",
         "--hidden-import=desktop_app.ui.inspector_page",
+        "--hidden-import=desktop_app.ui.inspector_perf_ext",
         "--hidden-import=desktop_app.ui.harmony_native_inspector",
         "--hidden-import=desktop_app.core.collector",
         "--hidden-import=desktop_app.core.devices",

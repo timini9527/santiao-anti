@@ -133,7 +133,8 @@ def ensure_developer_disk_mounted(force: bool = False) -> bool:
 
 
 def get_wda_bundle_id() -> str:
-    """自动获取真机已安装的 WDA Bundle ID，获取不到时使用默认值"""
+    """自动获取真机已安装的 WDA Bundle ID（优先 tidevice，兜底 pymobiledevice3 apps list，最后回退默认值）"""
+    creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
     try:
         res = subprocess.run(
             _build_tidevice_cmd("applist"),
@@ -142,6 +143,7 @@ def get_wda_bundle_id() -> str:
             encoding="utf-8",
             errors="replace",
             timeout=6,
+            creationflags=creationflags,
         )
         for line in res.stdout.splitlines():
             if "WebDriverAgentRunner.xctrunner" in line:
@@ -150,6 +152,30 @@ def get_wda_bundle_id() -> str:
                     return parts[0]
     except Exception:
         pass
+
+    # 兜底：通过 pymobiledevice3 apps list 检索真实已安装的 WDA Bundle ID（兼容无 tidevice 的 macOS 环境）
+    try:
+        res = subprocess.run(
+            _build_pmd3_cmd("apps", "list"),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=8,
+            creationflags=creationflags,
+        )
+        combined = f"{res.stdout}\n{res.stderr}"
+        m = re.search(r'["\']([A-Za-z0-9_.\-]*WebDriverAgentRunner\.xctrunner[A-Za-z0-9_.\-]*)["\']', combined, re.IGNORECASE)
+        if m:
+            return m.group(1)
+        for line in combined.splitlines():
+            if "webdriveragentrunner.xctrunner" in line.lower():
+                tokens = re.findall(r"[A-Za-z0-9_.\-]*WebDriverAgentRunner\.xctrunner[A-Za-z0-9_.\-]*", line, re.IGNORECASE)
+                if tokens:
+                    return tokens[0]
+    except Exception:
+        pass
+
     return DEFAULT_WDA_BUNDLE_ID
 
 

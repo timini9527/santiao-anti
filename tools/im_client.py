@@ -270,29 +270,79 @@ class AppRuntimeBridge:
                 console.log("[Bridge] 安装装扮旁路 Hook 异常: " + e.toString());
             }
             try {
-                var sensitiveCls = Java.use('com.santiao.stim.STIMImpl$login$4');
-                sensitiveCls.onCheckSensitiveRemind.overload(strCls, 'boolean', strCls).implementation = function(chatId, isGroup, content) {
-                    // 必须原样返回传入的 content（或 null），返回空串会导致 TextMessage.content 被置空、接收端显示为 [消息]
-                    if (_skipSendDbWrite) return content;
-                    return this.onCheckSensitiveRemind(chatId, isGroup, content);
-                };
+                // 动态定位敏感词回调类，避免 App 升级后 Kotlin 匿名内部类编号 ($login$4 -> $login$5) 漂移失效
+                var sensitiveTargetCls = null;
+                try {
+                    var wsmCls = Java.use('com.network.lib.socket.WebSocketManager');
+                    var sf = wsmCls.class.getDeclaredField('sensitiveRemindCheckListener');
+                    sf.setAccessible(true);
+                    var listenerObj = sf.get(wsmCls.INSTANCE.value);
+                    if (listenerObj) {
+                        sensitiveTargetCls = Java.use(listenerObj.getClass().getName());
+                    }
+                } catch (e1) {}
+                if (!sensitiveTargetCls) {
+                    for (var si = 1; si <= 15; si++) {
+                        try {
+                            var cand = Java.use('com.santiao.stim.STIMImpl$login$' + si);
+                            if (cand.onCheckSensitiveRemind) {
+                                sensitiveTargetCls = cand;
+                                break;
+                            }
+                        } catch (e2) {}
+                    }
+                }
+                if (sensitiveTargetCls && sensitiveTargetCls.onCheckSensitiveRemind) {
+                    sensitiveTargetCls.onCheckSensitiveRemind.overload(strCls, 'boolean', strCls).implementation = function(chatId, isGroup, content) {
+                        // 必须原样返回传入的 content（或 null），返回空串会导致 TextMessage.content 被置空、接收端显示为 [消息]
+                        if (_skipSendDbWrite) return content;
+                        return this.onCheckSensitiveRemind(chatId, isGroup, content);
+                    };
+                }
             } catch (e) {
                 console.log("[Bridge] 安装敏感词旁路 Hook 异常: " + e.toString());
             }
 
             // 4. 跳过 ACK 回流后的查表、退避重试协程与状态日志写盘（pendingMessages 已先于回调清理，不影响在途计数）
             try {
-                var ackCls = Java.use('com.santiao.stim.STIMImpl$login$6');
-                ackCls.onMessageSendStatus.overload(
-                    'com.network.lib.socket.ImBaseMessage',
-                    'com.network.lib.socket.messagehelp.MsgTalkSendStatus',
-                    contCls
-                ).implementation = function(msg, status, cont) {
-                    if (_skipSendDbWrite) return unitCls.INSTANCE.value;
-                    return this.onMessageSendStatus(msg, status, cont);
-                };
+                // 动态扫描 STIMImpl$login$1..15 定位 ACK 回调类，兼容 App 升级后的编号漂移 ($login$6 -> $login$7)
+                var ackTargetCls = null;
+                for (var ai = 1; ai <= 15; ai++) {
+                    try {
+                        var ackCand = Java.use('com.santiao.stim.STIMImpl$login$' + ai);
+                        if (ackCand.onMessageSendStatus) {
+                            ackTargetCls = ackCand;
+                            break;
+                        }
+                    } catch (e3) {}
+                }
+                if (ackTargetCls && ackTargetCls.onMessageSendStatus) {
+                    ackTargetCls.onMessageSendStatus.overload(
+                        'com.network.lib.socket.ImBaseMessage',
+                        'com.network.lib.socket.messagehelp.MsgTalkSendStatus',
+                        contCls
+                    ).implementation = function(msg, status, cont) {
+                        if (_skipSendDbWrite) return unitCls.INSTANCE.value;
+                        return this.onMessageSendStatus(msg, status, cont);
+                    };
+                }
             } catch (e) {
                 console.log("[Bridge] 安装 ACK 回执旁路 Hook 异常: " + e.toString());
+            }
+
+            // 5. 旁路新版可靠发送的本地落库强校验 (ReliableSocketBinding.requiresFreeze)
+            //    免落库压测时本地 DB 未插入待发消息，若不跳过 freezeSend 会抛出
+            //    IllegalStateException("Pending send content is not durable") 并触发客户端主动断开重连
+            try {
+                var reliableBindingCls = Java.use('com.network.lib.socket.ReliableSocketBinding');
+                if (reliableBindingCls.requiresFreeze) {
+                    reliableBindingCls.requiresFreeze.overload('com.network.lib.socket.messagehelp.MsgTalkSend').implementation = function(sendMsg) {
+                        if (_skipSendDbWrite) return false;
+                        return this.requiresFreeze(sendMsg);
+                    };
+                }
+            } catch (e) {
+                console.log("[Bridge] 安装可靠发送落库校验旁路 Hook 异常: " + e.toString());
             }
             try {
                 var stimCls = Java.use('com.santiao.stim.STIMImpl');
@@ -1936,7 +1986,7 @@ if __name__ == "__main__":
         LOOP_INTERVAL_SECONDS = 5.0  # 每轮结束后的缓冲休眠时间（秒）
 
         # 每台设备对各自会话（专属群聊+公共单聊）单轮发送的消息数量（如设为 20 条）
-        COUNT_PER_TARGET = 100
+        COUNT_PER_TARGET = 10000
         # COUNT_PER_TARGET = 28572
 
         async def _run_with_loop(create_fn, start_fn, send_fn, stop_fn) -> None:

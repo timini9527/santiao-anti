@@ -191,10 +191,17 @@ class InspectorPage(QWidget):
             return
 
         try:
+            from desktop_app.ui.inspector_perf_ext import (
+                install_inspector_perf_patches,
+                optimize_inspector_instance,
+            )
+            install_inspector_perf_patches()
+
             from desktop_app.ui.harmony_native_inspector import HarmonyAppiumInspector
 
-            # 实例化审查器主窗体
+            # 实例化审查器主窗体并应用实例化级性能优化（属性表按需行高/分隔条轻量重算）
             self.inspector = HarmonyAppiumInspector()
+            optimize_inspector_instance(self.inspector)
             
             # 保存其原始 WindowFlags 供切换时还原
             self._original_flags = self.inspector.windowFlags()

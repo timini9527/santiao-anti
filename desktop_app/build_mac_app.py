@@ -336,6 +336,7 @@ def build_mac(build_dmg_flag: bool = BUILD_DMG):
         "--hidden-import=desktop_app.ui.devices_page",
         "--hidden-import=desktop_app.ui.reports_page",
         "--hidden-import=desktop_app.ui.inspector_page",
+        "--hidden-import=desktop_app.ui.inspector_perf_ext",
         "--hidden-import=desktop_app.ui.harmony_native_inspector",
         "--hidden-import=desktop_app.core.file_watcher",
         "--hidden-import=desktop_app.core.report_scanner",
