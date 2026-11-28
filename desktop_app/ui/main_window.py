@@ -15,13 +15,13 @@ import sys
 from typing import Dict, Any, List
 
 from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
-    QLabel, QPushButton, QStackedWidget, QFrame
+    QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
+    QLabel, QPushButton, QStackedWidget, QFrame, QToolTip
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPointF, QLineF
 from PyQt6.QtGui import (
     QPainter, QColor, QPen, QBrush, QLinearGradient, QRadialGradient,
-    QFont, QPainterPath, QMouseEvent, QPixmap, QIcon, QKeySequence, QShortcut
+    QFont, QPalette, QPainterPath, QMouseEvent, QPixmap, QIcon, QKeySequence, QShortcut
 )
 
 from ..config import desktop_config
@@ -50,10 +50,7 @@ class BrandLogoWidget(QWidget):
         base_dir = getattr(sys, '_MEIPASS', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         candidates = [
             os.path.join(base_dir, "desktop_app", "resources", "sant_logo_hd.png"),
-            os.path.join(base_dir, "desktop_app", "resources", "sant_logo.png"),
             os.path.join(os.path.dirname(__file__), "..", "resources", "sant_logo_hd.png"),
-            os.path.join(os.path.dirname(__file__), "..", "resources", "sant_logo.png"),
-            os.path.join(os.path.dirname(__file__), "..", "logo_crop.png"),
         ]
         for path in candidates:
             abs_p = os.path.abspath(path)
@@ -437,6 +434,15 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
+        # 强制切换至 Fusion 渲染引擎并校正 QToolTip 调色板，彻底根治 PyQt6 + Windows 11 下悬浮提示纯黑方框 Bug
+        app_inst = QApplication.instance()
+        if isinstance(app_inst, QApplication):
+            if app_inst.style().objectName().lower() != "fusion":
+                app_inst.setStyle("Fusion")
+            tip_pal = QToolTip.palette()
+            tip_pal.setColor(QPalette.ColorRole.ToolTipBase, QColor("#ffffff"))
+            tip_pal.setColor(QPalette.ColorRole.ToolTipText, QColor("#0f172a"))
+            QToolTip.setPalette(tip_pal)
         # 优化主窗口标题：简洁大气、专业高端
         self.setWindowTitle("三条 IM 自动化测试控制台")
 

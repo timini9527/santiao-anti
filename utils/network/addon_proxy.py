@@ -1,12 +1,26 @@
 import json
+import os
+import tempfile
+from pathlib import Path
 from mitmproxy import http
 from core.logger_utils import logger, LogIcon
+
+
+def _resolve_token_file() -> Path:
+    """解析捕获 Token 的共享落盘路径，避免强依赖当前工作目录。"""
+    try:
+        from config import LOG_DIR
+        target_dir = LOG_DIR
+    except Exception:
+        target_dir = Path(tempfile.gettempdir())
+    os.makedirs(target_dir, exist_ok=True)
+    return target_dir / "temp_token.txt"
 
 
 # 暂时用不到
 class TokenCaptureAddon:
 
-    def response(self, flow: http.HTTPFlow):
+    def response(self, flow: http.HTTPFlow) -> None:
         # 1. 过滤目标接口 (请替换为你 App 真实的登录接口 URL 路径)
         # 例如: https://api.myapp.com/v1/auth/login
         urls = flow.request.pretty_url
@@ -24,7 +38,8 @@ class TokenCaptureAddon:
                     logger.info(f"{LogIcon.SUCCESS} [Mitmproxy] 成功捕获 Token: {token[:20]}...")
 
                     # 4. 写入共享文件 (供测试框架读取)
-                    with open("temp_token.txt", "w", encoding="utf-8") as f:
+                    token_file = _resolve_token_file()
+                    with open(token_file, "w", encoding="utf-8") as f:
                         f.write(token)
             except Exception as e:
                 logger.error(f"{LogIcon.FAIL} [Mitmproxy] 解析 Token 失败: {e}")

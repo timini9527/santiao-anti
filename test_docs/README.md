@@ -6,12 +6,6 @@
 
 ## 🧭 业务大类快速导航目录 (按核心业务分为 9 大板块)
 
-### 📂 00_综合功能测试 `[共 1 个功能模块 / 1 个测试用例]`
-
-| 序号 | 业务功能模块 (Feature) | 原始代码脚本 | 业务用例文档 (点击直达) | 核心用例数 |
-| :---: | :--- | :--- | :--- | :---: |
-| 1 | **功能_demo** | `test_demo.py` | [功能_demo](00_综合功能测试/【功能_demo】test_demo.md) | `1` |
-
 ### 📂 01_核心冒烟测试(smoke_test) `[共 10 个功能模块 / 67 个测试用例]`
 
 | 序号 | 业务功能模块 (Feature) | 原始代码脚本 | 业务用例文档 (点击直达) | 核心用例数 |
@@ -59,7 +53,7 @@
 | 2 | **群助手-入群验证** | `test_group_bot_join_verify.py` | [群助手-入群验证](04_群聊体系与群助手(groups)/【群助手-入群验证】test_group_bot_join_verify.md) | `1` |
 | 3 | **群助手-禁言发送关键词-双端交互与拦截** | `test_group_bot_interaction.py` | [群助手-禁言发送关键词-双端交互与拦截](04_群聊体系与群助手(groups)/【群助手-禁言发送关键词-双端交互与拦截】test_group_bot_interaction.md) | `4` |
 | 4 | **群助手-禁止发送关键词** | `test_group_bot_keyword.py` | [群助手-禁止发送关键词](04_群聊体系与群助手(groups)/【群助手-禁止发送关键词】test_group_bot_keyword.md) | `6` |
-| 5 | **群助手-发言管理-两端验证** | `test_group_bot_speech_manage.py` | [群助手-发言管理-两端验证](04_群聊体系与群助手(groups)/【群助手-发言管理-两端验证】test_group_bot_speech_manage.md) | `2` |
+| 5 | **群助手-发言管理-两端验证** | `test_speech_management_double.py` | [群助手-发言管理-两端验证](04_群聊体系与群助手(groups)/【群助手-发言管理-两端验证】test_speech_management_double.md) | `2` |
 | 6 | **群助手-定时消息** | `test_group_bot_timed_msg.py` | [群助手-定时消息](04_群聊体系与群助手(groups)/【群助手-定时消息】test_group_bot_timed_msg.md) | `1` |
 | 7 | **群助手-进群欢迎语** | `test_group_bot_welcome.py` | [群助手-进群欢迎语](04_群聊体系与群助手(groups)/【群助手-进群欢迎语】test_group_bot_welcome.md) | `1` |
 | 8 | **群聊模块-发起群聊** | `test_group_create.py` | [群聊模块-发起群聊](04_群聊体系与群助手(groups)/【群聊模块-发起群聊】test_group_create.md) | `8` |

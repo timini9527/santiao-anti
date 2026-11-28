@@ -15,6 +15,7 @@ import os
 import sys
 import json
 import webbrowser
+from pathlib import Path
 from typing import List, Dict, Any, Optional
 
 from PyQt6.QtWidgets import (
@@ -538,7 +539,7 @@ class ReportsPage(QWidget):
             ]
             for cand in candidates:
                 if cand and os.path.exists(cand):
-                    webbrowser.open(f"file:///{os.path.abspath(cand)}")
+                    webbrowser.open(Path(cand).resolve().as_uri())
                     return
         reports_base = os.path.join(REPORTS_DIR, "allure_reports")
         if os.path.exists(reports_base):
@@ -547,7 +548,7 @@ class ReportsPage(QWidget):
                 dirs.sort(key=lambda x: os.path.getmtime(x), reverse=True)
                 idx_file = os.path.join(dirs[0], "index.html")
                 if os.path.exists(idx_file):
-                    webbrowser.open(f"file:///{os.path.abspath(idx_file)}")
+                    webbrowser.open(Path(idx_file).resolve().as_uri())
                     return
         QMessageBox.information(self, "Allure 报告", "当前任务尚未生成独立 HTML 报告，可在右侧仪表盘实时预览测试数据。")
 

@@ -420,6 +420,8 @@ def run_app():
             pass
 
     app = QApplication(sys.argv)
+    # 统一采用 Fusion 渲染风格，杜绝 Windows 11 原生 windows11 样式下 QToolTip 渲染为纯黑方块
+    app.setStyle("Fusion")
     app.setApplicationName("三条 IM 自动化测试控制台")
     app.setOrganizationName("SantiaoQA")
 

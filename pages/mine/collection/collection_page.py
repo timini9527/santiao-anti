@@ -5,6 +5,7 @@ from dateutil import parser
 from datetime import datetime
 import imagehash
 from PIL import Image
+from config import DATA_DIR
 from locators.mine.collection.collection_locator import CollectionLocator
 from selenium.common import StaleElementReferenceException
 from selenium.webdriver.remote.webelement import WebElement
@@ -16,8 +17,8 @@ from pages.mine.mine_page import MinePage
 
 class CollectionPage(ChatCollectionPage):
 
-    IMG_PRE = "data/images/collection_pre/collect_pre_"
-    IMG_AFT = "data/images/collection_aft/"
+    IMG_PRE: str = str(DATA_DIR / "images" / "collection_pre" / "collect_pre_")
+    IMG_AFT: str = str(DATA_DIR / "images" / "collection_aft") + os.sep
 
     # 收藏页面-将字符串转换成时间戳
     def str_to_dtime(self, dt_str: str, index: int = 0) -> datetime:

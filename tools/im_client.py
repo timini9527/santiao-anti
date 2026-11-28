@@ -576,8 +576,14 @@ class AppRuntimeBridge:
 
     @classmethod
     def _ensure_local_frida_cache(cls, expected_ver: str, frida_abi: str) -> Optional[Path]:
-        """确保本机临时目录存在对应版本与架构的 frida-server 二进制缓存，缺失时自动拉取解压。"""
-        cache_path = Path(tempfile.gettempdir()) / f"frida-server-{expected_ver}-{frida_abi}"
+        """确保项目内缓存目录存在对应版本与架构的 frida-server 二进制缓存，缺失时自动拉取解压。"""
+        try:
+            from config import LOG_DIR
+            cache_dir = LOG_DIR / "frida_cache"
+        except Exception:
+            cache_dir = Path(__file__).resolve().parent.parent / "logs" / "frida_cache"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        cache_path = cache_dir / f"frida-server-{expected_ver}-{frida_abi}"
         with cls._frida_cache_lock:
             if cache_path.exists() and cache_path.stat().st_size > 10_000_000:
                 return cache_path

@@ -107,7 +107,7 @@
 | 文档名称 | 相对项目路径 | 核心作用 |
 | :--- | :--- | :--- |
 | **项目工程与测试架构规则** | [AGENTS.md](../AGENTS.md) | 规范 AI 协作角色、Python 3.13+ 约束、Git 提交规范、目录职责与等待/异常处理原则 |
-| **业务测试用例全景总览手册** | [test_docs/README.md](../test_docs/README.md) | 面向产研测全员的业务用例库导航，汇总 `00_综合 ~ 09_个人与举报` 共 9 大板块业务文档 |
+| **业务测试用例全景总览手册** | [test_docs/README.md](../test_docs/README.md) | 面向产研测全员的业务用例库导航，汇总 `01_核心冒烟 ~ 09_个人与举报` 共 9 大板块业务文档 |
 | **接口高性能压测说明** | [performance/README.md](../performance/README.md) | 阐述 `performance/` 目录下基于 Locust + `FastHttpUser` 的 IM 接口高并发压测方案 |
 | **Windows iOS USB 驱动说明** | [tools/drivers/ios/README.md](../tools/drivers/ios/README.md) | 说明 Apple 官方 64 位 USB 通信驱动组件（`AppleMobileDeviceSupport64.msi`）的作用与端口监听机制 |
 

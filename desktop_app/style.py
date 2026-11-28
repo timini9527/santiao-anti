@@ -11,19 +11,46 @@
 import os
 import sys
 
+from desktop_app.core.path_resolver import SmartPathResolver
+from desktop_app.core.paths import WRITABLE_ROOT
+
 _CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 _RESOURCES_DIR = os.path.join(_CURRENT_DIR, "resources")
 
 
+def _resolve_arrow_icon_dir() -> str:
+    """解析下拉箭头图标目录：优先定位内置资源目录，若缺失且只读则回退至可写缓存目录。"""
+    asset_res_dir = SmartPathResolver.get_asset_path("desktop_app/resources")
+    for cand_dir in (asset_res_dir, _RESOURCES_DIR):
+        if cand_dir and os.path.isfile(os.path.join(cand_dir, "chevron_down.png")) and os.path.isfile(
+            os.path.join(cand_dir, "chevron_down_hover.png")
+        ):
+            return cand_dir
+
+    # 若资源文件尚未存在，尝试在原生资源目录生成；无写权限（如 macOS 只读 DMG）时回退至 WRITABLE_ROOT
+    for target_dir in (_RESOURCES_DIR, os.path.join(WRITABLE_ROOT, "logs", "ui_icons")):
+        try:
+            os.makedirs(target_dir, exist_ok=True)
+            probe = os.path.join(target_dir, ".icon_probe")
+            with open(probe, "w", encoding="utf-8") as f:
+                f.write("ok")
+            os.remove(probe)
+            return target_dir
+        except Exception:
+            continue
+    return _RESOURCES_DIR
+
+
 def _get_or_create_arrow_icons() -> tuple[str, str]:
     """获取或自愈生成下拉箭头高清图标绝对路径 (支持 Windows 正斜杠标准 URL 规范)"""
-    os.makedirs(_RESOURCES_DIR, exist_ok=True)
-    icon_normal = os.path.join(_RESOURCES_DIR, "chevron_down.png").replace("\\", "/")
-    icon_hover = os.path.join(_RESOURCES_DIR, "chevron_down_hover.png").replace("\\", "/")
+    icon_dir = _resolve_arrow_icon_dir()
+    icon_normal = os.path.join(icon_dir, "chevron_down.png").replace("\\", "/")
+    icon_hover = os.path.join(icon_dir, "chevron_down_hover.png").replace("\\", "/")
 
     # 若资源文件缺失，执行极速自愈生成 (确保打包及各环境下 100% 可用)
     if not (os.path.exists(icon_normal) and os.path.exists(icon_hover)):
         try:
+            os.makedirs(icon_dir, exist_ok=True)
             from PyQt6.QtGui import QImage, QPainter, QPen, QColor, QPainterPath
             from PyQt6.QtCore import Qt, QPointF
             for path, hex_col in [(icon_normal, "#64748b"), (icon_hover, "#2563eb")]:
@@ -59,6 +86,16 @@ QWidget {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
     font-size: 13px;
     outline: none;
+}
+
+/* 悬浮提示框统一白金主题：移除圆角避免 Windows 11 DWM 合成层将 QTipLabel 涂黑 */
+QToolTip {
+    background-color: #ffffff;
+    color: #0f172a;
+    border: 1px solid #cbd5e1;
+    border-radius: 0px;
+    padding: 5px 10px;
+    font-size: 12px;
 }
 
 /* ==================== 1. 全球导航 Rail (与 Web 端 1:1) ==================== */

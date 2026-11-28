@@ -9,15 +9,18 @@
 import asyncio
 import base64
 import contextlib
+import http.client
 import json
 import logging
 import queue
+import socket
 import subprocess
 import sys
 import threading
 import time
 import urllib.request
-from typing import Any, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple
+from urllib.parse import urlparse
 
 from PyQt6.QtCore import QBuffer, QByteArray
 from PyQt6.QtGui import QImage
@@ -623,6 +626,96 @@ def run_ios_pymobiledevice3_stream(worker: Any, cache_cls: Any) -> bool:
         loop.close()
 
 
+def _wait_tcp_port_ready(
+    host: str,
+    port: int,
+    timeout: float = 2.5,
+    stop_check: Optional[Callable[[], bool]] = None,
+) -> bool:
+    """轮询探测本地转发端口是否已完成监听绑定，避免冻结态子进程冷启动竞态"""
+    deadline = time.monotonic() + max(0.1, timeout)
+    while time.monotonic() < deadline:
+        if stop_check is not None and not stop_check():
+            return False
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(0.12)
+                if s.connect_ex((host, port)) == 0:
+                    return True
+        except Exception:
+            pass
+        time.sleep(0.06)
+    return False
+
+
+def _apply_wda_mjpeg_settings(wda_url: str, framerate: int = 20) -> None:
+    """通过有效 WDA 会话下发 MJPEG 帧率与防阻塞参数（兼顾流畅投屏与 /source DOM 快速响应）"""
+    base_url = wda_url.rstrip("/")
+    session_id = ""
+    try:
+        with urllib.request.urlopen(urllib.request.Request(f"{base_url}/status"), timeout=1.0) as resp:
+            if resp.status == 200:
+                status_data = json.loads(resp.read().decode("utf-8", errors="ignore"))
+                session_id = str(status_data.get("sessionId") or "").strip()
+    except Exception:
+        return
+
+    if not session_id:
+        try:
+            create_req = urllib.request.Request(
+                f"{base_url}/session",
+                data=json.dumps({
+                    "capabilities": {
+                        "alwaysMatch": {
+                            "shouldWaitForQuiescence": False,
+                            "waitForQuiescence": False,
+                        },
+                        "firstMatch": [{}],
+                    }
+                }).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(create_req, timeout=2.5) as resp:
+                if resp.status == 200:
+                    sess_data = json.loads(resp.read().decode("utf-8", errors="ignore"))
+                    session_id = str(
+                        sess_data.get("sessionId") or (sess_data.get("value") or {}).get("sessionId") or ""
+                    ).strip()
+        except Exception as e:
+            logger.debug(f"[iOS投屏] 创建轻量 WDA 会话失败，跳过 settings 下发: {e}")
+            return
+
+    if not session_id:
+        return
+
+    try:
+        settings_payload = json.dumps({
+            "settings": {
+                "mjpegServerFramerate": framerate,
+                "mjpegServerScreenshotQuality": 25,
+                "mjpegScalingFactor": 50,
+                "screenshotQuality": 2,
+                "waitForIdleTimeout": 0,
+                "animationCoolOffTimeout": 0,
+                "useFirstMatch": True,
+                "snapshotMaxDepth": 25,
+                "snapshotMaxChildren": 25,
+                "boundElementsByIndex": True,
+            }
+        }).encode("utf-8")
+        set_req = urllib.request.Request(
+            f"{base_url}/session/{session_id}/appium/settings",
+            data=settings_payload,
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(set_req, timeout=1.5):
+            logger.info(
+                f"[iOS投屏] 已生效 WDA 均衡投屏配置 ({framerate}fps / scale=50 / q=25 / waitForIdle=0)"
+            )
+    except Exception as e:
+        logger.debug(f"[iOS投屏] 下发 WDA MJPEG settings 异常: {e}")
+
+
 def run_ios_legacy_fallback_stream(worker: Any, cache_cls: Any, is_ios_17_plus: bool = True) -> bool:
     """WDA MJPEG (9100) -> WDA /screenshot 轮询 -> 进程内 DvtProvider/ScreenshotService"""
     emitted_any = False
@@ -642,30 +735,23 @@ def run_ios_legacy_fallback_stream(worker: Any, cache_cls: Any, is_ios_17_plus: 
                     stderr=subprocess.DEVNULL,
                     creationflags=creationflags,
                 )
-                time.sleep(0.25)
+                # 等待 9100 端口实际进入 LISTENING 状态，避免打包态子进程冷启动较慢导致误降级
+                _wait_tcp_port_ready(
+                    "127.0.0.1",
+                    9100,
+                    timeout=2.5,
+                    stop_check=lambda: bool(
+                        worker._is_running
+                        and worker._ios_mjpeg_relay_proc is not None
+                        and worker._ios_mjpeg_relay_proc.poll() is None
+                    ),
+                )
             except Exception:
                 pass
 
-    wda_online = IosWdaManager.test_wda_status(wda_url, timeout=0.25)
+    wda_online = IosWdaManager.test_wda_status(wda_url, timeout=0.35)
     if wda_online:
-        try:
-            settings_payload = json.dumps({
-                "settings": {
-                    "mjpegServerFramerate": 60,
-                    "mjpegServerScreenshotQuality": 30,
-                    "mjpegScalingFactor": 60,
-                    "screenshotQuality": 2,
-                }
-            }).encode("utf-8")
-            set_req = urllib.request.Request(
-                f"{wda_url}/appium/settings",
-                data=settings_payload,
-                headers={"Content-Type": "application/json"},
-            )
-            with urllib.request.urlopen(set_req, timeout=0.8):
-                pass
-        except Exception:
-            pass
+        _apply_wda_mjpeg_settings(wda_url)
 
         candidate_urls = [
             "http://127.0.0.1:9100",
@@ -675,16 +761,25 @@ def run_ios_legacy_fallback_stream(worker: Any, cache_cls: Any, is_ios_17_plus: 
         ]
 
         mjpeg_resp = None
-        for test_url in candidate_urls:
-            if not worker._is_running:
+        for attempt in range(3):
+            if not worker._is_running or mjpeg_resp is not None:
                 break
-            try:
-                resp = urllib.request.urlopen(urllib.request.Request(test_url), timeout=0.8)
-                if resp.status == 200:
-                    mjpeg_resp = resp
+            for test_url in candidate_urls:
+                if not worker._is_running:
                     break
-            except Exception:
-                continue
+                # 仅首轮探测全量候选，重试阶段专注 9100 主通道以缩短建连耗时
+                if attempt > 0 and not test_url.endswith(":9100"):
+                    continue
+                try:
+                    resp = urllib.request.urlopen(urllib.request.Request(test_url), timeout=2.0)
+                    if resp.status == 200:
+                        mjpeg_resp = resp
+                        logger.info(f"[iOS投屏] 已接通 WDA MJPEG 长连接流: {test_url}")
+                        break
+                except Exception:
+                    continue
+            if mjpeg_resp is None and attempt < 2 and worker._is_running:
+                time.sleep(0.25)
 
         if mjpeg_resp is not None:
             try:
@@ -731,7 +826,7 @@ def run_ios_legacy_fallback_stream(worker: Any, cache_cls: Any, is_ios_17_plus: 
                                     cache_cls.latest_frame_bytes = latest_jpg
                                     if not emitted_any:
                                         emitted_any = True
-                                        worker.state_changed.emit(True, "投屏已连接 (WDA MJPEG 通道)")
+                                        worker.state_changed.emit(True, "投屏已连接 (WDA MJPEG 高帧率通道)")
                                     worker.frame_ready.emit(qimg, b"")
                 if emitted_any:
                     return True
@@ -742,17 +837,25 @@ def run_ios_legacy_fallback_stream(worker: Any, cache_cls: Any, is_ios_17_plus: 
         return emitted_any
 
     if IosWdaManager.test_wda_status(wda_url, timeout=0.6) and worker._is_running:
+        parsed_wda = urlparse(wda_url)
+        wda_host = parsed_wda.hostname or "127.0.0.1"
+        wda_port = parsed_wda.port or 8100
+        conn: Optional[http.client.HTTPConnection] = None
         last_poll_t = 0.0
         consecutive_errors = 0
-        while worker._is_running:
-            try:
-                now = time.time()
-                if worker.ui_ready or (now - last_poll_t >= 0.035):
-                    last_poll_t = now
-                    req = urllib.request.Request(f"{wda_url}/screenshot", headers={"Accept": "application/json"})
-                    with urllib.request.urlopen(req, timeout=1.2) as resp:
+        try:
+            while worker._is_running:
+                try:
+                    now = time.time()
+                    if worker.ui_ready or (now - last_poll_t >= 0.035):
+                        last_poll_t = now
+                        if conn is None:
+                            conn = http.client.HTTPConnection(wda_host, wda_port, timeout=1.5)
+                        conn.request("GET", "/screenshot", headers={"Accept": "application/json", "Connection": "keep-alive"})
+                        resp = conn.getresponse()
+                        body = resp.read()
                         if resp.status == 200:
-                            data = json.loads(resp.read().decode("utf-8"))
+                            data = json.loads(body.decode("utf-8"))
                             b64_img = data.get("value", "")
                             if b64_img:
                                 raw_bytes = base64.b64decode(b64_img)
@@ -765,16 +868,26 @@ def run_ios_legacy_fallback_stream(worker: Any, cache_cls: Any, is_ios_17_plus: 
                                     cache_cls.latest_frame_bytes = raw_bytes
                                     if not emitted_any:
                                         emitted_any = True
-                                        worker.state_changed.emit(True, "投屏已连接 (WDA自动化通道)")
+                                        worker.state_changed.emit(True, "投屏已连接 (WDA 截图兜底通道)")
                                     worker.frame_ready.emit(qimg, b"")
                                     consecutive_errors = 0
-            except Exception:
-                consecutive_errors += 1
-                if consecutive_errors > 8:
-                    break
-                time.sleep(0.08)
-                continue
-            time.sleep(0.005)
+                        else:
+                            raise RuntimeError(f"HTTP {resp.status}")
+                except Exception:
+                    if conn is not None:
+                        with contextlib.suppress(Exception):
+                            conn.close()
+                        conn = None
+                    consecutive_errors += 1
+                    if consecutive_errors > 8:
+                        break
+                    time.sleep(0.08)
+                    continue
+                time.sleep(0.005)
+        finally:
+            if conn is not None:
+                with contextlib.suppress(Exception):
+                    conn.close()
         if emitted_any:
             return True
 

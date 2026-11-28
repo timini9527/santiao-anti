@@ -45,6 +45,7 @@ try:
     from ..core.test_collector import TestCollectorService
     from ..core.test_runner import TestExecutionWorker, clean_ansi_log
     from ..core.path_resolver import SmartPathResolver
+    from ..core.paths import LOGS_DIR
     from ..core.report_scanner import get_reports_count
     from .allure_dashboard import AllureDashboardWidget
     from .receipt_dialog import WebReceiptDialog
@@ -55,6 +56,7 @@ except (ImportError, ValueError):
     from desktop_app.core.test_collector import TestCollectorService
     from desktop_app.core.test_runner import TestExecutionWorker, clean_ansi_log
     from desktop_app.core.path_resolver import SmartPathResolver
+    from desktop_app.core.paths import LOGS_DIR
     from desktop_app.core.report_scanner import get_reports_count
     from desktop_app.ui.allure_dashboard import AllureDashboardWidget
     from desktop_app.ui.receipt_dialog import WebReceiptDialog
@@ -296,6 +298,8 @@ class MarkdownDocDialog(QDialog):
         try:
             if sys.platform == "win32":
                 os.startfile(self.doc_path)
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", self.doc_path])
             else:
                 subprocess.Popen(["xdg-open", self.doc_path])
         except Exception as e:
@@ -3027,10 +3031,10 @@ class MobilePage(QWidget):
         self.append_log("==================================================")
         self.append_log("▶ [启动服务] 正在准备拉起 Appium 集群服务 (跨平台原生模式)...")
 
-        # 严格优先从安装包文件夹目录 (应用主程序目录) 与工程根目录获取
+        # 严格优先从安装包文件夹目录 (应用主程序目录) 与工程根目录获取；日志统一写入可写目录 LOGS_DIR
         app_dir = Path(sys.executable).parent
         project_root = Path(SmartPathResolver.get_project_root())
-        logs_dir = project_root / "logs"
+        logs_dir = Path(LOGS_DIR)
         try:
             logs_dir.mkdir(parents=True, exist_ok=True)
         except Exception:
@@ -3522,7 +3526,7 @@ class MobilePage(QWidget):
         if sys.platform == "darwin":
             local_node_bin = os.path.expanduser("~/.local/node/bin")
             local_adb_bin = os.path.expanduser("~/Library/Android/sdk/platform-tools")
-            os.environ["PATH"] = f"{local_node_bin}:{local_adb_bin}:{os.environ.get('PATH', '')}"
+            os.environ["PATH"] = f"{local_node_bin}{os.pathsep}{local_adb_bin}{os.pathsep}{os.environ.get('PATH', '')}"
 
             npm_bin = shutil.which("npm") or (
                 os.path.join(local_node_bin, "npm") if os.path.isfile(os.path.join(local_node_bin, "npm")) else None
@@ -3543,6 +3547,9 @@ class MobilePage(QWidget):
                     'ARCH=$(uname -m); '
                     'if [ "$ARCH" = "arm64" ]; then NODE_ARCH="darwin-arm64"; else NODE_ARCH="darwin-x64"; fi; '
                     'NODE_VER="v22.14.0"; '
+                    'TMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/santiao_node.XXXXXX"); '
+                    'TMP_TAR="$TMP_DIR/node_mac.tar.gz"; '
+                    'trap \'rm -rf "$TMP_DIR"\' EXIT; '
                     'mkdir -p "$HOME/.local/node"; '
                     'URLS=('
                     '"https://npmmirror.com/mirrors/node/${NODE_VER}/node-${NODE_VER}-${NODE_ARCH}.tar.gz" '
@@ -3553,12 +3560,11 @@ class MobilePage(QWidget):
                     'DL_OK=0; '
                     'for U in "${URLS[@]}"; do '
                     'echo "尝试下载 Node.js: $U"; '
-                    'if curl -fL --progress-bar --connect-timeout 10 "$U" -o /tmp/node_mac.tar.gz; then DL_OK=1; break; fi; '
+                    'if curl -fL --progress-bar --connect-timeout 10 "$U" -o "$TMP_TAR"; then DL_OK=1; break; fi; '
                     'echo "当前源不可用，自动切换下一个镜像源..."; '
                     'done; '
                     'test "$DL_OK" = "1" && '
-                    'tar -xzf /tmp/node_mac.tar.gz -C "$HOME/.local/node" --strip-components=1 && '
-                    'rm -f /tmp/node_mac.tar.gz && '
+                    'tar -xzf "$TMP_TAR" -C "$HOME/.local/node" --strip-components=1 && '
                     'echo "export PATH=\\"$HOME/.local/node/bin:\\$PATH\\"" >> "$HOME/.zshrc"'
                 )
                 steps.append(("下载并安装 Node.js v22 LTS (多镜像容灾)", ["bash", "-c", install_node_cmd], False))
@@ -3569,12 +3575,14 @@ class MobilePage(QWidget):
             else:
                 missing_items.append("Android 调试工具 (adb)")
                 install_adb_cmd = (
+                    'TMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/santiao_adb.XXXXXX"); '
+                    'TMP_ZIP="$TMP_DIR/adb_mac.zip"; '
+                    'trap \'rm -rf "$TMP_DIR"\' EXIT; '
                     'mkdir -p "$HOME/Library/Android/sdk"; '
                     'echo "尝试从腾讯云镜像下载 Android Platform-Tools (adb)..."; '
-                    '(curl -fL --progress-bar --connect-timeout 10 "https://mirrors.cloud.tencent.com/AndroidSDK/platform-tools_r35.0.2-darwin.zip" -o /tmp/adb_mac.zip '
-                    '|| (echo "镜像下载失败，回退至 Google 官方源..." && curl -fL --progress-bar "https://dl.google.com/android/repository/platform-tools-latest-darwin.zip" -o /tmp/adb_mac.zip)) && '
-                    'unzip -oq /tmp/adb_mac.zip -d "$HOME/Library/Android/sdk" && '
-                    'rm -f /tmp/adb_mac.zip'
+                    '(curl -fL --progress-bar --connect-timeout 10 "https://mirrors.cloud.tencent.com/AndroidSDK/platform-tools_r35.0.2-darwin.zip" -o "$TMP_ZIP" '
+                    '|| (echo "镜像下载失败，回退至 Google 官方源..." && curl -fL --progress-bar "https://dl.google.com/android/repository/platform-tools-latest-darwin.zip" -o "$TMP_ZIP")) && '
+                    'unzip -oq "$TMP_ZIP" -d "$HOME/Library/Android/sdk"'
                 )
                 steps.append(("下载并安装 Android 调试工具 (adb)", ["bash", "-c", install_adb_cmd], True))
 

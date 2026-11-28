@@ -23,13 +23,13 @@ try:
     from desktop_app.core.paths import REPORTS_DIR
 except Exception:
     try:
-        from ..config import PROJECT_ROOT
-        REPORTS_DIR = os.path.join(PROJECT_ROOT, "reports")
-    except (ImportError, ValueError):
+        from config import REPORT_DIR
+        REPORTS_DIR = str(REPORT_DIR)
+    except Exception:
         try:
-            from desktop_app.config import PROJECT_ROOT
+            from ..config import PROJECT_ROOT
             REPORTS_DIR = os.path.join(PROJECT_ROOT, "reports")
-        except Exception:
+        except (ImportError, ValueError):
             REPORTS_DIR = os.path.abspath(os.path.join(_PROJECT_ROOT, "reports"))
 
 

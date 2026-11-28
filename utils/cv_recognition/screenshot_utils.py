@@ -472,12 +472,15 @@ class ImageComparator:
 
     
     @staticmethod
-    def _save_debug_image(img: Image.Image, name_prefix: str):
-        """保存对比失败时的现场图片，协助定位 UI 差异"""
-        debug_dir = "./screenshots/debug"
-        if not os.path.exists(debug_dir):
-            os.makedirs(debug_dir)
-        
+    def _save_debug_image(img: Image.Image, name_prefix: str) -> None:
+        """保存对比失败时的现场图片，协助定位 UI 差异（统一落盘至 SCREENSHOT_DIR/debug）"""
+        try:
+            from config import SCREENSHOT_DIR
+            debug_dir = os.path.join(str(SCREENSHOT_DIR), "debug")
+        except Exception:
+            debug_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "screenshots", "debug")
+
+        os.makedirs(debug_dir, exist_ok=True)
         path = os.path.join(debug_dir, f"{name_prefix}_{int(time.time())}.png")
         img.save(path)
         logger.info(f"{LogIcon.CAMERA} 调试图像已归档：{path}")

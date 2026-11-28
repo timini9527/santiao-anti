@@ -26,6 +26,7 @@ import psutil
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from desktop_app.core.path_resolver import SmartPathResolver
+from desktop_app.core.paths import LOGS_DIR, WRITABLE_ROOT
 
 logger = logging.getLogger("Inspector")
 
@@ -261,7 +262,9 @@ def check_ios_wda_services() -> Tuple[bool, bool]:
 
 
 def _wda_log_path() -> str:
-    return os.path.join(tempfile.gettempdir(), "santiao_ios_wda.log")
+    """获取 iOS WDA 守护日志路径（统一收敛至项目可写日志目录 LOGS_DIR）。"""
+    os.makedirs(LOGS_DIR, exist_ok=True)
+    return os.path.join(LOGS_DIR, "santiao_ios_wda.log")
 
 
 def _read_wda_failure_hint(log_file: str) -> str:
@@ -398,7 +401,7 @@ class IosServiceActionWorker(QThread):
             if is_frozen:
                 work_dir = os.path.dirname(self.start_bat)
                 if not os.path.isdir(work_dir):
-                    work_dir = tempfile.gettempdir()
+                    work_dir = WRITABLE_ROOT
                 try:
                     log_fp = open(log_file, "w", encoding="utf-8", errors="replace")
                 except Exception:

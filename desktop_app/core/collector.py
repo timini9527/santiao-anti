@@ -7,7 +7,19 @@ import subprocess
 import sys
 from typing import Any, Dict, List
 
-from .paths import PROJECT_ROOT, TEMP_COLLECT_SCRIPT, TESTS_DIR
+from .paths import PROJECT_ROOT, TESTS_DIR
+
+# 内联 Pytest 收集脚本，避免依赖外部临时文件
+_PYTEST_COLLECT_SNIPPET = (
+    "import sys, json, pytest; "
+    "sys.stdout.reconfigure(encoding='utf-8'); "
+    "class _P:\n"
+    "    def pytest_collection_modifyitems(self, items):\n"
+    "        print('JSON_START')\n"
+    "        print(json.dumps([i.nodeid for i in items]))\n"
+    "        print('JSON_END')\n"
+    "pytest.main(['--collect-only', '--continue-on-collection-errors', '-q'], plugins=[_P()])"
+)
 
 
 class TestCollector(ast.NodeVisitor):
@@ -320,10 +332,10 @@ def collect_all_tests(tests_dir: str = TESTS_DIR) -> List[Dict[str, Any]]:
 
                 py_exec = shutil.which("python") or shutil.which("python3")
 
-        if py_exec and os.path.exists(TEMP_COLLECT_SCRIPT):
+        if py_exec:
             no_window = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
             raw_out = subprocess.check_output(
-                [py_exec, TEMP_COLLECT_SCRIPT],
+                [py_exec, "-c", _PYTEST_COLLECT_SNIPPET],
                 stderr=subprocess.STDOUT,
                 cwd=PROJECT_ROOT,
                 creationflags=no_window,

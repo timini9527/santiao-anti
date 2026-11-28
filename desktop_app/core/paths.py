@@ -47,12 +47,13 @@ def _resolve_writable_workspace() -> str:
 
 WRITABLE_ROOT = _resolve_writable_workspace()
 REPORTS_DIR = os.path.join(WRITABLE_ROOT, "reports")
+LOGS_DIR = os.path.join(WRITABLE_ROOT, "logs")
 TESTS_DIR = os.path.join(PROJECT_ROOT, "tests")
 ALLURE_CLI_DIR = os.path.join(PROJECT_ROOT, "allure-cli")
-TEMP_COLLECT_SCRIPT = os.path.join(WRITABLE_ROOT, "templates", "temp_collect.py")
 
 # 确保核心产物目录自动就绪
-try:
-    os.makedirs(REPORTS_DIR, exist_ok=True)
-except Exception:
-    pass
+for _writable_dir in (REPORTS_DIR, LOGS_DIR):
+    try:
+        os.makedirs(_writable_dir, exist_ok=True)
+    except Exception:
+        pass

@@ -63,10 +63,8 @@ class AppSplashScreen(QSplashScreen):
         base_dir = getattr(sys, '_MEIPASS', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         candidates = [
             os.path.join(base_dir, "desktop_app", "resources", "sant_logo_hd.png"),
-            os.path.join(base_dir, "desktop_app", "resources", "sant_logo.png"),
             os.path.join(base_dir, "resources", "sant_logo_hd.png"),
             os.path.join(os.path.dirname(__file__), "..", "resources", "sant_logo_hd.png"),
-            os.path.join(os.path.dirname(__file__), "..", "resources", "sant_logo.png"),
         ]
         for path in candidates:
             abs_p = os.path.abspath(path)

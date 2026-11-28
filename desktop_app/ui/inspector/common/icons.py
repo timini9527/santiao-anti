@@ -24,6 +24,7 @@ except (ImportError, ModuleNotFoundError):
     _HAS_QTSVG = False
 
 from desktop_app.core.path_resolver import SmartPathResolver
+from desktop_app.core.paths import WRITABLE_ROOT
 
 logger = logging.getLogger("Inspector")
 
@@ -34,12 +35,12 @@ def create_modern_app_icon() -> QIcon:
     优先探测本地自定义图标，缺失时使用 QPainter 绘制高分辨率超椭圆矢量图标。
     """
     local_custom_candidates = [
-        os.path.join(SmartPathResolver.get_project_root(), "desktop_app", "assets", "icons", "app_logo.svg"),
-        os.path.join(SmartPathResolver.get_project_root(), "desktop_app", "assets", "icons", "app_logo.png"),
-        os.path.join(SmartPathResolver.get_project_root(), "desktop_app", "resources", "app_icon.png"),
+        SmartPathResolver.get_asset_path("desktop_app/assets/icons/app_logo.svg"),
+        SmartPathResolver.get_asset_path("desktop_app/assets/icons/app_logo.png"),
+        SmartPathResolver.get_asset_path("desktop_app/resources/app_icon.png"),
     ]
     for cand in local_custom_candidates:
-        if os.path.exists(cand):
+        if cand and os.path.exists(cand):
             custom_icon = QIcon(cand)
             if not custom_icon.isNull():
                 return custom_icon
@@ -122,13 +123,40 @@ def create_modern_app_icon() -> QIcon:
     return icon
 
 
-LOCAL_ICON_DIR = os.path.normpath(
-    os.path.join(SmartPathResolver.get_project_root(), "desktop_app", "assets", "icons")
-)
-try:
-    os.makedirs(LOCAL_ICON_DIR, exist_ok=True)
-except Exception:
-    pass
+def _resolve_local_icon_dir() -> str:
+    """解析本地图标目录：优先定位内置资产目录，无写权限（只读安装卷）时回退至可写工作区目录。"""
+    builtin_dir = SmartPathResolver.get_asset_path("desktop_app/assets/icons")
+    default_dir = os.path.normpath(
+        os.path.join(SmartPathResolver.get_project_root(), "desktop_app", "assets", "icons")
+    )
+    fallback_dir = os.path.normpath(os.path.join(WRITABLE_ROOT, "logs", "inspector_icons"))
+
+    if builtin_dir and os.path.isdir(builtin_dir):
+        try:
+            probe = os.path.join(builtin_dir, ".icon_probe")
+            with open(probe, "w", encoding="utf-8") as _f:
+                _f.write("ok")
+            os.remove(probe)
+            return builtin_dir
+        except Exception:
+            if any(fn.endswith(".svg") for fn in os.listdir(builtin_dir)):
+                return builtin_dir
+
+    for cand in (default_dir, fallback_dir):
+        try:
+            os.makedirs(cand, exist_ok=True)
+            probe = os.path.join(cand, ".icon_probe")
+            with open(probe, "w", encoding="utf-8") as _f:
+                _f.write("ok")
+            os.remove(probe)
+            return cand
+        except Exception:
+            continue
+
+    return builtin_dir or fallback_dir
+
+
+LOCAL_ICON_DIR: str = _resolve_local_icon_dir()
 
 _OFFICIAL_SVG_TEMPLATES: Dict[str, str] = {
     "refresh": """<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>""",

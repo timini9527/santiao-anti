@@ -232,8 +232,10 @@ class ChatLongPressPage(ChatPage):
         # 2. 三步渐进式 OCR/图片匹配 兜底
         logger.warning(f"{LogIcon.WARN} XML 未能定位菜单项 【{menu_name}】，启动渐进式识别降级机制...")
         
-        # 2.0 截图保存为临时图片
-        screenshot_path = "temp_long_press.png"
+        # 2.0 截图保存至项目可写截图目录，避免污染当前工作目录
+        from config import SCREENSHOT_DIR
+        os.makedirs(str(SCREENSHOT_DIR), exist_ok=True)
+        screenshot_path = os.path.join(str(SCREENSHOT_DIR), "temp_long_press.png")
         self.driver.get_screenshot_as_file(screenshot_path)
         
         ocr_util = OcrUtils(self.driver)

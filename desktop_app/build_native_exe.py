@@ -159,7 +159,13 @@ Source: "{py_runtime_src}\\*"; DestDir: "{{app}}\\python_runtime"; Flags: ignore
     for d in assets["business_dirs"]:
         if d == "allure-cli":
             continue
-        files_entries.append(f'Source: "{source_root}\\{d}\\*"; DestDir: "{{app}}\\{d}"; Flags: ignoreversion recursesubdirs createallsubdirs')
+        if d == "config":
+            # 排除打包机本地记忆状态文件，确保新电脑安装后保持纯净初始状态
+            files_entries.append(
+                f'Source: "{source_root}\\{d}\\*"; DestDir: "{{app}}\\{d}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "desktop_settings.json,.cfg_probe"'
+            )
+        else:
+            files_entries.append(f'Source: "{source_root}\\{d}\\*"; DestDir: "{{app}}\\{d}"; Flags: ignoreversion recursesubdirs createallsubdirs')
     for f in assets["core_files"]:
         files_entries.append(f'Source: "{source_root}\\{f}"; DestDir: "{{app}}"; Flags: ignoreversion')
     business_files_section = "\n".join(files_entries)

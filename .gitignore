@@ -80,3 +80,7 @@ tmp/
 output/
 node_modules/
 .venv/
+# 桌面控制台本机持久化记忆文件（避免跨电脑/打包污染）
+config/desktop_settings.json
+# Inno Setup 动态生成的本地打包脚本（含宿主机路径）
+desktop_app/installer.iss

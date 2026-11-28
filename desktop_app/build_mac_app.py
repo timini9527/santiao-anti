@@ -472,6 +472,11 @@ def build_mac(build_dmg_flag: bool = BUILD_DMG):
     if os.path.isdir(assets_dir):
         cmd.append(f"--add-data={assets_dir}:desktop_app/assets")
 
+    # 附加测试说明文档目录 test_docs，确保 macOS 打包版可正常查阅用例说明文档
+    test_docs_dir = os.path.join(PROJECT_ROOT, "test_docs")
+    if os.path.isdir(test_docs_dir):
+        cmd.append(f"--add-data={test_docs_dir}:test_docs")
+
     # 注入全量测试用例与业务资产 (tests, pages, locators, config, data, core, conftest.py 等)
     try:
         if PROJECT_ROOT not in sys.path:
@@ -502,6 +507,19 @@ def build_mac(build_dmg_flag: bool = BUILD_DMG):
     subprocess.run(cmd, cwd=PROJECT_ROOT, check=True)
 
     app_path = os.path.join(dist_dir, f"{APP_NAME}.app")
+
+    # 清理打包机残留的本机记忆状态文件，确保新电脑安装 .app / .dmg 后保持纯净初始状态
+    for _rel_cfg in (
+        os.path.join("Contents", "Resources", "config", "desktop_settings.json"),
+        os.path.join("Contents", "Frameworks", "config", "desktop_settings.json"),
+    ):
+        _stale_cfg = os.path.join(app_path, _rel_cfg)
+        if os.path.isfile(_stale_cfg):
+            try:
+                os.remove(_stale_cfg)
+                print(f" [产物净化] 已剔除本机持久化记忆文件: {_rel_cfg}")
+            except Exception as _e:
+                print(f" [产物净化警告] 剔除 {_rel_cfg} 失败: {_e}")
 
     if build_dmg_flag:
         import platform

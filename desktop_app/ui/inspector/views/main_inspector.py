@@ -39,6 +39,7 @@ from PyQt6.QtWidgets import (
 )
 
 from desktop_app.core.path_resolver import SmartPathResolver
+from desktop_app.core.paths import REPORTS_DIR
 from desktop_app.ui.inspector.common.dialogs import ModernMessageBox, ToastNotification
 from desktop_app.ui.inspector.common.icons import (
     create_modern_app_icon,
@@ -152,6 +153,14 @@ class HarmonyAppiumInspector(QMainWindow):
                 font-family: 'Segoe UI', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
                 font-size: 12px;
             }
+            QToolTip {
+                background-color: #ffffff;
+                color: #0f172a;
+                border: 1px solid #cbd5e1;
+                border-radius: 0px;
+                padding: 5px 10px;
+                font-size: 12px;
+            }
             QFrame#topBar {
                 background-color: #ffffff;
                 border-bottom: 1px solid #e2e8f0;
@@ -200,6 +209,9 @@ class HarmonyAppiumInspector(QMainWindow):
             }
             QPushButton.sub-action-btn:hover { background-color: #f1f5f9; border-color: #0284c7; color: #0284c7; }
             QPushButton.sub-action-btn:pressed { background-color: #e2e8f0; }
+            QPushButton.sub-action-btn:disabled {
+                background-color: #f1f5f9; color: #94a3b8; border: 1px solid #e2e8f0;
+            }
             QSplitter::handle:horizontal { background-color: #e2e8f0; width: 3px; margin: 0px; border-radius: 1px; }
             QSplitter::handle:horizontal:hover { background-color: #0284c7; }
             QFrame.panel-card { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; }
@@ -861,17 +873,12 @@ class HarmonyAppiumInspector(QMainWindow):
             for idx, dev in enumerate(devices):
                 item_text = f"[{dev['platform'].upper()}] {dev['name']}"
                 self.combo_devices.addItem(item_text, dev)
-                self.combo_devices.setItemData(
-                    idx,
-                    f"序列号 (UDID): {dev['udid']}\n机型描述: {dev['name']}",
-                    Qt.ItemDataRole.ToolTipRole,
-                )
                 if dev["udid"] == self.current_udid:
                     target_index = idx
 
             if target_index >= 0:
                 self.combo_devices.setCurrentIndex(target_index)
-                self.combo_devices.setToolTip(f"当前选中设备 UDID: {self.current_udid}")
+                self.combo_devices.setToolTip("")
                 self.update_platform_badge()
                 self.combo_devices.blockSignals(False)
             else:
@@ -886,18 +893,21 @@ class HarmonyAppiumInspector(QMainWindow):
                 self.current_udid = first["udid"]
                 self.current_platform = first["platform"]
                 self.combo_devices.setCurrentIndex(0)
-                self.combo_devices.setToolTip(f"当前选中设备 UDID: {self.current_udid}")
+                self.combo_devices.setToolTip("")
                 self.update_platform_badge()
                 self.combo_devices.blockSignals(False)
                 if was_screencasting:
                     QTimer.singleShot(150, self.start_screencast)
                 if auto_capture:
-                    QTimer.singleShot(1200 if was_screencasting else 500, self.refresh_screen_only)
+                    if was_screencasting:
+                        QTimer.singleShot(1200, self.refresh_screen_and_dom)
+                    else:
+                        QTimer.singleShot(500, self.refresh_screen_only)
         else:
             self.combo_devices.addItem("未检测到在线设备 (请检查 USB/网络连接)", None)
             self.current_udid = ""
             self.current_platform = "harmony"
-            self.combo_devices.setToolTip("未检测到可用在线设备")
+            self.combo_devices.setToolTip("")
             self.update_platform_badge()
             self.combo_devices.blockSignals(False)
 
@@ -911,7 +921,7 @@ class HarmonyAppiumInspector(QMainWindow):
         if dev and isinstance(dev, dict):
             new_udid = dev.get("udid", "")
             new_plat = dev.get("platform", "harmony")
-            self.combo_devices.setToolTip(f"当前选中设备 UDID: {new_udid}")
+            self.combo_devices.setToolTip("")
 
             if new_plat == "ios":
                 self.btn_ios_service.show()
@@ -936,7 +946,7 @@ class HarmonyAppiumInspector(QMainWindow):
                 self.update_platform_badge()
                 if was_screencasting:
                     QTimer.singleShot(400, self.start_screencast)
-                    QTimer.singleShot(1100, self.refresh_screen_only)
+                    QTimer.singleShot(1100, self.refresh_screen_and_dom)
                 else:
                     QTimer.singleShot(350, self.refresh_screen_only)
 
@@ -1073,6 +1083,8 @@ class HarmonyAppiumInspector(QMainWindow):
         self._timer_refresh.stop()
         self.spinner_sync.stop(restore_text=True)
         self.spinner_refresh.stop(restore_text=True)
+        # 投屏进行中保持【同步画面】禁用态，防止刷新 DOM 结束后被 spinner_sync.stop() 误恢复
+        self._update_sync_screen_btn_state()
 
     def _on_sync_screen_timeout(self) -> None:
         logger.warning("[UI审查器] 同步真机画面超时 (20s)")
@@ -1187,13 +1199,19 @@ class HarmonyAppiumInspector(QMainWindow):
         self.spinner_refresh.start(loading_text="正在刷新...")
         self._timer_refresh.start(20000)
 
-        tmp_dir = os.path.normpath(os.path.abspath(os.path.join(SmartPathResolver.get_project_root(), "reports", "inspector")))
-        os.makedirs(tmp_dir, exist_ok=True)
+        tmp_dir = self._get_inspector_cache_dir()
 
         self.capture_worker = CaptureWorker(self.current_udid, self.current_platform, tmp_dir, mode="dom_only")
         self.capture_worker.dom_finished.connect(self.on_dom_only_success)
         self.capture_worker.failed.connect(self.on_capture_failed)
         self.capture_worker.start()
+
+    @staticmethod
+    def _get_inspector_cache_dir() -> str:
+        """获取审查器截屏与 DOM 缓存目录（统一归口至可写 REPORTS_DIR/inspector）。"""
+        tmp_dir = os.path.normpath(os.path.abspath(os.path.join(REPORTS_DIR, "inspector")))
+        os.makedirs(tmp_dir, exist_ok=True)
+        return tmp_dir
 
     def on_dom_only_success(self, layout_file: str, platform: str) -> None:
         self._reset_capture_buttons()
@@ -1257,6 +1275,8 @@ class HarmonyAppiumInspector(QMainWindow):
         if not self.current_udid:
             ModernMessageBox.warning(self, "设备未连接", "未检测到在线设备，请先连接并选中设备。")
             return
+        if self._is_screencast_locked():
+            return
 
         if self.capture_worker and self.capture_worker.isRunning():
             if self._worker_start_time and (time.time() - self._worker_start_time > 8):
@@ -1270,8 +1290,7 @@ class HarmonyAppiumInspector(QMainWindow):
                 return
 
         self._worker_start_time = time.time()
-        tmp_dir = os.path.normpath(os.path.abspath(os.path.join(SmartPathResolver.get_project_root(), "reports", "inspector")))
-        os.makedirs(tmp_dir, exist_ok=True)
+        tmp_dir = self._get_inspector_cache_dir()
 
         if self.current_platform == "ios" and (self.is_screencasting or ScreenCastWorker.is_active):
             mem_bytes = ScreenCastWorker.get_latest_jpeg_bytes(self.current_udid)
@@ -1306,6 +1325,7 @@ class HarmonyAppiumInspector(QMainWindow):
 
         self.btn_screencast.setEnabled(False)
         self.spinner_screencast.start(loading_text="连接中...")
+        self._update_sync_screen_btn_state(disabled=True)
         self._timer_screencast.start(15000)
 
         if self.capture_worker and self.capture_worker.isRunning():
@@ -1386,10 +1406,7 @@ class HarmonyAppiumInspector(QMainWindow):
 
                 def _async_save() -> None:
                     try:
-                        tmp_dir = os.path.normpath(
-                            os.path.abspath(os.path.join(SmartPathResolver.get_project_root(), "reports", "inspector"))
-                        )
-                        os.makedirs(tmp_dir, exist_ok=True)
+                        tmp_dir = self._get_inspector_cache_dir()
                         ext = "jpeg" if raw_bytes.startswith(b"\xff\xd8") else "png"
                         cached_file = os.path.join(tmp_dir, f"screencast_last_{plat_snap}.{ext}")
                         with open(cached_file, "wb") as f:
@@ -1408,7 +1425,8 @@ class HarmonyAppiumInspector(QMainWindow):
         self.is_screencasting = is_running
         self._update_screencast_btn_style(is_running)
         if is_running:
-            self.show_toast("✅ 实时投屏已启动 (零截屏通知/低延迟硬件流)")
+            tip = f"✅ {msg}" if msg else "✅ 实时投屏已启动"
+            self.show_toast(tip)
 
     def on_screencast_error(self, err_msg: str) -> None:
         self._timer_screencast.stop()
@@ -1416,11 +1434,39 @@ class HarmonyAppiumInspector(QMainWindow):
         self._update_screencast_btn_style(False)
         self.show_toast(f"⚠️ 投屏提示: {err_msg}", duration_ms=4500)
 
+    def _is_screencast_locked(self) -> bool:
+        """判断当前是否处于实时投屏中或投屏建连中（三端统一判定）"""
+        if self.is_screencasting:
+            return True
+        if self.screencast_worker is not None and self.screencast_worker.isRunning():
+            return True
+        return False
+
+    def _update_sync_screen_btn_state(self, disabled: Optional[bool] = None) -> None:
+        """按投屏状态统一控制【同步画面】按钮禁用/启用及置灰样式（HarmonyOS / Android / iOS 一致）"""
+        if not hasattr(self, "btn_sync_screen"):
+            return
+        should_disable = self._is_screencast_locked() if disabled is None else bool(disabled)
+        if should_disable:
+            if hasattr(self, "spinner_sync"):
+                self.spinner_sync.timer.stop()
+            self.btn_sync_screen.setText("同步画面")
+            self.btn_sync_screen.setIcon(get_tech_icon("sync", "#94a3b8"))
+            self.btn_sync_screen.setEnabled(False)
+            self.btn_sync_screen.setCursor(Qt.CursorShape.ForbiddenCursor)
+            self.btn_sync_screen.setToolTip("实时投屏进行中已禁用同步画面，请点击【刷新界面】更新 DOM 树，或停止投屏后再使用")
+        else:
+            self.btn_sync_screen.setIcon(get_tech_icon("sync", "#0284c7"))
+            self.btn_sync_screen.setEnabled(True)
+            self.btn_sync_screen.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.btn_sync_screen.setToolTip("同步真机最新画面与 DOM 层级树")
+
     def _update_screencast_btn_style(self, is_running: bool) -> None:
         if not hasattr(self, "btn_screencast"):
             return
         self.spinner_screencast.stop(restore_text=False)
         self.btn_screencast.setEnabled(True)
+        self._update_sync_screen_btn_state(disabled=is_running)
         if is_running:
             self.btn_screencast.setText("停止投屏")
             self.btn_screencast.setIcon(get_tech_icon("cast", "#ef4444"))
@@ -2014,7 +2060,10 @@ class HarmonyAppiumInspector(QMainWindow):
             item.setText(0, format_dom_node_label(self.current_platform, comp, is_full_type=self.chk_show_full_type.isChecked()))
 
         self.update_selected_element_panel(node_id)
-        self.refresh_screen_only()
+        if self._is_screencast_locked():
+            self.refresh_screen_and_dom()
+        else:
+            self.refresh_screen_only()
 
     def action_element_clear(self) -> None:
         curr_id = self.canvas.selected_node_id
@@ -2027,7 +2076,10 @@ class HarmonyAppiumInspector(QMainWindow):
                 comp["raw_attributes"]["originalText"] = ""
             self.edit_live_input.setText("")
             self.update_selected_element_panel(curr_id)
-            self.refresh_screen_only()
+            if self._is_screencast_locked():
+                self.refresh_screen_and_dom()
+            else:
+                self.refresh_screen_only()
 
     def copy_to_clip(self, text: str) -> None:
         if text:

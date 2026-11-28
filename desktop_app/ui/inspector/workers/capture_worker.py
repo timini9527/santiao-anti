@@ -8,6 +8,7 @@ import os
 import random
 import shutil
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
@@ -131,9 +132,8 @@ class CaptureWorker(QThread):
             pass
 
     def _run_harmony(self, local_png: str, layout_file: str) -> None:
-        run_hdc(["shell", "power-shell wakeup"], self.udid, timeout=0.8)
-
         if self.mode == "screen_only":
+            run_hdc(["shell", "power-shell wakeup"], self.udid, timeout=0.6)
             if self._silent_capture_harmony_screen(self.udid, local_png) and os.path.exists(local_png):
                 self.screen_finished.emit(local_png)
             else:
@@ -147,10 +147,23 @@ class CaptureWorker(QThread):
                 self.failed.emit("获取组件层级树失败，请确认设备已连接且 uitest 守护进程活跃。")
             return
 
-        layout_ok = dump_harmony_layout(
-            self.udid, layout_file, screencast_active=ScreenCastWorker.is_active, rpc_timeout=3.0
-        )
-        shot_ok = self._silent_capture_harmony_screen(self.udid, local_png)
+        # 全量同步模式：截屏与 DOM 树并行抓取，同时异步发送亮屏保活，耗时从两者之和降至最大值
+        with ThreadPoolExecutor(max_workers=3, thread_name_prefix="HarmonySync") as pool:
+            fut_wake = pool.submit(run_hdc, ["shell", "power-shell wakeup"], self.udid, 0.6)
+            fut_layout = pool.submit(
+                dump_harmony_layout,
+                self.udid,
+                layout_file,
+                ScreenCastWorker.is_active,
+                3.0,
+            )
+            fut_shot = pool.submit(self._silent_capture_harmony_screen, self.udid, local_png)
+            layout_ok = bool(fut_layout.result())
+            shot_ok = bool(fut_shot.result())
+            try:
+                fut_wake.result(timeout=0.2)
+            except Exception:
+                pass
 
         if shot_ok and layout_ok:
             self.finished.emit(local_png, layout_file, "harmony")
@@ -186,30 +199,31 @@ class CaptureWorker(QThread):
                 self.failed.emit("获取安卓组件层级树失败，请确认设备屏幕已解锁且已授权 USB 调试。")
             return
 
-        layout_ok = False
-        if self.mode != "screen_only":
-            layout_ok = self._dump_android_hierarchy(self.udid, layout_file)
-
-        shot_ok = False
-        if ScreenCastWorker.is_active and (ScreenCastWorker.latest_udid == self.udid or not ScreenCastWorker.latest_udid):
-            latest_bytes = ScreenCastWorker.get_latest_jpeg_bytes(self.udid)
-            if latest_bytes:
-                try:
-                    with open(local_png, "wb") as f_out:
-                        f_out.write(latest_bytes)
-                    shot_ok = True
-                except Exception:
-                    pass
-
-        if not shot_ok:
-            shot_ok = capture_android_static_screen(self.udid, local_png)
+        def _capture_android_shot() -> bool:
+            if ScreenCastWorker.is_active and (ScreenCastWorker.latest_udid == self.udid or not ScreenCastWorker.latest_udid):
+                latest_bytes = ScreenCastWorker.get_latest_jpeg_bytes(self.udid)
+                if latest_bytes:
+                    try:
+                        with open(local_png, "wb") as f_out:
+                            f_out.write(latest_bytes)
+                        return True
+                    except Exception:
+                        pass
+            return capture_android_static_screen(self.udid, local_png)
 
         if self.mode == "screen_only":
-            if shot_ok:
+            if _capture_android_shot():
                 self.screen_finished.emit(local_png)
             else:
                 self.failed.emit("获取安卓真机画面失败，请确认屏幕已点亮并解锁。")
             return
+
+        # 全量同步模式：DOM 层级与真机截屏并行采集，单次同步耗时砍半
+        with ThreadPoolExecutor(max_workers=2, thread_name_prefix="AndroidSync") as pool:
+            fut_layout = pool.submit(self._dump_android_hierarchy, self.udid, layout_file)
+            fut_shot = pool.submit(_capture_android_shot)
+            layout_ok = bool(fut_layout.result())
+            shot_ok = bool(fut_shot.result())
 
         if shot_ok and os.path.exists(local_png) and layout_ok and os.path.exists(layout_file):
             self.finished.emit(local_png, layout_file, "android")
@@ -231,8 +245,11 @@ class CaptureWorker(QThread):
             return
 
         shot_ok = False
-        if ScreenCastWorker.is_active or (ScreenCastWorker.latest_image is not None and ScreenCastWorker.latest_udid == self.udid):
-            for _ in range(160):
+        shot_from_wda = False
+
+        # 1. 若实时投屏正活跃，直接 0ms 复用内存最新帧（非投屏态不复用历史旧缓存，确保画面为当前真机最新帧）
+        if ScreenCastWorker.is_active and (ScreenCastWorker.latest_udid == self.udid or not ScreenCastWorker.latest_udid):
+            for _ in range(40):
                 latest_bytes = ScreenCastWorker.get_latest_jpeg_bytes(self.udid)
                 if latest_bytes:
                     try:
@@ -246,10 +263,19 @@ class CaptureWorker(QThread):
                     break
                 time.sleep(0.05)
 
+        # 2. WDA 8100/8200 在线时优先直连 WDA /screenshot (~0.2s)，跳过耗时的 userspace 隧道冷启动与冲突超时
+        if not shot_ok:
+            wda_url, _ = IosWdaManager.get_wda_url(self.udid, allow_spawn=False)
+            if wda_url:
+                shot_ok = capture_ios_fallback_screen(self.udid, local_png, allow_dvt_cli=False)
+                if shot_ok:
+                    shot_from_wda = True
+
         if self.mode == "screen_only" and shot_ok:
             self.screen_finished.emit(local_png)
             return
 
+        # 3. 仅当 WDA 不在线或直连截屏失败时，才回落 CoreDevice 单帧截屏与 DVT CLI 兜底
         if not shot_ok and not ScreenCastWorker.is_active:
             single_bytes = ScreenCastWorker.capture_single_ios_frame(self.udid, timeout=4.0)
             if single_bytes:
@@ -274,7 +300,7 @@ class CaptureWorker(QThread):
 
         layout_ok = self._dump_ios_hierarchy(self.udid, layout_file)
 
-        if shot_ok and layout_ok:
+        if shot_ok and layout_ok and not shot_from_wda:
             try:
                 normalize_ios_screenshot_file(local_png, layout_file)
             except Exception:

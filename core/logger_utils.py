@@ -21,12 +21,36 @@ if sys.platform == "win32":
             pass
 
 
-# 日志保存路径
-# LOG_PATH = os.path.join(os.getcwd(), "logs")
-LOG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
-# print("LOG_PATH: ", LOG_PATH)
-if not os.path.exists(LOG_PATH):
-    os.mkdir(LOG_PATH)
+def _resolve_log_path() -> str:
+    """解析可写日志目录，优先复用根目录 config.LOG_DIR，无写权限时回退至用户目录。"""
+    candidates: list[str] = []
+    try:
+        from config import LOG_DIR
+        candidates.append(str(LOG_DIR))
+    except Exception:
+        pass
+
+    default_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logs")
+    if default_dir not in candidates:
+        candidates.append(default_dir)
+    candidates.append(os.path.join(os.path.expanduser("~"), "SantiaoAutoTest", "logs"))
+
+    for cand in candidates:
+        try:
+            os.makedirs(cand, exist_ok=True)
+            probe = os.path.join(cand, ".log_write_probe")
+            with open(probe, "w", encoding="utf-8") as f:
+                f.write("ok")
+            os.remove(probe)
+            return cand
+        except Exception:
+            continue
+
+    return candidates[-1]
+
+
+# 日志保存路径（自动兼容只读安装卷与多级目录创建）
+LOG_PATH: str = _resolve_log_path()
 
 
 # 是否在控制台输出日志 (False=隐藏, True=显示)

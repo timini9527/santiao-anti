@@ -237,7 +237,7 @@ class TestExecutionWorker(QThread):
         gen_env = os.environ.copy()
         if java_home:
             gen_env["JAVA_HOME"] = java_home
-            gen_env["PATH"] = f"{os.path.join(java_home, 'bin')};{gen_env.get('PATH', '')}"
+            gen_env["PATH"] = f"{os.path.join(java_home, 'bin')}{os.pathsep}{gen_env.get('PATH', '')}"
 
         if not allure_bin or not os.path.exists(allure_bin):
             self.log_signal.emit("[Allure] 未检测到本地 Allure CLI，可直接在 Allure 插件中查看原始测试数据。")

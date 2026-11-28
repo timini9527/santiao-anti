@@ -12,6 +12,7 @@
 import os
 import sys
 import time
+import shutil
 import socket
 import subprocess
 from pathlib import Path
@@ -457,8 +458,17 @@ class DevicesPage(QWidget):
             if bat_file and sys.platform == "win32":
                 os.startfile(str(bat_file))
                 msg = f"▶ 已在独立控制台窗口拉起 Appium 批量服务脚本: {bat_file.name}\n(包含端口 {port})"
-            else:
+            elif sys.platform == "win32":
                 subprocess.Popen(["appium", "server", "-p", str(port)], shell=True)
+                msg = f"▶ 已向系统发起拉起 Appium Server (端口 {port}) 的指令！"
+            else:
+                appium_bin = shutil.which("appium") or "appium"
+                subprocess.Popen(
+                    [appium_bin, "server", "-p", str(port)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
                 msg = f"▶ 已向系统发起拉起 Appium Server (端口 {port}) 的指令！"
 
             QMessageBox.information(

@@ -131,12 +131,14 @@ def detect_c_compiler() -> Tuple[bool, str]:
     if shutil.which("gcc.exe"):
         return True, "GCC / MinGW Compiler (gcc.exe)"
     
-    # 3. 检查常见的 Visual Studio Build Tools 默认安装路径
+    # 3. 基于系统环境变量动态检查常见的 Visual Studio Build Tools 默认安装路径
+    prog_files = os.environ.get("ProgramFiles", r"C:\Program Files")
+    prog_files_x86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
     vs_paths = [
-        r"C:\Program Files\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC",
-        r"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC",
-        r"C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC",
-        r"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC",
+        os.path.join(prog_files, "Microsoft Visual Studio", "2022", "BuildTools", "VC", "Tools", "MSVC"),
+        os.path.join(prog_files, "Microsoft Visual Studio", "2022", "Community", "VC", "Tools", "MSVC"),
+        os.path.join(prog_files_x86, "Microsoft Visual Studio", "2019", "BuildTools", "VC", "Tools", "MSVC"),
+        os.path.join(prog_files_x86, "Microsoft Visual Studio", "2019", "Community", "VC", "Tools", "MSVC"),
     ]
     for vp in vs_paths:
         if os.path.exists(vp):
@@ -281,12 +283,17 @@ def stage_encrypted_assets(dest_root: str):
         target_tests_path = os.path.join(dest_root, "tests")
         encrypt_test_suite(src_tests_path, target_tests_path)
 
-    # 3. 复制开放业务层模块（配置、测试数据，支持数据驱动与现场灵活修改）
+    # 3. 复制开放业务层模块（配置、测试数据，支持数据驱动与现场灵活修改；自动排除本机记忆文件 desktop_settings.json）
     for pass_dir in PASSTHROUGH_DIRS:
         src_dir = os.path.join(PROJECT_ROOT, pass_dir)
         if os.path.exists(src_dir):
             target_dir = os.path.join(dest_root, pass_dir)
-            shutil.copytree(src_dir, target_dir, dirs_exist_ok=True)
+            ignore_fn = (
+                shutil.ignore_patterns("desktop_settings.json", ".cfg_probe", "*.tmp", "__pycache__")
+                if pass_dir == "config"
+                else shutil.ignore_patterns("__pycache__", "*.tmp")
+            )
+            shutil.copytree(src_dir, target_dir, dirs_exist_ok=True, ignore=ignore_fn)
             print(f"  [资产复制] 开放业务层: {pass_dir} 已同步至发布区")
 
     # 4. 对根目录核心总控 conftest.py 进行二进制脱敏保护 (彻底消除全局 fixture 与驱动调度源码泄露)
